@@ -3364,6 +3364,7 @@ CBaseEntity *CBaseMonster::DropItem( char *pszItemName, const Vector &vecPos, co
 		// do we want this behavior to be default?! (sjb)
 		pItem->pev->velocity = pev->velocity;
 		pItem->pev->avelocity = Vector( 0, RANDOM_FLOAT( 0, 100 ), 0 );
+        pItem->pev->spawnflags = pItem->pev->spawnflags | SF_NORESPAWN;
 		return pItem;
 	}
 	else
