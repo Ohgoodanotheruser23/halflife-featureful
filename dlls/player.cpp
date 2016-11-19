@@ -837,6 +837,8 @@ void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 	if( m_pActiveItem )
 		m_pActiveItem->Holster();
 
+    m_flRespawnTime = gpGlobals->time + respawndelay.value;
+    m_flNextAbleToRespawnTime = gpGlobals->time;
 	g_pGameRules->PlayerKilled( this, pevAttacker, g_pevLastInflictor );
 
 	if( m_pTank != NULL )
@@ -1283,7 +1285,17 @@ void CBasePlayer::PlayerDeathThink( void )
 		{
 			m_fDeadTime = gpGlobals->time;
 			pev->deadflag = DEAD_RESPAWNABLE;
-		}
+
+            ClientPrint(this->pev, HUD_PRINTCENTER, "You can respawn now!");
+        } else {
+            if (gpGlobals->time >= m_flNextAbleToRespawnTime) {
+                int secondsLeft = (int)ceil(this->m_flRespawnTime - gpGlobals->time);
+                char buf[256];
+                sprintf(buf, "Will be able to respawn in %d seconds", secondsLeft);
+                ClientPrint(this->pev, HUD_PRINTCENTER, buf);
+                m_flNextAbleToRespawnTime = gpGlobals->time + 1;
+            }
+        }
 
 		return;
 	}
@@ -1293,6 +1305,7 @@ void CBasePlayer::PlayerDeathThink( void )
 	// choose to respawn.
 	if( g_pGameRules->IsMultiplayer() && ( gpGlobals->time > ( m_fDeadTime + 6 ) ) && !( m_afPhysicsFlags & PFLAG_OBSERVER ) )
 	{
+        ClientPrint(this->pev, HUD_PRINTCENTER, "You can respawn now!");
 		// go to dead camera. 
 		StartDeathCam();
 	}
@@ -2774,6 +2787,8 @@ void CBasePlayer::Spawn( void )
 	m_lastx = m_lasty = 0;
 
 	m_flNextChatTime = gpGlobals->time;
+    m_flRespawnTime = gpGlobals->time;
+    m_flNextAbleToRespawnTime = gpGlobals->time;
 
 	g_pGameRules->PlayerSpawn( this );
 }

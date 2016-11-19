@@ -28,6 +28,7 @@ extern cvar_t friendlyfire;
 extern cvar_t falldamage;
 extern cvar_t weaponstay;
 extern cvar_t forcerespawn;
+extern cvar_t respawndelay;
 extern cvar_t flashlight;
 extern cvar_t aimcrosshair;
 extern cvar_t decalfrequency;
