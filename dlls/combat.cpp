@@ -879,6 +879,19 @@ int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 		pev->velocity = pev->velocity + vecDir * -DamageForce( flDamage );
 	}
 
+    CBaseEntity *attacker = CBaseEntity::Instance( pevAttacker );
+    if (attacker && attacker->IsPlayer() && !IsPlayer()) {
+        float dmg = flTake > pev->health ? pev->health : flTake;
+        float score = dmg / 50; // 1 score = 50 dmg
+
+        int monsterClass = Classify();
+        if (monsterClass == CLASS_HUMAN_PASSIVE || monsterClass == CLASS_PLAYER_ALLY) {
+            attacker->AddPoints(-score*2, true);
+        } else {
+            attacker->AddPoints(score, true);
+        }
+    }
+
 	// do the damage
 	pev->health -= flTake;
 
