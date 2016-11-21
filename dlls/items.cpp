@@ -86,6 +86,72 @@ void CWorldItem::Spawn( void )
 	REMOVE_ENTITY( edict() );
 }
 
+#define ITEM_RANDOM_VALUE_LENGTH 31
+#define ITEM_RANDOM_MAX_COUNT 9 //when changing this, CItemRandom::KeyValue must be changed too
+
+class CItemRandom : public CBaseEntity
+{
+public:
+	void KeyValue( KeyValueData *pkvd ); 
+	void Spawn( void );
+	int m_itemCount;
+    char m_items[ITEM_RANDOM_MAX_COUNT][ITEM_RANDOM_VALUE_LENGTH+1];
+};
+
+LINK_ENTITY_TO_CLASS( item_random, CItemRandom )
+
+void CItemRandom::KeyValue( KeyValueData *pkvd )
+{
+    if ( FStrEq( pkvd->szKeyName, "item_count" ) ) {
+        m_itemCount = atoi( pkvd->szValue );
+        if (m_itemCount < 0) {
+            m_itemCount = 0;
+        } else if (m_itemCount > ITEM_RANDOM_MAX_COUNT) {
+            m_itemCount = ITEM_RANDOM_MAX_COUNT;
+        }
+        pkvd->fHandled = TRUE;
+    } else if ( strncmp(pkvd->szKeyName, "item", 4) == 0 && isdigit(pkvd->szKeyName[4])) {
+        pkvd->fHandled = FALSE;
+        char buf[8] = "item";
+        for (int i=0; i<ITEM_RANDOM_MAX_COUNT; ++i) {
+            sprintf(buf+4, "%d", i+1);
+            if (strcmp(buf+4, pkvd->szKeyName+4) == 0) {
+                strncpy(m_items[i], pkvd->szValue, ITEM_RANDOM_VALUE_LENGTH);
+                pkvd->fHandled = TRUE;
+                break;
+            }
+        }
+        if (pkvd->fHandled == FALSE) {
+            CBaseEntity::KeyValue( pkvd );
+        }
+    } else {
+        CBaseEntity::KeyValue( pkvd );
+    }	
+}
+
+void CItemRandom::Spawn( void )
+{
+    if (m_itemCount) {
+        int chosenItemIndex = RANDOM_LONG(0, m_itemCount-1);
+        char* chosenItem = m_items[chosenItemIndex];
+        if (strcmp(chosenItem, "nothing") != 0) {
+            CBaseEntity *pEntity = CBaseEntity::Create( chosenItem, pev->origin, pev->angles );
+            if( !pEntity )
+            {
+                ALERT( at_console, "unable to create item_random %s\n", chosenItem );
+            }
+            else
+            {
+                pEntity->pev->target = pev->target;
+                pEntity->pev->targetname = pev->targetname;
+                pEntity->pev->spawnflags = pev->spawnflags;
+            }
+        }
+    }
+
+	REMOVE_ENTITY( edict() );
+}
+
 void CItem::Spawn( void )
 {
 	pev->movetype = MOVETYPE_TOSS;

@@ -1683,6 +1683,19 @@
 		1 : "Short Logon" : 0
 	]
 ]
+@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) = item_random : "Random item" 
+[
+	item_count(integer) : "Item count" : 0 : "Will choose from up to this number of items"
+	item1(string) : "Item 1" : "nothing" : "Item 1"
+	item2(string) : "Item 2" : : "Item 2"
+	item3(string) : "Item 3" : : "Item 3"
+	item4(string) : "Item 4" : : "Item 4"
+	item5(string) : "Item 5" : : "Item 5"
+	item6(string) : "Item 6" : : "Item 6"
+	item7(string) : "Item 7" : : "Item 7"
+	item8(string) : "Item 8" : : "Item 8"
+	item9(string) : "Item 9" : : "Item 9"
+]
 
 //
 // lights
