@@ -43,6 +43,7 @@ extern int g_teamplay;
 #define ITEM_RESPAWN_TIME	30
 #define WEAPON_RESPAWN_TIME	20
 #define AMMO_RESPAWN_TIME	20
+#define SURVIVAL_WARMUP_TIME 30
 
 float g_flIntermissionStartTime = 0;
 
@@ -68,6 +69,117 @@ public:
 
 static CMultiplayGameMgrHelper g_GameMgrHelper;
 #endif
+
+void BecomeSpectator( CBasePlayer *pPlayer )
+{
+	pPlayer->pev->takedamage = DAMAGE_NO;
+	pPlayer->pev->deadflag = DEAD_NO;
+	pPlayer->pev->flags &= FL_PROXY;	// keep proxy flag sey by engine
+	pPlayer->pev->flags |= FL_CLIENT;
+	pPlayer->pev->flags |= FL_SPECTATOR;
+	pPlayer->pev->flags |= FL_NOTARGET;
+	pPlayer->pev->effects |= EF_NODRAW;
+	pPlayer->pev->solid = SOLID_NOT;
+	pPlayer->pev->movetype = MOVETYPE_NOCLIP;
+	pPlayer->pev->modelindex = 0;
+	pPlayer->pev->health = 1;
+	pPlayer->m_pGoalEnt = NULL;
+}
+
+void SpawnPlayer( CBasePlayer *pPlayer, entvars_t* where )
+{
+	pPlayer->m_iRespawnFrames = 0;
+	pPlayer->pev->effects &= ~EF_NODRAW;
+
+	pPlayer->pev->takedamage = DAMAGE_YES;
+	pPlayer->pev->flags &= ~FL_SPECTATOR;
+	pPlayer->pev->movetype = MOVETYPE_WALK;
+	
+	pPlayer->m_bShouldBeRescued = TRUE;
+	pPlayer->Spawn();
+	
+	pPlayer->pev->origin = where->origin + Vector( 0, 0, 1 );
+	pPlayer->pev->v_angle  = g_vecZero;
+	pPlayer->pev->velocity = g_vecZero;
+	pPlayer->pev->angles = where->angles;
+	pPlayer->pev->punchangle = g_vecZero;
+	pPlayer->pev->fixangle = TRUE;
+}
+
+class CInfoPlayerRescue : public CPointEntity
+{
+public:
+	void Spawn(void);
+};
+
+LINK_ENTITY_TO_CLASS( info_player_rescue, CInfoPlayerRescue )
+
+void CInfoPlayerRescue::Spawn()
+{
+	CPointEntity::Spawn();
+}
+
+class CTriggerRescue : public CPointEntity
+{
+public:
+	void Spawn( void );
+	void Think( void );
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	
+	enum {
+		InActive,
+		Active,
+		Disabled
+	};
+};
+
+LINK_ENTITY_TO_CLASS( trigger_rescue, CTriggerRescue )
+
+void CTriggerRescue::Spawn()
+{
+	CPointEntity::Spawn();
+	pev->nextthink = gpGlobals->time + 5;
+	pev->iuser1 = InActive;
+}
+
+void CTriggerRescue::Think()
+{
+	if (survival.value) {
+		BOOL rescuablePlayersExist = CHalfLifeMultiplay::IsAnyPlayerRescuable();
+		
+		if (pev->iuser1 == InActive && rescuablePlayersExist) {
+			pev->iuser1 = Active;
+			SUB_UseTargets(this, USE_ON, 0.0f);
+		} else if (pev->iuser1 == Active && !rescuablePlayersExist) {
+			pev->iuser1 = InActive;
+			SUB_UseTargets(this, USE_OFF, 0.0f);
+		}
+	}
+	pev->nextthink = gpGlobals->time + 5;
+}
+
+void CTriggerRescue::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	pev->iuser1 = Disabled;
+	if (survival.value) {
+		SUB_UseTargets(this, USE_OFF, 0.0f);
+		CBaseEntity *pEntity = NULL;
+		while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, 128 ) ) != NULL ) {
+			if (FClassnameIs(pEntity->pev, "info_player_rescue")) {
+				CBasePlayer* pPlayer = CHalfLifeMultiplay::FindRescuablePlayer();
+				if (pPlayer) {
+					SpawnPlayer(pPlayer, pEntity->pev);
+					UTIL_Remove(pEntity);
+				} else {
+					break; // no more players to rescue
+				}
+			}
+		}
+	}
+	
+	UTIL_Remove(this);
+}
+
 //*********************************************************
 // Rules for the half-life multiplayer game.
 //*********************************************************
@@ -79,6 +191,9 @@ CHalfLifeMultiplay::CHalfLifeMultiplay()
 	RefreshSkillData();
 	m_flIntermissionEndTime = 0;
 	g_flIntermissionStartTime = 0;
+	m_flSurvivalStartTime = gpGlobals->time;
+	m_flNextSurvivalStartTime = gpGlobals->time;
+	m_survivalState = SurvivalWaitForPlayers;
 	
 	// 11/8/98
 	// Modified by YWB:  Server .cfg file is now a cvar, so that 
@@ -278,6 +393,36 @@ void CHalfLifeMultiplay::Think( void )
 
 	last_frags = frags_remaining;
 	last_time = time_remaining;
+	
+	if (survival.value) {
+		if (m_survivalState == SurvivalWaitForPlayers) {
+			if (IsAnyPlayerAlive()) {
+				m_survivalState = SurvivalCountdown;
+				m_flSurvivalStartTime = gpGlobals->time + SURVIVAL_WARMUP_TIME;
+			}
+		} else if (m_survivalState == SurvivalCountdown) {
+			if (!IsAnyPlayerConnected()) {
+				m_survivalState = SurvivalWaitForPlayers;
+			} else {
+				if (m_flSurvivalStartTime > gpGlobals->time) {
+					if (m_flNextSurvivalStartTime <= gpGlobals->time) {
+						int secondsLeftForSurv = (int)ceil(m_flSurvivalStartTime - gpGlobals->time);
+						UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "Survival starts in %d", secondsLeftForSurv ));
+						m_flNextSurvivalStartTime = gpGlobals->time+1;
+					}
+				} else {
+					m_survivalState = SurvivalEnabled;
+					UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "Survival mode enabled!" )); 
+				}
+				
+			}
+		} else if (m_survivalState == SurvivalEnabled) {
+			if (!IsAnyPlayerAlive()) {
+				UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "No alive players left\n" )); 
+				GoToIntermission();
+			}
+		}
+	}
 }
 
 //=========================================================
@@ -564,8 +709,15 @@ void CHalfLifeMultiplay::PlayerThink( CBasePlayer *pPlayer )
 //=========================================================
 void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 {
+	pPlayer->m_flKilledTime = gpGlobals->time;
+	
 	BOOL		addDefault;
 	CBaseEntity	*pWeaponEntity = NULL;
+	
+	if (survival.value && m_survivalState == SurvivalEnabled && !pPlayer->m_bShouldBeRescued) {
+		BecomeSpectator(pPlayer);
+		return;
+	}
 
 	pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
 
@@ -589,7 +741,16 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 //=========================================================
 BOOL CHalfLifeMultiplay::FPlayerCanRespawn( CBasePlayer *pPlayer )
 {
-	return TRUE;
+	if (survival.value) {
+		BOOL result = m_survivalState != SurvivalEnabled;
+		if (!result && (pPlayer->m_flKilledTime + 4 < gpGlobals->time) ) {
+			pPlayer->pev->nextthink = -1;
+			BecomeSpectator(pPlayer);
+		}
+		return result;
+	} else {
+		return TRUE;
+	}
 }
 
 //=========================================================
@@ -618,6 +779,7 @@ int CHalfLifeMultiplay::IPointsForKill( CBasePlayer *pAttacker, CBasePlayer *pKi
 //=========================================================
 void CHalfLifeMultiplay::PlayerKilled( CBasePlayer *pVictim, entvars_t *pKiller, entvars_t *pInflictor )
 {
+	pVictim->m_flKilledTime = gpGlobals->time;		
 	DeathNotice( pVictim, pKiller, pInflictor );
 
 	pVictim->m_iDeaths += 1;
@@ -1162,6 +1324,58 @@ void CHalfLifeMultiplay::GoToIntermission( void )
 
 	g_fGameOver = TRUE;
 	m_iEndIntermissionButtonHit = FALSE;
+}
+
+//=================
+//Check if some alive players left
+BOOL CHalfLifeMultiplay::IsAnyPlayerAlive()
+{
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+		if (pPlayer && pPlayer->IsAlive() && !( pPlayer->pev->flags & FL_SPECTATOR )) {
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+//=================
+//Check if some connected players left
+BOOL CHalfLifeMultiplay::IsAnyPlayerConnected()
+{
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+		if (pPlayer) {
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+BOOL CHalfLifeMultiplay::IsAnyPlayerRescuable()
+{
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+		if (pPlayer && (pPlayer->pev->flags & FL_SPECTATOR)) {
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+CBasePlayer* CHalfLifeMultiplay::FindRescuablePlayer()
+{
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+		if (pPlayer && (pPlayer->pev->flags & FL_SPECTATOR)) {
+			return (CBasePlayer*)pPlayer;
+		}
+	}
+	return NULL;
 }
 
 #define MAX_RULE_BUFFER 1024

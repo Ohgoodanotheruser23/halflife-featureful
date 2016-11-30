@@ -251,6 +251,13 @@ public:
 	virtual int PlayerRelationship( CBaseEntity *pPlayer, CBaseEntity *pTarget );
 };
 
+enum SurvivalState
+{
+	SurvivalWaitForPlayers,
+	SurvivalCountdown,
+	SurvivalEnabled
+};
+
 //=========================================================
 // CHalfLifeMultiplay - rules for the basic half life multiplayer
 // competition
@@ -352,11 +359,20 @@ public:
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame( void ) { GoToIntermission(); }
 
+	static BOOL IsAnyPlayerAlive( void );
+	static BOOL IsAnyPlayerConnected( void );
+	static BOOL IsAnyPlayerRescuable( void );
+	static CBasePlayer *FindRescuablePlayer( void );
+	
 protected:
 	virtual void ChangeLevel( void );
 	virtual void GoToIntermission( void );
+	
 	float m_flIntermissionEndTime;
 	BOOL m_iEndIntermissionButtonHit;
+	float m_flSurvivalStartTime;
+	float m_flNextSurvivalStartTime;
+	SurvivalState m_survivalState;
 	void SendMOTDToClient( edict_t *client );
 };
 

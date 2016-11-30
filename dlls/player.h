@@ -201,9 +201,10 @@ public:
 	virtual void StartSneaking( void ) { m_tSneaking = gpGlobals->time - 1; }
 	virtual void StopSneaking( void ) { m_tSneaking = gpGlobals->time + 30; }
 	virtual BOOL IsSneaking( void ) { return m_tSneaking <= gpGlobals->time; }
-	virtual BOOL IsAlive( void ) { return (pev->deadflag == DEAD_NO) && pev->health > 0; }
+	virtual BOOL IsAlive( void ) { return (pev->deadflag == DEAD_NO && pev->health > 0) || ( pev->flags & FL_SPECTATOR ); }
 	virtual BOOL ShouldFadeOnDeath( void ) { return FALSE; }
-	virtual	BOOL IsPlayer( void ) { return TRUE; }			// Spectators should return FALSE for this, they aren't "players" as far as game logic is concerned
+	virtual	BOOL IsPlayer( void ) { return !( pev->flags & FL_SPECTATOR );}			// Spectators should return FALSE for this, they aren't "players" as far as game logic is concerned
+	BOOL IsPlayerAlive( void ) { return IsPlayer() && IsAlive(); }
 
 	virtual BOOL IsNetClient( void ) { return TRUE; }		// Bots should return FALSE for this, they can't receive NET messages
 															// Spectators should return TRUE for this
@@ -308,6 +309,9 @@ public:
 	char m_SbarString1[ SBAR_STRING_SIZE ];
 
 	float m_flNextChatTime;
+	
+	float m_flKilledTime;
+	BOOL m_bShouldBeRescued;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025

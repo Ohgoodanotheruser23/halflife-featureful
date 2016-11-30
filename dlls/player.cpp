@@ -887,7 +887,7 @@ void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 
 	MESSAGE_BEGIN( MSG_ONE, gmsgSetFOV, NULL, pev );
 		WRITE_BYTE( 0 );
-	MESSAGE_END();
+	MESSAGE_END();	
 
 	// UNDONE: Put this in, but add FFADE_PERMANENT and make fade time 8.8 instead of 4.12
 	// UTIL_ScreenFade( edict(), Vector( 128, 0, 0 ), 6, 15, 255, FFADE_OUT | FFADE_MODULATE );
@@ -1227,6 +1227,8 @@ BOOL CBasePlayer::IsOnLadder( void )
 	return ( pev->movetype == MOVETYPE_FLY );
 }
 
+#define FORCE_RESPAWN_DELAY 5
+
 void CBasePlayer::PlayerDeathThink( void )
 {
 	float flForward;
@@ -1291,14 +1293,14 @@ void CBasePlayer::PlayerDeathThink( void )
 	// if the player has been dead for one second longer than allowed by forcerespawn,
 	// forcerespawn isn't on. Send the player off to an intermission camera until they
 	// choose to respawn.
-	if( g_pGameRules->IsMultiplayer() && ( gpGlobals->time > ( m_fDeadTime + 6 ) ) && !( m_afPhysicsFlags & PFLAG_OBSERVER ) )
+	if( g_pGameRules->IsMultiplayer() && ( gpGlobals->time > ( m_fDeadTime + FORCE_RESPAWN_DELAY + 1 ) ) && !( m_afPhysicsFlags & PFLAG_OBSERVER ) )
 	{
 		// go to dead camera. 
 		StartDeathCam();
 	}
 
 	// wait for any button down,  or mp_forcerespawn is set and the respawn time is up
-	if( !fAnyButtonDown && !( g_pGameRules->IsMultiplayer() && forcerespawn.value > 0 && ( gpGlobals->time > ( m_fDeadTime + 5 ) ) ) )
+	if( !fAnyButtonDown && !( g_pGameRules->IsMultiplayer() && forcerespawn.value > 0 && ( gpGlobals->time > ( m_fDeadTime + FORCE_RESPAWN_DELAY ) ) ) )
 		return;
 
 	pev->button = 0;
@@ -2735,7 +2737,10 @@ void CBasePlayer::Spawn( void )
 	m_flFallVelocity = 0;
 
 	g_pGameRules->SetDefaultPlayerTeam( this );
-	g_pGameRules->GetPlayerSpawnSpot( this );
+	
+	if (!(survival.value && m_bShouldBeRescued)) {
+		g_pGameRules->GetPlayerSpawnSpot( this );
+	}
 
 	SET_MODEL( ENT( pev ), "models/player.mdl" );
 	g_ulModelIndexPlayer = pev->modelindex;

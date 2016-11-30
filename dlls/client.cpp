@@ -158,6 +158,11 @@ void ClientKill( edict_t *pEntity )
 {
 	entvars_t *pev = &pEntity->v;
 
+	if( pev->flags & FL_SPECTATOR ) { //spectators can't suicide
+		pev->health = 1;
+		return;
+	}
+	
 	CBasePlayer *pl = (CBasePlayer*)CBasePlayer::Instance( pev );
 
 	if( pl->m_fNextSuicideTime > gpGlobals->time )
@@ -191,6 +196,7 @@ void ClientPutInServer( edict_t *pEntity )
 	pPlayer->SetCustomDecalFrames( -1 ); // Assume none;
 
 	// Allocate a CBasePlayer for pev, and call spawn
+	pPlayer->m_bShouldBeRescued = FALSE;
 	pPlayer->Spawn();
 
 	// Reset interpolation during first frame
