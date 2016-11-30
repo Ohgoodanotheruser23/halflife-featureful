@@ -1619,34 +1619,36 @@ void CBasePlayer::InitStatusBar()
 {
 	m_flStatusBarDisappearDelay = 0;
 	m_SbarString1[0] = m_SbarString0[0] = 0; 
-    
-    m_lastSeenEntityIndex = -1;
-    m_lastSeenHealth = -1;
+	
+	m_lastSeenEntityIndex = -1;
+	m_lastSeenHealth = -1;
+	m_lastSeenArmor = -1;
 }
 
 static void ClearMonsterInfoChannel(CBasePlayer* player)
 {
-    player->m_lastSeenEntityIndex = -1;
-    player->m_lastSeenHealth = -1;
-
-    hudtextparms_t  textParms;
-    textParms.channel = 3;
-    textParms.x = 0.1;
-    textParms.y = 0.6;
-    textParms.effect = 0;
-    textParms.r1 = 100;
-    textParms.g1 = 100;
-    textParms.b1 = 100;
-    textParms.a1 = 0;
-    textParms.r2 = 240;
-    textParms.g2 = 210;
-    textParms.b2 = 0;
-    textParms.a2 = 0;
-    textParms.fadeinTime = 0;
-    textParms.fadeoutTime = 0;
-    textParms.holdTime = 0.1;
-    textParms.fxTime = 0;
-    UTIL_HudMessage(player, textParms, "");
+	player->m_lastSeenEntityIndex = -1;
+	player->m_lastSeenHealth = -1;
+	player->m_lastSeenArmor = -1;
+	
+	hudtextparms_t  textParms;
+	textParms.channel = 3;
+	textParms.x = 0.1;
+	textParms.y = 0.6;
+	textParms.effect = 0;
+	textParms.r1 = 100;
+	textParms.g1 = 100;
+	textParms.b1 = 100;
+	textParms.a1 = 0;
+	textParms.r2 = 240;
+	textParms.g2 = 210;
+	textParms.b2 = 0;
+	textParms.a2 = 0;
+	textParms.fadeinTime = 0;
+	textParms.fadeoutTime = 0;
+	textParms.holdTime = 0.1;
+	textParms.fxTime = 0;
+	UTIL_HudMessage(player, textParms, "");
 }
 
 void CBasePlayer::UpdateStatusBar()
@@ -1659,78 +1661,80 @@ void CBasePlayer::UpdateStatusBar()
 
 	if( tr.flFraction != 1.0 && !FNullEnt( tr.pHit ))
 	{
-        CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
-        if (pEntity) {
-            CBaseMonster* pMonster = pEntity->MyMonsterPointer();
-            if (pMonster && pMonster->IsAlive() && pMonster->m_IdealMonsterState != MONSTERSTATE_DEAD) {
-                const int entityIndex = ENTINDEX( pEntity->edict() );
-                int health = (int)pEntity->pev->health;
-                if (health < 0) {
-                    health = 0;
-                }
-
-                bool isFriendPlayer = g_pGameRules->PlayerRelationship(this, pEntity) == GR_TEAMMATE;
-                bool isFriendMonster = (pMonster->Classify() == CLASS_HUMAN_PASSIVE || pMonster->Classify() == CLASS_PLAYER_ALLY);
-                bool canSee = isFriendPlayer || allowmonsterinfo.value == 1 || (allowmonsterinfo.value == 2 && isFriendMonster);
-                if (!canSee && m_lastSeenEntityIndex >= 0) {
-                    ClearMonsterInfoChannel(this);
-                } else if (canSee && (m_lastSeenEntityIndex != entityIndex || m_lastSeenHealth != health)) {
-                    m_lastSeenEntityIndex = entityIndex;
-                    m_lastSeenHealth = health;
-
-                    hudtextparms_t  textParms;
-                    textParms.channel = 3;
-                    textParms.x = 0.1;
-                    textParms.y = 0.6;
-                    textParms.effect = 0;
-                    if (isFriendMonster) {
-                        textParms.r1 = 0;
-                        textParms.g1 = 255;
-                        textParms.b1 = 0;
-                    } else {
-                        textParms.r1 = 255;
-                        textParms.g1 = 0;
-                        textParms.b1 = 0;
-                    }
-                    textParms.a1 = 0;
-                    textParms.r2 = 100;
-                    textParms.g2 = 100;
-                    textParms.b2 = 100;
-                    textParms.a2 = 0;
-                    textParms.fadeinTime = 0.1;
-                    textParms.fadeoutTime = 0;
-                    textParms.holdTime = 1000.0;
-                    textParms.fxTime = 0;
-
-                    char buf[256];
-                    if (isFriendPlayer) {
-                        sprintf(buf, "%s\nHealth: %d\nArmor: %d", pEntity->pev->netname, (int)pEntity->pev->health, (int)pEntity->pev->armorvalue);
-                    } else {
-                        const char* className = STRING(pEntity->pev->classname);
-                        const char* displayName = className;
-                        if (strncmp(className, "monster_", 8) == 0) {
-                            displayName = className + 8;
-                        }
-                        sprintf(buf, "%s\nHealth: %d/%d", displayName, health, (int)pEntity->pev->max_health);
-                        if (displayName != className) {
-                            buf[0] = toupper(buf[0]); //Capitalize monster name
-                        }
-                    }
-                    UTIL_HudMessage(this, textParms, buf);
-                }
-            } else if (m_lastSeenEntityIndex >= 0) {
-                ClearMonsterInfoChannel(this);
-            }
-        } else {
-            if (m_lastSeenEntityIndex >= 0) {
-                ClearMonsterInfoChannel(this);
-            }
-        }
+		CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
+		if (pEntity) {
+			CBaseMonster* pMonster = pEntity->MyMonsterPointer();
+			if (pMonster && pMonster->IsAlive() && pMonster->m_IdealMonsterState != MONSTERSTATE_DEAD) {
+				const int entityIndex = ENTINDEX( pEntity->edict() );
+				int health = (int)pEntity->pev->health;
+				if (health < 0) {
+					health = 0;
+				}
+				int armor = (int)pEntity->pev->armorvalue;
+				
+				bool isFriendPlayer = pEntity->IsPlayer() && g_pGameRules->PlayerRelationship(this, pEntity) == GR_TEAMMATE;
+				bool isFriendMonster = (pMonster->Classify() == CLASS_HUMAN_PASSIVE || pMonster->Classify() == CLASS_PLAYER_ALLY);
+				bool canSee = isFriendPlayer || allowmonsterinfo.value == 1 || (allowmonsterinfo.value == 2 && isFriendMonster);
+				if (!canSee && m_lastSeenEntityIndex >= 0) {
+					ClearMonsterInfoChannel(this);
+				} else if (canSee && (m_lastSeenEntityIndex != entityIndex || m_lastSeenHealth != health || (m_lastSeenArmor != armor && isFriendPlayer))) {
+					m_lastSeenEntityIndex = entityIndex;
+					m_lastSeenHealth = health;
+					m_lastSeenArmor = armor;
+					
+					hudtextparms_t  textParms;
+					textParms.channel = 3;
+					textParms.x = 0.1;
+					textParms.y = 0.6;
+					textParms.effect = 0;
+					if (isFriendMonster || isFriendPlayer) {
+						textParms.r1 = 0;
+						textParms.g1 = 255;
+						textParms.b1 = 0;
+					} else {
+						textParms.r1 = 255;
+						textParms.g1 = 0;
+						textParms.b1 = 0;
+					}
+					textParms.a1 = 0;
+					textParms.r2 = 100;
+					textParms.g2 = 100;
+					textParms.b2 = 100;
+					textParms.a2 = 0;
+					textParms.fadeinTime = 0.1;
+					textParms.fadeoutTime = 0;
+					textParms.holdTime = 1000.0;
+					textParms.fxTime = 0;
+					
+					char buf[256];
+					if (isFriendPlayer) {
+						sprintf(buf, "%s\nHealth: %d\nArmor: %d", STRING(pEntity->pev->netname), health, armor);
+					} else {
+						const char* className = STRING(pEntity->pev->classname);
+						const char* displayName = className;
+						if (strncmp(className, "monster_", 8) == 0) {
+							displayName = className + 8;
+						}
+						sprintf(buf, "%s\nHealth: %d/%d", displayName, health, (int)pEntity->pev->max_health);
+						if (displayName != className) {
+							buf[0] = toupper(buf[0]); //Capitalize monster name
+						}
+					}
+					UTIL_HudMessage(this, textParms, buf);
+				}
+			} else if (m_lastSeenEntityIndex >= 0) {
+				ClearMonsterInfoChannel(this);
+			}
+		} else {
+			if (m_lastSeenEntityIndex >= 0) {
+				ClearMonsterInfoChannel(this);
+			}
+		}
 	} else {
-        if (m_lastSeenEntityIndex >= 0) {
-            ClearMonsterInfoChannel(this);
-        }
-    }
+		if (m_lastSeenEntityIndex >= 0) {
+			ClearMonsterInfoChannel(this);
+		}
+	}
 }
 
 #define CLIMB_SHAKE_FREQUENCY		22	// how many frames in between screen shakes when climbing
