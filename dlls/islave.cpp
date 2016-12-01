@@ -450,15 +450,12 @@ BOOL CISlave::CheckRangeAttack1( float flDot, float flDist )
 //=========================================================
 BOOL CISlave::CheckRangeAttack2( float flDot, float flDist )
 {
-	return FALSE;
-
 	if( m_flNextAttack > gpGlobals->time )
 	{
 		return FALSE;
 	}
 
 	m_hDead = NULL;
-	m_iBravery = 0;
 
 	CBaseEntity *pEntity = NULL;
 	while( ( pEntity = UTIL_FindEntityByClassname( pEntity, "monster_alien_slave" ) ) != NULL )
@@ -476,11 +473,6 @@ BOOL CISlave::CheckRangeAttack2( float flDot, float flDist )
 					m_hDead = pEntity;
 					flDist = d;
 				}
-				m_iBravery--;
-			}
-			else
-			{
-				m_iBravery++;
 			}
 		}
 	}
@@ -647,7 +639,7 @@ Schedule_t *CISlave::GetSchedule( void )
 			return CBaseMonster::GetSchedule();
 		}
 
-		if( pev->health < 20 || m_iBravery < 0 )
+		if( pev->health < 15 )
 		{
 			if( !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )
 			{
