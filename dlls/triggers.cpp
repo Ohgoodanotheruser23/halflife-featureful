@@ -2381,3 +2381,147 @@ void CTriggerCamera::Move()
 	float fraction = 2 * gpGlobals->frametime;
 	pev->velocity = ( ( pev->movedir * pev->speed ) * fraction ) + ( pev->velocity * ( 1 - fraction ) );
 }
+
+#define TRIGGER_RANDOM_MAX_COUNT 16
+
+#define SF_TRIGGER_RANDOM_START_ON 1
+#define SF_TRIGGER_RANDOM_ONCE 2
+#define SF_TRIGGER_RANDOM_REUSABLE 4
+#define SF_TRIGGER_RANDOM_TIMED 8
+#define SF_TRIGGER_RANDOM_UNIQUE 16
+
+
+class CTriggerRandom : public CBaseEntity
+{
+public:
+	void Spawn();
+	void KeyValue( KeyValueData *pkvd ); 
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void Think();
+	
+	int ChooseTarget();
+	float GetRandomDelay();
+	int m_targetCount;
+	int m_targets[TRIGGER_RANDOM_MAX_COUNT];
+	int m_uniqueTargetsLeft;
+	float m_minDelay;
+	float m_maxDelay;
+	BOOL m_active;
+};
+
+LINK_ENTITY_TO_CLASS( trigger_random, CTriggerRandom )
+
+void CTriggerRandom::KeyValue( KeyValueData *pkvd )
+{
+	if ( FStrEq( pkvd->szKeyName, "min_delay") ) {
+		m_minDelay = atof( pkvd->szValue );
+		if (m_minDelay < 0) {
+			m_minDelay = 0;
+		}
+		pkvd->fHandled = TRUE;
+	} else if ( FStrEq( pkvd->szKeyName, "max_delay") ) {
+		m_maxDelay = atof( pkvd->szValue );
+		if (m_maxDelay < 0) {
+			m_maxDelay = 0;
+		}
+		pkvd->fHandled = TRUE;
+	} else if ( FStrEq( pkvd->szKeyName, "target_count" ) ) {
+		m_targetCount = atoi( pkvd->szValue );
+		if (m_targetCount < 0) {
+			m_targetCount = 0;
+		} else if (m_targetCount > TRIGGER_RANDOM_MAX_COUNT) {
+			m_targetCount = TRIGGER_RANDOM_MAX_COUNT;
+		}
+		pkvd->fHandled = TRUE;
+	} else if ( strncmp(pkvd->szKeyName, "target", 6) == 0 && isdigit(pkvd->szKeyName[6])) {
+		pkvd->fHandled = FALSE;
+		char buf[10] = "target";
+		for (int i=0; i<TRIGGER_RANDOM_MAX_COUNT; ++i) {
+			sprintf(buf+6, "%d", i+1);
+			if (strcmp(buf+6, pkvd->szKeyName+6) == 0) {
+				m_targets[i] = ALLOC_STRING( pkvd->szValue );
+				pkvd->fHandled = TRUE;
+				break;
+			}
+		}
+		if (pkvd->fHandled == FALSE) {
+			CBaseEntity::KeyValue( pkvd );
+		}
+	} else {
+		CBaseEntity::KeyValue( pkvd );
+	}	
+}
+
+void CTriggerRandom::Spawn()
+{
+	if (pev->spawnflags & SF_TRIGGER_RANDOM_UNIQUE) {
+		m_uniqueTargetsLeft = m_targetCount;
+	}
+	m_active = FALSE;
+	if (pev->spawnflags & SF_TRIGGER_RANDOM_TIMED) {
+		
+		if (pev->spawnflags & SF_TRIGGER_RANDOM_START_ON) {
+			m_active = TRUE;
+			pev->nextthink = gpGlobals->time + GetRandomDelay() + 0.1;
+		}
+	}
+}
+
+void CTriggerRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if (pev->spawnflags & SF_TRIGGER_RANDOM_TIMED) {
+		m_active = !m_active;
+		if (m_active) {
+			pev->nextthink = gpGlobals->time + GetRandomDelay();
+		}
+	} else {
+		int chosenTarget = ChooseTarget();
+		if (!FStringNull(chosenTarget)) {
+			FireTargets(STRING(chosenTarget), pActivator, pCaller, useType, value);
+		}
+	}
+}
+
+void CTriggerRandom::Think() 
+{
+	if (m_active) {
+		int chosenTarget = ChooseTarget();
+		if (!FStringNull(chosenTarget)) {
+			FireTargets(STRING(chosenTarget), this, this, USE_TOGGLE, 0);
+		}
+		
+		if (pev->spawnflags & SF_TRIGGER_RANDOM_ONCE) {
+			m_active = FALSE;
+		} else {
+			pev->nextthink = gpGlobals->time + GetRandomDelay();
+		}
+	}
+}
+
+int CTriggerRandom::ChooseTarget()
+{
+	if (pev->spawnflags & SF_TRIGGER_RANDOM_UNIQUE) {
+		if (m_uniqueTargetsLeft) {
+			int chosenTargetIndex = RANDOM_LONG(0, m_uniqueTargetsLeft - 1);
+			int chosenTarget = m_targets[chosenTargetIndex];
+			m_targets[chosenTargetIndex] = m_targets[m_uniqueTargetsLeft-1];
+			m_targets[m_uniqueTargetsLeft-1] = chosenTarget;
+			m_uniqueTargetsLeft--;
+			
+			if (!m_uniqueTargetsLeft && (pev->spawnflags & SF_TRIGGER_RANDOM_REUSABLE) ) {
+				m_uniqueTargetsLeft = m_targetCount;
+			}
+			return chosenTarget;
+		}
+	} else {
+		if (m_targetCount) {
+			return m_targets[RANDOM_LONG(0, m_targetCount - 1)];
+		}
+	}
+	return 0;
+}
+
+float CTriggerRandom::GetRandomDelay()
+{
+	return RANDOM_FLOAT(m_minDelay, max(m_maxDelay, m_minDelay));
+}
