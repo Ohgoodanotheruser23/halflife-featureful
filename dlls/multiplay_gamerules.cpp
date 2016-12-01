@@ -1248,14 +1248,22 @@ float CHalfLifeMultiplay::FlHEVChargerRechargeTime( void )
 //=========================================================
 int CHalfLifeMultiplay::DeadPlayerWeapons( CBasePlayer *pPlayer )
 {
-	return GR_PLR_DROP_GUN_ACTIVE;
+	if (survival.value && m_survivalState != SurvivalEnabled) {
+		return GR_PLR_DROP_GUN_NO;
+	} else {
+		return GR_PLR_DROP_GUN_ACTIVE;
+	}
 }
 
 //=========================================================
 //=========================================================
 int CHalfLifeMultiplay::DeadPlayerAmmo( CBasePlayer *pPlayer )
 {
-	return GR_PLR_DROP_AMMO_ACTIVE;
+	if (survival.value && m_survivalState != SurvivalEnabled) {
+		return GR_PLR_DROP_AMMO_NO;
+	} else {
+		return GR_PLR_DROP_AMMO_ACTIVE;
+	}
 }
 
 edict_t *CHalfLifeMultiplay::GetPlayerSpawnSpot( CBasePlayer *pPlayer )
