@@ -83,6 +83,17 @@ enum sbar_data
 
 #define CHAT_INTERVAL 1.0f
 
+enum
+{
+	PLAYER_CHAR_OTHER,
+	PLAYER_CHAR_BARNEY,
+	PLAYER_CHAR_SCIENTIST,
+	PLAYER_CHAR_HELMET,
+	PLAYER_CHAR_ROBO
+};
+
+class CharacterPhrases;
+
 class CBasePlayer : public CBaseMonster
 {
 public:
@@ -266,6 +277,7 @@ public:
 
 	void WaterMove( void );
 	void EXPORT PlayerDeathThink( void );
+	void EXPORT PlayerSayThink();
 	void PlayerUse( void );
 
 	void CheckSuitUpdate();
@@ -301,6 +313,17 @@ public:
 	//Player ID
 	void InitStatusBar( void );
 	void UpdateStatusBar( void );
+	
+	BOOL CanSay();
+	bool SaySentence(const char* pszSentence);
+	bool SayOwnCondition();
+	bool SayTeamCondition();
+	bool SayOtherPlayerCondition();
+	bool TryToSayFriendlyFire();
+	CBaseEntity* LookForEnemy();
+	CharacterPhrases* GetCharPhrases();
+	int GetVoicePitch();
+	
 	int m_izSBarState[ SBAR_END ];
 	float m_flNextSBarUpdateTime;
 	float m_flStatusBarDisappearDelay;
@@ -308,6 +331,14 @@ public:
 	char m_SbarString1[ SBAR_STRING_SIZE ];
 
 	float m_flNextChatTime;
+	
+	static float g_sayConditionTime;
+	float m_flSayTime;
+	float m_flSayConditionTime;
+	int m_playerCharacter;
+	bool m_enemyKilled;
+	float m_flSayKilledEnemyTime;
+	float m_flSaySeeEnemyTime;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025
