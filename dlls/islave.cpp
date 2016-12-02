@@ -802,6 +802,7 @@ void CISlave::ZapBeam( int side )
 	if( pEntity != NULL && pEntity->pev->takedamage )
 	{
 		pEntity->TraceAttack( pev, gSkillData.slaveDmgZap, vecAim, &tr, DMG_SHOCK );
+		TakeHealth(gSkillData.slaveDmgZap/4, DMG_GENERIC); // give some health to vortigaunt like in Decay bonus mission
 	}
 	UTIL_EmitAmbientSound( ENT( pev ), tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG( 140, 160 ) );
 }
