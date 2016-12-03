@@ -1220,6 +1220,8 @@ entvars_t *g_pevLastInflictor;  // Set in combat.cpp.  Used to pass the damage i
 
 void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 {
+	SentenceStop();
+	
 	CSound *pSound;
 
 	// Holster weapon immediately, to allow it to cleanup
