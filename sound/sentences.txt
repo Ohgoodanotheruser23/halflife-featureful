@@ -1388,6 +1388,10 @@ PBA_ALIEN4 barney/c1a1_ba_glad(s35 e58)
 PBA_MIL0 barney/openfire(s50)
 PBA_MIL1 barney/standback
 
+PBA_CAREFUL0 barney/ambush
+PBA_CAREFUL1 barney/badarea
+PBA_CAREFUL2 barney/badfeeling
+
 // Player scientist
 
 PSC_YOUBAD0 scientist/youlookbad
@@ -1424,6 +1428,11 @@ PSC_ALIEN4 scientist/organicmatter
 PSC_CRAB0 scientist/headcrab
 PSC_CRAB1 scientist/seeheadcrab
 
+PSC_CAREFUL0 scientist/c1a1_sci_5scan(e60)
+PSC_CAREFUL1 scientist/c2a5_sci_boobie(s83 e94)
+PSC_CAREFUL2 scientist/ihearsomething
+PSC_CAREFUL3 scientist/hearsomething
+
 // Player robo
 
 PRO_WOUND0 vox/i am in bad condition
@@ -1456,7 +1465,7 @@ PRO_PESSIM2 vox/we are going to die
 
 PRO_FF0 vox/quit it now
 PRO_FF1 vox/control your weapon
-PRO_FF2 vox/do not shoot
+PRO_FF2 vox/check your fire
 
 PRO_ALIEN0 vox/alien threat detected
 PRO_ALIEN1 vox/hostile alien here
@@ -1467,7 +1476,13 @@ PRO_MIL0 vox/military threat
 PRO_MIL1 vox/soldier detected
 PRO_MIL2 vox/hostile soldier here
 PRO_MIL3 vox/we got hostile
+PRO_MIL4 vox/military force detected
 
 PRO_TURRET0 vox/turret detected
 
 PRO_HELIC0 vox/the military helicopter detected
+
+PRO_CAREFUL0 vox/warning, danger is inside perimeter
+PRO_CAREFUL1 vox/team, be on guard
+PRO_CAREFUL2 vox/extreme attention required
+
