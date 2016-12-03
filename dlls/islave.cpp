@@ -39,6 +39,14 @@ extern DLL_GLOBAL int		g_iSkillLevel;
 
 #define		ISLAVE_MAX_BEAMS		8
 
+#define ISLAVE_HAND_SPRITE_NAME "sprites/glow02.spr"
+
+#define ISLAVE_ZAP_RED 180
+#define ISLAVE_ZAP_GREEN 255
+#define ISLAVE_ZAP_BLUE 96
+
+#define ISLAVE_COIL_ATTACK_RADIUS 196
+
 class CISlave : public CSquadMonster
 {
 public:
@@ -72,10 +80,13 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	void ClearBeams();
-	void ArmBeam( int side );
+	void ArmBeam(int side , CSprite *handGlow);
 	void WackBeam( int side, CBaseEntity *pEntity );
 	void ZapBeam( int side );
 	void BeamGlow( void );
+	void HandsGlowOn();
+	void HandsGlowOff();
+	void CoilBeam();
 
 	int m_iBravery;
 
@@ -87,6 +98,12 @@ public:
 	int m_voicePitch;
 
 	EHANDLE m_hDead;
+	
+	int m_iSpriteTexture;
+	BOOL m_gonnaMakeCoilZap;
+	
+	CSprite	*m_handGlow1;
+	CSprite	*m_handGlow2;
 
 	static const char *pAttackHitSounds[];
 	static const char *pAttackMissSounds[];
@@ -202,11 +219,11 @@ void CISlave::IdleSound( void )
 	{
 		SENTENCEG_PlayRndSz( ENT( pev ), "SLV_IDLE", 0.85, ATTN_NORM, 0, m_voicePitch );
 	}
-#if 0
+#if 1
 	int side = RANDOM_LONG( 0, 1 ) * 2 - 1;
 
 	ClearBeams();
-	ArmBeam( side );
+	ArmBeam( side, NULL );
 
 	UTIL_MakeAimVectors( pev->angles );
 	Vector vecSrc = pev->origin + gpGlobals->v_right * 2 * side;
@@ -261,6 +278,10 @@ int CISlave::ISoundMask( void )
 void CISlave::Killed( entvars_t *pevAttacker, int iGib )
 {
 	ClearBeams();
+	UTIL_Remove(m_handGlow1);
+	m_handGlow1 = NULL;
+	UTIL_Remove(m_handGlow2);
+	m_handGlow2 = NULL;
 	CSquadMonster::Killed( pevAttacker, iGib );
 }
 
@@ -372,8 +393,8 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 			}
 			else
 			{
-				ArmBeam( -1 );
-				ArmBeam( 1 );
+				ArmBeam( -1, m_handGlow1 );
+				ArmBeam( 1, m_handGlow2 );
 				BeamGlow();
 			}
 
@@ -409,15 +430,36 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 			}
 			ClearMultiDamage();
 
-			UTIL_MakeAimVectors( pev->angles );
+			if (m_gonnaMakeCoilZap && (pev->origin - m_vecEnemyLKP).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
+				CoilBeam();
+				
+				float flAdjustedDamage = gSkillData.slaveDmgZap*3;
+				CBaseEntity *pEntity = NULL;
+				while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, ISLAVE_COIL_ATTACK_RADIUS ) ) != NULL )
+				{
+					if( pEntity->pev->takedamage != DAMAGE_NO && pEntity->MyMonsterPointer() != NULL && IRelationship(pEntity) >= R_DL ) {
+						if( !FVisible( pEntity ) ) {
+							flAdjustedDamage *= 0.5;
+						}
+		
+						if( flAdjustedDamage > 0 ) {
+							pEntity->TakeDamage( pev, pev, flAdjustedDamage, DMG_SHOCK );
+						}
+					}
+				}
+				UTIL_EmitAmbientSound( ENT( pev ), pev->origin, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG( 140, 160 ) );
+			} else {
+				UTIL_MakeAimVectors( pev->angles );
+	
+				ZapBeam( -1 );
+				ZapBeam( 1 );
+				
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG( 130, 160 ) );
+				// STOP_SOUND( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav" );
+				ApplyMultiDamage( pev, pev );
+			}
 
-			ZapBeam( -1 );
-			ZapBeam( 1 );
-
-			EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG( 130, 160 ) );
-			// STOP_SOUND( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav" );
-			ApplyMultiDamage( pev, pev );
-
+			m_gonnaMakeCoilZap = FALSE;
 			m_flNextAttack = gpGlobals->time + RANDOM_FLOAT( 0.5, 4.0 );
 		}
 			break;
@@ -440,6 +482,12 @@ BOOL CISlave::CheckRangeAttack1( float flDot, float flDist )
 	if( m_flNextAttack > gpGlobals->time )
 	{
 		return FALSE;
+	}
+	
+	if( flDist <= ISLAVE_COIL_ATTACK_RADIUS )
+	{
+		m_gonnaMakeCoilZap = TRUE;
+		return TRUE;
 	}
 
 	return CSquadMonster::CheckRangeAttack1( flDot, flDist );
@@ -492,6 +540,15 @@ void CISlave::StartTask( Task_t *pTask )
 	CSquadMonster::StartTask( pTask );
 }
 
+static CSprite* CreateHandGlow(CISlave* islave, int attachment)
+{
+	CSprite* handSprite = CSprite::SpriteCreate( ISLAVE_HAND_SPRITE_NAME, islave->pev->origin, FALSE );
+	handSprite->SetTransparency( kRenderGlow, ISLAVE_ZAP_RED, ISLAVE_ZAP_GREEN, ISLAVE_ZAP_BLUE, 224, kRenderFxNoDissipation );
+	handSprite->SetAttachment( islave->edict(), attachment );
+	handSprite->SetScale(0.25);
+	return handSprite;
+}
+
 //=========================================================
 // Spawn
 //=========================================================
@@ -513,6 +570,13 @@ void CISlave::Spawn()
 	m_afCapability		= bits_CAP_HEAR | bits_CAP_TURN_HEAD | bits_CAP_RANGE_ATTACK2 | bits_CAP_DOORS_GROUP;
 
 	m_voicePitch		= RANDOM_LONG( 85, 110 );
+	
+	m_handGlow1 = CreateHandGlow(this, 1);
+	m_handGlow2 = CreateHandGlow(this, 2);
+	
+	HandsGlowOff();
+	
+	m_gonnaMakeCoilZap = FALSE;
 
 	MonsterInit();
 }
@@ -525,7 +589,8 @@ void CISlave::Precache()
 	int i;
 
 	PRECACHE_MODEL( "models/islave.mdl" );
-	PRECACHE_MODEL( "sprites/lgtning.spr" );
+	m_iSpriteTexture = PRECACHE_MODEL( "sprites/lgtning.spr" );
+	PRECACHE_MODEL( ISLAVE_HAND_SPRITE_NAME );
 	PRECACHE_SOUND( "debris/zap1.wav" );
 	PRECACHE_SOUND( "debris/zap4.wav" );
 	PRECACHE_SOUND( "weapons/electro4.wav" );
@@ -639,22 +704,22 @@ Schedule_t *CISlave::GetSchedule( void )
 			return CBaseMonster::GetSchedule();
 		}
 
-		if( pev->health < 15 )
-		{
-			if( !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )
-			{
-				m_failSchedule = SCHED_CHASE_ENEMY;
-				if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
-				{
-					return GetScheduleOfType( SCHED_TAKE_COVER_FROM_ENEMY );
-				}
-				if( HasConditions( bits_COND_SEE_ENEMY ) && HasConditions( bits_COND_ENEMY_FACING_ME ) )
-				{
-					// ALERT( at_console, "exposed\n");
-					return GetScheduleOfType( SCHED_TAKE_COVER_FROM_ENEMY );
-				}
-			}
-		}
+//		if( pev->health < 15 )
+//		{
+//			if( !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )
+//			{
+//				m_failSchedule = SCHED_CHASE_ENEMY;
+//				if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
+//				{
+//					return GetScheduleOfType( SCHED_TAKE_COVER_FROM_ENEMY );
+//				}
+//				if( HasConditions( bits_COND_SEE_ENEMY ) && HasConditions( bits_COND_ENEMY_FACING_ME ) )
+//				{
+//					// ALERT( at_console, "exposed\n");
+//					return GetScheduleOfType( SCHED_TAKE_COVER_FROM_ENEMY );
+//				}
+//			}
+//		}
 		break;
 	default:
 		break;
@@ -683,7 +748,7 @@ Schedule_t *CISlave::GetScheduleOfType( int Type )
 //=========================================================
 // ArmBeam - small beam from arm to nearby geometry
 //=========================================================
-void CISlave::ArmBeam( int side )
+void CISlave::ArmBeam( int side, CSprite* handGlow )
 {
 	TraceResult tr;
 	float flDist = 1.0;
@@ -693,6 +758,10 @@ void CISlave::ArmBeam( int side )
 
 	UTIL_MakeAimVectors( pev->angles );
 	Vector vecSrc = pev->origin + gpGlobals->v_up * 36 + gpGlobals->v_right * side * 16 + gpGlobals->v_forward * 32;
+	
+	if (handGlow) {
+		UTIL_SetOrigin(handGlow->pev, vecSrc);
+	}
 
 	for( int i = 0; i < 3; i++ )
 	{
@@ -730,6 +799,7 @@ void CISlave::ArmBeam( int side )
 //=========================================================
 void CISlave::BeamGlow()
 {
+	HandsGlowOn();
 	int b = m_iBeams * 32;
 	if( b > 255 )
 		b = 255;
@@ -763,7 +833,7 @@ void CISlave::WackBeam( int side, CBaseEntity *pEntity )
 
 	m_pBeam[m_iBeams]->PointEntInit( pEntity->Center(), entindex() );
 	m_pBeam[m_iBeams]->SetEndAttachment( side < 0 ? 2 : 1 );
-	m_pBeam[m_iBeams]->SetColor( 180, 255, 96 );
+	m_pBeam[m_iBeams]->SetColor( ISLAVE_ZAP_RED, ISLAVE_ZAP_GREEN, ISLAVE_ZAP_BLUE );
 	m_pBeam[m_iBeams]->SetBrightness( 255 );
 	m_pBeam[m_iBeams]->SetNoise( 80 );
 	m_iBeams++;
@@ -793,7 +863,7 @@ void CISlave::ZapBeam( int side )
 
 	m_pBeam[m_iBeams]->PointEntInit( tr.vecEndPos, entindex() );
 	m_pBeam[m_iBeams]->SetEndAttachment( side < 0 ? 2 : 1 );
-	m_pBeam[m_iBeams]->SetColor( 180, 255, 96 );
+	m_pBeam[m_iBeams]->SetColor( ISLAVE_ZAP_RED, ISLAVE_ZAP_GREEN, ISLAVE_ZAP_BLUE );
 	m_pBeam[m_iBeams]->SetBrightness( 255 );
 	m_pBeam[m_iBeams]->SetNoise( 20 );
 	m_iBeams++;
@@ -802,7 +872,7 @@ void CISlave::ZapBeam( int side )
 	if( pEntity != NULL && pEntity->pev->takedamage )
 	{
 		pEntity->TraceAttack( pev, gSkillData.slaveDmgZap, vecAim, &tr, DMG_SHOCK );
-		TakeHealth(gSkillData.slaveDmgZap/4, DMG_GENERIC); // give some health to vortigaunt like in Decay bonus mission
+		TakeHealth(gSkillData.slaveDmgZap/2, DMG_GENERIC); // give some health to vortigaunt like in Decay bonus mission
 	}
 	UTIL_EmitAmbientSound( ENT( pev ), tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG( 140, 160 ) );
 }
@@ -822,6 +892,77 @@ void CISlave::ClearBeams()
 	}
 	m_iBeams = 0;
 	pev->skin = 0;
+	
+	HandsGlowOff();
 
 	STOP_SOUND( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav" );
+}
+
+void CISlave::CoilBeam()
+{
+	MESSAGE_BEGIN( MSG_PAS, SVC_TEMPENTITY, pev->origin );
+		WRITE_BYTE( TE_BEAMCYLINDER );
+		WRITE_COORD( pev->origin.x );
+		WRITE_COORD( pev->origin.y );
+		WRITE_COORD( pev->origin.z + 16 );
+		WRITE_COORD( pev->origin.x );
+		WRITE_COORD( pev->origin.y );
+		WRITE_COORD( pev->origin.z + 16 + ISLAVE_COIL_ATTACK_RADIUS*4 ); 
+		WRITE_SHORT( m_iSpriteTexture );
+		WRITE_BYTE( 0 ); // startframe
+		WRITE_BYTE( 10 ); // framerate
+		WRITE_BYTE( 2 ); // life
+		WRITE_BYTE( 128 );  // width
+		WRITE_BYTE( 20 );   // noise
+
+		WRITE_BYTE( ISLAVE_ZAP_RED );
+		WRITE_BYTE( ISLAVE_ZAP_GREEN );
+		WRITE_BYTE( ISLAVE_ZAP_BLUE );
+
+		WRITE_BYTE( 255 ); //brightness
+		WRITE_BYTE( 0 );		// speed
+	MESSAGE_END();
+	
+	MESSAGE_BEGIN( MSG_PAS, SVC_TEMPENTITY, pev->origin );
+		WRITE_BYTE( TE_BEAMCYLINDER );
+		WRITE_COORD( pev->origin.x );
+		WRITE_COORD( pev->origin.y );
+		WRITE_COORD( pev->origin.z + 48 );
+		WRITE_COORD( pev->origin.x );
+		WRITE_COORD( pev->origin.y );
+		WRITE_COORD( pev->origin.z + 48 + ISLAVE_COIL_ATTACK_RADIUS*2 ); 
+		WRITE_SHORT( m_iSpriteTexture );
+		WRITE_BYTE( 0 ); // startframe
+		WRITE_BYTE( 10 ); // framerate
+		WRITE_BYTE( 2 ); // life
+		WRITE_BYTE( 128 );  // width
+		WRITE_BYTE( 20 );   // noise
+
+		WRITE_BYTE( ISLAVE_ZAP_RED );
+		WRITE_BYTE( ISLAVE_ZAP_GREEN );
+		WRITE_BYTE( ISLAVE_ZAP_BLUE );
+
+		WRITE_BYTE( 255 ); //brightness
+		WRITE_BYTE( 0 );		// speed
+	MESSAGE_END();
+}
+
+void CISlave::HandsGlowOff()
+{
+	if (m_handGlow1) {
+		m_handGlow1->pev->effects |= EF_NODRAW;
+	}
+	if (m_handGlow2) {
+		m_handGlow2->pev->effects |= EF_NODRAW;
+	}
+}
+
+void CISlave::HandsGlowOn()
+{
+	if (m_handGlow1) {
+		m_handGlow1->pev->effects &= ~EF_NODRAW;
+	}
+	if (m_handGlow2) {
+		m_handGlow2->pev->effects &= ~EF_NODRAW;
+	}
 }
