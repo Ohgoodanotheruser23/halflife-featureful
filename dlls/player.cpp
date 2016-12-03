@@ -81,6 +81,9 @@ public:
 	virtual bool seeEnemy(CBasePlayer* player, CBaseEntity* enemy) {
 		return false;
 	}
+	virtual bool beCareful(CBasePlayer* player) {
+		return false;
+	}
 };
 
 class BarneyPhrases : public CharacterPhrases
@@ -124,6 +127,9 @@ public:
 			return false;
 		}
 	}
+	bool beCareful(CBasePlayer *player) {
+		return player->SaySentence("PBA_CAREFUL");
+	}
 };
 
 class ScientistPhrases : public CharacterPhrases
@@ -161,6 +167,9 @@ public:
 		default:
 			return false;
 		}
+	}
+	bool beCareful(CBasePlayer *player) {
+		return player->SaySentence("PSC_CAREFUL");
 	}
 };
 
@@ -214,6 +223,9 @@ public:
 			return false;
 		}
 	}
+	bool beCareful(CBasePlayer *player) {
+		return player->SaySentence("PRO_CAREFUL");
+	}
 };
 
 CharacterPhrases* CBasePlayer::GetCharPhrases()
@@ -236,6 +248,49 @@ CharacterPhrases* CBasePlayer::GetCharPhrases()
 		return &genericPhrases;
 	}
 }
+
+class CInfoCareful : public CPointEntity
+{
+public:
+	void Spawn();
+	void Think();
+};
+
+void CInfoCareful::Spawn()
+{
+	pev->nextthink = gpGlobals->time + 1;
+}
+
+void CInfoCareful::Think()
+{
+	int playerCountInArea = 0;
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
+		if (pEntity && pEntity->IsAlive() && pEntity->IsPlayer() && (pEntity->pev->origin - pev->origin).Length() < 256) {
+			playerCountInArea++;
+		}
+	}
+	
+	if (playerCountInArea > 1) {
+		for( int i = 1; i <= gpGlobals->maxClients; i++ )
+		{
+			CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
+			if (pEntity && pEntity->IsAlive() && pEntity->IsPlayer()) {
+				CBasePlayer* player = (CBasePlayer*)pEntity;
+				if (player->CanSay() && player->GetCharPhrases()->beCareful(player)) {
+					pev->nextthink = gpGlobals->time - 1;
+					UTIL_Remove(this);
+					return;
+				}
+			}
+		}
+	}
+	
+	pev->nextthink = gpGlobals->time + 1;
+}
+
+LINK_ENTITY_TO_CLASS( info_careful, CInfoCareful )
 
 // the world node graph
 extern CGraph WorldGraph;
