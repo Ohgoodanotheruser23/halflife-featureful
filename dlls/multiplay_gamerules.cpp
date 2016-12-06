@@ -128,6 +128,11 @@ BOOL CHalfLifeMultiplay::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 	return CGameRules::ClientCommand( pPlayer, pcmd );
 }
 
+void CHalfLifeMultiplay::ClientUserInfoChanged(CBasePlayer *pPlayer, char *infobuffer)
+{
+	pPlayer->RefreshCharacter();
+}
+
 //=========================================================
 //=========================================================
 void CHalfLifeMultiplay::RefreshSkillData( void )

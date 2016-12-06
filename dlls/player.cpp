@@ -3231,7 +3231,13 @@ void CBasePlayer::Spawn( void )
 	pev->nextthink = gpGlobals->time + 0.1;
 
 	g_pGameRules->PlayerSpawn( this );
+	RefreshCharacter();
 	
+	g_sayConditionTime = 0;
+}
+
+void CBasePlayer::RefreshCharacter()
+{
 	char *playerModel = g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( edict() ), "model" );
 	if (FStrEq(playerModel, "barney")) {
 		m_playerCharacter = PLAYER_CHAR_BARNEY;
@@ -3244,8 +3250,6 @@ void CBasePlayer::Spawn( void )
 	} else {
 		m_playerCharacter = PLAYER_CHAR_OTHER;
 	}
-	
-	g_sayConditionTime = 0;
 }
 
 void CBasePlayer::Precache( void )
