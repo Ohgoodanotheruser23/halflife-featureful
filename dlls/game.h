@@ -44,6 +44,7 @@ extern cvar_t allowmonsters;
 extern cvar_t survival;
 extern cvar_t npc_dropweapons;
 extern cvar_t allowmonsterinfo;
+extern cvar_t allowgaussjump;
 
 // Engine Cvars
 extern cvar_t *g_psv_gravity;

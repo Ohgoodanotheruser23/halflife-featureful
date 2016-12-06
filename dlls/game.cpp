@@ -38,6 +38,7 @@ cvar_t healthcharger_rechargetime = { "mp_healthcharger_rechargetime","-2",FCVAR
 cvar_t hevcharger_rechargetime = { "mp_hevcharger_rechargetime","-2",FCVAR_SERVER };
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
 cvar_t flashlight	= { "mp_flashlight","0", FCVAR_SERVER };
+cvar_t allowgaussjump = { "mp_allowgaussjump", "-1", FCVAR_SERVER };
 cvar_t aimcrosshair	= { "mp_autocrosshair","1", FCVAR_SERVER };
 cvar_t decalfrequency	= { "decalfrequency","30", FCVAR_SERVER };
 cvar_t teamlist		= { "mp_teamlist","hgrunt;scientist", FCVAR_SERVER };
@@ -489,6 +490,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &allowmonsters );
 	CVAR_REGISTER( &survival );
 	CVAR_REGISTER( &allowmonsterinfo );
+	CVAR_REGISTER( &allowgaussjump );
 
 	CVAR_REGISTER( &mp_chattime );
 
