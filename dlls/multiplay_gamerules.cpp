@@ -906,7 +906,7 @@ float CHalfLifeMultiplay::FlWeaponRespawnTime( CBasePlayerItem *pWeapon )
 		}
 	}
 
-    return gpGlobals->time + (weapon_respawndelay.value == -2 ? WEAPON_RESPAWN_TIME : weapon_respawndelay.value);
+	return gpGlobals->time + (weapon_respawndelay.value == -2 ? WEAPON_RESPAWN_TIME : weapon_respawndelay.value);
 }
 
 // when we are within this close to running out of entities,  items 
@@ -947,17 +947,17 @@ Vector CHalfLifeMultiplay::VecWeaponRespawnSpot( CBasePlayerItem *pWeapon )
 //=========================================================
 int CHalfLifeMultiplay::WeaponShouldRespawn( CBasePlayerItem *pWeapon )
 {
-    if( pWeapon->pev->spawnflags & SF_NORESPAWN )
+	if( pWeapon->pev->spawnflags & SF_NORESPAWN )
 	{
 		return GR_WEAPON_RESPAWN_NO;
 	}
 
-    if ( weapon_respawndelay.value == -1 ) {
-        if (weaponstay.value > 0 && !(pWeapon->iFlags() & ITEM_FLAG_LIMITINWORLD )) {
-            return GR_WEAPON_RESPAWN_YES;
-        }
-        return GR_WEAPON_RESPAWN_NO;
-    }
+	if ( weapon_respawndelay.value == -1 ) {
+		if (weaponstay.value > 0 && !(pWeapon->iFlags() & ITEM_FLAG_LIMITINWORLD )) {
+			return GR_WEAPON_RESPAWN_YES;
+		}
+		return GR_WEAPON_RESPAWN_NO;
+	}
 
 	return GR_WEAPON_RESPAWN_YES;
 }
@@ -1010,7 +1010,7 @@ void CHalfLifeMultiplay::PlayerGotItem( CBasePlayer *pPlayer, CItem *pItem )
 //=========================================================
 int CHalfLifeMultiplay::ItemShouldRespawn( CItem *pItem )
 {
-    if( item_respawndelay.value == -1 || pItem->pev->spawnflags & SF_NORESPAWN )
+	if( item_respawndelay.value == -1 || pItem->pev->spawnflags & SF_NORESPAWN )
 	{
 		return GR_ITEM_RESPAWN_NO;
 	}
@@ -1023,7 +1023,7 @@ int CHalfLifeMultiplay::ItemShouldRespawn( CItem *pItem )
 //=========================================================
 float CHalfLifeMultiplay::FlItemRespawnTime( CItem *pItem )
 {
-    return gpGlobals->time + (item_respawndelay.value == -2 ? ITEM_RESPAWN_TIME : item_respawndelay.value);
+	return gpGlobals->time + (item_respawndelay.value == -2 ? ITEM_RESPAWN_TIME : item_respawndelay.value);
 }
 
 //=========================================================
@@ -1055,7 +1055,7 @@ BOOL CHalfLifeMultiplay::IsAllowedToSpawn( CBaseEntity *pEntity )
 //=========================================================
 int CHalfLifeMultiplay::AmmoShouldRespawn( CBasePlayerAmmo *pAmmo )
 {
-    if( ammo_respawndelay.value == -1 || pAmmo->pev->spawnflags & SF_NORESPAWN )
+	if( ammo_respawndelay.value == -1 || pAmmo->pev->spawnflags & SF_NORESPAWN )
 	{
 		return GR_AMMO_RESPAWN_NO;
 	}
@@ -1067,7 +1067,7 @@ int CHalfLifeMultiplay::AmmoShouldRespawn( CBasePlayerAmmo *pAmmo )
 //=========================================================
 float CHalfLifeMultiplay::FlAmmoRespawnTime( CBasePlayerAmmo *pAmmo )
 {
-    return gpGlobals->time + (ammo_respawndelay.value == -2 ? AMMO_RESPAWN_TIME : ammo_respawndelay.value);
+	return gpGlobals->time + (ammo_respawndelay.value == -2 ? AMMO_RESPAWN_TIME : ammo_respawndelay.value);
 }
 
 //=========================================================
@@ -1081,12 +1081,12 @@ Vector CHalfLifeMultiplay::VecAmmoRespawnSpot( CBasePlayerAmmo *pAmmo )
 //=========================================================
 float CHalfLifeMultiplay::FlHealthChargerRechargeTime( void )
 {
-    return healthcharger_rechargetime.value < 0 ? 60 : healthcharger_rechargetime.value;
+	return healthcharger_rechargetime.value < 0 ? 60 : healthcharger_rechargetime.value;
 }
 
 float CHalfLifeMultiplay::FlHEVChargerRechargeTime( void )
 {
-    return hevcharger_rechargetime.value < 0 ? 30 : hevcharger_rechargetime.value;
+	return hevcharger_rechargetime.value < 0 ? 30 : hevcharger_rechargetime.value;
 }
 
 //=========================================================

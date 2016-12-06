@@ -468,11 +468,11 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &friendlyfire );
 	CVAR_REGISTER( &falldamage );
 	CVAR_REGISTER( &weaponstay );
-    CVAR_REGISTER( &weapon_respawndelay );
-    CVAR_REGISTER( &ammo_respawndelay );
-    CVAR_REGISTER( &item_respawndelay );
-    CVAR_REGISTER( &healthcharger_rechargetime );
-    CVAR_REGISTER( &hevcharger_rechargetime );
+	CVAR_REGISTER( &weapon_respawndelay );
+	CVAR_REGISTER( &ammo_respawndelay );
+	CVAR_REGISTER( &item_respawndelay );
+	CVAR_REGISTER( &healthcharger_rechargetime );
+	CVAR_REGISTER( &hevcharger_rechargetime );
 	CVAR_REGISTER( &forcerespawn );
 	CVAR_REGISTER( &flashlight );
 	CVAR_REGISTER( &aimcrosshair );
