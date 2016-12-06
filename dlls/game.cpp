@@ -465,7 +465,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &falldamage );
 	CVAR_REGISTER( &weaponstay );
 	CVAR_REGISTER( &forcerespawn );
-    CVAR_REGISTER( &respawndelay );
+	CVAR_REGISTER( &respawndelay );
 	CVAR_REGISTER( &flashlight );
 	CVAR_REGISTER( &aimcrosshair );
 	CVAR_REGISTER( &decalfrequency );

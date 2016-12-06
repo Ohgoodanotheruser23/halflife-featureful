@@ -589,10 +589,10 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 //=========================================================
 BOOL CHalfLifeMultiplay::FPlayerCanRespawn( CBasePlayer *pPlayer )
 {
-    if (pPlayer->m_flRespawnTime <= gpGlobals->time) {
-        return TRUE;
-    }
-    return FALSE;
+	if (pPlayer->m_flRespawnTime <= gpGlobals->time) {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 //=========================================================
