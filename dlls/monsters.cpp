@@ -33,6 +33,7 @@
 #include "decals.h"
 #include "soundent.h"
 #include "gamerules.h"
+#include "game.h"
 
 #define MONSTER_CUT_CORNER_DIST		8 // 8 means the monster's bounding box is contained without the box of the node in WC
 
@@ -3346,6 +3347,10 @@ BOOL CBaseMonster::GetEnemy( void )
 //=========================================================
 CBaseEntity *CBaseMonster::DropItem( char *pszItemName, const Vector &vecPos, const Vector &vecAng )
 {
+	if (!npc_dropweapons.value) {
+		return NULL;
+	}
+
 	if( !pszItemName )
 	{
 		ALERT( at_console, "DropItem() - No item name!\n" );
@@ -3359,12 +3364,13 @@ CBaseEntity *CBaseMonster::DropItem( char *pszItemName, const Vector &vecPos, co
 		// do we want this behavior to be default?! (sjb)
 		pItem->pev->velocity = pev->velocity;
 		pItem->pev->avelocity = Vector( 0, RANDOM_FLOAT( 0, 100 ), 0 );
+		pItem->pev->spawnflags = pItem->pev->spawnflags | SF_NORESPAWN;
 		return pItem;
 	}
 	else
 	{
 		ALERT( at_console, "DropItem() - Didn't create!\n" );
-		return FALSE;
+		return NULL;
 	}
 }
 

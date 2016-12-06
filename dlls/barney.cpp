@@ -27,6 +27,7 @@
 #include	"scripted.h"
 #include	"weapons.h"
 #include	"soundent.h"
+#include    "game.h"
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -606,7 +607,7 @@ void CBarney::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir
 
 void CBarney::Killed( entvars_t *pevAttacker, int iGib )
 {
-	if( pev->body < BARNEY_BODY_GUNGONE )
+	if( pev->body < BARNEY_BODY_GUNGONE && npc_dropweapons.value )
 	{
 		// drop the gun!
 		Vector vecGunPos;

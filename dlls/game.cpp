@@ -42,6 +42,8 @@ cvar_t survival = { "mp_survival","0",FCVAR_SERVER };
 
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
 
+cvar_t npc_dropweapons = { "npc_dropweapon", "1", FCVAR_SERVER };
+
 // Engine Cvars
 cvar_t *g_psv_gravity = NULL;
 cvar_t *g_psv_aim = NULL;
@@ -475,6 +477,8 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &survival );
 
 	CVAR_REGISTER( &mp_chattime );
+
+	CVAR_REGISTER( &npc_dropweapons );
 
 // REGISTER CVARS FOR SKILL LEVEL STUFF
 	// Agrunt

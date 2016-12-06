@@ -37,6 +37,8 @@ extern cvar_t defaultteam;
 extern cvar_t allowmonsters;
 extern cvar_t survival;
 
+extern cvar_t npc_dropweapons;
+
 // Engine Cvars
 extern cvar_t *g_psv_gravity;
 extern cvar_t *g_psv_aim;

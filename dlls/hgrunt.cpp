@@ -40,6 +40,7 @@
 #include	"soundent.h"
 #include	"effects.h"
 #include	"customentity.h"
+#include    "game.h"
 
 int g_fGruntQuestion;				// true if an idle grunt asked a question. Cleared when someone answers.
 
@@ -849,27 +850,29 @@ void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 	{
 		case HGRUNT_AE_DROP_GUN:
 		{
-			Vector vecGunPos;
-			Vector vecGunAngles;
-
-			GetAttachment( 0, vecGunPos, vecGunAngles );
-
-			// switch to body group with no gun.
-			SetBodygroup( GUN_GROUP, GUN_NONE );
-
-			// now spawn a gun.
-			if( FBitSet( pev->weapons, HGRUNT_SHOTGUN ) )
-			{
-				 DropItem( "weapon_shotgun", vecGunPos, vecGunAngles );
-			}
-			else
-			{
-				 DropItem( "weapon_9mmAR", vecGunPos, vecGunAngles );
-			}
-
-			if( FBitSet( pev->weapons, HGRUNT_GRENADELAUNCHER ) )
-			{
-				DropItem( "ammo_ARgrenades", BodyTarget( pev->origin ), vecGunAngles );
+			if (npc_dropweapons.value) {
+				Vector vecGunPos;
+				Vector vecGunAngles;
+				
+				GetAttachment( 0, vecGunPos, vecGunAngles );
+				
+				// switch to body group with no gun.
+				SetBodygroup( GUN_GROUP, GUN_NONE );
+				
+				// now spawn a gun.
+				if( FBitSet( pev->weapons, HGRUNT_SHOTGUN ) )
+				{
+					DropItem( "weapon_shotgun", vecGunPos, vecGunAngles );
+				}
+				else
+				{
+					DropItem( "weapon_9mmAR", vecGunPos, vecGunAngles );
+				}
+				
+				if( FBitSet( pev->weapons, HGRUNT_GRENADELAUNCHER ) )
+				{
+					DropItem( "ammo_ARgrenades", BodyTarget( pev->origin ), vecGunAngles );
+				}
 			}
 		}
 			break;
