@@ -117,6 +117,7 @@ void CItemRandom::KeyValue( KeyValueData *pkvd )
 			sprintf(buf+4, "%d", i+1);
 			if (strcmp(buf+4, pkvd->szKeyName+4) == 0) {
 				strncpy(m_items[i], pkvd->szValue, ITEM_RANDOM_VALUE_LENGTH);
+				m_items[i][ITEM_RANDOM_VALUE_LENGTH] = '\0';
 				pkvd->fHandled = TRUE;
 				break;
 			}
