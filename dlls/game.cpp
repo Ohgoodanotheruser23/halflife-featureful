@@ -476,7 +476,7 @@ void GameDLLInit( void )
 
 	CVAR_REGISTER( &mp_chattime );
 
-    CVAR_REGISTER( &npc_dropweapons );
+	CVAR_REGISTER( &npc_dropweapons );
 
 // REGISTER CVARS FOR SKILL LEVEL STUFF
 	// Agrunt

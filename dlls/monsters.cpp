@@ -3347,9 +3347,9 @@ BOOL CBaseMonster::GetEnemy( void )
 //=========================================================
 CBaseEntity *CBaseMonster::DropItem( char *pszItemName, const Vector &vecPos, const Vector &vecAng )
 {
-    if (!npc_dropweapons.value) {
-        return NULL;
-    }
+	if (!npc_dropweapons.value) {
+		return NULL;
+	}
 
 	if( !pszItemName )
 	{
@@ -3364,13 +3364,13 @@ CBaseEntity *CBaseMonster::DropItem( char *pszItemName, const Vector &vecPos, co
 		// do we want this behavior to be default?! (sjb)
 		pItem->pev->velocity = pev->velocity;
 		pItem->pev->avelocity = Vector( 0, RANDOM_FLOAT( 0, 100 ), 0 );
-        pItem->pev->spawnflags = pItem->pev->spawnflags | SF_NORESPAWN;
+		pItem->pev->spawnflags = pItem->pev->spawnflags | SF_NORESPAWN;
 		return pItem;
 	}
 	else
 	{
 		ALERT( at_console, "DropItem() - Didn't create!\n" );
-        return NULL;
+		return NULL;
 	}
 }
 
