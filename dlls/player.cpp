@@ -111,7 +111,7 @@ public:
 		return player->SaySentence("BA_KILL");
 	}
 	bool friendlyFire(CBasePlayer* player) {
-		return player->SaySentence("BA_SHOT");
+		return player->SaySentence("PBA_FF");
 	}
 	bool seeEnemy(CBasePlayer *player, CBaseEntity *enemy) {
 		switch (enemy->Classify()) {

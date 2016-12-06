@@ -1374,10 +1374,20 @@ PBA_YOUILL1 barney/realbadwound
 
 PBA_OPTIM0 barney/gladof38
 PBA_OPTIM1 barney/coldone
+PBA_OPTIM2 barney/ba_later
 
 PBA_PESSIM0 barney/ba_iwish
 PBA_PESSIM1 barney/getanyworse
-PBA_PESSIM1 barney/luckwillturn
+PBA_PESSIM2 barney/luckwillturn
+PBA_PESSIM3 barney/guyresponsible
+PBA_PESSIM4 barney/crewdied
+
+PBA_FF0 barney/ba_whoathere
+PBA_FF1 barney/ba_dotoyou
+PBA_FF2 barney/ba_watchit
+PBA_FF3 barney/ba_whatyou
+PBA_FF4 barney/ba_pissme(e66)
+PBA_FF5 barney/donthurtem
 
 PBA_ALIEN0 barney/aimforhead
 PBA_ALIEN1 barney/openfire(s50)
@@ -1446,7 +1456,7 @@ PRO_MORTAL2 vox/system malfunction
 PRO_KILL0 vox/got one
 PRO_KILL1 vox/target is destroyed
 PRO_KILL2 vox/terminated
-PRO_KILL3 vox/for science
+PRO_KILL3 vox/this one is for science
 
 PRO_YOUBAD0 vox/you are in bad condition
 PRO_YOUBAD1 vox/you are damaged

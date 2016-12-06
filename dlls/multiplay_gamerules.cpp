@@ -130,7 +130,7 @@ BOOL CHalfLifeMultiplay::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 void CHalfLifeMultiplay::ClientUserInfoChanged(CBasePlayer *pPlayer, char *infobuffer)
 {
-	static const char* allowedModels[] = {"barney", "scientist", "helmet", "gordon", "gina"};
+	static const char* allowedModels[] = {"barney", "scientist", "helmet", "gordon", "gina", "robo"};
 	const char *playerModel = g_engfuncs.pfnInfoKeyValue( infobuffer, "model" );
 	
 	bool isAllowed = false;
