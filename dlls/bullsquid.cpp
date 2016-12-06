@@ -91,7 +91,7 @@ void CSquidSpit::Spawn( void )
 
 	SET_MODEL( ENT( pev ), "sprites/bigspit.spr" );
 	pev->frame = 0;
-	pev->scale = 0.5;
+	pev->scale = 0.8;
 
 	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
 
@@ -167,7 +167,7 @@ void CSquidSpit::Touch( CBaseEntity *pOther )
 	}
 	else
 	{
-		pOther->TakeDamage( pev, pev, gSkillData.bullsquidDmgSpit, DMG_GENERIC );
+		pOther->TakeDamage( pev, pev, gSkillData.bullsquidDmgSpit, DMG_ACID );
 	}
 
 	SetThink( &CBaseEntity::SUB_Remove );
@@ -526,6 +526,17 @@ void CBullsquid::SetYawSpeed( void )
 	pev->yaw_speed = ys;
 }
 
+static Vector RotateSpitVector(const Vector& vecSpitDir, const float spitAngle)
+{
+	const float spitAngleSin = (float)sin(spitAngle);
+	const float spitAngleCos = (float)cos(spitAngle);
+	Vector result;
+	result.z = vecSpitDir.z;
+	result.x = vecSpitDir.x * spitAngleCos - vecSpitDir.y * spitAngleSin;
+	result.y = vecSpitDir.x * spitAngleSin + vecSpitDir.y * spitAngleCos;
+	return result;
+}
+
 //=========================================================
 // HandleAnimEvent - catches the monster-specific messages
 // that occur when tagged animation frames are played.
@@ -545,8 +556,16 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 				// we should be able to read the position of bones at runtime for this info.
 				vecSpitOffset = ( gpGlobals->v_right * 8 + gpGlobals->v_forward * 37 + gpGlobals->v_up * 23 );
 				vecSpitOffset = ( pev->origin + vecSpitOffset );
-				vecSpitDir = ( ( m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs ) - vecSpitOffset ).Normalize();
-
+				
+				const int spitVelocity = 900;
+				Vector vecEnemyPosition( m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs );
+				Vector vecEnemyVelocity( m_hEnemy->pev->velocity.x, m_hEnemy->pev->velocity.y, 0.0f );
+				
+				//vecSpitDir = ( vecEnemyPosition - vecSpitOffset ).Normalize();
+				
+				const float approxTime = (vecEnemyPosition - vecSpitOffset).Length()/spitVelocity;
+				vecSpitDir = (vecEnemyPosition + vecEnemyVelocity * approxTime - vecSpitOffset).Normalize();
+				
 				vecSpitDir.x += RANDOM_FLOAT( -0.05, 0.05 );
 				vecSpitDir.y += RANDOM_FLOAT( -0.05, 0.05 );
 				vecSpitDir.z += RANDOM_FLOAT( -0.05, 0 );
@@ -569,7 +588,10 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 					WRITE_BYTE( 25 );			// noise ( client will divide by 100 )
 				MESSAGE_END();
 
-				CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * 900 );
+				const float spitAngle = 0.13;
+				CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * spitVelocity );
+				CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, spitAngle) * spitVelocity );
+				CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, -spitAngle) * spitVelocity );
 			}
 			break;
 		case BSQUID_AE_BITE:
