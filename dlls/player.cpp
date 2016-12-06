@@ -3728,6 +3728,11 @@ void CBasePlayer::ImpulseCommands()
 {
 	TraceResult tr;// UNDONE: kill me! This is temporary for PreAlpha CDs
 
+	if (!IsPlayer()) {
+		pev->impulse = 0;
+		return;
+	}
+	
 	// Handle use events
 	PlayerUse();
 
@@ -3973,9 +3978,12 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 //
 // Add a weapon to the player (Item == Weapon == Selectable Object)
 //
-int CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
+BOOL CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
 {
 	CBasePlayerItem *pInsert;
+	
+	if( pev->flags & FL_SPECTATOR )
+		return FALSE;
 
 	pInsert = m_rgpPlayerItems[pItem->iItemSlot()];
 
