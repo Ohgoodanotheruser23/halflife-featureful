@@ -1301,7 +1301,8 @@ edict_t *CHalfLifeMultiplay::GetPlayerSpawnSpot( CBasePlayer *pPlayer )
 int CHalfLifeMultiplay::PlayerRelationship( CBaseEntity *pPlayer, CBaseEntity *pTarget )
 {
 	// half life deathmatch has only enemies
-	return GR_NOTTEAMMATE;
+	//return GR_NOTTEAMMATE;
+	return GR_TEAMMATE;
 }
 
 BOOL CHalfLifeMultiplay::PlayFootstepSounds( CBasePlayer *pl, float fvol )

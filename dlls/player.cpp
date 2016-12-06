@@ -2086,93 +2086,120 @@ void CBasePlayer::InitStatusBar()
 {
 	m_flStatusBarDisappearDelay = 0;
 	m_SbarString1[0] = m_SbarString0[0] = 0; 
+	
+	m_lastSeenEntityIndex = -1;
+	m_lastSeenHealth = -1;
+	m_lastSeenArmor = -1;
+}
+
+static void ClearMonsterInfoChannel(CBasePlayer* player)
+{
+	player->m_lastSeenEntityIndex = -1;
+	player->m_lastSeenHealth = -1;
+	player->m_lastSeenArmor = -1;
+	
+	hudtextparms_t  textParms;
+	textParms.channel = 3;
+	textParms.x = 0.1;
+	textParms.y = 0.6;
+	textParms.effect = 0;
+	textParms.r1 = 100;
+	textParms.g1 = 100;
+	textParms.b1 = 100;
+	textParms.a1 = 0;
+	textParms.r2 = 240;
+	textParms.g2 = 210;
+	textParms.b2 = 0;
+	textParms.a2 = 0;
+	textParms.fadeinTime = 0;
+	textParms.fadeoutTime = 0;
+	textParms.holdTime = 0.1;
+	textParms.fxTime = 0;
+	UTIL_HudMessage(player, textParms, "");
 }
 
 void CBasePlayer::UpdateStatusBar()
 {
-	int newSBarState[SBAR_END] = {0};
-	char sbuf0[SBAR_STRING_SIZE];
-	char sbuf1[ SBAR_STRING_SIZE ];
-
-	strcpy( sbuf0, m_SbarString0 );
-	strcpy( sbuf1, m_SbarString1 );
-
-	// Find an ID Target
 	TraceResult tr;
 	UTIL_MakeVectors( pev->v_angle + pev->punchangle );
 	Vector vecSrc = EyePosition();
 	Vector vecEnd = vecSrc + ( gpGlobals->v_forward * MAX_ID_RANGE );
 	UTIL_TraceLine( vecSrc, vecEnd, dont_ignore_monsters, edict(), &tr );
 
-	if( tr.flFraction != 1.0 )
+	if( tr.flFraction != 1.0 && !FNullEnt( tr.pHit ))
 	{
-		if( !FNullEnt( tr.pHit ) )
-		{
-			CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
-
-			if( pEntity->Classify() == CLASS_PLAYER )
-			{
-				newSBarState[SBAR_ID_TARGETNAME] = ENTINDEX( pEntity->edict() );
-				strcpy( sbuf1, "1 %p1\n2 Health: %i2%%\n3 Armor: %i3%%" );
-
-				// allies and medics get to see the targets health
-				if( g_pGameRules->PlayerRelationship( this, pEntity ) == GR_TEAMMATE )
-				{
-					newSBarState[SBAR_ID_TARGETHEALTH] = 100 * ( pEntity->pev->health / pEntity->pev->max_health );
-					newSBarState[SBAR_ID_TARGETARMOR] = pEntity->pev->armorvalue; //No need to get it % based since 100 it's the max.
+		CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
+		if (pEntity) {
+			CBaseMonster* pMonster = pEntity->MyMonsterPointer();
+			if (pMonster && pMonster->IsAlive() && pMonster->m_IdealMonsterState != MONSTERSTATE_DEAD) {
+				const int entityIndex = ENTINDEX( pEntity->edict() );
+				int health = (int)pEntity->pev->health;
+				if (health < 0) {
+					health = 0;
 				}
-
-				m_flStatusBarDisappearDelay = gpGlobals->time + 1.0;
+				int armor = (int)pEntity->pev->armorvalue;
+				
+				bool isFriendPlayer = pEntity->IsPlayer() && g_pGameRules->PlayerRelationship(this, pEntity) == GR_TEAMMATE;
+				bool isFriendMonster = (pMonster->Classify() == CLASS_HUMAN_PASSIVE || pMonster->Classify() == CLASS_PLAYER_ALLY);
+				bool canSee = isFriendPlayer || allowmonsterinfo.value == 1 || (allowmonsterinfo.value == 2 && isFriendMonster);
+				if (!canSee && m_lastSeenEntityIndex >= 0) {
+					ClearMonsterInfoChannel(this);
+				} else if (canSee && (m_lastSeenEntityIndex != entityIndex || m_lastSeenHealth != health || (m_lastSeenArmor != armor && isFriendPlayer))) {
+					m_lastSeenEntityIndex = entityIndex;
+					m_lastSeenHealth = health;
+					m_lastSeenArmor = armor;
+					
+					hudtextparms_t  textParms;
+					textParms.channel = 3;
+					textParms.x = 0.1;
+					textParms.y = 0.6;
+					textParms.effect = 0;
+					if (isFriendMonster || isFriendPlayer) {
+						textParms.r1 = 0;
+						textParms.g1 = 255;
+						textParms.b1 = 0;
+					} else {
+						textParms.r1 = 255;
+						textParms.g1 = 0;
+						textParms.b1 = 0;
+					}
+					textParms.a1 = 0;
+					textParms.r2 = 100;
+					textParms.g2 = 100;
+					textParms.b2 = 100;
+					textParms.a2 = 0;
+					textParms.fadeinTime = 0.1;
+					textParms.fadeoutTime = 0;
+					textParms.holdTime = 1000.0;
+					textParms.fxTime = 0;
+					
+					char buf[256];
+					if (isFriendPlayer) {
+						sprintf(buf, "%s\nHealth: %d\nArmor: %d", STRING(pEntity->pev->netname), health, armor);
+					} else {
+						const char* className = STRING(pEntity->pev->classname);
+						const char* displayName = className;
+						if (strncmp(className, "monster_", 8) == 0) {
+							displayName = className + 8;
+						}
+						sprintf(buf, "%s\nHealth: %d/%d", displayName, health, (int)pEntity->pev->max_health);
+						if (displayName != className) {
+							buf[0] = toupper(buf[0]); //Capitalize monster name
+						}
+					}
+					UTIL_HudMessage(this, textParms, buf);
+				}
+			} else if (m_lastSeenEntityIndex >= 0) {
+				ClearMonsterInfoChannel(this);
+			}
+		} else {
+			if (m_lastSeenEntityIndex >= 0) {
+				ClearMonsterInfoChannel(this);
 			}
 		}
-		else if( m_flStatusBarDisappearDelay > gpGlobals->time )
-		{
-			// hold the values for a short amount of time after viewing the object
-			newSBarState[SBAR_ID_TARGETNAME] = m_izSBarState[SBAR_ID_TARGETNAME];
-			newSBarState[SBAR_ID_TARGETHEALTH] = m_izSBarState[SBAR_ID_TARGETHEALTH];
-			newSBarState[SBAR_ID_TARGETARMOR] = m_izSBarState[SBAR_ID_TARGETARMOR];
-		}
-	}
-
-	BOOL bForceResend = FALSE;
-
-	if( strcmp( sbuf0, m_SbarString0 ) )
-	{
-		MESSAGE_BEGIN( MSG_ONE, gmsgStatusText, NULL, pev );
-			WRITE_BYTE( 0 );
-			WRITE_STRING( sbuf0 );
-		MESSAGE_END();
-
-		strcpy( m_SbarString0, sbuf0 );
-
-		// make sure everything's resent
-		bForceResend = TRUE;
-	}
-
-	if( strcmp( sbuf1, m_SbarString1 ) )
-	{
-		MESSAGE_BEGIN( MSG_ONE, gmsgStatusText, NULL, pev );
-			WRITE_BYTE( 1 );
-			WRITE_STRING( sbuf1 );
-		MESSAGE_END();
-
-		strcpy( m_SbarString1, sbuf1 );
-
-		// make sure everything's resent
-		bForceResend = TRUE;
-	}
-
-	// Check values and send if they don't match
-	for( int i = 1; i < SBAR_END; i++ )
-	{
-		if( newSBarState[i] != m_izSBarState[i] || bForceResend )
-		{
-			MESSAGE_BEGIN( MSG_ONE, gmsgStatusValue, NULL, pev );
-				WRITE_BYTE( i );
-				WRITE_SHORT( newSBarState[i] );
-			MESSAGE_END();
-
-			m_izSBarState[i] = newSBarState[i];
+	} else {
+		if (m_lastSeenEntityIndex >= 0) {
+			ClearMonsterInfoChannel(this);
 		}
 	}
 }
@@ -4480,7 +4507,7 @@ void CBasePlayer::UpdateClientData( void )
 	if( m_flNextSBarUpdateTime < gpGlobals->time )
 	{
 		UpdateStatusBar();
-		m_flNextSBarUpdateTime = gpGlobals->time + 0.2;
+        m_flNextSBarUpdateTime = gpGlobals->time + 0.2;
 	}
 }
 
