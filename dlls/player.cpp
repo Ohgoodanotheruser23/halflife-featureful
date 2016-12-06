@@ -764,6 +764,17 @@ int TrainSpeed( int iSpeed, int iMax )
 	return iRet;
 }
 
+static void RefreshMaxSpeed(CBasePlayer* player)
+{
+	if (PlayerHeavilyDamaged(player)) {
+		player->pev->maxspeed = 150;
+	} else if (PlayerLightlyDamaged(player)) {
+		player->pev->maxspeed = 200;
+	} else {
+		player->pev->maxspeed = 0;
+	}
+}
+
 void CBasePlayer::DeathSound( void )
 {
 	// water death sounds
@@ -797,7 +808,9 @@ void CBasePlayer::DeathSound( void )
 // bitsDamageType indicates type of damage healed. 
 int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 {
-	return CBaseMonster::TakeHealth( flHealth, bitsDamageType );
+	int result = CBaseMonster::TakeHealth( flHealth, bitsDamageType );
+	RefreshMaxSpeed(this);
+	return result;
 }
 
 Vector CBasePlayer::GetGunPosition()
@@ -929,6 +942,7 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	if (pAttacker && pAttacker != this && pAttacker->IsAlive() && pAttacker->IsPlayer()) {
 		TryToSayFriendlyFire();
 	}
+	RefreshMaxSpeed(this);
 
 	// reset damage time countdown for each type of time based damage player just sustained
 	{
@@ -3161,6 +3175,8 @@ void CBasePlayer::Spawn( void )
 	m_bitsDamageType = 0;
 	m_afPhysicsFlags = 0;
 	m_fLongJump = FALSE;// no longjump module. 
+
+	RefreshMaxSpeed(this);
 
 	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "slj", "0" );
 	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "hl", "1" );
