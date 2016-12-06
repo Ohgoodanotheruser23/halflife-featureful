@@ -243,6 +243,25 @@ BOOL CHalfLifeMultiplay::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 	return CGameRules::ClientCommand( pPlayer, pcmd );
 }
 
+void CHalfLifeMultiplay::ClientUserInfoChanged(CBasePlayer *pPlayer, char *infobuffer)
+{
+	static const char* allowedModels[] = {"barney", "scientist", "helmet", "gordon", "gina", "robo"};
+	const char *playerModel = g_engfuncs.pfnInfoKeyValue( infobuffer, "model" );
+	
+	bool isAllowed = false;
+	for (int i=0; i<sizeof(allowedModels)/sizeof(const char*); ++i) {
+		if (strcmp(playerModel, allowedModels[i]) == 0) {
+			isAllowed = true;
+			break;
+		}
+	}
+	if (!isAllowed) {
+		const char* randomModel = allowedModels[RANDOM_LONG(0, sizeof(allowedModels)/sizeof(const char*)-1)];
+		g_engfuncs.pfnSetClientKeyValue( pPlayer->entindex(), infobuffer, "model", (char*)randomModel );
+	}
+	pPlayer->RefreshCharacter();
+}
+
 //=========================================================
 //=========================================================
 void CHalfLifeMultiplay::RefreshSkillData( void )

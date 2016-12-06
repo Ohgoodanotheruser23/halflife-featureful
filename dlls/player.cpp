@@ -51,6 +51,247 @@ extern void respawn( entvars_t *pev, BOOL fCopyCorpse );
 extern Vector VecBModelOrigin( entvars_t *pevBModel );
 extern edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer );
 
+class CharacterPhrases
+{
+public:
+	virtual bool lightDamage(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool heavyDamage(CBasePlayer* player) {
+		return lightDamage(player);
+	}
+	virtual bool youWounded(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool youWoundedBad(CBasePlayer* player) {
+		return youWounded(player);
+	}
+	virtual bool optimistic(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool pessimistic(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool killedEnemy(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool friendlyFire(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool seeEnemy(CBasePlayer* player, CBaseEntity* enemy) {
+		return false;
+	}
+	virtual bool beCareful(CBasePlayer* player) {
+		return false;
+	}
+};
+
+class BarneyPhrases : public CharacterPhrases
+{
+public:
+	bool lightDamage(CBasePlayer* player) {
+		return player->SaySentence("PBA_WOUND");
+	}
+	bool heavyDamage(CBasePlayer* player) {
+		return player->SaySentence("PBA_MORTAL");
+	}
+	bool youWounded(CBasePlayer* player) {
+		return player->SaySentence("PBA_YOUBAD");
+	}
+	bool youWoundedBad(CBasePlayer* player) {
+		return player->SaySentence("PBA_YOUILL");
+	}
+	bool optimistic(CBasePlayer* player) {
+		return player->SaySentence("PBA_OPTIM");
+	}
+	bool pessimistic(CBasePlayer* player) {
+		return player->SaySentence("PBA_PESSIM");
+	}
+	bool killedEnemy(CBasePlayer* player) {
+		return player->SaySentence("BA_KILL");
+	}
+	bool friendlyFire(CBasePlayer* player) {
+		return player->SaySentence("PBA_FF");
+	}
+	bool seeEnemy(CBasePlayer *player, CBaseEntity *enemy) {
+		switch (enemy->Classify()) {
+		case CLASS_ALIEN_MILITARY:
+		case CLASS_ALIEN_MONSTER:
+		case CLASS_ALIEN_PREDATOR:
+		case CLASS_ALIEN_PREY:
+			return player->SaySentence("PBA_ALIEN");
+		case CLASS_HUMAN_MILITARY:
+		case CLASS_MACHINE:
+			return player->SaySentence("PBA_MIL");
+		default:
+			return false;
+		}
+	}
+	bool beCareful(CBasePlayer *player) {
+		return player->SaySentence("PBA_CAREFUL");
+	}
+};
+
+class ScientistPhrases : public CharacterPhrases
+{
+public:
+	bool lightDamage(CBasePlayer* player) {
+		return player->SaySentence("SC_WOUND");
+	}
+	bool heavyDamage(CBasePlayer* player) {
+		return player->SaySentence("SC_MORTAL");
+	}
+	bool youWounded(CBasePlayer* player) {
+		return player->SaySentence("PSC_YOUBAD");
+	}
+	bool youWoundedBad(CBasePlayer* player) {
+		return player->SaySentence("PSC_YOUILL");
+	}
+	bool optimistic(CBasePlayer* player) {
+		return player->SaySentence("PSC_OPTIM");
+	}
+	bool pessimistic(CBasePlayer* player) {
+		return player->SaySentence("PSC_PESSIM");
+	}
+	bool friendlyFire(CBasePlayer* player) {
+		return player->SaySentence("PSC_FF");
+	}
+	bool seeEnemy(CBasePlayer *player, CBaseEntity *enemy) {
+		switch (enemy->Classify()) {
+		case CLASS_ALIEN_MILITARY:
+		case CLASS_ALIEN_MONSTER:
+		case CLASS_ALIEN_PREDATOR:
+			return player->SaySentence("PSC_ALIEN");
+		case CLASS_ALIEN_PREY:
+			return player->SaySentence("PSC_CRAB");
+		default:
+			return false;
+		}
+	}
+	bool beCareful(CBasePlayer *player) {
+		return player->SaySentence("PSC_CAREFUL");
+	}
+};
+
+class RoboPhrases : public CharacterPhrases
+{
+public:
+	bool lightDamage(CBasePlayer *player) {
+		return player->SaySentence("PRO_WOUND");
+	}
+	bool heavyDamage(CBasePlayer *player) {
+		return player->SaySentence("PRO_MORTAL");
+	}
+	bool youWounded(CBasePlayer *player) {
+		return player->SaySentence("PRO_YOUBAD");
+	}
+	bool youWoundedBad(CBasePlayer *player) {
+		return player->SaySentence("PRO_YOUILL");
+	}
+	bool optimistic(CBasePlayer *player) {
+		return player->SaySentence("PRO_OPTIM");
+	}
+	bool pessimistic(CBasePlayer *player) {
+		return player->SaySentence("PRO_PESSIM");
+	}
+	bool killedEnemy(CBasePlayer *player) {
+		return player->SaySentence("PRO_KILL");
+	}
+	bool friendlyFire(CBasePlayer *player) {
+		return player->SaySentence("PRO_FF");
+	}
+	bool seeEnemy(CBasePlayer *player, CBaseEntity *enemy) {
+		switch (enemy->Classify()) {
+		case CLASS_ALIEN_MILITARY:
+		case CLASS_ALIEN_MONSTER:
+		case CLASS_ALIEN_PREDATOR:
+		case CLASS_ALIEN_PREY:
+			return player->SaySentence("PRO_ALIEN");
+		case CLASS_HUMAN_MILITARY:
+			if (FClassnameIs(enemy->pev, "monster_apache")) {
+				return player->SaySentence("PRO_HELIC");
+			} else {
+				return player->SaySentence("PRO_MIL");
+			}
+		case CLASS_MACHINE:
+			if (FClassnameIs(enemy->pev, "monster_osprey")) {
+				return player->SaySentence("PRO_HELIC");
+			} else {
+				return player->SaySentence("PRO_TURRET");
+			}
+		default:
+			return false;
+		}
+	}
+	bool beCareful(CBasePlayer *player) {
+		return player->SaySentence("PRO_CAREFUL");
+	}
+};
+
+CharacterPhrases* CBasePlayer::GetCharPhrases()
+{
+	//HACKHACK singletone
+	static BarneyPhrases barneyPhrases;
+	static ScientistPhrases scientistPhrases;
+	static RoboPhrases roboPhrases;
+	static CharacterPhrases genericPhrases;
+	
+	switch(m_playerCharacter) {
+	case PLAYER_CHAR_BARNEY:
+		return &barneyPhrases;
+	case PLAYER_CHAR_SCIENTIST:
+	case PLAYER_CHAR_HELMET:
+		return &scientistPhrases;
+	case PLAYER_CHAR_ROBO:
+		return &roboPhrases;
+	default:
+		return &genericPhrases;
+	}
+}
+
+class CInfoCareful : public CPointEntity
+{
+public:
+	void Spawn();
+	void Think();
+};
+
+void CInfoCareful::Spawn()
+{
+	pev->nextthink = gpGlobals->time + 1;
+}
+
+void CInfoCareful::Think()
+{
+	int playerCountInArea = 0;
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
+		if (pEntity && pEntity->IsAlive() && pEntity->IsPlayer() && (pEntity->pev->origin - pev->origin).Length() < 256) {
+			playerCountInArea++;
+		}
+	}
+	
+	if (playerCountInArea > 1) {
+		for( int i = 1; i <= gpGlobals->maxClients; i++ )
+		{
+			CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
+			if (pEntity && pEntity->IsAlive() && pEntity->IsPlayer()) {
+				CBasePlayer* player = (CBasePlayer*)pEntity;
+				if (player->CanSay() && player->GetCharPhrases()->beCareful(player)) {
+					pev->nextthink = gpGlobals->time - 1;
+					UTIL_Remove(this);
+					return;
+				}
+			}
+		}
+	}
+	
+	pev->nextthink = gpGlobals->time + 1;
+}
+
+LINK_ENTITY_TO_CLASS( info_careful, CInfoCareful )
+
 // the world node graph
 extern CGraph WorldGraph;
 
@@ -244,6 +485,205 @@ void CBasePlayer::Pain( void )
 		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain6.wav", 1, ATTN_NORM );
 	else
 		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain7.wav", 1, ATTN_NORM );
+}
+
+CBaseEntity* CBasePlayer::LookForEnemy() {
+	CBaseEntity *pList[10];
+
+	float distance = 512;
+	Vector delta = Vector( distance, distance, distance );
+
+	int count = UTIL_EntitiesInBox( pList, 100, pev->origin - delta, pev->origin + delta, FL_MONSTER );
+	for( int i = 0; i < count; i++ )
+	{
+		CBaseEntity* pSightEnt = pList[i];
+		if( pSightEnt != this && pSightEnt->IsAlive() )
+		{
+			if( IRelationship( pSightEnt ) >= R_DL && FInViewCone( pSightEnt ) && FVisible( pSightEnt ) ) {
+				return pSightEnt;
+			}
+		}
+	}
+	return NULL;
+}
+
+float CBasePlayer::g_sayConditionTime = 0.0f;
+
+void CBasePlayer::PlayerSayThink()
+{
+	pev->nextthink = gpGlobals->time + 0.1;
+	if (!(IsAlive() && IsPlayer())) {
+		return;
+	}
+	
+	if (!CanSay()) {
+		m_enemyKilled = false;
+		return;
+	}
+	
+	bool saidSomething = false;
+	
+	if (!saidSomething && m_flSaySeeEnemyTime < gpGlobals->time && RANDOM_LONG(0,1)) {
+		CBaseEntity* pEnemy = LookForEnemy();
+		if (pEnemy) {
+			saidSomething = GetCharPhrases()->seeEnemy(this, pEnemy);
+			m_flSaySeeEnemyTime = gpGlobals->time + 10;
+		}
+	}
+	
+	if (m_flSayKilledEnemyTime < gpGlobals->time && m_enemyKilled) {
+		m_enemyKilled = false;
+		if (!saidSomething && RANDOM_LONG(0,1)) {
+			saidSomething = GetCharPhrases()->killedEnemy(this);
+		}
+	}
+	
+	if (saidSomething) {
+		return;
+	}
+	
+	if (g_sayConditionTime < gpGlobals->time && m_flSayConditionTime < gpGlobals->time) {
+		switch(RANDOM_LONG(0,2))
+		{
+		case 0:
+			saidSomething = SayOwnCondition();
+			break;
+		case 1:
+			saidSomething = SayTeamCondition();
+			break;
+		case 2:
+			saidSomething = SayOtherPlayerCondition();
+			break;
+		default:
+			break;
+		}
+	}
+	
+	if (saidSomething) {
+		m_flSayConditionTime = gpGlobals->time + 20 + RANDOM_LONG(0, 20);
+		g_sayConditionTime = gpGlobals->time + 6;
+	}
+}
+
+BOOL CBasePlayer::CanSay()
+{
+	return m_flSayTime <= gpGlobals->time;
+}
+
+bool CBasePlayer::SaySentence(const char *pszSentence)
+{
+	if( pszSentence && IsAlive() )
+	{
+		if( pszSentence[0] == '!' )
+			EMIT_SOUND_DYN( edict(), CHAN_VOICE, pszSentence, VOL_NORM, ATTN_NORM, 0, GetVoicePitch());
+		else
+			SENTENCEG_PlayRndSz( edict(), pszSentence, VOL_NORM, ATTN_NORM, 0, GetVoicePitch() );
+		m_flSayTime = gpGlobals->time + 4;
+		return true;
+	}
+	return false;
+}
+
+BOOL PlayerLightlyDamaged(CBaseEntity* pPlayer)
+{
+	return pPlayer->pev->health > 25 && pPlayer->pev->health < 50;
+}
+
+BOOL PlayerHeavilyDamaged(CBaseEntity* pPlayer) {
+	return pPlayer->pev->health <= 25;
+}
+
+bool CBasePlayer::SayOwnCondition()
+{
+	if (PlayerHeavilyDamaged(this)) {
+		return GetCharPhrases()->heavyDamage(this);
+	} else if (PlayerLightlyDamaged(this)) {
+		return GetCharPhrases()->lightDamage(this);
+	}
+	return false;
+}
+
+enum
+{
+	TEAM_STATE_NORMAL,
+	TEAM_STATE_PESSIMISTIC,
+	TEAM_STATE_OPTIMISTIC
+};
+
+static int GetTeamState()
+{
+	float sumHealth = 0;
+	int playerCount = 0;
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+		if (pPlayer && pPlayer->IsAlive() && pPlayer->IsPlayer()) {
+			playerCount += 1;
+			sumHealth += pPlayer->pev->health + pPlayer->pev->armorvalue;
+		}
+	}
+	
+	float meanHealth = sumHealth / playerCount;
+	if (meanHealth < 40 || (meanHealth < 50 && playerCount > 1)) {
+		return TEAM_STATE_PESSIMISTIC;
+	} else if (meanHealth > 120 && playerCount > 1) {
+		return TEAM_STATE_OPTIMISTIC;
+	}
+	return TEAM_STATE_NORMAL;
+}
+
+bool CBasePlayer::SayTeamCondition()
+{	
+	switch(GetTeamState()) {
+	case TEAM_STATE_PESSIMISTIC:
+		return GetCharPhrases()->pessimistic(this);
+	case TEAM_STATE_OPTIMISTIC:
+		return GetCharPhrases()->optimistic(this);
+	default:
+		return false;
+	}
+}
+
+bool CBasePlayer::SayOtherPlayerCondition()
+{	
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
+		if ( pEntity && pEntity != this && pEntity->IsAlive() && pEntity->IsPlayer()) {
+			float d = ( pev->origin - pEntity->pev->origin ).Length();
+			if (d < 256 && FVisible(pEntity)) {
+				if (PlayerHeavilyDamaged(pEntity)) {
+					return GetCharPhrases()->youWoundedBad(this);
+				} else if (PlayerLightlyDamaged(pEntity)) {
+					return GetCharPhrases()->youWounded(this);
+				}
+			}
+		}
+	}
+	
+	return false;
+}
+
+bool CBasePlayer::TryToSayFriendlyFire()
+{
+	if (!CanSay()) {
+		return false;
+	}
+	return GetCharPhrases()->friendlyFire(this);
+}
+
+int CBasePlayer::GetVoicePitch()
+{
+	switch(m_playerCharacter) {
+	case PLAYER_CHAR_SCIENTIST:
+		return 105;
+	case PLAYER_CHAR_HELMET:
+		return 90;
+	case PLAYER_CHAR_ROBO:
+		return 110;
+	default:
+		return 100;
+	}
 }
 
 Vector VecVelocityForDamage( float flDamage )
@@ -485,6 +925,10 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	// this cast to INT is critical!!! If a player ends up with 0.5 health, the engine will get that
 	// as an int (zero) and think the player is dead! (this will incite a clientside screentilt, etc)
 	fTookDamage = CBaseMonster::TakeDamage( pevInflictor, pevAttacker, (int)flDamage, bitsDamageType );
+	
+	if (pAttacker && pAttacker != this && pAttacker->IsAlive() && pAttacker->IsPlayer()) {
+		TryToSayFriendlyFire();
+	}
 
 	// reset damage time countdown for each type of time based damage player just sustained
 	{
@@ -831,6 +1275,8 @@ entvars_t *g_pevLastInflictor;  // Set in combat.cpp.  Used to pass the damage i
 
 void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 {
+	SentenceStop();
+	
 	CSound *pSound;
 
 	// Holster weapon immediately, to allow it to cleanup
@@ -1309,7 +1755,7 @@ void CBasePlayer::PlayerDeathThink( void )
 	//ALERT( at_console, "Respawn\n" );
 
 	respawn( pev, !( m_afPhysicsFlags & PFLAG_OBSERVER ) );// don't copy a corpse if we're in deathcam.
-	pev->nextthink = -1;
+	//pev->nextthink = -1;
 }
 
 //=========================================================
@@ -2779,8 +3225,36 @@ void CBasePlayer::Spawn( void )
 	m_lastx = m_lasty = 0;
 
 	m_flNextChatTime = gpGlobals->time;
+	
+	m_flSayTime = gpGlobals->time;
+	m_flSayConditionTime = gpGlobals->time + 10;
+	m_enemyKilled = false;
+	m_flSayKilledEnemyTime = gpGlobals->time;
+	m_flSaySeeEnemyTime = gpGlobals->time;
+	
+	SetThink( &CBasePlayer::PlayerSayThink );
+	pev->nextthink = gpGlobals->time + 0.1;
 
 	g_pGameRules->PlayerSpawn( this );
+	RefreshCharacter();
+	
+	g_sayConditionTime = 0;
+}
+
+void CBasePlayer::RefreshCharacter()
+{
+	char *playerModel = g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( edict() ), "model" );
+	if (FStrEq(playerModel, "barney")) {
+		m_playerCharacter = PLAYER_CHAR_BARNEY;
+	} else if (FStrEq(playerModel, "scientist")) {
+		m_playerCharacter = PLAYER_CHAR_SCIENTIST;
+	} else if (FStrEq(playerModel, "helmet")) {
+		m_playerCharacter = PLAYER_CHAR_HELMET;
+	} else if (FStrEq(playerModel, "robo")) {
+		m_playerCharacter = PLAYER_CHAR_ROBO;
+	} else {
+		m_playerCharacter = PLAYER_CHAR_OTHER;
+	}
 }
 
 void CBasePlayer::Precache( void )

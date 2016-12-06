@@ -29,6 +29,7 @@
 #include "animation.h"
 #include "weapons.h"
 #include "func_break.h"
+#include "player.h"
 
 extern DLL_GLOBAL Vector		g_vecAttackDir;
 extern DLL_GLOBAL int			g_iSkillLevel;
@@ -587,6 +588,13 @@ void CBaseMonster::Killed( entvars_t *pevAttacker, int iGib )
 	}
 
 	Remember( bits_MEMORY_KILLED );
+	
+	CBaseEntity* pEntity = CBaseEntity::Instance(pevAttacker);
+	if ( IsAlive() && (pev->flags & FL_MONSTER) && pEntity && pEntity->IsPlayer() && pEntity->IsAlive()) {
+		CBasePlayer* pPlayer = (CBasePlayer*)pEntity;
+		pPlayer->m_enemyKilled = true;
+		pPlayer->m_flSayKilledEnemyTime = gpGlobals->time + 0.4;
+	}
 
 	// clear the deceased's sound channels.(may have been firing or reloading when killed)
 	EMIT_SOUND( ENT( pev ), CHAN_WEAPON, "common/null.wav", 1, ATTN_NORM );
