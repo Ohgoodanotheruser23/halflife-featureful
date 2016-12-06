@@ -28,6 +28,7 @@ cvar_t teamplay		= { "mp_teamplay","0", FCVAR_SERVER };
 cvar_t fraglimit	= {"mp_fraglimit","0", FCVAR_SERVER };
 cvar_t timelimit	= { "mp_timelimit","0", FCVAR_SERVER };
 cvar_t friendlyfire	= { "mp_friendlyfire","0", FCVAR_SERVER };
+cvar_t smartfriendlyfire	= { "mp_smartfriendlyfire","0", FCVAR_SERVER };
 cvar_t falldamage	= { "mp_falldamage","0", FCVAR_SERVER };
 cvar_t weaponstay	= { "mp_weaponstay","0", FCVAR_SERVER };
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
@@ -465,6 +466,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &timeleft );
 
 	CVAR_REGISTER( &friendlyfire );
+	CVAR_REGISTER( &smartfriendlyfire );
 	CVAR_REGISTER( &falldamage );
 	CVAR_REGISTER( &weaponstay );
 	CVAR_REGISTER( &forcerespawn );

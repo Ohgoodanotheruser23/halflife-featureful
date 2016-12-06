@@ -908,6 +908,17 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 		// Refuse the damage
 		return 0;
 	}
+	
+	if (pAttacker && pAttacker->IsPlayer() && 
+			g_pGameRules->PlayerRelationship(this, pAttacker) == GR_TEAMMATE && 
+			friendlyfire.value && smartfriendlyfire.value) {
+		switch (gSkillData.iSkillLevel) {
+		case 1: flDamage /= 4; break;
+		case 2: flDamage /= 2; break;
+		case 3: break;
+		default: break;
+		}
+	}
 
 	// keep track of amount of damage last sustained
 	m_lastDamageAmount = flDamage;
