@@ -472,7 +472,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &teamoverride );
 	CVAR_REGISTER( &defaultteam );
 	CVAR_REGISTER( &allowmonsters );
-    CVAR_REGISTER( &allowgaussjump );
+	CVAR_REGISTER( &allowgaussjump );
 
 	CVAR_REGISTER( &mp_chattime );
 

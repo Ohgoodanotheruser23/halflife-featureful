@@ -341,7 +341,7 @@ void CGauss::StartFire( void )
 			m_pPlayer->pev->velocity = m_pPlayer->pev->velocity - gpGlobals->v_forward * flDamage * 5;
 		}
 
-        if( (allowgaussjump.value < 0 && !g_pGameRules->IsMultiplayer()) || allowgaussjump.value == 0 )
+		if( (allowgaussjump.value < 0 && !g_pGameRules->IsMultiplayer()) || allowgaussjump.value == 0 )
 		{
 			// in deathmatch, gauss can pop you up into the air. Not in single play.
 			m_pPlayer->pev->velocity.z = flZVel;
