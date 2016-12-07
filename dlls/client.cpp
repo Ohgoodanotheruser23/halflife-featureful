@@ -121,6 +121,8 @@ void ClientDisconnect( edict_t *pEntity )
 	pEntity->v.takedamage = DAMAGE_NO;// don't attract autoaim
 	pEntity->v.solid = SOLID_NOT;// nonsolid
 	UTIL_SetOrigin( &pEntity->v, pEntity->v.origin );
+	
+	pEntity->v.netname = iStringNull;
 
 	g_pGameRules->ClientDisconnected( pEntity );
 }
