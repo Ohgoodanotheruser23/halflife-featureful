@@ -164,7 +164,7 @@ void CTriggerRescue::Think()
 		if (pev->iuser1 == InActive && rescuablePlayersExist) {
 			pev->iuser1 = Active;
 			SUB_UseTargets(this, USE_ON, 0.0f);
-			pev->frags = gpGlobals->time + RANDOM_LONG(2,6);
+			pev->frags = gpGlobals->time + RANDOM_LONG(1,4);
 		} else if (pev->iuser1 == Active && !rescuablePlayersExist) {
 			UseOff();
 		}

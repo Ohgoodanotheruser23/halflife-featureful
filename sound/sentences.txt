@@ -1402,6 +1402,12 @@ PBA_CAREFUL0 barney/ambush
 PBA_CAREFUL1 barney/badarea
 PBA_CAREFUL2 barney/badfeeling
 
+PBA_RESCUED0 barney/letsgo
+PBA_RESCUED1 barney/hellonicesuit
+
+PBA_RESCUEME0 barney/c2a5_ba_letout
+PBA_RESCUEME1 barney/c1a4_ba_octo3
+
 // Player scientist
 
 PSC_YOUBAD0 scientist/youlookbad
@@ -1442,6 +1448,15 @@ PSC_CAREFUL0 scientist/c1a1_sci_5scan(e60)
 PSC_CAREFUL1 scientist/c2a5_sci_boobie(s83 e94)
 PSC_CAREFUL2 scientist/ihearsomething
 PSC_CAREFUL3 scientist/hearsomething
+
+PSC_RESCUED0 scientist/c1a3_sci_rescued
+PSC_RESCUED1 scientist/okgetout
+PSC_RESCUED2 scientist/excellentteam
+PSC_RESCUED3 scientist/greetings
+PSC_RESCUED4 scientist/c1a3_sci_1man
+
+PSC_RESCUEME0 scientist/c1a4_sci_blind
+PSC_RESCUEME1 scientist/hello2
 
 // Player robo
 
@@ -1496,3 +1511,9 @@ PRO_CAREFUL0 vox/warning, danger is inside perimeter
 PRO_CAREFUL1 vox/team, be on guard
 PRO_CAREFUL2 vox/extreme attention required
 
+PRO_RESCUED0 vox/hello team
+PRO_RESCUED1 vox/i am back
+
+PRO_RESCUEME0 vox/i want out
+PRO_RESCUEME1 vox/help wanted
+PRO_RESCUEME2 vox/i am locked
