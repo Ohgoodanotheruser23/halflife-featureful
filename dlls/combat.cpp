@@ -894,9 +894,9 @@ int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 		
 		int monsterClass = Classify();
 		if (monsterClass == CLASS_HUMAN_PASSIVE || monsterClass == CLASS_PLAYER_ALLY) {
-			attacker->AddPoints(-score*2, true);
+			attacker->AddFloatPoints(-score*2, true);
 		} else {
-			attacker->AddPoints(score, true);
+			attacker->AddFloatPoints(score, true);
 		}
 	}
 
