@@ -336,7 +336,7 @@ void CRpg::Spawn()
 #endif
 	{
 		// more default ammo in multiplay. 
-		m_iDefaultAmmo = RPG_DEFAULT_GIVE * 2;
+		m_iDefaultAmmo = RPG_DEFAULT_GIVE;
 	}
 	else
 	{
@@ -572,8 +572,7 @@ class CRpgAmmo : public CBasePlayerAmmo
 	if( g_pGameRules->IsMultiplayer() )
 #endif
 		{
-			// hand out more ammo per rocket in multiplayer.
-			iGive = AMMO_RPGCLIP_GIVE * 2;
+			iGive = AMMO_RPGCLIP_GIVE;
 		}
 		else
 		{
