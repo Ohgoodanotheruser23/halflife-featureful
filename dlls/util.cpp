@@ -570,7 +570,7 @@ CBaseEntity *UTIL_PlayerByIndex( int playerIndex )
 	if( playerIndex > 0 && playerIndex <= gpGlobals->maxClients )
 	{
 		edict_t *pPlayerEdict = INDEXENT( playerIndex );
-		if( pPlayerEdict && !pPlayerEdict->free )
+		if( pPlayerEdict && !pPlayerEdict->free && !FStringNull(pPlayerEdict->v.netname) )
 		{
 			pPlayer = CBaseEntity::Instance( pPlayerEdict );
 		}
