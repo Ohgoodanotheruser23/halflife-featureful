@@ -104,6 +104,8 @@ void SpawnPlayer( CBasePlayer *pPlayer, entvars_t* where )
 	pPlayer->pev->angles = where->angles;
 	pPlayer->pev->punchangle = g_vecZero;
 	pPlayer->pev->fixangle = TRUE;
+	
+	pPlayer->SayRescued();
 }
 
 class CInfoPlayerRescue : public CPointEntity
@@ -126,6 +128,8 @@ public:
 	void Think( void );
 	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	
+	void UseOff();
+	
 	enum {
 		InActive,
 		Active,
@@ -135,11 +139,21 @@ public:
 
 LINK_ENTITY_TO_CLASS( trigger_rescue, CTriggerRescue )
 
+void CTriggerRescue::UseOff()
+{
+	if (pev->iuser1 == Active) {
+		pev->iuser1 = InActive;
+		SUB_UseTargets(this, USE_OFF, 0.0f);
+		EMIT_SOUND( edict(), CHAN_VOICE, "common/null.wav", 1.0, ATTN_IDLE );
+	}
+}
+
 void CTriggerRescue::Spawn()
 {
 	CPointEntity::Spawn();
 	pev->nextthink = gpGlobals->time + 5;
 	pev->iuser1 = InActive;
+	pev->frags = gpGlobals->time;
 }
 
 void CTriggerRescue::Think()
@@ -150,9 +164,26 @@ void CTriggerRescue::Think()
 		if (pev->iuser1 == InActive && rescuablePlayersExist) {
 			pev->iuser1 = Active;
 			SUB_UseTargets(this, USE_ON, 0.0f);
+			pev->frags = gpGlobals->time + RANDOM_LONG(2,6);
 		} else if (pev->iuser1 == Active && !rescuablePlayersExist) {
-			pev->iuser1 = InActive;
-			SUB_UseTargets(this, USE_OFF, 0.0f);
+			UseOff();
+		}
+		
+		if (pev->iuser1 == Active && rescuablePlayersExist && pev->frags < gpGlobals->time) {
+			CBasePlayer* players[4] = {NULL, NULL, NULL, NULL};
+			int j = 0;
+			
+			for( int i = 1; i <= gpGlobals->maxClients && j < sizeof(players)/sizeof(players[0]); i++ )
+			{
+				CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+				if (pPlayer && (pPlayer->pev->flags & FL_SPECTATOR)) {
+					players[j] = (CBasePlayer*)pPlayer;
+					j++;
+				}
+			}
+			if (j != 0 && players[RANDOM_LONG(0, j-1)]->CallForRescue(edict())) {
+				pev->frags = gpGlobals->time + 15 + RANDOM_LONG(0,5);
+			}
 		}
 	}
 	pev->nextthink = gpGlobals->time + 5;
@@ -160,9 +191,13 @@ void CTriggerRescue::Think()
 
 void CTriggerRescue::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
+	CBaseEntity* triggerRescue = NULL;
+	while((triggerRescue = UTIL_FindEntityByClassname(triggerRescue, "trigger_rescue")) != NULL) {
+		((CTriggerRescue*)triggerRescue)->UseOff();
+	}
+	
 	pev->iuser1 = Disabled;
 	if (survival.value) {
-		SUB_UseTargets(this, USE_OFF, 0.0f);
 		CBaseEntity *pEntity = NULL;
 		while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, 128 ) ) != NULL ) {
 			if (FClassnameIs(pEntity->pev, "info_player_rescue")) {

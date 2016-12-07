@@ -84,6 +84,24 @@ public:
 	virtual bool beCareful(CBasePlayer* player) {
 		return false;
 	}
+	virtual bool rescued(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool callForRescue(CBasePlayer* player, edict_t* where) {
+		return false;
+	}
+protected:
+	bool SaySentence(const char* pszSentence, CBasePlayer* player, edict_t* where) {
+		if( pszSentence && player && where )
+		{
+			if( pszSentence[0] == '!' )
+				EMIT_SOUND_DYN( where, CHAN_VOICE, pszSentence, VOL_NORM, ATTN_NORM, 0, player->GetVoicePitch());
+			else
+				SENTENCEG_PlayRndSz( where, pszSentence, VOL_NORM, ATTN_NORM, 0, player->GetVoicePitch() );
+			return true;
+		}
+		return false;
+	}
 };
 
 class BarneyPhrases : public CharacterPhrases
@@ -130,6 +148,12 @@ public:
 	bool beCareful(CBasePlayer *player) {
 		return player->SaySentence("PBA_CAREFUL");
 	}
+	bool rescued(CBasePlayer *player) {
+		return player->SaySentence("PBA_RESCUED");
+	}
+	bool callForRescue(CBasePlayer *player, edict_t *where) {
+		return SaySentence("PBA_RESCUEME", player, where);
+	}
 };
 
 class ScientistPhrases : public CharacterPhrases
@@ -170,6 +194,12 @@ public:
 	}
 	bool beCareful(CBasePlayer *player) {
 		return player->SaySentence("PSC_CAREFUL");
+	}
+	bool rescued(CBasePlayer *player) {
+		return player->SaySentence("PSC_RESCUED");
+	}
+	bool callForRescue(CBasePlayer *player, edict_t *where) {
+		return SaySentence("PSC_RESCUEME", player, where);
 	}
 };
 
@@ -226,9 +256,15 @@ public:
 	bool beCareful(CBasePlayer *player) {
 		return player->SaySentence("PRO_CAREFUL");
 	}
+	bool rescued(CBasePlayer *player) {
+		return player->SaySentence("PRO_RESCUED");
+	}
+	bool callForRescue(CBasePlayer *player, edict_t *where) {
+		return SaySentence("PRO_RESCUEME", player, where);
+	}
 };
 
-CharacterPhrases* CBasePlayer::GetCharPhrases()
+CharacterPhrases* CBasePlayer::GetCharPhrases(int playerCharacter)
 {
 	//HACKHACK singletone
 	static BarneyPhrases barneyPhrases;
@@ -236,7 +272,7 @@ CharacterPhrases* CBasePlayer::GetCharPhrases()
 	static RoboPhrases roboPhrases;
 	static CharacterPhrases genericPhrases;
 	
-	switch(m_playerCharacter) {
+	switch(playerCharacter) {
 	case PLAYER_CHAR_BARNEY:
 		return &barneyPhrases;
 	case PLAYER_CHAR_SCIENTIST:
@@ -247,6 +283,11 @@ CharacterPhrases* CBasePlayer::GetCharPhrases()
 	default:
 		return &genericPhrases;
 	}
+}
+
+CharacterPhrases* CBasePlayer::GetCharPhrases()
+{
+	return GetCharPhrases(m_playerCharacter);
 }
 
 class CInfoCareful : public CPointEntity
@@ -672,9 +713,19 @@ bool CBasePlayer::TryToSayFriendlyFire()
 	return GetCharPhrases()->friendlyFire(this);
 }
 
-int CBasePlayer::GetVoicePitch()
+bool CBasePlayer::SayRescued()
 {
-	switch(m_playerCharacter) {
+	return GetCharPhrases()->rescued(this);
+}
+
+bool CBasePlayer::CallForRescue(edict_t* where)
+{
+	return GetCharPhrases()->callForRescue(this, where);
+}
+
+int CBasePlayer::GetVoicePitch(int playerCharacter)
+{
+	switch(playerCharacter) {
 	case PLAYER_CHAR_SCIENTIST:
 		return 105;
 	case PLAYER_CHAR_HELMET:
@@ -684,6 +735,11 @@ int CBasePlayer::GetVoicePitch()
 	default:
 		return 100;
 	}
+}
+
+int CBasePlayer::GetVoicePitch()
+{
+	return GetVoicePitch(m_playerCharacter);
 }
 
 Vector VecVelocityForDamage( float flDamage )

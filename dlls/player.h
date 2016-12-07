@@ -322,9 +322,14 @@ public:
 	bool SayTeamCondition();
 	bool SayOtherPlayerCondition();
 	bool TryToSayFriendlyFire();
+	bool SayRescued();
+	bool CallForRescue(edict_t *where);
 	CBaseEntity* LookForEnemy();
 	void RefreshCharacter();
+	
+	static CharacterPhrases* GetCharPhrases(int playerCharacter);
 	CharacterPhrases* GetCharPhrases();
+	static int GetVoicePitch(int playerCharacter);
 	int GetVoicePitch();
 	
 	int m_izSBarState[ SBAR_END ];
