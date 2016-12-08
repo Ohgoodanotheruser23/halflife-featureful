@@ -249,45 +249,93 @@ CharacterPhrases* CBasePlayer::GetCharPhrases()
 	}
 }
 
+#define SF_INFOCARFEUL_STARTNONACTIVE 1
+
 class CInfoCareful : public CPointEntity
 {
 public:
 	void Spawn();
 	void Think();
+	void KeyValue( KeyValueData *pkvd );
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	
+	static TYPEDESCRIPTION m_SaveData[];
+	
+private:
+	float m_radius;
+	BOOL m_active;
 };
+
+TYPEDESCRIPTION	CInfoCareful::m_SaveData[] =
+{
+	DEFINE_FIELD( CInfoCareful, m_radius, FIELD_FLOAT ),
+	DEFINE_FIELD( CInfoCareful, m_active, FIELD_BOOLEAN ),
+};
+
+IMPLEMENT_SAVERESTORE( CInfoCareful, CBaseEntity )
 
 void CInfoCareful::Spawn()
 {
+	if (m_radius < 1) {
+		m_radius = 256;
+	}
+	if (pev->spawnflags & SF_INFOCARFEUL_STARTNONACTIVE) {
+		m_active = FALSE;
+	} else {
+		m_active = TRUE;
+	}
 	pev->nextthink = gpGlobals->time + 1;
+}
+
+void CInfoCareful::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	switch(useType) {
+	case USE_OFF: m_active = FALSE; break;
+	case USE_ON: m_active = TRUE; break;
+	default : m_active = !m_active; break;
+	}
 }
 
 void CInfoCareful::Think()
 {
-	int playerCountInArea = 0;
-	for( int i = 1; i <= gpGlobals->maxClients; i++ )
-	{
-		CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
-		if (pEntity && pEntity->IsAlive() && pEntity->IsPlayer() && (pEntity->pev->origin - pev->origin).Length() < 256) {
-			playerCountInArea++;
-		}
-	}
-	
-	if (playerCountInArea > 1) {
+	if (m_active) {
+		int playerCountInArea = 0;
 		for( int i = 1; i <= gpGlobals->maxClients; i++ )
 		{
 			CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
-			if (pEntity && pEntity->IsAlive() && pEntity->IsPlayer()) {
-				CBasePlayer* player = (CBasePlayer*)pEntity;
-				if (player->CanSay() && player->GetCharPhrases()->beCareful(player)) {
-					pev->nextthink = gpGlobals->time - 1;
-					UTIL_Remove(this);
-					return;
+			if (pEntity && pEntity->IsAlive() && pEntity->IsPlayer() && (pEntity->pev->origin - pev->origin).Length() < m_radius) {
+				playerCountInArea++;
+			}
+		}
+		
+		if (playerCountInArea > 1) {
+			for( int i = 1; i <= gpGlobals->maxClients; i++ )
+			{
+				CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
+				if (pEntity && pEntity->IsAlive() && pEntity->IsPlayer()) {
+					CBasePlayer* player = (CBasePlayer*)pEntity;
+					if (player->CanSay() && player->GetCharPhrases()->beCareful(player)) {
+						m_active = FALSE;
+					}
 				}
 			}
 		}
 	}
 	
 	pev->nextthink = gpGlobals->time + 1;
+}
+
+void CInfoCareful::KeyValue(KeyValueData *pkvd)
+{
+	if( FStrEq( pkvd->szKeyName, "radius" ) )
+	{
+		m_radius = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CPointEntity::KeyValue( pkvd );
 }
 
 LINK_ENTITY_TO_CLASS( info_careful, CInfoCareful )
