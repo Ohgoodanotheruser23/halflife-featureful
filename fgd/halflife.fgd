@@ -1658,6 +1658,15 @@
 	presequence(string) : "Sequence before approach" : ""
 ]
 
+@PointClass base(Targetname) size(-8 -8 -8, 8 8 8) = info_careful : "Player says Be careful"
+[
+	spawnflags(Flags) = 
+	[
+		1 : "Start non active" : 0
+	]
+	radius(string) : "Radius" : "256"
+]
+
 @PointClass base(Target, Angles) size(-4 -4 -4, 4 4 4) color(0 255 0) = info_intermission : "Intermission Spot" []
 
 @PointClass base(Targetname) = info_landmark : "Transition Landmark" []
