@@ -601,12 +601,9 @@ BA_WAIT4 barney/seeya
 BA_WAIT5 barney/standguard
 
 BA_HELLO0 barney/hellonicesuit
-BA_HELLO1 barney/howdy
-BA_HELLO2 barney/howyoudoing
-BA_HELLO3 barney/haybuddy
-BA_HELLO4 barney/hayfella
-BA_HELLO5 barney/heybuddy
-BA_HELLO6 barney/heyfella
+BA_HELLO1 barney/howyoudoing
+BA_HELLO2 barney/hayfella
+BA_HELLO3 barney/heyfella
 
 BA_QUESTION0 barney/beertopside
 BA_QUESTION1 barney/wayout
@@ -665,12 +662,11 @@ BA_IDLE8 barney/ambush
 BA_IDLE9 barney/survive
 BA_IDLE10 barney/stophere
 
-BA_ATTACK0 barney/openfire(e50)
-BA_ATTACK1 barney/openfire(s50)
-BA_ATTACK2 barney/standback
-BA_ATTACK3 barney/whatisthat
-BA_ATTACK4 barney/diebloodsucker
-BA_ATTACK5 barney/aimforhead
+BA_ATTACK0 barney/openfire(s50)
+BA_ATTACK1 barney/standback
+BA_ATTACK2 barney/whatisthat
+BA_ATTACK3 barney/diebloodsucker
+BA_ATTACK4 barney/aimforhead
 
 BA_HEAR0 barney/hearsomething
 BA_HEAR1 barney/icanhear
@@ -697,7 +693,7 @@ BA_SHOT1 barney/ba_dotoyou
 BA_SHOT2 barney/ba_watchit
 BA_SHOT3 barney/ba_whatyou
 BA_SHOT4 barney/ba_friends
-BA_SHOT5 barney/ba_pissme
+BA_SHOT5 barney/ba_pissme(e66)
 
 //When Barney’s really pissed at you:
 BA_MAD0 barney/ba_stepoff
@@ -729,9 +725,8 @@ BA_LIGHTSON holo/tr_ba_lightson
 
 //If you use Barney before the disaster
 BA_POK0 barney/ba_post
-BA_POK1 barney/ba_duty
-BA_POK2 barney/ba_raincheck
-BA_POK3 barney/ba_later
+BA_POK1 barney/ba_raincheck
+BA_POK2 barney/ba_later
 
 // if barney can't follow you
 BA_STOP0 barney/stop1
@@ -839,14 +834,11 @@ SC_STARE1 scientist/areyouthink
 SC_STARE2 scientist/noidea
 
 SC_HELLO0 scientist/hellothere
-SC_HELLO1 scientist/freemanalive
-SC_HELLO2 scientist/afellowsci
-SC_HELLO3 scientist/greetings2
-SC_HELLO4 scientist/hello
-SC_HELLO5 scientist/goodtoseeyou
-SC_HELLO6 scientist/newhevsuit
-SC_HELLO7 scientist/hellofromlab
-SC_HELLO8 scientist/inmesstoo
+SC_HELLO1 scientist/afellowsci
+SC_HELLO2 scientist/greetings2
+SC_HELLO3 scientist/hello
+SC_HELLO4 scientist/goodtoseeyou
+SC_HELLO5 scientist/newhevsuit
 
 SC_ANSWER0 scientist/notsure
 SC_ANSWER1 scientist/notcertain
@@ -998,13 +990,11 @@ SC_SCARED2 scientist/youinsane
 
 // predisaster scientist
 
-SC_PHELLO0 scientist/hellofreeman
-SC_PHELLO1 scientist/greetings2
-SC_PHELLO2 scientist/goodtoseeyou
-SC_PHELLO3 scientist/greetings
-SC_PHELLO4 scientist/hello
-SC_PHELLO5 scientist/hellothere
-SC_PHELLO6 scientist/freeman
+SC_PHELLO0 scientist/greetings2
+SC_PHELLO1 scientist/goodtoseeyou
+SC_PHELLO2 scientist/greetings
+SC_PHELLO3 scientist/hello
+SC_PHELLO4 scientist/hellothere
 
 SC_PQUEST0 scientist/beverage
 SC_PQUEST1 scientist/statusreport
@@ -1052,9 +1042,7 @@ SC_NEXTSTATION holo/tr_sci_nextstation
 
 SC_POK0 scientist/sci_alone
 SC_POK1 scientist/sci_bother
-SC_POK2 scientist/sci_busy
-SC_POK3 scientist/sci_aftertest
-SC_POK4 scientist/sci_somewhere
+SC_POK2 scientist/sci_aftertest
 
 //narrative audio
 
