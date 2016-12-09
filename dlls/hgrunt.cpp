@@ -160,6 +160,8 @@ public:
 
 	BOOL FOkToSpeak( void );
 	void JustSpoke( void );
+	void DropMyItems(BOOL isGibbed);
+	void DropMyItem(char *entityName, const Vector &vecGunPos, const Vector &vecGunAngles, BOOL isGibbed);
 
 	CUSTOM_SCHEDULES
 	static TYPEDESCRIPTION m_SaveData[];
@@ -276,43 +278,45 @@ int CHGrunt::IRelationship( CBaseEntity *pTarget )
 //=========================================================
 void CHGrunt::GibMonster( void )
 {
-	Vector vecGunPos;
-	Vector vecGunAngles;
-
-	if( GetBodygroup( 2 ) != 2 )
+	if( npc_dropweapons.value && GetBodygroup( 2 ) != 2 )
 	{
 		// throw a gun if the grunt has one
-		GetAttachment( 0, vecGunPos, vecGunAngles );
-
-		CBaseEntity *pGun;
-
-		if( FBitSet( pev->weapons, HGRUNT_SHOTGUN ) )
-		{
-			pGun = DropItem( "weapon_shotgun", vecGunPos, vecGunAngles );
-		}
-		else
-		{
-			pGun = DropItem( "weapon_9mmAR", vecGunPos, vecGunAngles );
-		}
-
-		if( pGun )
-		{
-			pGun->pev->velocity = Vector( RANDOM_FLOAT( -100, 100 ), RANDOM_FLOAT( -100, 100 ), RANDOM_FLOAT( 200, 300 ) );
-			pGun->pev->avelocity = Vector( 0, RANDOM_FLOAT( 200, 400 ), 0 );
-		}
-
-		if( FBitSet( pev->weapons, HGRUNT_GRENADELAUNCHER ) )
-		{
-			pGun = DropItem( "ammo_ARgrenades", vecGunPos, vecGunAngles );
-			if ( pGun )
-			{
-				pGun->pev->velocity = Vector( RANDOM_FLOAT( -100, 100 ), RANDOM_FLOAT( -100, 100 ), RANDOM_FLOAT( 200, 300 ) );
-				pGun->pev->avelocity = Vector( 0, RANDOM_FLOAT( 200, 400 ), 0 );
-			}
-		}
+		DropMyItems(TRUE);
 	}
 
 	CBaseMonster::GibMonster();
+}
+
+void CHGrunt::DropMyItem(char* entityName, const Vector& vecGunPos, const Vector& vecGunAngles, BOOL isGibbed)
+{
+	CBaseEntity* pGun = DropItem(entityName, vecGunPos, vecGunAngles);
+	if (pGun && isGibbed) {
+		pGun->pev->velocity = Vector( RANDOM_FLOAT( -100, 100 ), RANDOM_FLOAT( -100, 100 ), RANDOM_FLOAT( 200, 300 ) );
+		pGun->pev->avelocity = Vector( 0, RANDOM_FLOAT( 200, 400 ), 0 );
+	}
+}
+
+void CHGrunt::DropMyItems(BOOL isGibbed)
+{
+	Vector vecGunPos;
+	Vector vecGunAngles;
+	GetAttachment( 0, vecGunPos, vecGunAngles );
+	
+	if (!isGibbed) {
+		SetBodygroup( GUN_GROUP, GUN_NONE );
+	}
+
+	if( FBitSet( pev->weapons, HGRUNT_SHOTGUN ) ) {
+		DropMyItem( "weapon_shotgun", vecGunPos, vecGunAngles, isGibbed );
+	} else {
+		DropMyItem( "weapon_9mmAR", vecGunPos, vecGunAngles, isGibbed );
+	}
+	if( FBitSet( pev->weapons, HGRUNT_GRENADELAUNCHER ) ) {
+		DropMyItem( "ammo_ARgrenades", isGibbed ? vecGunPos : BodyTarget( pev->origin ), vecGunAngles, isGibbed );
+	}
+	if ( FBitSet (pev->weapons, HGRUNT_HANDGRENADE ) ) {
+		DropMyItem( "weapon_handgrenade", BodyTarget( pev->origin ), vecGunAngles, isGibbed );
+	}
 }
 
 //=========================================================
@@ -851,28 +855,7 @@ void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 		case HGRUNT_AE_DROP_GUN:
 		{
 			if (npc_dropweapons.value) {
-				Vector vecGunPos;
-				Vector vecGunAngles;
-				
-				GetAttachment( 0, vecGunPos, vecGunAngles );
-				
-				// switch to body group with no gun.
-				SetBodygroup( GUN_GROUP, GUN_NONE );
-				
-				// now spawn a gun.
-				if( FBitSet( pev->weapons, HGRUNT_SHOTGUN ) )
-				{
-					DropItem( "weapon_shotgun", vecGunPos, vecGunAngles );
-				}
-				else
-				{
-					DropItem( "weapon_9mmAR", vecGunPos, vecGunAngles );
-				}
-				
-				if( FBitSet( pev->weapons, HGRUNT_GRENADELAUNCHER ) )
-				{
-					DropItem( "ammo_ARgrenades", BodyTarget( pev->origin ), vecGunAngles );
-				}
+				DropMyItems(FALSE);
 			}
 		}
 			break;
