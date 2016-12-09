@@ -1000,6 +1000,12 @@ int CBaseTurret::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	pev->health -= flDamage;
 	if( pev->health <= 0 )
 	{
+		//HACK to trigger on death condition
+		int deadflag = pev->deadflag;
+		pev->deadflag = DEAD_DEAD;
+		FCheckAITrigger();
+		pev->deadflag = deadflag;
+		
 		pev->health = 0;
 		pev->takedamage = DAMAGE_NO;
 		pev->dmgtime = gpGlobals->time;
@@ -1195,7 +1201,7 @@ int CSentry::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 
 	pev->health -= flDamage;
 	if( pev->health <= 0 )
-	{
+	{	
 		pev->health = 0;
 		pev->takedamage = DAMAGE_NO;
 		pev->dmgtime = gpGlobals->time;
@@ -1231,6 +1237,7 @@ void CSentry::SentryDeath( void )
 	if( pev->deadflag != DEAD_DEAD )
 	{
 		pev->deadflag = DEAD_DEAD;
+		FCheckAITrigger();
 
 		float flRndSound = RANDOM_FLOAT( 0, 1 );
 
