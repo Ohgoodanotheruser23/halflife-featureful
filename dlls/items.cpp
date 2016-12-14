@@ -28,6 +28,7 @@
 #include "skill.h"
 #include "items.h"
 #include "gamerules.h"
+#include "spawnitems.h"
 
 extern int gmsgItemPickup;
 
@@ -86,16 +87,18 @@ void CWorldItem::Spawn( void )
 	REMOVE_ENTITY( edict() );
 }
 
-#define ITEM_RANDOM_VALUE_LENGTH 31
-#define ITEM_RANDOM_MAX_COUNT 9 //when changing this, CItemRandom::KeyValue must be changed too
+#define ITEM_RANDOM_MAX_COUNT 9
 
 class CItemRandom : public CBaseEntity
 {
 public:
 	void KeyValue( KeyValueData *pkvd ); 
 	void Spawn( void );
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void SpawnItem(int itemType);
+	void SpawnItem();
 	int m_itemCount;
-	char m_items[ITEM_RANDOM_MAX_COUNT][ITEM_RANDOM_VALUE_LENGTH+1];
+	int m_items[ITEM_RANDOM_MAX_COUNT];
 };
 
 LINK_ENTITY_TO_CLASS( item_random, CItemRandom )
@@ -112,15 +115,12 @@ void CItemRandom::KeyValue( KeyValueData *pkvd )
 		pkvd->fHandled = TRUE;
 	} else if ( strncmp(pkvd->szKeyName, "item", 4) == 0 && isdigit(pkvd->szKeyName[4])) {
 		pkvd->fHandled = FALSE;
-		char buf[8] = "item";
-		for (int i=0; i<ITEM_RANDOM_MAX_COUNT; ++i) {
-			sprintf(buf+4, "%d", i+1);
-			if (strcmp(buf+4, pkvd->szKeyName+4) == 0) {
-				strncpy(m_items[i], pkvd->szValue, ITEM_RANDOM_VALUE_LENGTH);
-				m_items[i][ITEM_RANDOM_VALUE_LENGTH] = '\0';
-				pkvd->fHandled = TRUE;
-				break;
-			}
+		
+		int itemIndex = atoi(pkvd->szKeyName + 4);
+		if (itemIndex > 0 && itemIndex <= ITEM_RANDOM_MAX_COUNT) {
+			int itemType = atoi(pkvd->szValue);
+			m_items[itemIndex-1] = itemType;
+			pkvd->fHandled = TRUE;
 		}
 		if (pkvd->fHandled == FALSE) {
 			CBaseEntity::KeyValue( pkvd );
@@ -132,25 +132,41 @@ void CItemRandom::KeyValue( KeyValueData *pkvd )
 
 void CItemRandom::Spawn( void )
 {
+	if (FStringNull(pev->targetname)) {
+		SpawnItem();
+	}
+}
+
+void CItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	SpawnItem();
+}
+
+void CItemRandom::SpawnItem()
+{
 	if (m_itemCount) {
 		int chosenItemIndex = RANDOM_LONG(0, m_itemCount-1);
-		char* chosenItem = m_items[chosenItemIndex];
-		if (strcmp(chosenItem, "nothing") != 0) {
-			CBaseEntity *pEntity = CBaseEntity::Create( chosenItem, pev->origin, pev->angles );
-			if( !pEntity )
-			{
-				ALERT( at_console, "unable to create item_random '%s'\n", chosenItem );
-			}
-			else
-			{
-				pEntity->pev->target = pev->target;
-				pEntity->pev->targetname = pev->targetname;
-				pEntity->pev->spawnflags = pev->spawnflags;
-			}
+		int itemType = m_items[chosenItemIndex];		
+		SpawnItem(itemType);
+	} else {
+		SpawnItem(0);
+	}
+}
+
+void CItemRandom::SpawnItem(int itemType)
+{
+	SetThink( &CBaseEntity::SUB_Remove );
+	pev->nextthink = pev->ltime + 0.1;
+	
+	if (itemType && itemType < ARRAYSIZE(gSpawnItems)) {
+		UTIL_PrecacheOther(gSpawnItems[itemType].name);
+		CBaseEntity *pEntity = CBaseEntity::Create( (char*)gSpawnItems[itemType].name, pev->origin, pev->angles, edict() );
+		if( pEntity )
+		{
+			pEntity->pev->target = pev->target;
+			pEntity->pev->spawnflags = pev->spawnflags;
 		}
 	}
-
-	REMOVE_ENTITY( edict() );
 }
 
 void CItem::Spawn( void )

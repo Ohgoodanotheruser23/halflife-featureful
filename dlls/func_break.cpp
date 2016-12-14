@@ -26,39 +26,11 @@
 #include "func_break.h"
 #include "decals.h"
 #include "explode.h"
+#include "spawnitems.h"
 
 extern DLL_GLOBAL Vector	g_vecAttackDir;
 
 // =================== FUNC_Breakable ==============================================
-
-// Just add more items to the bottom of this array and they will automagically be supported
-// This is done instead of just a classname in the FGD so we can control which entities can
-// be spawned, and still remain fairly flexible
-const char *CBreakable::pSpawnObjects[] =
-{
-	NULL,			// 0
-	"item_battery",		// 1
-	"item_healthkit",	// 2
-	"weapon_9mmhandgun",	// 3
-	"ammo_9mmclip",		// 4
-	"weapon_9mmAR",		// 5
-	"ammo_9mmAR",		// 6
-	"ammo_ARgrenades",	// 7
-	"weapon_shotgun",	// 8
-	"ammo_buckshot",	// 9
-	"weapon_crossbow",	// 10
-	"ammo_crossbow",	// 11
-	"weapon_357",		// 12
-	"ammo_357",		// 13
-	"weapon_rpg",		// 14
-	"ammo_rpgclip",		// 15
-	"ammo_gaussclip",	// 16
-	"weapon_handgrenade",	// 17
-	"weapon_tripmine",	// 18
-	"weapon_satchel",	// 19
-	"weapon_snark",		// 20
-	"weapon_hornetgun",	// 21
-};
 
 void CBreakable::KeyValue( KeyValueData* pkvd )
 {
@@ -104,8 +76,8 @@ void CBreakable::KeyValue( KeyValueData* pkvd )
 	else if( FStrEq( pkvd->szKeyName, "spawnobject" ) )
 	{
 		int object = atoi( pkvd->szValue );
-		if( object > 0 && object < ARRAYSIZE( pSpawnObjects ) )
-			m_iszSpawnObject = MAKE_STRING( pSpawnObjects[object] );
+		if( object > 0 && object < ARRAYSIZE( gSpawnItems ) )
+			m_iszSpawnObject = MAKE_STRING( gSpawnItems[object].name );
 		pkvd->fHandled = TRUE;
 	}
 	else if( FStrEq( pkvd->szKeyName, "explodemagnitude" ) )

@@ -76,7 +76,6 @@ public:
 	static const char *pSoundsGlass[];
 	static const char *pSoundsMetal[];
 	static const char *pSoundsConcrete[];
-	static const char *pSpawnObjects[];
 
 	static TYPEDESCRIPTION m_SaveData[];
 
