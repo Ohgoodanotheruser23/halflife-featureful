@@ -92,6 +92,8 @@ void CWorldItem::Spawn( void )
 class CItemRandom : public CBaseEntity
 {
 public:
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
 	void KeyValue( KeyValueData *pkvd ); 
 	void Spawn( void );
 	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
@@ -99,6 +101,8 @@ public:
 	void SpawnItem();
 	int m_itemCount;
 	int m_items[ITEM_RANDOM_MAX_COUNT];
+	
+	static TYPEDESCRIPTION m_SaveData[];
 };
 
 LINK_ENTITY_TO_CLASS( item_random, CItemRandom )
@@ -137,6 +141,14 @@ void CItemRandom::Spawn( void )
 		SpawnItem();
 	}
 }
+
+TYPEDESCRIPTION CItemRandom::m_SaveData[] =
+{
+	DEFINE_FIELD( CItemRandom, m_itemCount, FIELD_INTEGER ),
+	DEFINE_ARRAY( CItemRandom, m_items, FIELD_INTEGER, ITEM_RANDOM_MAX_COUNT ),
+};
+
+IMPLEMENT_SAVERESTORE( CItemRandom, CBaseEntity )
 
 void CItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {

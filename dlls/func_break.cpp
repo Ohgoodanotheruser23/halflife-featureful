@@ -126,6 +126,9 @@ TYPEDESCRIPTION CBreakable::m_SaveData[] =
 	DEFINE_FIELD( CBreakable, m_angle, FIELD_FLOAT ),
 	DEFINE_FIELD( CBreakable, m_iszGibModel, FIELD_STRING ),
 	DEFINE_FIELD( CBreakable, m_iszSpawnObject, FIELD_STRING ),
+	
+	DEFINE_FIELD( CBreakable, m_spawnItemCount, FIELD_INTEGER ),
+	DEFINE_ARRAY( CBreakable, m_spawnItems, FIELD_INTEGER, BREAKABLE_RANDOM_SPAWN_MAX_COUNT),
 
 	// Explosion magnitude is stored in pev->impulse
 };
