@@ -80,6 +80,25 @@ void CBreakable::KeyValue( KeyValueData* pkvd )
 			m_iszSpawnObject = MAKE_STRING( gSpawnItems[object].name );
 		pkvd->fHandled = TRUE;
 	}
+	else if ( FStrEq( pkvd->szKeyName, "spawnitem_count" ) ) 
+	{
+		m_spawnItemCount = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( (strncmp( pkvd->szKeyName, "spawnitem", 9) == 0) && isdigit(pkvd->szKeyName[9]) ) 
+	{
+		pkvd->fHandled = FALSE;
+		int itemIndex = atoi(pkvd->szKeyName + 9);
+		if (itemIndex > 0 && itemIndex <= BREAKABLE_RANDOM_SPAWN_MAX_COUNT) {
+			int itemType = atoi(pkvd->szValue);
+			m_spawnItems[itemIndex-1] = itemType;
+			pkvd->fHandled = TRUE;
+		}
+		if (pkvd->fHandled == FALSE) {
+			CBaseDelay::KeyValue( pkvd );
+			return;
+		}
+	}
 	else if( FStrEq( pkvd->szKeyName, "explodemagnitude" ) )
 	{
 		ExplosionSetMagnitude( atoi( pkvd->szValue ) );
@@ -718,8 +737,16 @@ void CBreakable::Die( void )
 
 	SetThink( &CBaseEntity::SUB_Remove );
 	pev->nextthink = pev->ltime + 0.1;
-	if( m_iszSpawnObject )
+	if( m_iszSpawnObject ) {
 		CBaseEntity::Create( (char *)STRING( m_iszSpawnObject ), VecBModelOrigin( pev ), pev->angles, edict() );
+	} else if (m_spawnItemCount) {
+		int chosenItemIndex = RANDOM_LONG(0, m_spawnItemCount-1);
+		int itemType = m_spawnItems[chosenItemIndex];	
+		if (itemType && itemType < ARRAYSIZE(gSpawnItems)) {
+			UTIL_PrecacheOther(gSpawnItems[itemType].name);
+			CBaseEntity::Create( (char*)gSpawnItems[itemType].name, VecBModelOrigin( pev ), pev->angles, edict() );
+		}
+	}
 
 	if( Explodable() )
 	{

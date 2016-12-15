@@ -124,6 +124,7 @@ void CItemRandom::KeyValue( KeyValueData *pkvd )
 		}
 		if (pkvd->fHandled == FALSE) {
 			CBaseEntity::KeyValue( pkvd );
+			return;
 		}
 	} else {
 		CBaseEntity::KeyValue( pkvd );
