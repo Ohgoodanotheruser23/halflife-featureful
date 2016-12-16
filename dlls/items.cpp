@@ -100,7 +100,7 @@ public:
 	void SpawnItem(int itemType);
 	void SpawnItem();
 	
-	int ItemCount();
+	int ItemCount() const;
 	
 	int m_items[ITEM_RANDOM_MAX_COUNT];
 	
@@ -133,7 +133,7 @@ void CItemRandom::KeyValue( KeyValueData *pkvd )
 	}
 }
 
-int CItemRandom::ItemCount()
+int CItemRandom::ItemCount() const
 {
 	for (int i=ITEM_RANDOM_MAX_COUNT-1; i>=0; --i) {
 		if (m_items[i]) {
@@ -244,6 +244,60 @@ void CInfoItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 	SpawnItems();
 }
 
+static float makeItemProbabilityArray(int items[], int itemCount, float probabilities[])
+{
+	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+		probabilities[i] = 0;
+	}
+	float probSum = 0;
+	for (int i=0; i<itemCount; ++i) {
+		int itemType = items[i];
+		probabilities[itemType] += 1;
+		probSum += 1;
+	}
+	return probSum;
+}
+
+// get rid of items if no points left for them
+static void updateItemProbabilityArray(float probabilities[], const float pointsLeft, float& probSum, const bool usePoints)
+{
+	if (!usePoints) {
+		return;
+	}
+	
+	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+		if (probabilities[i] && gSpawnItems[i].value > pointsLeft) {
+			probSum -= probabilities[i];
+			probabilities[i] = 0;
+		}
+	}
+}
+
+static int chooseRandomItem(float probabilities[], const float probSum)
+{
+	float random = RANDOM_FLOAT(0, probSum);
+	ALERT(at_console, "random: %f; probSum: %f\n", random, probSum);
+	float currentProb = 0;
+	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+		if (random >= currentProb && random <= (currentProb + probabilities[i])) {
+			return i;
+		}
+		currentProb += probabilities[i];
+	}
+	return 0;
+}
+
+static void ItemRandomShuffle(CItemRandom** first, CItemRandom** last)
+{
+	int n = (last-first);
+	for (int i=n-1; i>0; --i) {
+		CItemRandom* temp = first[i];
+		int randomIndex = RANDOM_LONG(0,i);
+		first[i] = first[randomIndex];
+		first[randomIndex] = temp;
+	}
+}
+
 void CInfoItemRandom::SpawnItems()
 {
 	SetThink( &CBaseEntity::SUB_Remove );
@@ -253,17 +307,39 @@ void CInfoItemRandom::SpawnItems()
 		return;
 	}
 	
+	float probabilities[ARRAYSIZE(gSpawnItems)];
+	float pointsLeft = m_maxPoints;
+	const bool usePoints = m_maxPoints > 0;
+	const int myItemCount = ItemCount();
+	float probSum = makeItemProbabilityArray(m_items, myItemCount, probabilities);
+	
 	CBaseEntity* pEntity = NULL;
-	while(pEntity = UTIL_FindEntityByTargetname(pEntity, STRING(pev->target))) {
+	CItemRandom* itemRandomVec[100];
+	int itemRandomCount = 0;
+	while((pEntity = UTIL_FindEntityByTargetname(pEntity, STRING(pev->target))) && itemRandomCount < ARRAYSIZE(itemRandomVec)) {
 		if (FClassnameIs(pEntity->pev, "item_random")) {
 			CItemRandom* itemRandom = (CItemRandom*)pEntity;
-			if (itemRandom->ItemCount()) {
-				itemRandom->SpawnItem();
-			} else if (ItemCount()) {
-				int chosenItemIndex = RANDOM_LONG(0, ItemCount()-1);
-				int itemType = m_items[chosenItemIndex];
-				itemRandom->SpawnItem(itemType);
-			}
+			itemRandomVec[itemRandomCount++] = itemRandom;
+		}
+	}
+	
+	ItemRandomShuffle(itemRandomVec, itemRandomVec + itemRandomCount);
+	
+	for (int i = 0; i < itemRandomCount; ++i) {
+		CItemRandom* itemRandom = itemRandomVec[i];
+		int itemType = 0;
+		if (itemRandom->ItemCount()) {
+			float localProbabilities[ARRAYSIZE(gSpawnItems)];
+			float localProbSum = makeItemProbabilityArray(itemRandom->m_items, itemRandom->ItemCount(), localProbabilities);
+			updateItemProbabilityArray(localProbabilities, pointsLeft, localProbSum, usePoints);
+			itemType = chooseRandomItem(localProbabilities, localProbSum);
+		} else if (myItemCount) {
+			updateItemProbabilityArray(probabilities, pointsLeft, probSum, usePoints);
+			itemType = chooseRandomItem(probabilities, probSum);
+		}
+		itemRandom->SpawnItem(itemType);
+		if (usePoints) {
+			pointsLeft -= gSpawnItems[itemType].value;
 		}
 	}
 }
