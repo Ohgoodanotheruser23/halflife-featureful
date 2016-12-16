@@ -80,17 +80,16 @@ void CBreakable::KeyValue( KeyValueData* pkvd )
 			m_iszSpawnObject = MAKE_STRING( gSpawnItems[object].name );
 		pkvd->fHandled = TRUE;
 	}
-	else if ( FStrEq( pkvd->szKeyName, "spawnitem_count" ) ) 
-	{
-		m_spawnItemCount = atoi( pkvd->szValue );
-		pkvd->fHandled = TRUE;
-	}
 	else if ( (strncmp( pkvd->szKeyName, "spawnitem", 9) == 0) && isdigit(pkvd->szKeyName[9]) ) 
 	{
 		pkvd->fHandled = FALSE;
 		int itemIndex = atoi(pkvd->szKeyName + 9);
 		if (itemIndex > 0 && itemIndex <= BREAKABLE_RANDOM_SPAWN_MAX_COUNT) {
 			int itemType = atoi(pkvd->szValue);
+			if (itemType >= ARRAYSIZE(gSpawnItems)) {
+				itemType = 0;
+			}
+			
 			m_spawnItems[itemIndex-1] = itemType;
 			pkvd->fHandled = TRUE;
 		}
@@ -127,13 +126,22 @@ TYPEDESCRIPTION CBreakable::m_SaveData[] =
 	DEFINE_FIELD( CBreakable, m_iszGibModel, FIELD_STRING ),
 	DEFINE_FIELD( CBreakable, m_iszSpawnObject, FIELD_STRING ),
 	
-	DEFINE_FIELD( CBreakable, m_spawnItemCount, FIELD_INTEGER ),
 	DEFINE_ARRAY( CBreakable, m_spawnItems, FIELD_INTEGER, BREAKABLE_RANDOM_SPAWN_MAX_COUNT),
 
 	// Explosion magnitude is stored in pev->impulse
 };
 
 IMPLEMENT_SAVERESTORE( CBreakable, CBaseEntity )
+
+int CBreakable::ItemCount()
+{
+	for (int i=BREAKABLE_RANDOM_SPAWN_MAX_COUNT-1; i>=0; --i) {
+		if (m_spawnItems[i]) {
+			return i+1;
+		}
+	}
+	return 0;
+}
 
 void CBreakable::Spawn( void )
 {
@@ -742,8 +750,8 @@ void CBreakable::Die( void )
 	pev->nextthink = pev->ltime + 0.1;
 	if( m_iszSpawnObject ) {
 		CBaseEntity::Create( (char *)STRING( m_iszSpawnObject ), VecBModelOrigin( pev ), pev->angles, edict() );
-	} else if (m_spawnItemCount) {
-		int chosenItemIndex = RANDOM_LONG(0, m_spawnItemCount-1);
+	} else if (ItemCount()) {
+		int chosenItemIndex = RANDOM_LONG(0, ItemCount()-1);
 		int itemType = m_spawnItems[chosenItemIndex];	
 		if (itemType && itemType < ARRAYSIZE(gSpawnItems)) {
 			UTIL_PrecacheOther(gSpawnItems[itemType].name);

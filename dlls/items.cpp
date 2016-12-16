@@ -99,7 +99,9 @@ public:
 	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	void SpawnItem(int itemType);
 	void SpawnItem();
-	int m_itemCount;
+	
+	int ItemCount();
+	
 	int m_items[ITEM_RANDOM_MAX_COUNT];
 	
 	static TYPEDESCRIPTION m_SaveData[];
@@ -109,20 +111,16 @@ LINK_ENTITY_TO_CLASS( item_random, CItemRandom )
 
 void CItemRandom::KeyValue( KeyValueData *pkvd )
 {
-	if ( FStrEq( pkvd->szKeyName, "item_count" ) ) {
-		m_itemCount = atoi( pkvd->szValue );
-		if (m_itemCount < 0) {
-			m_itemCount = 0;
-		} else if (m_itemCount > ITEM_RANDOM_MAX_COUNT) {
-			m_itemCount = ITEM_RANDOM_MAX_COUNT;
-		}
-		pkvd->fHandled = TRUE;
-	} else if ( strncmp(pkvd->szKeyName, "item", 4) == 0 && isdigit(pkvd->szKeyName[4])) {
+	if ( strncmp(pkvd->szKeyName, "item", 4) == 0 && isdigit(pkvd->szKeyName[4])) {
 		pkvd->fHandled = FALSE;
 		
 		int itemIndex = atoi(pkvd->szKeyName + 4);
 		if (itemIndex > 0 && itemIndex <= ITEM_RANDOM_MAX_COUNT) {
 			int itemType = atoi(pkvd->szValue);
+			if (itemType >= ARRAYSIZE(gSpawnItems)) {
+				itemType = 0;
+			}
+			
 			m_items[itemIndex-1] = itemType;
 			pkvd->fHandled = TRUE;
 		}
@@ -135,6 +133,16 @@ void CItemRandom::KeyValue( KeyValueData *pkvd )
 	}
 }
 
+int CItemRandom::ItemCount()
+{
+	for (int i=ITEM_RANDOM_MAX_COUNT-1; i>=0; --i) {
+		if (m_items[i]) {
+			return i+1;
+		}
+	}
+	return 0;
+}
+
 void CItemRandom::Spawn( void )
 {
 	if (FStringNull(pev->targetname)) {
@@ -144,7 +152,6 @@ void CItemRandom::Spawn( void )
 
 TYPEDESCRIPTION CItemRandom::m_SaveData[] =
 {
-	DEFINE_FIELD( CItemRandom, m_itemCount, FIELD_INTEGER ),
 	DEFINE_ARRAY( CItemRandom, m_items, FIELD_INTEGER, ITEM_RANDOM_MAX_COUNT ),
 };
 
@@ -157,8 +164,8 @@ void CItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 
 void CItemRandom::SpawnItem()
 {
-	if (m_itemCount) {
-		int chosenItemIndex = RANDOM_LONG(0, m_itemCount-1);
+	if (ItemCount()) {
+		int chosenItemIndex = RANDOM_LONG(0, ItemCount()-1);
 		int itemType = m_items[chosenItemIndex];		
 		SpawnItem(itemType);
 	} else {
@@ -178,6 +185,85 @@ void CItemRandom::SpawnItem(int itemType)
 		{
 			pEntity->pev->target = pev->target;
 			pEntity->pev->spawnflags = pev->spawnflags;
+		}
+	}
+}
+
+#define SF_INFOITEMRANDOM_STARTSPAWNED 1
+
+class CInfoItemRandom : public CItemRandom
+{
+public:
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
+	void KeyValue( KeyValueData *pkvd );
+	void Spawn();
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void SpawnItems();
+	void EXPORT SpawnThink();
+	float m_maxPoints;
+	
+	static TYPEDESCRIPTION m_SaveData[];
+};
+
+LINK_ENTITY_TO_CLASS( info_item_random, CInfoItemRandom )
+
+void CInfoItemRandom::KeyValue(KeyValueData *pkvd)
+{
+	if ( FStrEq( pkvd->szKeyName, "maxpoints" ) ) {
+		m_maxPoints = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	} else {
+		CItemRandom::KeyValue(pkvd);
+	}
+}
+
+void CInfoItemRandom::Spawn()
+{
+	if (pev->spawnflags & SF_INFOITEMRANDOM_STARTSPAWNED) {
+		SetThink(&CInfoItemRandom::SpawnThink);
+		pev->nextthink = gpGlobals->time + 0.1;
+	}
+}
+
+void CInfoItemRandom::SpawnThink()
+{
+	SpawnItems();
+	pev->nextthink = -1;
+}
+
+TYPEDESCRIPTION CInfoItemRandom::m_SaveData[] =
+{
+	DEFINE_FIELD( CInfoItemRandom, m_maxPoints, FIELD_FLOAT ),
+};
+
+IMPLEMENT_SAVERESTORE( CInfoItemRandom, CItemRandom )
+
+void CInfoItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	SpawnItems();
+}
+
+void CInfoItemRandom::SpawnItems()
+{
+	SetThink( &CBaseEntity::SUB_Remove );
+	pev->nextthink = pev->ltime + 0.1;
+	
+	if (FStringNull(pev->target)) {
+		return;
+	}
+	
+	CBaseEntity* pEntity = NULL;
+	while(pEntity = UTIL_FindEntityByTargetname(pEntity, STRING(pev->target))) {
+		if (FClassnameIs(pEntity->pev, "item_random")) {
+			CItemRandom* itemRandom = (CItemRandom*)pEntity;
+			if (itemRandom->ItemCount()) {
+				itemRandom->SpawnItem();
+			} else if (ItemCount()) {
+				int chosenItemIndex = RANDOM_LONG(0, ItemCount()-1);
+				int itemType = m_items[chosenItemIndex];
+				itemRandom->SpawnItem(itemType);
+			}
 		}
 	}
 }

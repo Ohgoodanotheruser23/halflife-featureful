@@ -86,7 +86,8 @@ public:
 	float m_angle;
 	int m_iszGibModel;
 	int m_iszSpawnObject;
-	int m_spawnItemCount;
+	
+	int ItemCount();
 	int m_spawnItems[BREAKABLE_RANDOM_SPAWN_MAX_COUNT];
 };
 #endif	// FUNC_BREAK_H
