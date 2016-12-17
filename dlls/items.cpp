@@ -135,12 +135,7 @@ void CItemRandom::KeyValue( KeyValueData *pkvd )
 
 int CItemRandom::ItemCount() const
 {
-	for (int i=ITEM_RANDOM_MAX_COUNT-1; i>=0; --i) {
-		if (m_items[i]) {
-			return i+1;
-		}
-	}
-	return 0;
+	return CountSpawnItems(m_items, ITEM_RANDOM_MAX_COUNT);
 }
 
 void CItemRandom::Spawn( void )
@@ -244,49 +239,6 @@ void CInfoItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 	SpawnItems();
 }
 
-static float makeItemProbabilityArray(int items[], int itemCount, float probabilities[])
-{
-	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
-		probabilities[i] = 0;
-	}
-	float probSum = 0;
-	for (int i=0; i<itemCount; ++i) {
-		int itemType = items[i];
-		probabilities[itemType] += 1;
-		probSum += 1;
-	}
-	return probSum;
-}
-
-// get rid of items if no points left for them
-static void updateItemProbabilityArray(float probabilities[], const float pointsLeft, float& probSum, const bool usePoints)
-{
-	if (!usePoints) {
-		return;
-	}
-	
-	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
-		if (probabilities[i] && gSpawnItems[i].value > pointsLeft) {
-			probSum -= probabilities[i];
-			probabilities[i] = 0;
-		}
-	}
-}
-
-static int chooseRandomItem(float probabilities[], const float probSum)
-{
-	float random = RANDOM_FLOAT(0, probSum);
-	ALERT(at_console, "random: %f; probSum: %f\n", random, probSum);
-	float currentProb = 0;
-	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
-		if (random >= currentProb && random <= (currentProb + probabilities[i])) {
-			return i;
-		}
-		currentProb += probabilities[i];
-	}
-	return 0;
-}
-
 static void ItemRandomShuffle(CItemRandom** first, CItemRandom** last)
 {
 	int n = (last-first);
@@ -307,11 +259,9 @@ void CInfoItemRandom::SpawnItems()
 		return;
 	}
 	
-	float probabilities[ARRAYSIZE(gSpawnItems)];
 	float pointsLeft = m_maxPoints;
 	const bool usePoints = m_maxPoints > 0;
 	const int myItemCount = ItemCount();
-	float probSum = makeItemProbabilityArray(m_items, myItemCount, probabilities);
 	
 	CBaseEntity* pEntity = NULL;
 	CItemRandom* itemRandomVec[100];
@@ -329,13 +279,9 @@ void CInfoItemRandom::SpawnItems()
 		CItemRandom* itemRandom = itemRandomVec[i];
 		int itemType = 0;
 		if (itemRandom->ItemCount()) {
-			float localProbabilities[ARRAYSIZE(gSpawnItems)];
-			float localProbSum = makeItemProbabilityArray(itemRandom->m_items, itemRandom->ItemCount(), localProbabilities);
-			updateItemProbabilityArray(localProbabilities, pointsLeft, localProbSum, usePoints);
-			itemType = chooseRandomItem(localProbabilities, localProbSum);
+			itemType = ChooseRandomSpawnItem(itemRandom->m_items, itemRandom->ItemCount(), usePoints ? &pointsLeft : NULL);
 		} else if (myItemCount) {
-			updateItemProbabilityArray(probabilities, pointsLeft, probSum, usePoints);
-			itemType = chooseRandomItem(probabilities, probSum);
+			itemType = ChooseRandomSpawnItem(m_items, myItemCount, usePoints ? &pointsLeft : NULL);
 		}
 		itemRandom->SpawnItem(itemType);
 		if (usePoints) {

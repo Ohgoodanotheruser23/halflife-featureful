@@ -87,7 +87,7 @@ public:
 	int m_iszGibModel;
 	int m_iszSpawnObject;
 	
-	int ItemCount();
+	int ItemCount() const;
 	int m_spawnItems[BREAKABLE_RANDOM_SPAWN_MAX_COUNT];
 };
 #endif	// FUNC_BREAK_H

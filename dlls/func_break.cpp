@@ -133,14 +133,9 @@ TYPEDESCRIPTION CBreakable::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE( CBreakable, CBaseEntity )
 
-int CBreakable::ItemCount()
+int CBreakable::ItemCount() const
 {
-	for (int i=BREAKABLE_RANDOM_SPAWN_MAX_COUNT-1; i>=0; --i) {
-		if (m_spawnItems[i]) {
-			return i+1;
-		}
-	}
-	return 0;
+	return CountSpawnItems(m_spawnItems, BREAKABLE_RANDOM_SPAWN_MAX_COUNT);
 }
 
 void CBreakable::Spawn( void )

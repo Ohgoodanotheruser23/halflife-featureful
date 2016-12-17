@@ -1,6 +1,8 @@
 #include "spawnitems.h"
 #include <cstddef>
-
+#include "extdll.h"
+#include "util.h"
+#include "cbase.h"
 
 
 //Items spawned by func_breakable and item_random
@@ -29,3 +31,39 @@ SpawnItem gSpawnItems[] =
 	{"weapon_snark",2.5},		// 20
 	{"weapon_hornetgun",4},	// 21
 };
+
+int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsLeft)
+{
+	float probabilities[ARRAYSIZE(gSpawnItems)];
+	for (int i=0; i<ARRAYSIZE(probabilities); ++i) {
+		probabilities[i] = 0;
+	}
+	float probSum = 0;
+	for (int i=0; i<itemCount; ++i) {
+		int itemType = items[i];
+		if (!pointsLeft || gSpawnItems[i].value <= *pointsLeft) {
+			probabilities[itemType] += 1;
+			probSum += 1;
+		}
+	}
+	
+	float random = RANDOM_FLOAT(0, probSum);
+	float currentProb = 0;
+	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+		if (random >= currentProb && random <= (currentProb + probabilities[i])) {
+			return i;
+		}
+		currentProb += probabilities[i];
+	}
+	return 0;
+}
+
+int CountSpawnItems(const int items[], int maxCount)
+{
+	for (int i=maxCount-1; i>=0; --i) {
+		if (items[i]) {
+			return i+1;
+		}
+	}
+	return 0;
+}
