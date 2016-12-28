@@ -109,9 +109,9 @@ void EvaluatePlayersNeeds(float* playerNeeds)
 			
 			// player need healkits
 			if (player->pev->health < 25) {
-				playerNeeds[2] += 20;
+				playerNeeds[2] += 2;
 			} else if (player->pev->health < 50) {
-				playerNeeds[2] += 10;
+				playerNeeds[2] += 1;
 			}
 			
 			// player is in good health and need armor
