@@ -185,6 +185,7 @@ void CItemRandom::SpawnItem(int itemType)
 }
 
 #define SF_INFOITEMRANDOM_STARTSPAWNED 1
+#define SF_INFOITEMRANDOM_SUPPORTPLAYERS 4096
 
 class CInfoItemRandom : public CItemRandom
 {
@@ -260,7 +261,7 @@ void CInfoItemRandom::SpawnItems()
 	}
 	
 	float pointsLeft = m_maxPoints;
-	const bool usePoints = m_maxPoints > 0;
+	const float* pPointsLeft = m_maxPoints > 0 ? &pointsLeft : NULL;
 	const int myItemCount = ItemCount();
 	
 	CBaseEntity* pEntity = NULL;
@@ -273,18 +274,26 @@ void CInfoItemRandom::SpawnItems()
 		}
 	}
 	
+	// So the spawn order was not defined by order of entities in map
 	ItemRandomShuffle(itemRandomVec, itemRandomVec + itemRandomCount);
+	
+	float playerNeeds[ARRAYSIZE(gSpawnItems)];
+	float* pPlayerNeeds = NULL;
+	if (pev->spawnflags & SF_INFOITEMRANDOM_SUPPORTPLAYERS) {
+		EvaluatePlayersNeeds(playerNeeds);
+		pPlayerNeeds = playerNeeds;
+	}
 	
 	for (int i = 0; i < itemRandomCount; ++i) {
 		CItemRandom* itemRandom = itemRandomVec[i];
 		int itemType = 0;
 		if (itemRandom->ItemCount()) {
-			itemType = ChooseRandomSpawnItem(itemRandom->m_items, itemRandom->ItemCount(), usePoints ? &pointsLeft : NULL);
+			itemType = ChooseRandomSpawnItem(itemRandom->m_items, itemRandom->ItemCount(), pPointsLeft, pPlayerNeeds);
 		} else if (myItemCount) {
-			itemType = ChooseRandomSpawnItem(m_items, myItemCount, usePoints ? &pointsLeft : NULL);
+			itemType = ChooseRandomSpawnItem(m_items, myItemCount, pPointsLeft, pPlayerNeeds);
 		}
 		itemRandom->SpawnItem(itemType);
-		if (usePoints) {
+		if (pPointsLeft) {
 			pointsLeft -= gSpawnItems[itemType].value;
 		}
 	}

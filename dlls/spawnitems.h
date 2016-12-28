@@ -9,7 +9,9 @@ struct SpawnItem
 
 extern SpawnItem gSpawnItems[22];
 
-int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsLeft);
+int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsLeft, const float *playerNeeds);
 int CountSpawnItems(const int items[], int maxCount);
+
+void EvaluatePlayersNeeds(float* playerNeeds);
 
 #endif

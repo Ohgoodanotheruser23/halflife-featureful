@@ -1,9 +1,11 @@
 #include "spawnitems.h"
 #include <cstddef>
+
 #include "extdll.h"
 #include "util.h"
 #include "cbase.h"
-
+#include "weapons.h"
+#include "player.h"
 
 //Items spawned by func_breakable and item_random
 SpawnItem gSpawnItems[] = 
@@ -32,7 +34,7 @@ SpawnItem gSpawnItems[] =
 	{"weapon_hornetgun",4},	// 21
 };
 
-int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsLeft)
+int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsLeft, const float* playerNeeds)
 {
 	float probabilities[ARRAYSIZE(gSpawnItems)];
 	for (int i=0; i<ARRAYSIZE(probabilities); ++i) {
@@ -43,7 +45,10 @@ int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsL
 		int itemType = items[i];
 		if (!pointsLeft || gSpawnItems[i].value <= *pointsLeft) {
 			probabilities[itemType] += 1;
-			probSum += 1;
+			if (playerNeeds) {
+				probabilities[itemType] += playerNeeds[itemType];
+			}
+			probSum += probabilities[itemType];
 		}
 	}
 	
@@ -66,4 +71,84 @@ int CountSpawnItems(const int items[], int maxCount)
 		}
 	}
 	return 0;
+}
+
+// Ugly magic numbers here are indices to gSpawnItems array
+static int GetSpawnItemIndexByWeaponId(int IId) {
+	switch(IId) {
+	case WEAPON_GLOCK:
+		return 4;
+	case WEAPON_PYTHON:
+		return 13;
+	case WEAPON_MP5:
+		return 6;
+	case WEAPON_SHOTGUN:
+		return 9;
+	case WEAPON_CROSSBOW:
+		return 11;
+	case WEAPON_RPG:
+		return 15;
+	case WEAPON_GAUSS:
+	case WEAPON_EGON:
+		return 16;
+	}
+	return 0;
+}
+
+void EvaluatePlayersNeeds(float* playerNeeds)
+{	
+	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+		playerNeeds[i] = 0;
+	}
+	
+	int playerCount = 0;
+	for(int i = 1; i <= gpGlobals->maxClients; i++ ) {
+		CBasePlayer* player = (CBasePlayer*)UTIL_PlayerByIndex(i);
+		if (player && player->IsPlayer() && player->IsAlive()) {
+			playerCount++;
+			
+			// player need healkits
+			if (player->pev->health < 25) {
+				playerNeeds[2] += 20;
+			} else if (player->pev->health < 50) {
+				playerNeeds[2] += 10;
+			}
+			
+			// player is in good health and need armor
+			if (player->pev->health > 90 || player->pev->armorvalue < 20) {
+				playerNeeds[1] += 1;
+			}
+			
+			for(int j = 0; j < MAX_ITEM_TYPES; j++ )
+			{
+				if( player->m_rgpPlayerItems[j] )
+				{
+					CBasePlayerWeapon *pPlayerItem = (CBasePlayerWeapon*)player->m_rgpPlayerItems[j];
+					while( pPlayerItem )
+					{
+						int ammoAmount = player->AmmoInventory(player->GetAmmoIndex(pPlayerItem->pszAmmo1()));
+						if (ammoAmount >= 0) {
+							int spawnItemIndex = GetSpawnItemIndexByWeaponId(pPlayerItem->m_iId);
+							if (spawnItemIndex) {
+								int maxAmmo = pPlayerItem->iMaxAmmo1();
+								if (ammoAmount <= maxAmmo / 4) {
+									playerNeeds[spawnItemIndex] += 2;
+								} else if (ammoAmount <= maxAmmo / 2) {
+									playerNeeds[spawnItemIndex] += 1;
+								}
+							}
+						}
+						
+						pPlayerItem = (CBasePlayerWeapon*)pPlayerItem->m_pNext;
+					}
+				}
+			}
+		}
+	}
+	
+	if (playerCount) {
+		for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+			playerNeeds[i] /= playerCount;
+		}
+	}
 }

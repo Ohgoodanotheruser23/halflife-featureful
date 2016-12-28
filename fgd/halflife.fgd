@@ -1190,6 +1190,7 @@
 		2 : "Touch"	   : 0
 		4 : "Pressure"     : 0
 		256: "Instant Crowbar" : 1
+		4096 : "Support players needs" : 0
 	]
 	_minlight(string) : "Minimum light level"
 ]
@@ -1405,6 +1406,7 @@
 	spawnflags(flags) =
 	[
 		128: "Breakable" : 0
+		4096 : "Support players needs" : 0
 	]
 	friction(integer) : "Friction (0-400)" : 50
 	buoyancy(integer) : "Buoyancy" : 20
@@ -1781,7 +1783,7 @@
 	texture(decal)
 ]
 
-@BaseClass base(Target, Targetname) = RandomItem
+@BaseClass base(Target, Targetname, Appearflags) = RandomItem
 [
 	item1(choices) : "Possible item 1" : 0 =
 	[
@@ -1963,6 +1965,7 @@
 	spawnflags(Flags) = 
 	[
 		1 : "Start spawned" : 0
+		4096 : "Support players needs" : 1
 	]
 ]
 

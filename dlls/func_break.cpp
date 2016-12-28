@@ -30,6 +30,8 @@
 
 extern DLL_GLOBAL Vector	g_vecAttackDir;
 
+#define SF_BREAK_SUPPORTPLAYERS 4096
+
 // =================== FUNC_Breakable ==============================================
 
 void CBreakable::KeyValue( KeyValueData* pkvd )
@@ -743,11 +745,18 @@ void CBreakable::Die( void )
 
 	SetThink( &CBaseEntity::SUB_Remove );
 	pev->nextthink = pev->ltime + 0.1;
-	if( m_iszSpawnObject ) {
+	if( !FStringNull(m_iszSpawnObject) ) {
 		CBaseEntity::Create( (char *)STRING( m_iszSpawnObject ), VecBModelOrigin( pev ), pev->angles, edict() );
 	} else if (ItemCount()) {
-		int chosenItemIndex = RANDOM_LONG(0, ItemCount()-1);
-		int itemType = m_spawnItems[chosenItemIndex];	
+		
+		float playerNeeds[ARRAYSIZE(gSpawnItems)];
+		float* pPlayerNeeds = NULL;
+		if (pev->spawnflags & SF_BREAK_SUPPORTPLAYERS) {
+			EvaluatePlayersNeeds(playerNeeds);
+			pPlayerNeeds = playerNeeds;
+		}
+		
+		int itemType = ChooseRandomSpawnItem(m_spawnItems, ItemCount(), NULL, pPlayerNeeds);	
 		if (itemType && itemType < ARRAYSIZE(gSpawnItems)) {
 			UTIL_PrecacheOther(gSpawnItems[itemType].name);
 			CBaseEntity::Create( (char*)gSpawnItems[itemType].name, VecBModelOrigin( pev ), pev->angles, edict() );
