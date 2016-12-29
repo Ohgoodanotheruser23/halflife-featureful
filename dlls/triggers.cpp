@@ -2399,17 +2399,37 @@ public:
 	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	void Think();
 	
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
+	static TYPEDESCRIPTION m_SaveData[];
+	
 	int ChooseTarget();
 	float GetRandomDelay();
 	int m_targetCount;
 	int m_targets[TRIGGER_RANDOM_MAX_COUNT];
 	int m_uniqueTargetsLeft;
+	int m_triggerNumberLimit;
+	int m_triggerCounter;
 	float m_minDelay;
 	float m_maxDelay;
 	BOOL m_active;
 };
 
 LINK_ENTITY_TO_CLASS( trigger_random, CTriggerRandom )
+
+TYPEDESCRIPTION	CTriggerRandom::m_SaveData[] =
+{
+	DEFINE_FIELD( CTriggerRandom, m_targetCount, FIELD_INTEGER ),
+	DEFINE_ARRAY( CTriggerRandom, m_targets, FIELD_STRING, TRIGGER_RANDOM_MAX_COUNT ),
+	DEFINE_FIELD( CTriggerRandom, m_uniqueTargetsLeft, FIELD_INTEGER ),
+	DEFINE_FIELD( CTriggerRandom, m_triggerNumberLimit, FIELD_INTEGER ),
+	DEFINE_FIELD( CTriggerRandom, m_triggerCounter, FIELD_INTEGER ),
+	DEFINE_FIELD( CTriggerRandom, m_minDelay, FIELD_FLOAT ),
+	DEFINE_FIELD( CTriggerRandom, m_maxDelay, FIELD_FLOAT ),
+	DEFINE_FIELD( CTriggerRandom, m_active, FIELD_BOOLEAN ),
+};
+
+IMPLEMENT_SAVERESTORE( CTriggerRandom, CBaseEntity )
 
 void CTriggerRandom::KeyValue( KeyValueData *pkvd )
 {
@@ -2423,6 +2443,12 @@ void CTriggerRandom::KeyValue( KeyValueData *pkvd )
 		m_maxDelay = atof( pkvd->szValue );
 		if (m_maxDelay < 0) {
 			m_maxDelay = 0;
+		}
+		pkvd->fHandled = TRUE;
+	} else if ( FStrEq( pkvd->szKeyName, "trigger_number") ) {
+		m_triggerNumberLimit = atoi( pkvd->szValue );
+		if (m_triggerNumberLimit < 0) {
+			m_triggerNumberLimit = 0;
 		}
 		pkvd->fHandled = TRUE;
 	} else if ( FStrEq( pkvd->szKeyName, "target_count" ) ) {
@@ -2454,6 +2480,7 @@ void CTriggerRandom::KeyValue( KeyValueData *pkvd )
 
 void CTriggerRandom::Spawn()
 {
+	m_triggerCounter = 0;
 	if (pev->spawnflags & SF_TRIGGER_RANDOM_UNIQUE) {
 		m_uniqueTargetsLeft = m_targetCount;
 	}
@@ -2473,6 +2500,8 @@ void CTriggerRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 		m_active = !m_active;
 		if (m_active) {
 			pev->nextthink = gpGlobals->time + GetRandomDelay();
+		} else {
+			m_triggerCounter = 0;
 		}
 	} else {
 		int chosenTarget = ChooseTarget();
@@ -2488,6 +2517,13 @@ void CTriggerRandom::Think()
 		int chosenTarget = ChooseTarget();
 		if (!FStringNull(chosenTarget)) {
 			FireTargets(STRING(chosenTarget), this, this, USE_TOGGLE, 0);
+			if (m_triggerNumberLimit) {
+				m_triggerCounter++;
+				if (m_triggerCounter >= m_triggerNumberLimit) {
+					m_active = FALSE;
+					m_triggerCounter = 0;
+				}
+			}
 		}
 		
 		if (pev->spawnflags & SF_TRIGGER_RANDOM_ONCE) {
