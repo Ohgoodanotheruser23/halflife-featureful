@@ -28,6 +28,7 @@
 #include "skill.h"
 #include "items.h"
 #include "gamerules.h"
+#include "spawnitems.h"
 
 extern int gmsgItemPickup;
 
@@ -86,71 +87,216 @@ void CWorldItem::Spawn( void )
 	REMOVE_ENTITY( edict() );
 }
 
-#define ITEM_RANDOM_VALUE_LENGTH 31
-#define ITEM_RANDOM_MAX_COUNT 9 //when changing this, CItemRandom::KeyValue must be changed too
+#define ITEM_RANDOM_MAX_COUNT 9
 
 class CItemRandom : public CBaseEntity
 {
 public:
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
 	void KeyValue( KeyValueData *pkvd ); 
 	void Spawn( void );
-	int m_itemCount;
-	char m_items[ITEM_RANDOM_MAX_COUNT][ITEM_RANDOM_VALUE_LENGTH+1];
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void SpawnItem(int itemType);
+	void SpawnItem();
+	
+	int ItemCount() const;
+	
+	int m_items[ITEM_RANDOM_MAX_COUNT];
+	
+	static TYPEDESCRIPTION m_SaveData[];
 };
 
 LINK_ENTITY_TO_CLASS( item_random, CItemRandom )
 
 void CItemRandom::KeyValue( KeyValueData *pkvd )
 {
-	if ( FStrEq( pkvd->szKeyName, "item_count" ) ) {
-		m_itemCount = atoi( pkvd->szValue );
-		if (m_itemCount < 0) {
-			m_itemCount = 0;
-		} else if (m_itemCount > ITEM_RANDOM_MAX_COUNT) {
-			m_itemCount = ITEM_RANDOM_MAX_COUNT;
-		}
-		pkvd->fHandled = TRUE;
-	} else if ( strncmp(pkvd->szKeyName, "item", 4) == 0 && isdigit(pkvd->szKeyName[4])) {
+	if ( strncmp(pkvd->szKeyName, "item", 4) == 0 && isdigit(pkvd->szKeyName[4])) {
 		pkvd->fHandled = FALSE;
-		char buf[8] = "item";
-		for (int i=0; i<ITEM_RANDOM_MAX_COUNT; ++i) {
-			sprintf(buf+4, "%d", i+1);
-			if (strcmp(buf+4, pkvd->szKeyName+4) == 0) {
-				strncpy(m_items[i], pkvd->szValue, ITEM_RANDOM_VALUE_LENGTH);
-				m_items[i][ITEM_RANDOM_VALUE_LENGTH] = '\0';
-				pkvd->fHandled = TRUE;
-				break;
+		
+		int itemIndex = atoi(pkvd->szKeyName + 4);
+		if (itemIndex > 0 && itemIndex <= ITEM_RANDOM_MAX_COUNT) {
+			int itemType = atoi(pkvd->szValue);
+			if (itemType >= ARRAYSIZE(gSpawnItems)) {
+				itemType = 0;
 			}
+			
+			m_items[itemIndex-1] = itemType;
+			pkvd->fHandled = TRUE;
 		}
 		if (pkvd->fHandled == FALSE) {
 			CBaseEntity::KeyValue( pkvd );
+			return;
 		}
 	} else {
 		CBaseEntity::KeyValue( pkvd );
 	}
 }
 
+int CItemRandom::ItemCount() const
+{
+	return CountSpawnItems(m_items, ITEM_RANDOM_MAX_COUNT);
+}
+
 void CItemRandom::Spawn( void )
 {
-	if (m_itemCount) {
-		int chosenItemIndex = RANDOM_LONG(0, m_itemCount-1);
-		char* chosenItem = m_items[chosenItemIndex];
-		if (strcmp(chosenItem, "nothing") != 0) {
-			CBaseEntity *pEntity = CBaseEntity::Create( chosenItem, pev->origin, pev->angles );
-			if( !pEntity )
-			{
-				ALERT( at_console, "unable to create item_random '%s'\n", chosenItem );
-			}
-			else
-			{
-				pEntity->pev->target = pev->target;
-				pEntity->pev->targetname = pev->targetname;
-				pEntity->pev->spawnflags = pev->spawnflags;
-			}
+	if (FStringNull(pev->targetname)) {
+		SpawnItem();
+	}
+}
+
+TYPEDESCRIPTION CItemRandom::m_SaveData[] =
+{
+	DEFINE_ARRAY( CItemRandom, m_items, FIELD_INTEGER, ITEM_RANDOM_MAX_COUNT ),
+};
+
+IMPLEMENT_SAVERESTORE( CItemRandom, CBaseEntity )
+
+void CItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	SpawnItem();
+}
+
+void CItemRandom::SpawnItem()
+{
+	if (ItemCount()) {
+		int chosenItemIndex = RANDOM_LONG(0, ItemCount()-1);
+		int itemType = m_items[chosenItemIndex];		
+		SpawnItem(itemType);
+	} else {
+		SpawnItem(0);
+	}
+}
+
+void CItemRandom::SpawnItem(int itemType)
+{
+	SetThink( &CBaseEntity::SUB_Remove );
+	pev->nextthink = pev->ltime + 0.1;
+	
+	if (itemType && itemType < ARRAYSIZE(gSpawnItems)) {
+		UTIL_PrecacheOther(gSpawnItems[itemType].name);
+		CBaseEntity *pEntity = CBaseEntity::Create( (char*)gSpawnItems[itemType].name, pev->origin, pev->angles, edict() );
+		if( pEntity )
+		{
+			pEntity->pev->target = pev->target;
+			pEntity->pev->spawnflags = pev->spawnflags;
 		}
 	}
+}
 
-	REMOVE_ENTITY( edict() );
+#define SF_INFOITEMRANDOM_STARTSPAWNED 1
+#define SF_INFOITEMRANDOM_SUPPORTPLAYERS 4096
+
+class CInfoItemRandom : public CItemRandom
+{
+public:
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
+	void KeyValue( KeyValueData *pkvd );
+	void Spawn();
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void SpawnItems();
+	void EXPORT SpawnThink();
+	float m_maxPoints;
+	
+	static TYPEDESCRIPTION m_SaveData[];
+};
+
+LINK_ENTITY_TO_CLASS( info_item_random, CInfoItemRandom )
+
+void CInfoItemRandom::KeyValue(KeyValueData *pkvd)
+{
+	if ( FStrEq( pkvd->szKeyName, "maxpoints" ) ) {
+		m_maxPoints = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	} else {
+		CItemRandom::KeyValue(pkvd);
+	}
+}
+
+void CInfoItemRandom::Spawn()
+{
+	if (pev->spawnflags & SF_INFOITEMRANDOM_STARTSPAWNED) {
+		SetThink(&CInfoItemRandom::SpawnThink);
+		pev->nextthink = gpGlobals->time + 0.1;
+	}
+}
+
+void CInfoItemRandom::SpawnThink()
+{
+	SpawnItems();
+	pev->nextthink = -1;
+}
+
+TYPEDESCRIPTION CInfoItemRandom::m_SaveData[] =
+{
+	DEFINE_FIELD( CInfoItemRandom, m_maxPoints, FIELD_FLOAT ),
+};
+
+IMPLEMENT_SAVERESTORE( CInfoItemRandom, CItemRandom )
+
+void CInfoItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	SpawnItems();
+}
+
+static void ItemRandomShuffle(CItemRandom** first, CItemRandom** last)
+{
+	int n = (last-first);
+	for (int i=n-1; i>0; --i) {
+		CItemRandom* temp = first[i];
+		int randomIndex = RANDOM_LONG(0,i);
+		first[i] = first[randomIndex];
+		first[randomIndex] = temp;
+	}
+}
+
+void CInfoItemRandom::SpawnItems()
+{
+	SetThink( &CBaseEntity::SUB_Remove );
+	pev->nextthink = pev->ltime + 0.1;
+	
+	if (FStringNull(pev->target)) {
+		return;
+	}
+	
+	float pointsLeft = m_maxPoints;
+	const float* pPointsLeft = m_maxPoints > 0 ? &pointsLeft : NULL;
+	const int myItemCount = ItemCount();
+	
+	CBaseEntity* pEntity = NULL;
+	CItemRandom* itemRandomVec[100];
+	int itemRandomCount = 0;
+	while((pEntity = UTIL_FindEntityByTargetname(pEntity, STRING(pev->target))) && itemRandomCount < ARRAYSIZE(itemRandomVec)) {
+		if (FClassnameIs(pEntity->pev, "item_random")) {
+			CItemRandom* itemRandom = (CItemRandom*)pEntity;
+			itemRandomVec[itemRandomCount++] = itemRandom;
+		}
+	}
+	
+	// So the spawn order was not defined by order of entities in map
+	ItemRandomShuffle(itemRandomVec, itemRandomVec + itemRandomCount);
+	
+	float playerNeeds[ARRAYSIZE(gSpawnItems)];
+	float* pPlayerNeeds = NULL;
+	if (pev->spawnflags & SF_INFOITEMRANDOM_SUPPORTPLAYERS) {
+		EvaluatePlayersNeeds(playerNeeds);
+		pPlayerNeeds = playerNeeds;
+	}
+	
+	for (int i = 0; i < itemRandomCount; ++i) {
+		CItemRandom* itemRandom = itemRandomVec[i];
+		int itemType = 0;
+		if (itemRandom->ItemCount()) {
+			itemType = ChooseRandomSpawnItem(itemRandom->m_items, itemRandom->ItemCount(), pPointsLeft, pPlayerNeeds);
+		} else if (myItemCount) {
+			itemType = ChooseRandomSpawnItem(m_items, myItemCount, pPointsLeft, pPlayerNeeds);
+		}
+		itemRandom->SpawnItem(itemType);
+		if (pPointsLeft) {
+			pointsLeft -= gSpawnItems[itemType].value;
+		}
+	}
 }
 
 void CItem::Spawn( void )

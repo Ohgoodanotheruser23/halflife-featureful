@@ -26,39 +26,13 @@
 #include "func_break.h"
 #include "decals.h"
 #include "explode.h"
+#include "spawnitems.h"
 
 extern DLL_GLOBAL Vector	g_vecAttackDir;
 
-// =================== FUNC_Breakable ==============================================
+#define SF_BREAK_SUPPORTPLAYERS 4096
 
-// Just add more items to the bottom of this array and they will automagically be supported
-// This is done instead of just a classname in the FGD so we can control which entities can
-// be spawned, and still remain fairly flexible
-const char *CBreakable::pSpawnObjects[] =
-{
-	NULL,			// 0
-	"item_battery",		// 1
-	"item_healthkit",	// 2
-	"weapon_9mmhandgun",	// 3
-	"ammo_9mmclip",		// 4
-	"weapon_9mmAR",		// 5
-	"ammo_9mmAR",		// 6
-	"ammo_ARgrenades",	// 7
-	"weapon_shotgun",	// 8
-	"ammo_buckshot",	// 9
-	"weapon_crossbow",	// 10
-	"ammo_crossbow",	// 11
-	"weapon_357",		// 12
-	"ammo_357",		// 13
-	"weapon_rpg",		// 14
-	"ammo_rpgclip",		// 15
-	"ammo_gaussclip",	// 16
-	"weapon_handgrenade",	// 17
-	"weapon_tripmine",	// 18
-	"weapon_satchel",	// 19
-	"weapon_snark",		// 20
-	"weapon_hornetgun",	// 21
-};
+// =================== FUNC_Breakable ==============================================
 
 void CBreakable::KeyValue( KeyValueData* pkvd )
 {
@@ -104,9 +78,27 @@ void CBreakable::KeyValue( KeyValueData* pkvd )
 	else if( FStrEq( pkvd->szKeyName, "spawnobject" ) )
 	{
 		int object = atoi( pkvd->szValue );
-		if( object > 0 && object < ARRAYSIZE( pSpawnObjects ) )
-			m_iszSpawnObject = MAKE_STRING( pSpawnObjects[object] );
+		if( object > 0 && object < ARRAYSIZE( gSpawnItems ) )
+			m_iszSpawnObject = MAKE_STRING( gSpawnItems[object].name );
 		pkvd->fHandled = TRUE;
+	}
+	else if ( (strncmp( pkvd->szKeyName, "spawnitem", 9) == 0) && isdigit(pkvd->szKeyName[9]) ) 
+	{
+		pkvd->fHandled = FALSE;
+		int itemIndex = atoi(pkvd->szKeyName + 9);
+		if (itemIndex > 0 && itemIndex <= BREAKABLE_RANDOM_SPAWN_MAX_COUNT) {
+			int itemType = atoi(pkvd->szValue);
+			if (itemType >= ARRAYSIZE(gSpawnItems)) {
+				itemType = 0;
+			}
+			
+			m_spawnItems[itemIndex-1] = itemType;
+			pkvd->fHandled = TRUE;
+		}
+		if (pkvd->fHandled == FALSE) {
+			CBaseDelay::KeyValue( pkvd );
+			return;
+		}
 	}
 	else if( FStrEq( pkvd->szKeyName, "explodemagnitude" ) )
 	{
@@ -135,11 +127,18 @@ TYPEDESCRIPTION CBreakable::m_SaveData[] =
 	DEFINE_FIELD( CBreakable, m_angle, FIELD_FLOAT ),
 	DEFINE_FIELD( CBreakable, m_iszGibModel, FIELD_STRING ),
 	DEFINE_FIELD( CBreakable, m_iszSpawnObject, FIELD_STRING ),
+	
+	DEFINE_ARRAY( CBreakable, m_spawnItems, FIELD_INTEGER, BREAKABLE_RANDOM_SPAWN_MAX_COUNT),
 
 	// Explosion magnitude is stored in pev->impulse
 };
 
 IMPLEMENT_SAVERESTORE( CBreakable, CBaseEntity )
+
+int CBreakable::ItemCount() const
+{
+	return CountSpawnItems(m_spawnItems, BREAKABLE_RANDOM_SPAWN_MAX_COUNT);
+}
 
 void CBreakable::Spawn( void )
 {
@@ -746,8 +745,23 @@ void CBreakable::Die( void )
 
 	SetThink( &CBaseEntity::SUB_Remove );
 	pev->nextthink = pev->ltime + 0.1;
-	if( m_iszSpawnObject )
+	if( !FStringNull(m_iszSpawnObject) ) {
 		CBaseEntity::Create( (char *)STRING( m_iszSpawnObject ), VecBModelOrigin( pev ), pev->angles, edict() );
+	} else if (ItemCount()) {
+		
+		float playerNeeds[ARRAYSIZE(gSpawnItems)];
+		float* pPlayerNeeds = NULL;
+		if (pev->spawnflags & SF_BREAK_SUPPORTPLAYERS) {
+			EvaluatePlayersNeeds(playerNeeds);
+			pPlayerNeeds = playerNeeds;
+		}
+		
+		int itemType = ChooseRandomSpawnItem(m_spawnItems, ItemCount(), NULL, pPlayerNeeds);	
+		if (itemType && itemType < ARRAYSIZE(gSpawnItems)) {
+			UTIL_PrecacheOther(gSpawnItems[itemType].name);
+			CBaseEntity::Create( (char*)gSpawnItems[itemType].name, VecBModelOrigin( pev ), pev->angles, edict() );
+		}
+	}
 
 	if( Explodable() )
 	{

@@ -110,6 +110,7 @@ set (SVDLL_SOURCES
 	skill.cpp
 	sound.cpp
 	soundent.cpp
+	spawnitems.cpp
 	spectator.cpp
 	squadmonster.cpp
 	squeakgrenade.cpp
