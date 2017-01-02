@@ -912,9 +912,31 @@ void CBasePlayer::DeathSound( void )
 // bitsDamageType indicates type of damage healed. 
 int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 {
-	int result = CBaseMonster::TakeHealth( flHealth, bitsDamageType );
+	if ((flHealth == 1 && pev->health >= pev->max_health) || (pev->health < pev->max_health && pev->health + flHealth > pev->max_health) ) {
+		const int diff = (int)(pev->health + flHealth - pev->max_health);
+		for( int i = 0; i < MAX_ITEM_TYPES; i++ ) {
+			if( m_rgpPlayerItems[i] ) {
+				CBasePlayerItem *pPlayerItem = m_rgpPlayerItems[i];
+				while( pPlayerItem ) {
+					if (pPlayerItem->m_iId == WEAPON_MEDKIT) {
+						//CBasePlayerWeapon* pPlayerWeapon = (CBasePlayerWeapon*)pPlayerItem;
+						int medAmmoIndex = GetAmmoIndex(pPlayerItem->pszAmmo1());
+						int medAmmo = AmmoInventory(medAmmoIndex);
+						if (medAmmo >= 0 && medAmmo < pPlayerItem->iMaxAmmo1()) {
+							m_rgAmmo[medAmmoIndex] += min(diff, pPlayerItem->iMaxAmmo1() - medAmmo);
+							CBaseMonster::TakeHealth( flHealth, bitsDamageType );
+							RefreshMaxSpeed(this);
+							return 1;
+						}
+					}
+					pPlayerItem = pPlayerItem->m_pNext;
+				}
+			}
+		}
+	}
+	
 	RefreshMaxSpeed(this);
-	return result;
+	return CBaseMonster::TakeHealth( flHealth, bitsDamageType );
 }
 
 Vector CBasePlayer::GetGunPosition()
@@ -4018,6 +4040,7 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		GiveNamedItem( "weapon_satchel" );
 		GiveNamedItem( "weapon_snark" );
 		GiveNamedItem( "weapon_hornetgun" );
+		GiveNamedItem( "weapon_medkit" );
 #endif
 		gEvilImpulse101 = FALSE;
 		break;
