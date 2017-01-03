@@ -306,12 +306,29 @@ public:
 	}
 };
 
+class GinaPhrases : public CharacterPhrases
+{
+	bool killedEnemy(CBasePlayer *player) {
+		return player->SaySentence("PGI_KILL");
+	}
+	bool friendlyFire(CBasePlayer *player) {
+		return player->SaySentence("PGI_FF");
+	}
+	bool seeEnemy(CBasePlayer *player, CBaseEntity *enemy) {
+		return player->SaySentence("PGI_ENEMY");
+	}
+	bool beCareful(CBasePlayer *player) {
+		return player->SaySentence("PGI_CAREFUL");
+	}
+};
+
 CharacterPhrases* CBasePlayer::GetCharPhrases()
 {
 	//HACKHACK singletone
 	static BarneyPhrases barneyPhrases;
 	static ScientistPhrases scientistPhrases;
 	static RoboPhrases roboPhrases;
+	static GinaPhrases ginaPhrases;
 	static CharacterPhrases genericPhrases;
 	
 	switch(m_playerCharacter) {
@@ -322,6 +339,8 @@ CharacterPhrases* CBasePlayer::GetCharPhrases()
 		return &scientistPhrases;
 	case PLAYER_CHAR_ROBO:
 		return &roboPhrases;
+	case PLAYER_CHAR_GINA:
+		return &ginaPhrases;
 	default:
 		return &genericPhrases;
 	}
@@ -3510,6 +3529,8 @@ void CBasePlayer::RefreshCharacter()
 		m_playerCharacter = PLAYER_CHAR_HELMET;
 	} else if (FStrEq(playerModel, "robo")) {
 		m_playerCharacter = PLAYER_CHAR_ROBO;
+	} else if (FStrEq(playerModel, "gina")) {
+		m_playerCharacter = PLAYER_CHAR_GINA;
 	} else {
 		m_playerCharacter = PLAYER_CHAR_OTHER;
 	}
