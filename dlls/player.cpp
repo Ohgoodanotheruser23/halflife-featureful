@@ -308,6 +308,21 @@ public:
 
 class GinaPhrases : public CharacterPhrases
 {
+	bool no(CBasePlayer *player) {
+		return player->SaySentence("PGI_NO");
+	}
+	bool optimistic(CBasePlayer *player) {
+		return player->SaySentence("PGI_OPTIM");
+	}
+	bool letsGo(CBasePlayer* player) {
+		return player->SaySentence("PGI_LETSGO");
+	}
+	bool leadOn(CBasePlayer* player) {
+		return player->SaySentence("PGI_LEADON");
+	}
+	bool wait(CBasePlayer* player) {
+		return player->SaySentence("PGI_WAIT");
+	}
 	bool killedEnemy(CBasePlayer *player) {
 		return player->SaySentence("PGI_KILL");
 	}

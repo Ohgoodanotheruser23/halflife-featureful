@@ -1596,3 +1596,21 @@ PGI_FF1 gina/gina_mad2
 
 PGI_ENEMY0 gina/gina_attack1
 PGI_ENEMY1 gina/gina_attack2
+
+PGI_LETSGO0 gina/gina_use2
+//PGI_LETSGO1 holo/tr_holo_retry(s36 e53)
+
+PGI_LEADON0 gina/gina_use1
+PGI_LEADON1 gina/gina_use1
+PGI_LEADON2 gina/gina_use3
+PGI_LEADON3 gina/gina_use4
+PGI_LEADON4 gina/gina_use5
+
+PGI_WAIT0 gina/gina_stop0
+PGI_WAIT1 gina/gina_unuse2
+
+PGI_OPTIM0 holo/tr_holo_fantastic
+//PGI_OPTIM1 holo/tr_holo_greatwork(e23)
+//PGI_OPTIM2 holo/tr_holo_nicejob
+
+PGI_NO0 holo/tr_holo_tryagain(e21)
