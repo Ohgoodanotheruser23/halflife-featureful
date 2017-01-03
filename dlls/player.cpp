@@ -975,8 +975,9 @@ int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 		}
 	}
 	
+	int result = CBaseMonster::TakeHealth( flHealth, bitsDamageType );
 	RefreshMaxSpeed(this);
-	return CBaseMonster::TakeHealth( flHealth, bitsDamageType );
+	return result;
 }
 
 Vector CBasePlayer::GetGunPosition()
