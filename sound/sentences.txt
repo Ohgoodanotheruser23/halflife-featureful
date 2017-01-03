@@ -1335,6 +1335,34 @@ GM_WONTWORK gman/gman_nowork
 
 // Player Barney
 
+PBA_YES0 barney/iguess
+PBA_YES1 barney/yessir
+PBA_YES2 barney/yup
+
+PBA_NO0 barney/dontguess
+PBA_NO1 barney/nope
+PBA_NO2 barney/nosir
+PBA_NO3 barney/noway
+
+PBA_SORRY0 barney/ba_duty(e32)
+PBA_SORRY1 barney/ba_post(e19)
+
+PBA_LETSGO0 barney/imwithyou
+PBA_LETSGO1 barney/letsgo(s27)
+PBA_LETSGO2 barney/letsmoveit(s37)
+
+PBA_LEADON0 barney/c1a2_ba_goforit
+PBA_LEADON1 barney/letsgo
+PBA_LEADON2 barney/letsmoveit
+PBA_LEADON3 holo/tr_ba_use
+
+PBA_TEAMUP0 barney/dobettertogether(s20)
+PBA_TEAMUP1 barney/teamup1(s19)
+
+PBA_WAIT0 barney/c3a2_ba_stay
+PBA_WAIT1 barney/stophere
+PBA_WAIT1 barney/ba_generic0
+
 PBA_WOUND0 barney/imhit
 PBA_WOUND1 barney/hitbad
 PBA_WOUND2 barney/survive
@@ -1399,6 +1427,36 @@ PBA_HEAL1 barney/ba_button1
 
 // Player scientist
 
+PSC_YES0 scientist/absolutely
+PSC_YES1 scientist/ofcourse
+PSC_YES2 scientist/positively
+PSC_YES3 scientist/yees
+PSC_YES4 scientist/yes
+PSC_YES5 scientist/yes2
+PSC_YES6 scientist/yes3
+PSC_YES7 scientist/yesok
+
+PSC_NO0 scientist/absolutelynot
+PSC_NO1 scientist/noo
+PSC_NO2 scientist/ofcoursenot
+
+PSC_SORRY0 scientist/sorryimleaving(e36)
+PSC_SORRY1 scientist/c3a1_sci_2sat(e21)
+
+PSC_LETSGO0 scientist/letsgo
+PSC_LETSGO1 scientist/c3a2_sci_uphere(s87)
+
+PSC_LEADON0 scientist/hopeyouknow
+PSC_LEADON1 scientist/leadtheway
+PSC_LEADON2 scientist/okgetout
+PSC_LEADON3 scientist/okihope
+PSC_LEADON4 scientist/yesletsgo
+
+PSC_WAIT0 scientist/letyouin(e42)
+PSC_WAIT1 scientist/waithere
+PSC_WAIT2 scientist/delayagain(e49)
+PSC_WAIT3 scientist/stop2
+
 PSC_YOUBAD0 scientist/youlookbad
 PSC_YOUBAD1 scientist/youwounded
 
@@ -1448,6 +1506,19 @@ PSC_RESCUEME0 scientist/c1a4_sci_blind
 PSC_RESCUEME1 scientist/hello2
 
 // Player robo
+
+PRO_YES0 vox/yes
+
+PRO_NO0 vox/no
+
+PRO_SORRY0 vox/sorry
+
+PRO_LETSGO0 vox/move
+
+PRO_LEADON0 vox/i got your back
+PRO_LEADON1 vox/i with you
+
+PRO_WAIT0 vox/do not move
 
 PRO_WOUND0 vox/i am in bad condition
 PRO_WOUND1 vox/i am damaged

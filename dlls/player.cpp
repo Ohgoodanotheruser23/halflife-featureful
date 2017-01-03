@@ -54,6 +54,27 @@ extern edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer );
 class CharacterPhrases
 {
 public:
+	virtual bool yes(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool no(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool sorry(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool letsGo(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool leadOn(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool stayTogether(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool wait(CBasePlayer* player) {
+		return false;
+	}
 	virtual bool lightDamage(CBasePlayer* player) {
 		return false;
 	}
@@ -111,6 +132,27 @@ protected:
 class BarneyPhrases : public CharacterPhrases
 {
 public:
+	bool yes(CBasePlayer *player) {
+		return player->SaySentence("PBA_YES");
+	}
+	bool no(CBasePlayer *player) {
+		return player->SaySentence("PBA_NO");
+	}
+	bool sorry(CBasePlayer *player) {
+		return player->SaySentence("PBA_SORRY");
+	}
+	bool letsGo(CBasePlayer* player) {
+		return player->SaySentence("PBA_LETSGO");
+	}
+	bool leadOn(CBasePlayer* player) {
+		return player->SaySentence("PBA_LEADON");
+	}
+	bool stayTogether(CBasePlayer* player) {
+		return player->SaySentence("PBA_TEAMUP");
+	}
+	bool wait(CBasePlayer* player) {
+		return player->SaySentence("PBA_WAIT");
+	}
 	bool lightDamage(CBasePlayer* player) {
 		return player->SaySentence("PBA_WOUND");
 	}
@@ -166,6 +208,24 @@ public:
 class ScientistPhrases : public CharacterPhrases
 {
 public:
+	bool yes(CBasePlayer *player) {
+		return player->SaySentence("PSC_YES");
+	}
+	bool no(CBasePlayer *player) {
+		return player->SaySentence("PSC_NO");
+	}
+	bool sorry(CBasePlayer *player) {
+		return player->SaySentence("PSC_SORRY");
+	}
+	bool letsGo(CBasePlayer* player) {
+		return player->SaySentence("PSC_LETSGO");
+	}
+	bool leadOn(CBasePlayer* player) {
+		return player->SaySentence("PSC_LEADON");
+	}
+	bool wait(CBasePlayer* player) {
+		return player->SaySentence("PSC_WAIT");
+	}
 	bool lightDamage(CBasePlayer* player) {
 		return player->SaySentence("SC_WOUND");
 	}
@@ -216,6 +276,24 @@ public:
 class RoboPhrases : public CharacterPhrases
 {
 public:
+	bool yes(CBasePlayer *player) {
+		return player->SaySentence("PRO_YES");
+	}
+	bool no(CBasePlayer *player) {
+		return player->SaySentence("PRO_NO");
+	}
+	bool sorry(CBasePlayer *player) {
+		return player->SaySentence("PRO_SORRY");
+	}
+	bool letsGo(CBasePlayer* player) {
+		return player->SaySentence("PRO_LETSGO");
+	}
+	bool leadOn(CBasePlayer* player) {
+		return player->SaySentence("PRO_LEADON");
+	}
+	bool wait(CBasePlayer* player) {
+		return player->SaySentence("PRO_WAIT");
+	}
 	bool lightDamage(CBasePlayer *player) {
 		return player->SaySentence("PRO_WOUND");
 	}
@@ -594,6 +672,40 @@ void LinkUserMessages( void )
 
 LINK_ENTITY_TO_CLASS( player, CBasePlayer )
 
+void ShowMenu( CBasePlayer *pPlayer, const char *title, int count, const char **slot, signed char time = -1 )
+{
+//	if( pPlayer->m_fTouchMenu)
+//	{
+//		char buf[256];
+//		#define MENU_STR(VAR) (#VAR)
+//		sprintf( buf, MENU_STR(slot10\ntouch_hide _coops*\ntouch_show _coops\ntouch_addbutton "_coopst" "#%s" "" 0.16 0.11 0.41 0.3 0 255 0 255 78 1.5\n), title);
+//		CLIENT_COMMAND( pPlayer->edict(), buf);
+//		for( int i = 0; i < count; i++ )
+//		{
+//			sprintf( buf, MENU_STR(touch_settexture _coops%d "#%d. %s"\ntouch_show _coops%d\n), i+1, i+1, slot[i], i + 1 );
+//			CLIENT_COMMAND( pPlayer->edict(), buf);
+//		}
+//	}
+//	else
+//	{
+		char buf[128], *pbuf = buf;
+		short int flags = 1<<9;
+		pbuf += sprintf( pbuf, "%s:\n", title );
+		for( int i = 0; i < count; i++ )
+		{
+			pbuf += sprintf( pbuf, "%d. %s\n", i+1, slot[i]);
+			flags |= 1<<i;
+		}
+		MESSAGE_BEGIN(MSG_ONE, gmsgShowMenu, NULL, pPlayer->pev);
+		WRITE_SHORT( flags ); // slots
+		WRITE_CHAR( time ); // show time
+		WRITE_BYTE( 0 ); // need more
+		WRITE_STRING( buf );
+		MESSAGE_END();
+	//}
+	//CLIENT_COMMAND( pPlayer->edict(), "exec touch_default/numbers.cfg\n");
+}
+
 void CBasePlayer::Pain( void )
 {
 	float flRndSound;//sound randomizer
@@ -686,9 +798,16 @@ void CBasePlayer::PlayerSayThink()
 	}
 }
 
-BOOL CBasePlayer::CanSay()
+#define PLAYER_SAY_DEFAULT_DELAY 4
+
+bool CBasePlayer::CanSay()
 {
 	return m_flSayTime <= gpGlobals->time;
+}
+
+bool CBasePlayer::CanSayByCommand()
+{
+	return m_flSayTime - (PLAYER_SAY_DEFAULT_DELAY - 0.2) <= gpGlobals->time;
 }
 
 bool CBasePlayer::SaySentence(const char *pszSentence)
@@ -699,7 +818,7 @@ bool CBasePlayer::SaySentence(const char *pszSentence)
 			EMIT_SOUND_DYN( edict(), CHAN_VOICE, pszSentence, VOL_NORM, ATTN_NORM, 0, GetVoicePitch());
 		else
 			SENTENCEG_PlayRndSz( edict(), pszSentence, VOL_NORM, ATTN_NORM, 0, GetVoicePitch() );
-		m_flSayTime = gpGlobals->time + 4;
+		m_flSayTime = gpGlobals->time + PLAYER_SAY_DEFAULT_DELAY;
 		return true;
 	}
 	return false;
@@ -828,6 +947,102 @@ int CBasePlayer::GetVoicePitch(int playerCharacter)
 int CBasePlayer::GetVoicePitch()
 {
 	return GetVoicePitch(m_playerCharacter);
+}
+
+bool CBasePlayer::SayByCommand(const char *phrase)
+{
+	if (!CanSayByCommand()) {
+		return false;
+	}
+	if (FStrEq(phrase, "yes")) {
+		return GetCharPhrases()->yes(this);
+	} else if (FStrEq(phrase, "no")) {
+		return GetCharPhrases()->no(this);
+	} else if (FStrEq(phrase, "sorry")) {
+		return GetCharPhrases()->sorry(this);
+	} else if (FStrEq(phrase, "optim")) {
+		return GetCharPhrases()->optimistic(this);
+	} else if (FStrEq(phrase, "pessim")) {
+		return GetCharPhrases()->pessimistic(this);
+	} else if (FStrEq(phrase, "letsgo")) {
+		return GetCharPhrases()->letsGo(this);
+	} else if (FStrEq(phrase, "leadon")) {
+		return GetCharPhrases()->leadOn(this);
+	} else if (FStrEq(phrase, "wait")) {
+		return GetCharPhrases()->wait(this);
+	} else if (FStrEq(phrase, "careful")) {
+		return GetCharPhrases()->beCareful(this);
+	} else if (FStrEq(phrase, "teamup")) {
+		return GetCharPhrases()->stayTogether(this);
+	}
+	return false;
+}
+
+enum 
+{
+	PLAYER_MENU_NO,
+	PLAYER_MENU_TALK,
+	PLAYER_MENU_ORDERS
+};
+
+void CBasePlayer::ShowTalkMenu()
+{
+	static const char* phrases[] = {"Yes", "No", "Sorry", "Optimistic", "Pessimistic"};
+	ShowMenu(this, "Answers and emotions", ARRAYSIZE(phrases), phrases);
+	m_currentMenu = PLAYER_MENU_TALK;
+}
+
+void CBasePlayer::ShowOrdersMenu()
+{
+	static const char* phrases[] = {"Let's go", "Lead on", "Wait", "Be careful", "Stay together"};
+	ShowMenu(this, "Orders", ARRAYSIZE(phrases), phrases);
+	m_currentMenu = PLAYER_MENU_ORDERS;
+}
+
+void CBasePlayer::HandleMenuSelect(int selection)
+{
+	if (m_currentMenu == PLAYER_MENU_TALK && CanSayByCommand()) {
+		switch(selection) {
+		case 1:
+			GetCharPhrases()->yes(this);
+			break;
+		case 2:
+			GetCharPhrases()->no(this);
+			break;
+		case 3:
+			GetCharPhrases()->sorry(this);
+			break;
+		case 4:
+			GetCharPhrases()->optimistic(this);
+			break;
+		case 5:
+			GetCharPhrases()->pessimistic(this);
+			break;
+		default:
+			break;
+		}
+	} else if (m_currentMenu == PLAYER_MENU_ORDERS && CanSayByCommand()) {
+		switch(selection) {
+		case 1:
+			GetCharPhrases()->letsGo(this);
+			break;
+		case 2:
+			GetCharPhrases()->leadOn(this);
+			break;
+		case 3:
+			GetCharPhrases()->wait(this);
+			break;
+		case 4:
+			GetCharPhrases()->beCareful(this);
+			break;
+		case 5:
+			GetCharPhrases()->stayTogether(this);
+			break;
+		default:
+			break;
+		}
+	}
+	m_currentMenu = PLAYER_MENU_NO;
 }
 
 Vector VecVelocityForDamage( float flDamage )
