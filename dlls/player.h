@@ -314,7 +314,8 @@ public:
 	void InitStatusBar( void );
 	void UpdateStatusBar( void );
 	
-	BOOL CanSay();
+	bool CanSay();
+	bool CanSayByCommand();
 	bool SaySentence(const char* pszSentence);
 	bool SayOwnCondition();
 	bool SayTeamCondition();
@@ -324,6 +325,11 @@ public:
 	void RefreshCharacter();
 	CharacterPhrases* GetCharPhrases();
 	int GetVoicePitch();
+
+	bool SayByCommand(const char* phrase);
+	void ShowTalkMenu();
+	void ShowOrdersMenu();
+	void HandleMenuSelect(int selection);
 	
 	int m_izSBarState[ SBAR_END ];
 	float m_flNextSBarUpdateTime;
@@ -340,6 +346,8 @@ public:
 	bool m_enemyKilled;
 	float m_flSayKilledEnemyTime;
 	float m_flSaySeeEnemyTime;
+	
+	int m_currentMenu;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025

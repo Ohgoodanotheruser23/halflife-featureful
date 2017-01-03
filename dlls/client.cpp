@@ -475,6 +475,23 @@ void ClientCommand( edict_t *pEntity )
 		// clear 'Unknown command: VModEnable' in singleplayer
 		return;
 	}
+	else if ( FStrEq(pcmd, "menuselect") )
+	{
+		int selection = atoi( CMD_ARGV( 1 ) );
+		GetClassPtr( (CBasePlayer *)pev )->HandleMenuSelect(selection);
+	}
+	else if ( FStrEq(pcmd, "menu_talk") )
+	{
+		GetClassPtr( (CBasePlayer *)pev )->ShowTalkMenu();
+	}
+	else if ( FStrEq(pcmd, "menu_orders") )
+	{
+		GetClassPtr( (CBasePlayer *)pev )->ShowOrdersMenu();
+	}
+	else if ( FStrEq( pcmd, "phrase" ) )
+	{
+		GetClassPtr( (CBasePlayer *)pev )->SayByCommand( (char *)CMD_ARGV( 1 ) );
+	}
 	else
 	{
 		// tell the user they entered an unknown command
