@@ -1507,5 +1507,21 @@ PRO_RESCUEME0 vox/i want out
 PRO_RESCUEME1 vox/help wanted
 PRO_RESCUEME2 vox/i am locked
 
-PRO_HEAL0 vox/do not move
+PRO_HEAL0 vox/do not move _comma i am a doctor
 PRO_HEAL1 vox/i have something for you
+
+// Player Gina
+
+PGI_KILL0 gina/gina_kill0
+PGI_KILL1 gina/gina_kill1
+PGI_KILL2 gina/gina_kill2
+PGI_KILL3 gina/gina_kill3
+PGI_KILL4 gina/gina_kill4
+
+PGI_CAREFUL0 gina/gina_mad0
+
+PGI_FF0 gina/gina_mad1
+PGI_FF1 gina/gina_mad2
+
+PGI_ENEMY0 gina/gina_attack1
+PGI_ENEMY1 gina/gina_attack2
