@@ -149,7 +149,12 @@ void CMedkit::PrimaryAttack(void)
 		return;
 	}
 	
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] < gSkillData.plrDmgMedkit || !FindHealTarget()) {
+	CBaseEntity* healTarget;
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= gSkillData.plrDmgMedkit && (healTarget = FindHealTarget()) ) {
+		if (healTarget->IsPlayer()) {
+			m_pPlayer->TryToSayHealing();
+		}
+	} else {
 		PlayEmptySound();
 		m_flNextPrimaryAttack = gpGlobals->time + 0.8;
 		return;

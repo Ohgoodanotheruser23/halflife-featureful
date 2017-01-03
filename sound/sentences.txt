@@ -10,13 +10,12 @@ HG_GREN5 hgrunt/clik no! clik
 HG_GREN6 hgrunt/clik move! clik(p120)
 
 // Player Alert
-HG_ALERT0 hgrunt/(t30) squad!, we!(e80) got!(e80) freeman!(t20 p105), clik(p110)
+HG_ALERT0 hgrunt/(t30) squad!, we!(e80) got!(e80) hostiles!(t20 p105), clik(p110)
 HG_ALERT1 hgrunt/clik(p110) target! clik
 HG_ALERT2 hgrunt/clik movement! clik
 HG_ALERT3 hgrunt/(t40) shit!(t20), (t50) we! got! hostiles!(p120 t0) clik
-HG_ALERT4 hgrunt/(t20) clik(p110) squad!, get!(e80) freeman!, clik(p110) clik
-HG_ALERT5 hgrunt/(t20) clik squad!, neutralize!(e90) freeman! clik
-HG_ALERT6 hgrunt/(t30) clik clik move!(e75) in! clik(p120)
+HG_ALERT4 hgrunt/(t20) clik squad!, neutralize!(e90) hostiles! clik
+HG_ALERT5 hgrunt/(t30) clik clik move!(e75) in! clik(p120)
 
 // Monster Alert
 HG_MONST0 hgrunt/clik(p110) (t50) bogies!(t0), my! sector!(t0) clik
@@ -70,7 +69,6 @@ HG_QUEST7 hgrunt/clik(p120) (t30) echo(e75) mission is go clik(p120) clik(p120)
 HG_QUEST8 hgrunt/clik(p110) (t30) fire(e75) team, weapons(e75) check ok clik(p120) clik
 HG_QUEST9 hgrunt/clik(p110) (t30) fire(e75) team, objective foxtrot niner clik(p120)
 HG_QUEST10 hgrunt/clik (t30) ok(e75) mission, zero(e75) niner clik
-HG_QUEST11 hgrunt/clik (t30) squad, stay(e80) alert(e80) four freeman, over clik
 
 HG_ANSWER0 hgrunt/clik(p110) (t20) uhh roger(e75) that, clik(p120) clik
 HG_ANSWER1 hgrunt/clik(p120) (t10) yessir clik
@@ -1362,7 +1360,7 @@ PBA_YOUILL1 barney/realbadwound
 
 PBA_OPTIM0 barney/gladof38
 PBA_OPTIM1 barney/coldone
-PBA_OPTIM2 barney/ba_later
+PBA_OPTIM2 barney/beertopside
 
 PBA_PESSIM0 barney/ba_iwish
 PBA_PESSIM1 barney/getanyworse
@@ -1395,6 +1393,9 @@ PBA_RESCUED1 barney/hellonicesuit
 
 PBA_RESCUEME0 barney/c2a5_ba_letout
 PBA_RESCUEME1 barney/c1a4_ba_octo3
+
+PBA_HEAL0 barney/ba_help0
+PBA_HEAL1 barney/ba_button1
 
 // Player scientist
 
@@ -1505,3 +1506,6 @@ PRO_RESCUED1 vox/i am back
 PRO_RESCUEME0 vox/i want out
 PRO_RESCUEME1 vox/help wanted
 PRO_RESCUEME2 vox/i am locked
+
+PRO_HEAL0 vox/do not move
+PRO_HEAL1 vox/i have something for you

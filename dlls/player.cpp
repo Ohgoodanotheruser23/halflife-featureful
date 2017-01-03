@@ -90,6 +90,10 @@ public:
 	virtual bool callForRescue(CBasePlayer* player, edict_t* where) {
 		return false;
 	}
+	virtual bool healingPlayer(CBasePlayer* player) {
+		return false;
+	}
+
 protected:
 	bool SaySentence(const char* pszSentence, CBasePlayer* player, edict_t* where) {
 		if( pszSentence && player && where )
@@ -154,6 +158,9 @@ public:
 	bool callForRescue(CBasePlayer *player, edict_t *where) {
 		return SaySentence("PBA_RESCUEME", player, where);
 	}
+	bool healingPlayer(CBasePlayer *player) {
+		return player->SaySentence("PBA_HEAL");
+	}
 };
 
 class ScientistPhrases : public CharacterPhrases
@@ -200,6 +207,9 @@ public:
 	}
 	bool callForRescue(CBasePlayer *player, edict_t *where) {
 		return SaySentence("PSC_RESCUEME", player, where);
+	}
+	bool healingPlayer(CBasePlayer *player) {
+		return player->SaySentence("SC_HEAL");
 	}
 };
 
@@ -261,6 +271,9 @@ public:
 	}
 	bool callForRescue(CBasePlayer *player, edict_t *where) {
 		return SaySentence("PRO_RESCUEME", player, where);
+	}
+	bool healingPlayer(CBasePlayer *player) {
+		player->SaySentence("PRO_HEAL");
 	}
 };
 
@@ -759,6 +772,14 @@ bool CBasePlayer::TryToSayFriendlyFire()
 		return false;
 	}
 	return GetCharPhrases()->friendlyFire(this);
+}
+
+bool CBasePlayer::TryToSayHealing()
+{
+	if (!CanSay()) {
+		return false;
+	}
+	return GetCharPhrases()->healingPlayer(this);
 }
 
 bool CBasePlayer::SayRescued()

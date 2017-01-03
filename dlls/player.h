@@ -322,6 +322,7 @@ public:
 	bool SayTeamCondition();
 	bool SayOtherPlayerCondition();
 	bool TryToSayFriendlyFire();
+	bool TryToSayHealing();
 	bool SayRescued();
 	bool CallForRescue(edict_t *where);
 	CBaseEntity* LookForEnemy();
