@@ -682,12 +682,12 @@ void CBasePlayer::Pain( void )
 }
 
 CBaseEntity* CBasePlayer::LookForEnemy() {
-	CBaseEntity *pList[10];
+	CBaseEntity *pList[100];
 
 	float distance = 512;
 	Vector delta = Vector( distance, distance, distance );
 
-	int count = UTIL_EntitiesInBox( pList, 100, pev->origin - delta, pev->origin + delta, FL_MONSTER );
+	int count = UTIL_EntitiesInBox( pList, ARRAYSIZE(pList), pev->origin + pev->view_ofs, pev->origin + delta, FL_MONSTER );
 	for( int i = 0; i < count; i++ )
 	{
 		CBaseEntity* pSightEnt = pList[i];
