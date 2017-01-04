@@ -318,6 +318,7 @@ public:
 	bool CanSay();
 	bool CanSayByCommand();
 	bool SaySentence(const char* pszSentence);
+	void VoiceSound(const char* sound);
 	bool SayOwnCondition();
 	bool SayTeamCondition();
 	bool SayOtherPlayerCondition();
@@ -347,6 +348,7 @@ public:
 	bool m_enemyKilled;
 	float m_flSayKilledEnemyTime;
 	float m_flSaySeeEnemyTime;
+	float m_flPainTime;
 	
 	int m_currentMenu;
 };

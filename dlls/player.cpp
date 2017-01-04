@@ -54,6 +54,24 @@ extern edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer );
 class CharacterPhrases
 {
 public:
+	virtual bool painSound(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool deathSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 1, 5 ) )
+		{
+		case 1: 
+			player->VoiceSound("player/pl_pain5.wav");
+			return true;
+		case 2: 
+			player->VoiceSound("player/pl_pain6.wav");
+			return true;
+		case 3: 
+			player->VoiceSound("player/pl_pain7.wav");
+			return true;
+		}
+		return false;
+	}
 	virtual bool yes(CBasePlayer* player) {
 		return false;
 	}
@@ -110,6 +128,36 @@ public:
 class BarneyPhrases : public CharacterPhrases
 {
 public:
+	bool painSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 2 ) )
+		{
+		case 0:
+			player->VoiceSound("barney/ba_pain1.wav");
+			break;
+		case 1:
+			player->VoiceSound("barney/ba_pain2.wav");
+			break;
+		case 2:
+			player->VoiceSound("barney/ba_pain3.wav");
+			break;
+		}
+		return true;
+	}
+	bool deathSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 2 ) )
+		{
+		case 0:
+			player->VoiceSound("barney/ba_die1.wav");
+			break;
+		case 1:
+			player->VoiceSound("barney/ba_die2.wav");
+			break;
+		case 2:
+			player->VoiceSound("barney/ba_die3.wav");
+			break;
+		}
+		return true;
+	}
 	bool yes(CBasePlayer *player) {
 		return player->SaySentence("PBA_YES");
 	}
@@ -177,6 +225,42 @@ public:
 class ScientistPhrases : public CharacterPhrases
 {
 public:
+	bool painSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 3 ) )
+		{
+		case 0:
+			player->VoiceSound("scientist/sci_pain1.wav");
+			break;
+		case 1:
+			player->VoiceSound("scientist/sci_pain2.wav");
+			break;
+		case 2:
+			player->VoiceSound("scientist/sci_pain4.wav");
+			break;
+		case 3:
+			player->VoiceSound("scientist/sci_pain5.wav");
+			break;
+		}
+		return true;
+	}
+	bool deathSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 3 ) )
+		{
+		case 0:
+			player->VoiceSound("scientist/sci_die1.wav");
+			break;
+		case 1:
+			player->VoiceSound("scientist/sci_die2.wav");
+			break;
+		case 2:
+			player->VoiceSound("scientist/sci_die3.wav");
+			break;
+		case 3:
+			player->VoiceSound("scientist/sci_die4.wav");
+			break;
+		}
+		return true;
+	}
 	bool yes(CBasePlayer *player) {
 		return player->SaySentence("PSC_YES");
 	}
@@ -236,6 +320,12 @@ public:
 class RoboPhrases : public CharacterPhrases
 {
 public:
+	bool painSound(CBasePlayer *player) {
+		return false;
+	}
+	bool deathSound(CBasePlayer *player) {
+		return false;
+	}
 	bool yes(CBasePlayer *player) {
 		return player->SaySentence("PRO_YES");
 	}
@@ -308,6 +398,39 @@ public:
 
 class GinaPhrases : public CharacterPhrases
 {
+	bool painSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 3 ) )
+		{
+		case 0:
+			player->VoiceSound("gina/gina_pain0.wav");
+			break;
+		case 1:
+			player->VoiceSound("gina/gina_pain1.wav");
+			break;
+		case 2:
+			player->VoiceSound("gina/gina_pain2.wav");
+			break;
+		case 3:
+			player->VoiceSound("gina/gina_pain3.wav");
+			break;
+		}
+		return true;
+	}
+	bool deathSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 2 ) )
+		{
+		case 0:
+			player->VoiceSound("gina/gina_die0.wav");
+			break;
+		case 1:
+			player->VoiceSound("gina/gina_die1.wav");
+			break;
+		case 2:
+			player->VoiceSound("gina/gina_die2.wav");
+			break;
+		}
+		return true;
+	}
 	bool no(CBasePlayer *player) {
 		return player->SaySentence("PGI_NO");
 	}
@@ -785,6 +908,11 @@ bool CBasePlayer::SaySentence(const char *pszSentence)
 	return false;
 }
 
+void CBasePlayer::VoiceSound(const char *sound)
+{
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, sound, 1, ATTN_NORM, 0, GetVoicePitch() );
+}
+
 BOOL PlayerLightlyDamaged(CBaseEntity* pPlayer)
 {
 	return pPlayer->pev->health > 25 && pPlayer->pev->health < 50;
@@ -1071,23 +1199,11 @@ void CBasePlayer::DeathSound( void )
 		return;
 	}
 	*/
-
-	// temporarily using pain sounds for death sounds
-	switch( RANDOM_LONG( 1, 5 ) )
-	{
-	case 1: 
-		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain5.wav", 1, ATTN_NORM );
-		break;
-	case 2: 
-		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain6.wav", 1, ATTN_NORM );
-		break;
-	case 3: 
-		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain7.wav", 1, ATTN_NORM );
-		break;
-	}
+	GetCharPhrases()->deathSound(this);
 
 	// play one of the suit death alarms
-	EMIT_GROUPNAME_SUIT( ENT( pev ), "HEV_DEAD" );
+	// this substitue death sound, so comment it for now until find the way to play both death and HEV sounds
+	//EMIT_GROUPNAME_SUIT( ENT( pev ), "HEV_DEAD" );
 }
 
 // override takehealth
@@ -1223,8 +1339,16 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	// as an int (zero) and think the player is dead! (this will incite a clientside screentilt, etc)
 	fTookDamage = CBaseMonster::TakeDamage( pevInflictor, pevAttacker, (int)flDamage, bitsDamageType );
 	
-	if (pAttacker && pAttacker != this && pAttacker->IsAlive() && pAttacker->IsPlayer()) {
-		TryToSayFriendlyFire();
+	if (IsAlive()) {
+		if (pAttacker && pAttacker != this && pAttacker->IsAlive() && pAttacker->IsPlayer()) {
+			TryToSayFriendlyFire();
+		} else {
+			if (m_flSayTime < gpGlobals->time && (int)flDamage > 0 && m_flPainTime < gpGlobals->time && !( bitsDamageType & ( DMG_FALL | DMG_DROWN ) )) {
+				if (GetCharPhrases()->painSound(this)) {
+					m_flPainTime = gpGlobals->time + RANDOM_FLOAT( 1, 1.5 );
+				}
+			}
+		}
 	}
 
 	// reset damage time countdown for each type of time based damage player just sustained
