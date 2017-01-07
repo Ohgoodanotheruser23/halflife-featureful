@@ -93,6 +93,12 @@ public:
 	virtual bool wait(CBasePlayer* player) {
 		return false;
 	}
+	virtual bool helpMe(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool niceJob(CBasePlayer* player) {
+		return false;
+	}
 	virtual bool lightDamage(CBasePlayer* player) {
 		return false;
 	}
@@ -178,6 +184,12 @@ public:
 	}
 	bool wait(CBasePlayer* player) {
 		return player->SaySentence("PBA_WAIT");
+	}
+	bool helpMe(CBasePlayer *player) {
+		return player->SaySentence("PBA_HELPME");
+	}
+	bool niceJob(CBasePlayer *player) {
+		return player->SaySentence("PBA_NICEJOB");
 	}
 	bool lightDamage(CBasePlayer* player) {
 		return player->SaySentence("PBA_WOUND");
@@ -273,11 +285,20 @@ public:
 	bool letsGo(CBasePlayer* player) {
 		return player->SaySentence("PSC_LETSGO");
 	}
+	bool stayTogether(CBasePlayer *player) {
+		return player->SaySentence("PSC_TEAMUP");
+	}
 	bool leadOn(CBasePlayer* player) {
 		return player->SaySentence("PSC_LEADON");
 	}
 	bool wait(CBasePlayer* player) {
 		return player->SaySentence("PSC_WAIT");
+	}
+	bool helpMe(CBasePlayer *player) {
+		return player->SaySentence("PSC_HELPME");
+	}
+	bool niceJob(CBasePlayer *player) {
+		return player->SaySentence("PSC_NICEJOB");
 	}
 	bool lightDamage(CBasePlayer* player) {
 		return player->SaySentence("SC_WOUND");
@@ -324,7 +345,8 @@ public:
 		return false;
 	}
 	bool deathSound(CBasePlayer *player) {
-		return false;
+		SENTENCEG_PlayRndSz( player->edict(), "PRO_DEATH", VOL_NORM, ATTN_NORM, 0, player->GetVoicePitch() );
+		return true;
 	}
 	bool yes(CBasePlayer *player) {
 		return player->SaySentence("PRO_YES");
@@ -343,6 +365,12 @@ public:
 	}
 	bool wait(CBasePlayer* player) {
 		return player->SaySentence("PRO_WAIT");
+	}
+	bool helpMe(CBasePlayer *player) {
+		return player->SaySentence("PRO_HELPME");
+	}
+	bool niceJob(CBasePlayer *player) {
+		return player->SaySentence("PRO_NICEJOB");
 	}
 	bool lightDamage(CBasePlayer *player) {
 		return player->SaySentence("PRO_WOUND");
@@ -431,11 +459,11 @@ class GinaPhrases : public CharacterPhrases
 		}
 		return true;
 	}
+	bool yes(CBasePlayer *player) {
+		return player->SaySentence("PGI_YES");
+	}
 	bool no(CBasePlayer *player) {
 		return player->SaySentence("PGI_NO");
-	}
-	bool optimistic(CBasePlayer *player) {
-		return player->SaySentence("PGI_OPTIM");
 	}
 	bool letsGo(CBasePlayer* player) {
 		return player->SaySentence("PGI_LETSGO");
@@ -445,6 +473,9 @@ class GinaPhrases : public CharacterPhrases
 	}
 	bool wait(CBasePlayer* player) {
 		return player->SaySentence("PGI_WAIT");
+	}
+	bool niceJob(CBasePlayer *player) {
+		return player->SaySentence("PGI_NICEJOB");
 	}
 	bool killedEnemy(CBasePlayer *player) {
 		return player->SaySentence("PGI_KILL");
@@ -1053,14 +1084,14 @@ enum
 
 void CBasePlayer::ShowTalkMenu()
 {
-	static const char* phrases[] = {"Yes", "No", "Sorry", "Optimistic", "Pessimistic"};
+	static const char* phrases[] = {"Yes", "No", "Sorry", "Nice job", "Optimistic", "Pessimistic"};
 	ShowMenu(this, "Answers and emotions", ARRAYSIZE(phrases), phrases);
 	m_currentMenu = PLAYER_MENU_TALK;
 }
 
 void CBasePlayer::ShowOrdersMenu()
 {
-	static const char* phrases[] = {"Let's go", "Lead on", "Wait", "Be careful", "Stay together"};
+	static const char* phrases[] = {"Let's go", "Lead on", "Wait", "Be careful", "Help me", "Stay together"};
 	ShowMenu(this, "Orders", ARRAYSIZE(phrases), phrases);
 	m_currentMenu = PLAYER_MENU_ORDERS;
 }
@@ -1079,9 +1110,12 @@ void CBasePlayer::HandleMenuSelect(int selection)
 			GetCharPhrases()->sorry(this);
 			break;
 		case 4:
-			GetCharPhrases()->optimistic(this);
+			GetCharPhrases()->niceJob(this);
 			break;
 		case 5:
+			GetCharPhrases()->optimistic(this);
+			break;
+		case 6:
 			GetCharPhrases()->pessimistic(this);
 			break;
 		default:
@@ -1102,6 +1136,9 @@ void CBasePlayer::HandleMenuSelect(int selection)
 			GetCharPhrases()->beCareful(this);
 			break;
 		case 5:
+			GetCharPhrases()->helpMe(this);
+			break;
+		case 6:
 			GetCharPhrases()->stayTogether(this);
 			break;
 		default:

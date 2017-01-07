@@ -601,7 +601,6 @@ BA_WAIT5 barney/standguard
 BA_HELLO0 barney/hellonicesuit
 BA_HELLO1 barney/howyoudoing
 BA_HELLO2 barney/hayfella
-BA_HELLO3 barney/heyfella
 
 BA_QUESTION0 barney/beertopside
 BA_QUESTION1 barney/wayout
@@ -1350,6 +1349,7 @@ PBA_SORRY1 barney/ba_post(e19)
 PBA_LETSGO0 barney/imwithyou
 PBA_LETSGO1 barney/letsgo(s27)
 PBA_LETSGO2 barney/letsmoveit(s37)
+PBA_LETSGO3 barney/ba_ht07_02
 
 PBA_LEADON0 barney/c1a2_ba_goforit
 PBA_LEADON1 barney/letsgo
@@ -1358,10 +1358,16 @@ PBA_LEADON3 holo/tr_ba_use
 
 PBA_TEAMUP0 barney/dobettertogether(s20)
 PBA_TEAMUP1 barney/teamup1(s19)
+PBA_TEAMUP2 barney/ba_stare3
 
 PBA_WAIT0 barney/c3a2_ba_stay
 PBA_WAIT1 barney/stophere
 PBA_WAIT1 barney/ba_generic0
+
+PBA_HELPME0 barney/ba_needhelp0
+PBA_HELPME1 barney/ba_needhelp1
+
+PBA_NICEJOB0 barney/ba_generic2
 
 PBA_WOUND0 barney/imhit
 PBA_WOUND1 barney/hitbad
@@ -1382,9 +1388,11 @@ PBA_KILL7 barney/diebloodsucker
 
 PBA_YOUBAD0 barney/checkwounds
 PBA_YOUBAD1 barney/youneedmedic
+PBA_YOUBAD2 barney/ba_cure0
 
 PBA_YOUILL0 barney/youneedmedic
 PBA_YOUILL1 barney/realbadwound
+PBA_YOUILL2 barney/ba_cure1
 
 PBA_OPTIM0 barney/gladof38
 PBA_OPTIM1 barney/coldone
@@ -1415,12 +1423,16 @@ PBA_MIL1 barney/standback
 PBA_CAREFUL0 barney/ambush
 PBA_CAREFUL1 barney/badarea
 PBA_CAREFUL2 barney/badfeeling
+PBA_CAREFUL3 barney/ba_becareful0(s33)
+PBA_CAREFUL4 barney/ba_becareful1
 
 PBA_RESCUED0 barney/letsgo
 PBA_RESCUED1 barney/hellonicesuit
 
 PBA_RESCUEME0 barney/c2a5_ba_letout
 PBA_RESCUEME1 barney/c1a4_ba_octo3
+PBA_RESCUEME2 barney/ba_needhelp0
+PBA_RESCUEME3 barney/ba_needhelp1
 
 PBA_HEAL0 barney/ba_help0
 PBA_HEAL1 barney/ba_button1
@@ -1452,10 +1464,16 @@ PSC_LEADON2 scientist/okgetout
 PSC_LEADON3 scientist/okihope
 PSC_LEADON4 scientist/yesletsgo
 
+PSC_TEAMUP0 scientist/safetyinnumbers
+
 PSC_WAIT0 scientist/letyouin(e42)
 PSC_WAIT1 scientist/waithere
 PSC_WAIT2 scientist/delayagain(e49)
-PSC_WAIT3 scientist/stop2
+
+PSC_HELPME0 scientist/sc_hello3(e45)
+
+PSC_NICEJOB0 scientist/fascinating
+PSC_NICEJOB1 scientist/excellentteam
 
 PSC_YOUBAD0 scientist/youlookbad
 PSC_YOUBAD1 scientist/youwounded
@@ -1501,9 +1519,11 @@ PSC_RESCUED1 scientist/okgetout
 PSC_RESCUED2 scientist/excellentteam
 PSC_RESCUED3 scientist/greetings
 PSC_RESCUED4 scientist/c1a3_sci_1man
+PSC_RESCUED5 scientist/sc_hello5
 
 PSC_RESCUEME0 scientist/c1a4_sci_blind
 PSC_RESCUEME1 scientist/hello2
+PSC_RESCUEME2 scientist/sc_yard_box4
 
 // Player robo
 
@@ -1519,6 +1539,13 @@ PRO_LEADON0 vox/i got your back
 PRO_LEADON1 vox/i with you
 
 PRO_WAIT0 vox/do not move
+
+PRO_HELPME0 vox/help
+PRO_HELPME1 vox/help wanted
+
+PRO_NICEJOB0 vox/nice
+PRO_NICEJOB1 vox/good
+PRO_NICEJOB2 vox/not bad
 
 PRO_WOUND0 vox/i am in bad condition
 PRO_WOUND1 vox/i am damaged
@@ -1556,6 +1583,7 @@ PRO_ALIEN0 vox/alien threat detected
 PRO_ALIEN1 vox/hostile alien here
 PRO_ALIEN2 vox/alien alert
 PRO_ALIEN3 vox/we got hostile
+PRO_ALIEN4 vox/alien invasion
 
 PRO_MIL0 vox/military threat
 PRO_MIL1 vox/soldier detected
@@ -1580,6 +1608,10 @@ PRO_RESCUEME2 vox/i am locked
 
 PRO_HEAL0 vox/do not move _comma i am a doctor
 PRO_HEAL1 vox/i have something for you
+
+PRO_DEATH0 vox/system failure
+PRO_DEATH1 vox/system shut down
+PRO_DEATH2 vox/woop
 
 // Player Gina
 
@@ -1607,10 +1639,14 @@ PGI_LEADON3 gina/gina_use4
 PGI_LEADON4 gina/gina_use5
 
 PGI_WAIT0 gina/gina_stop0
-PGI_WAIT1 gina/gina_unuse2
+PGI_WAIT1 gina/gina_unuse2(s26)
+PGI_WAIT2 gina/gina_unuse4(s41)
 
-PGI_OPTIM0 holo/tr_holo_fantastic
-//PGI_OPTIM1 holo/tr_holo_greatwork(e23)
-//PGI_OPTIM2 holo/tr_holo_nicejob
+PGI_HELLO0 holo/tr_holo_intro(e3)
+
+PGI_NICEJOB0 holo/tr_holo_fantastic
+PGI_NICEJOB1 holo/tr_holo_nicejob
+PGI_NICEJOB2 holo/tr_holo_greatwork(e23)
 
 PGI_NO0 holo/tr_holo_tryagain(e21)
+PGI_YES0 gina/gina_unuse4(e38)
