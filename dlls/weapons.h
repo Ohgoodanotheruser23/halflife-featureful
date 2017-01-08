@@ -201,6 +201,8 @@ typedef struct
 	int		iId;
 	int		iFlags;
 	int		iWeight;// this value used to determine this weapon's importance in autoselection.
+	const char* pszAmmoEntity;
+	int iDropAmmo;
 } ItemInfo;
 
 typedef struct
@@ -271,6 +273,8 @@ public:
 	int			iMaxClip( void )	{ return ItemInfoArray[ m_iId ].iMaxClip; }
 	int			iWeight( void )		{ return ItemInfoArray[ m_iId ].iWeight; }
 	int			iFlags( void )		{ return ItemInfoArray[ m_iId ].iFlags; }
+	const char* pszAmmoEntity( void ) { return ItemInfoArray[ m_iId ].pszAmmoEntity; }
+	int			iDropAmmo( void )	{ return ItemInfoArray[ m_iId ].iDropAmmo; }
 
 	// int		m_iIdPrimary;										// Unique Id for primary ammo
 	// int		m_iIdSecondary;										// Unique Id for secondary ammo
@@ -525,6 +529,7 @@ public:
 	void Holster( int skiplocal = 0 );
 	void Reload( void );
 	void WeaponIdle( void );
+	
 	float m_flSoundDelay;
 
 	BOOL m_fInZoom;// don't save this. 
@@ -557,6 +562,7 @@ public:
 	BOOL Deploy( void );
 	void Reload( void );
 	void WeaponIdle( void );
+	
 	float m_flNextAnimTime;
 	int m_iShell;
 
@@ -627,6 +633,7 @@ public:
 	BOOL Deploy( );
 	void Reload( void );
 	void WeaponIdle( void );
+	
 	int m_fInReload;
 	float m_flNextReload;
 	int m_iShell;
