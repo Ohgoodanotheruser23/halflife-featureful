@@ -54,6 +54,53 @@ extern edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer );
 class CharacterPhrases
 {
 public:
+	virtual bool painSound(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool deathSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 1, 5 ) )
+		{
+		case 1: 
+			player->VoiceSound("player/pl_pain5.wav");
+			return true;
+		case 2: 
+			player->VoiceSound("player/pl_pain6.wav");
+			return true;
+		case 3: 
+			player->VoiceSound("player/pl_pain7.wav");
+			return true;
+		}
+		return false;
+	}
+	virtual bool look(CBasePlayer* player, CBaseEntity* pObject) {
+		if (pObject) {
+			CBaseMonster* monster = pObject->MyMonsterPointer();
+			if (monster && monster->IsAlive() && monster->IRelationship(player) >= R_DL) {
+				return seeEnemy(player, monster) || lookGeneric(player);
+			}
+			if (pObject->IsPlayer()) {
+				return lookAtPlayer(player, (CBasePlayer*)pObject) || lookGeneric(player);
+			}
+			CBasePlayerWeapon* weapon = dynamic_cast<CBasePlayerWeapon*>(pObject);
+			if (weapon) {
+				return lookAtWeapon(player, weapon) || lookGeneric(player);
+			}
+			return lookAtSomething(player, pObject) || lookGeneric(player);
+		}
+		return  lookGeneric(player);
+	}
+	virtual bool lookAtPlayer(CBasePlayer* player, CBasePlayer* otherPlayer) {
+		return false;
+	}
+	virtual bool lookAtWeapon(CBasePlayer* player, CBasePlayerWeapon* weapon) {
+		return false;
+	}
+	virtual bool lookAtSomething(CBasePlayer* player, CBaseEntity* pObject) {
+		return false;
+	}
+	virtual bool lookGeneric(CBasePlayer* player) {
+		return false;
+	}
 	virtual bool yes(CBasePlayer* player) {
 		return false;
 	}
@@ -73,6 +120,12 @@ public:
 		return false;
 	}
 	virtual bool wait(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool helpMe(CBasePlayer* player) {
+		return false;
+	}
+	virtual bool niceJob(CBasePlayer* player) {
 		return false;
 	}
 	virtual bool lightDamage(CBasePlayer* player) {
@@ -132,6 +185,79 @@ protected:
 class BarneyPhrases : public CharacterPhrases
 {
 public:
+	bool painSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 2 ) )
+		{
+		case 0:
+			player->VoiceSound("barney/ba_pain1.wav");
+			break;
+		case 1:
+			player->VoiceSound("barney/ba_pain2.wav");
+			break;
+		case 2:
+			player->VoiceSound("barney/ba_pain3.wav");
+			break;
+		}
+		return true;
+	}
+	bool deathSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 2 ) )
+		{
+		case 0:
+			player->VoiceSound("barney/ba_die1.wav");
+			break;
+		case 1:
+			player->VoiceSound("barney/ba_die2.wav");
+			break;
+		case 2:
+			player->VoiceSound("barney/ba_die3.wav");
+			break;
+		}
+		return true;
+	}
+	bool lookAtPlayer(CBasePlayer *player, CBasePlayer *otherPlayer) {
+		switch(otherPlayer->m_playerCharacter) {
+		case PLAYER_CHAR_HELMET:
+		case PLAYER_CHAR_SCIENTIST:
+			return player->SaySentence("PBA_DOC");
+		case PLAYER_CHAR_GINA:
+			return player->SaySentence("PBA_MAM");
+		default:
+			return false;
+		}
+	}
+	bool lookAtWeapon(CBasePlayer *player, CBasePlayerWeapon *weapon) {
+		switch(weapon->m_iId) {
+		case WEAPON_GLOCK:
+		case WEAPON_PYTHON:
+		case WEAPON_SHOTGUN:
+		case WEAPON_MP5:
+		case WEAPON_CROSSBOW:
+			if (RANDOM_LONG(0,1)) {
+				return player->SaySentence("!PBA_GUN");
+			} else {
+				return player->SaySentence("!PBA_WEAPON");
+			}
+		case WEAPON_GAUSS:
+		case WEAPON_EGON:
+		case WEAPON_HORNETGUN:
+			return player->SaySentence("!PBA_WEIRDGUN");
+		case WEAPON_RPG:
+			return player->SaySentence("!PBA_RPG");
+		default:
+			return player->SaySentence("!PBA_WEAPON");
+		}
+	}
+	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
+		const char* className = STRING(pObject->pev->classname);
+		if (FStrEq(className, "monster_scientist")) {
+			return player->SaySentence("PBA_DOC");
+		}
+		return false;
+	}
+	bool lookGeneric(CBasePlayer *player) {
+		return player->SaySentence("PBA_LOOK");
+	}
 	bool yes(CBasePlayer *player) {
 		return player->SaySentence("PBA_YES");
 	}
@@ -152,6 +278,12 @@ public:
 	}
 	bool wait(CBasePlayer* player) {
 		return player->SaySentence("PBA_WAIT");
+	}
+	bool helpMe(CBasePlayer *player) {
+		return player->SaySentence("PBA_HELPME");
+	}
+	bool niceJob(CBasePlayer *player) {
+		return player->SaySentence("!PBA_NICEJOB");
 	}
 	bool lightDamage(CBasePlayer* player) {
 		return player->SaySentence("PBA_WOUND");
@@ -208,6 +340,90 @@ public:
 class ScientistPhrases : public CharacterPhrases
 {
 public:
+	bool painSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 3 ) )
+		{
+		case 0:
+			player->VoiceSound("scientist/sci_pain1.wav");
+			break;
+		case 1:
+			player->VoiceSound("scientist/sci_pain2.wav");
+			break;
+		case 2:
+			player->VoiceSound("scientist/sci_pain4.wav");
+			break;
+		case 3:
+			player->VoiceSound("scientist/sci_pain5.wav");
+			break;
+		}
+		return true;
+	}
+	bool deathSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 3 ) )
+		{
+		case 0:
+			player->VoiceSound("scientist/sci_die1.wav");
+			break;
+		case 1:
+			player->VoiceSound("scientist/sci_die2.wav");
+			break;
+		case 2:
+			player->VoiceSound("scientist/sci_die3.wav");
+			break;
+		case 3:
+			player->VoiceSound("scientist/sci_die4.wav");
+			break;
+		}
+		return true;
+	}
+	bool lookGeneric(CBasePlayer *player) {
+		return player->SaySentence("PSC_LOOK");
+	}
+	bool lookAtWeapon(CBasePlayer *player, CBasePlayerWeapon *weapon) {
+		switch(weapon->m_iId) {
+		case WEAPON_GLOCK:
+		case WEAPON_PYTHON:
+		case WEAPON_SHOTGUN:
+		case WEAPON_MP5:
+		case WEAPON_GAUSS:
+		case WEAPON_RPG:
+		case WEAPON_HORNETGUN:
+			if (RANDOM_LONG(0,1)) {
+				return player->SaySentence("PSC_GUN");
+			} else {
+				return player->SaySentence("!PSC_WEAPON");
+			}
+		case WEAPON_CROSSBOW:
+			return player->SaySentence("!PSC_CROSSBOW");
+		case WEAPON_EGON:
+			return player->SaySentence("!PSC_EGON");
+		default:
+			return player->SaySentence("!PSC_WEAPON");
+		}
+	}
+	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
+		const char* className = STRING(pObject->pev->classname);
+		if (strncmp(className, "item_", 5) == 0 || strncmp(className, "ammo_", 5) == 0) {
+			return player->SaySentence("PSC_SUPPLIES");
+		} else if (FStrEq(className, "monster_scientist")) {
+			return player->SaySentence("PSC_DOC");
+		} else if (FStrEq(className, "monster_barney")) {
+			return player->SaySentence("PSC_GUARD");
+		}
+		return false;
+	}
+	bool lookAtPlayer(CBasePlayer *player, CBasePlayer *otherPlayer) {
+		switch(otherPlayer->m_playerCharacter) {
+		case PLAYER_CHAR_HELMET:
+		case PLAYER_CHAR_SCIENTIST:
+		case PLAYER_CHAR_GINA:
+			return player->SaySentence("PSC_DOC");
+		case PLAYER_CHAR_BARNEY:
+			return player->SaySentence("PSC_GUARD");
+		default:
+			return false;
+		}
+	}
 	bool yes(CBasePlayer *player) {
 		return player->SaySentence("PSC_YES");
 	}
@@ -220,11 +436,20 @@ public:
 	bool letsGo(CBasePlayer* player) {
 		return player->SaySentence("PSC_LETSGO");
 	}
+	bool stayTogether(CBasePlayer *player) {
+		return player->SaySentence("PSC_TEAMUP");
+	}
 	bool leadOn(CBasePlayer* player) {
 		return player->SaySentence("PSC_LEADON");
 	}
 	bool wait(CBasePlayer* player) {
 		return player->SaySentence("PSC_WAIT");
+	}
+	bool helpMe(CBasePlayer *player) {
+		return player->SaySentence("PSC_HELPME");
+	}
+	bool niceJob(CBasePlayer *player) {
+		return player->SaySentence("PSC_NICEJOB");
 	}
 	bool lightDamage(CBasePlayer* player) {
 		return player->SaySentence("SC_WOUND");
@@ -276,23 +501,95 @@ public:
 class RoboPhrases : public CharacterPhrases
 {
 public:
+	bool painSound(CBasePlayer *player) {
+		return false;
+	}
+	bool deathSound(CBasePlayer *player) {
+		SENTENCEG_PlayRndSz( player->edict(), "PRO_DEATH", VOL_NORM, ATTN_NORM, 0, player->GetVoicePitch() );
+		return true;
+	}
+	bool lookGeneric(CBasePlayer *player) {
+		return player->SaySentence("PRO_LOOK");
+	}
+	bool lookAtWeapon(CBasePlayer *player, CBasePlayerWeapon *weapon) {
+		switch(weapon->m_iId) {
+		case WEAPON_GLOCK:
+		case WEAPON_PYTHON:
+		case WEAPON_SHOTGUN:
+		case WEAPON_MP5:
+		case WEAPON_CROSSBOW:
+			if (RANDOM_LONG(0,1)) {
+				return player->SaySentence("!PRO_GUN");
+			} else {
+				return player->SaySentence("!PRO_WEAPON");
+			}
+		case WEAPON_GAUSS:
+			return player->SaySentence("!PRO_GAUSS");
+		case WEAPON_EGON:
+			return player->SaySentence("!PRO_EGON");
+		case WEAPON_RPG:
+			return player->SaySentence("!PRO_RPG");
+		case WEAPON_HANDGRENADE:
+			return player->SaySentence("!PRO_GRENADE");
+		case WEAPON_HORNETGUN:
+		case WEAPON_SNARK:
+			return player->SaySentence("!PRO_BIOGUN");
+		default:
+			return player->SaySentence("!PRO_WEAPON");
+		}
+	}
+	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
+		const char* className = STRING(pObject->pev->classname);
+		if (strncmp(className, "ammo_", 5) == 0) {
+			return player->SaySentence("!PRO_AMMO");
+		} else if (FStrEq(className, "item_healthkit")) {
+			return player->SaySentence("!PRO_MEDKIT");
+		} else if (FStrEq(className, "item_battery")) {
+			return player->SaySentence("!PRO_BATTERY");
+		} else if (FStrEq(className, "monster_scientist")) {
+			return player->SaySentence("PRO_DOC");
+		} else if (FStrEq(className, "monster_barney")) {
+			return player->SaySentence("!PRO_GUARD");
+		} else if (FStrEq(className, "monster_miniturret") || FStrEq(className, "monster_turret") || FStrEq(className, "monster_sentry")) {
+			return player->SaySentence("!PRO_TURRET");
+		}
+		return false;
+	}
+	bool lookAtPlayer(CBasePlayer *player, CBasePlayer *otherPlayer) {
+		switch(otherPlayer->m_playerCharacter) {
+		case PLAYER_CHAR_HELMET:
+		case PLAYER_CHAR_SCIENTIST:
+		case PLAYER_CHAR_GINA:
+			return player->SaySentence("PRO_DOC");
+		case PLAYER_CHAR_BARNEY:
+			return player->SaySentence("PRO_GUARD");
+		default:
+			return false;
+		}
+	}
 	bool yes(CBasePlayer *player) {
-		return player->SaySentence("PRO_YES");
+		return player->SaySentence("!PRO_YES");
 	}
 	bool no(CBasePlayer *player) {
-		return player->SaySentence("PRO_NO");
+		return player->SaySentence("!PRO_NO");
 	}
 	bool sorry(CBasePlayer *player) {
-		return player->SaySentence("PRO_SORRY");
+		return player->SaySentence("!PRO_SORRY");
 	}
 	bool letsGo(CBasePlayer* player) {
-		return player->SaySentence("PRO_LETSGO");
+		return player->SaySentence("!PRO_LETSGO");
 	}
 	bool leadOn(CBasePlayer* player) {
 		return player->SaySentence("PRO_LEADON");
 	}
 	bool wait(CBasePlayer* player) {
-		return player->SaySentence("PRO_WAIT");
+		return player->SaySentence("!PRO_WAIT");
+	}
+	bool helpMe(CBasePlayer *player) {
+		return player->SaySentence("PRO_HELPME");
+	}
+	bool niceJob(CBasePlayer *player) {
+		return player->SaySentence("PRO_NICEJOB");
 	}
 	bool lightDamage(CBasePlayer *player) {
 		return player->SaySentence("PRO_WOUND");
@@ -327,15 +624,15 @@ public:
 			return player->SaySentence("PRO_ALIEN");
 		case CLASS_HUMAN_MILITARY:
 			if (FClassnameIs(enemy->pev, "monster_apache")) {
-				return player->SaySentence("PRO_HELIC");
+				return player->SaySentence("!PRO_HELIC");
 			} else {
 				return player->SaySentence("PRO_MIL");
 			}
 		case CLASS_MACHINE:
 			if (FClassnameIs(enemy->pev, "monster_osprey")) {
-				return player->SaySentence("PRO_HELIC");
+				return player->SaySentence("!PRO_HELIC");
 			} else {
-				return player->SaySentence("PRO_TURRET");
+				return player->SaySentence("!PRO_TURRET");
 			}
 		default:
 			return false;
@@ -357,20 +654,77 @@ public:
 
 class GinaPhrases : public CharacterPhrases
 {
-	bool no(CBasePlayer *player) {
-		return player->SaySentence("PGI_NO");
+	bool painSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 3 ) )
+		{
+		case 0:
+			player->VoiceSound("gina/gina_pain0.wav");
+			break;
+		case 1:
+			player->VoiceSound("gina/gina_pain1.wav");
+			break;
+		case 2:
+			player->VoiceSound("gina/gina_pain2.wav");
+			break;
+		case 3:
+			player->VoiceSound("gina/gina_pain3.wav");
+			break;
+		}
+		return true;
 	}
-	bool optimistic(CBasePlayer *player) {
-		return player->SaySentence("PGI_OPTIM");
+	bool deathSound(CBasePlayer* player) {
+		switch( RANDOM_LONG( 0, 2 ) )
+		{
+		case 0:
+			player->VoiceSound("gina/gina_die0.wav");
+			break;
+		case 1:
+			player->VoiceSound("gina/gina_die1.wav");
+			break;
+		case 2:
+			player->VoiceSound("gina/gina_die2.wav");
+			break;
+		}
+		return true;
+	}
+	bool lookAtWeapon(CBasePlayer *player, CBasePlayerWeapon *weapon) {
+		return player->SaySentence("!PGI_WEAPON");
+	}
+	bool lookAtPlayer(CBasePlayer *player, CBasePlayer *otherPlayer) {
+		switch(otherPlayer->m_playerCharacter)
+		{
+		case PLAYER_CHAR_BARNEY:
+			return player->SaySentence("!PGI_GUARD");
+		default:
+			return false;
+		}
+	}
+	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
+		const char* className = STRING(pObject->pev->classname);
+		if (FStrEq(className, "item_healthkit")) {
+			return player->SaySentence("!PGI_MEDKIT");
+		} else if (FStrEq(className, "monster_barney")) {
+			return player->SaySentence("!PGI_GUARD");
+		}
+		return false;
+	}
+	bool yes(CBasePlayer *player) {
+		return player->SaySentence("!PGI_YES");
+	}
+	bool no(CBasePlayer *player) {
+		return player->SaySentence("!PGI_NO");
 	}
 	bool letsGo(CBasePlayer* player) {
-		return player->SaySentence("PGI_LETSGO");
+		return player->SaySentence("!PGI_LETSGO");
 	}
 	bool leadOn(CBasePlayer* player) {
 		return player->SaySentence("PGI_LEADON");
 	}
 	bool wait(CBasePlayer* player) {
 		return player->SaySentence("PGI_WAIT");
+	}
+	bool niceJob(CBasePlayer *player) {
+		return player->SaySentence("PGI_NICEJOB");
 	}
 	bool killedEnemy(CBasePlayer *player) {
 		return player->SaySentence("PGI_KILL");
@@ -382,7 +736,7 @@ class GinaPhrases : public CharacterPhrases
 		return player->SaySentence("PGI_ENEMY");
 	}
 	bool beCareful(CBasePlayer *player) {
-		return player->SaySentence("PGI_CAREFUL");
+		return player->SaySentence("!PGI_CAREFUL");
 	}
 };
 
@@ -736,12 +1090,12 @@ void CBasePlayer::Pain( void )
 }
 
 CBaseEntity* CBasePlayer::LookForEnemy() {
-	CBaseEntity *pList[10];
+	CBaseEntity *pList[100];
 
 	float distance = 512;
 	Vector delta = Vector( distance, distance, distance );
 
-	int count = UTIL_EntitiesInBox( pList, 100, pev->origin - delta, pev->origin + delta, FL_MONSTER );
+	int count = UTIL_EntitiesInBox( pList, ARRAYSIZE(pList), pev->origin + pev->view_ofs, pev->origin + delta, FL_MONSTER );
 	for( int i = 0; i < count; i++ )
 	{
 		CBaseEntity* pSightEnt = pList[i];
@@ -753,6 +1107,59 @@ CBaseEntity* CBasePlayer::LookForEnemy() {
 		}
 	}
 	return NULL;
+}
+
+
+bool IsSomethingInteresting(CBaseEntity* pObject, CBasePlayer* player)
+{
+	if (pObject->IsPlayer() && pObject != player) {
+		return true;
+	}
+	if ((pObject->pev->flags & FL_MONSTER) && pObject->IsAlive()) {
+		return true;
+	}
+	const char* className = STRING(pObject->pev->classname);
+	if (className && *className) {
+		if (strncmp(className, "weapon_", 7) == 0) {
+			CBasePlayerWeapon* weapon = dynamic_cast<CBasePlayerWeapon*>(pObject);
+			if (!weapon->m_pPlayer) {
+				return true;
+			}
+		}
+		if (strncmp(className, "item_", 5) == 0) {
+			return true;
+		}
+		if (strncmp(className, "ammo_", 5) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+CBaseEntity* CBasePlayer::LookForSomethingToSayAbout()
+{
+	CBaseEntity *pObject = NULL;
+	CBaseEntity *pClosest = NULL;
+	Vector vecLOS;
+	float flMaxDot = VIEW_FIELD_NARROW;
+	float flDot;
+
+	UTIL_MakeVectors( pev->v_angle );
+	while( ( pObject = UTIL_FindEntityInSphere( pObject, pev->origin, 512 ) ) != NULL )
+	{
+		if ( FVisible(pObject) && IsSomethingInteresting(pObject, this) ) {
+			vecLOS = ( pObject->pev->origin + pObject->pev->view_ofs - ( pev->origin + pev->view_ofs ) ).Normalize();
+			flDot = DotProduct( vecLOS , gpGlobals->v_forward );
+			if( flDot > flMaxDot )
+			{
+				pClosest = pObject;
+				flMaxDot = flDot;
+				//ALERT( at_console, "%s : %f\n", STRING( pObject->pev->classname ), flDot );
+			}
+		}
+	}
+	pObject = pClosest;
+	return pObject;
 }
 
 float CBasePlayer::g_sayConditionTime = 0.0f;
@@ -837,6 +1244,11 @@ bool CBasePlayer::SaySentence(const char *pszSentence)
 		return true;
 	}
 	return false;
+}
+
+void CBasePlayer::VoiceSound(const char *sound)
+{
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, sound, 1, ATTN_NORM, 0, GetVoicePitch() );
 }
 
 BOOL PlayerLightlyDamaged(CBaseEntity* pPlayer)
@@ -975,10 +1387,14 @@ bool CBasePlayer::SayByCommand(const char *phrase)
 		return GetCharPhrases()->no(this);
 	} else if (FStrEq(phrase, "sorry")) {
 		return GetCharPhrases()->sorry(this);
+	} else if (FStrEq(phrase, "nicejob")) {
+		return GetCharPhrases()->niceJob(this);
 	} else if (FStrEq(phrase, "optim")) {
 		return GetCharPhrases()->optimistic(this);
 	} else if (FStrEq(phrase, "pessim")) {
 		return GetCharPhrases()->pessimistic(this);
+	} else if (FStrEq(phrase, "look")) {
+		return GetCharPhrases()->look(this, LookForSomethingToSayAbout());
 	} else if (FStrEq(phrase, "letsgo")) {
 		return GetCharPhrases()->letsGo(this);
 	} else if (FStrEq(phrase, "leadon")) {
@@ -989,7 +1405,9 @@ bool CBasePlayer::SayByCommand(const char *phrase)
 		return GetCharPhrases()->beCareful(this);
 	} else if (FStrEq(phrase, "teamup")) {
 		return GetCharPhrases()->stayTogether(this);
-	}
+	} else if (FStrEq(phrase, "helpme")) {
+		return GetCharPhrases()->helpMe(this);
+	} 
 	return false;
 }
 
@@ -1002,14 +1420,14 @@ enum
 
 void CBasePlayer::ShowTalkMenu()
 {
-	static const char* phrases[] = {"Yes", "No", "Sorry", "Optimistic", "Pessimistic"};
+	static const char* phrases[] = {"Yes", "No", "Sorry", "Nice job", "Optimistic", "Pessimistic"};
 	ShowMenu(this, "Answers and emotions", ARRAYSIZE(phrases), phrases);
 	m_currentMenu = PLAYER_MENU_TALK;
 }
 
 void CBasePlayer::ShowOrdersMenu()
 {
-	static const char* phrases[] = {"Let's go", "Lead on", "Wait", "Be careful", "Stay together"};
+	static const char* phrases[] = {"Look", "Let's go", "Lead on", "Wait", "Be careful", "Help me", "Stay together"};
 	ShowMenu(this, "Orders", ARRAYSIZE(phrases), phrases);
 	m_currentMenu = PLAYER_MENU_ORDERS;
 }
@@ -1028,9 +1446,12 @@ void CBasePlayer::HandleMenuSelect(int selection)
 			GetCharPhrases()->sorry(this);
 			break;
 		case 4:
-			GetCharPhrases()->optimistic(this);
+			GetCharPhrases()->niceJob(this);
 			break;
 		case 5:
+			GetCharPhrases()->optimistic(this);
+			break;
+		case 6:
 			GetCharPhrases()->pessimistic(this);
 			break;
 		default:
@@ -1039,18 +1460,24 @@ void CBasePlayer::HandleMenuSelect(int selection)
 	} else if (m_currentMenu == PLAYER_MENU_ORDERS && CanSayByCommand()) {
 		switch(selection) {
 		case 1:
-			GetCharPhrases()->letsGo(this);
+			GetCharPhrases()->look(this, LookForSomethingToSayAbout());
 			break;
 		case 2:
-			GetCharPhrases()->leadOn(this);
+			GetCharPhrases()->letsGo(this);
 			break;
 		case 3:
-			GetCharPhrases()->wait(this);
+			GetCharPhrases()->leadOn(this);
 			break;
 		case 4:
-			GetCharPhrases()->beCareful(this);
+			GetCharPhrases()->wait(this);
 			break;
 		case 5:
+			GetCharPhrases()->beCareful(this);
+			break;
+		case 6:
+			GetCharPhrases()->helpMe(this);
+			break;
+		case 7:
 			GetCharPhrases()->stayTogether(this);
 			break;
 		default:
@@ -1159,23 +1586,11 @@ void CBasePlayer::DeathSound( void )
 		return;
 	}
 	*/
-
-	// temporarily using pain sounds for death sounds
-	switch( RANDOM_LONG( 1, 5 ) )
-	{
-	case 1: 
-		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain5.wav", 1, ATTN_NORM );
-		break;
-	case 2: 
-		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain6.wav", 1, ATTN_NORM );
-		break;
-	case 3: 
-		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain7.wav", 1, ATTN_NORM );
-		break;
-	}
+	GetCharPhrases()->deathSound(this);
 
 	// play one of the suit death alarms
-	EMIT_GROUPNAME_SUIT( ENT( pev ), "HEV_DEAD" );
+	// this substitue death sound, so comment it for now until find the way to play both death and HEV sounds
+	//EMIT_GROUPNAME_SUIT( ENT( pev ), "HEV_DEAD" );
 }
 
 // override takehealth
@@ -1347,8 +1762,16 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	// as an int (zero) and think the player is dead! (this will incite a clientside screentilt, etc)
 	fTookDamage = CBaseMonster::TakeDamage( pevInflictor, pevAttacker, (int)flDamage, bitsDamageType );
 	
-	if (pAttacker && pAttacker != this && pAttacker->IsAlive() && pAttacker->IsPlayer()) {
-		TryToSayFriendlyFire();
+	if (IsAlive()) {
+		if (pAttacker && pAttacker != this && pAttacker->IsAlive() && pAttacker->IsPlayer()) {
+			TryToSayFriendlyFire();
+		} else {
+			if (m_flSayTime < gpGlobals->time && (int)flDamage > 0 && m_flPainTime < gpGlobals->time && !( bitsDamageType & ( DMG_FALL | DMG_DROWN ) )) {
+				if (GetCharPhrases()->painSound(this)) {
+					m_flPainTime = gpGlobals->time + RANDOM_FLOAT( 1, 1.5 );
+				}
+			}
+		}
 	}
 	RefreshMaxSpeed(this);
 

@@ -1349,6 +1349,8 @@ void SENTENCEG_Init()
 				rgsentenceg[isentencegs].count++;
 		}
 	}
+	
+	ALERT(at_console, "%d sentence groups loaded\n", isentencegs);
 
 	g_engfuncs.pfnFreeFile( pMemFile );
 
