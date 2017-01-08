@@ -81,11 +81,18 @@ public:
 			if (pObject->IsPlayer()) {
 				return lookAtPlayer(player, (CBasePlayer*)pObject) || lookGeneric(player);
 			}
+			CBasePlayerWeapon* weapon = dynamic_cast<CBasePlayerWeapon*>(pObject);
+			if (weapon) {
+				return lookAtWeapon(player, weapon) || lookGeneric(player);
+			}
 			return lookAtSomething(player, pObject) || lookGeneric(player);
 		}
 		return  lookGeneric(player);
 	}
 	virtual bool lookAtPlayer(CBasePlayer* player, CBasePlayer* otherPlayer) {
+		return false;
+	}
+	virtual bool lookAtWeapon(CBasePlayer* player, CBasePlayerWeapon* weapon) {
 		return false;
 	}
 	virtual bool lookAtSomething(CBasePlayer* player, CBaseEntity* pObject) {
@@ -197,31 +204,31 @@ public:
 			return false;
 		}
 	}
-	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
-		const char* className = STRING(pObject->pev->classname);
-		if (strncmp(className, "weapon_", 7) == 0) {
-			CBasePlayerWeapon* weapon = (CBasePlayerWeapon*)pObject;
-			switch(weapon->m_iId) {
-			case WEAPON_GLOCK:
-			case WEAPON_PYTHON:
-			case WEAPON_SHOTGUN:
-			case WEAPON_MP5:
-			case WEAPON_CROSSBOW:
-				if (RANDOM_LONG(0,1)) {
-					return player->SaySentence("PBA_GUN");
-				} else {
-					return player->SaySentence("PBA_WEAPON");
-				}
-			case WEAPON_GAUSS:
-			case WEAPON_EGON:
-			case WEAPON_HORNETGUN:
-				return player->SaySentence("PBA_WEIRDGUN");
-			case WEAPON_RPG:
-				return player->SaySentence("PBA_RPG");
-			default:
+	bool lookAtWeapon(CBasePlayer *player, CBasePlayerWeapon *weapon) {
+		switch(weapon->m_iId) {
+		case WEAPON_GLOCK:
+		case WEAPON_PYTHON:
+		case WEAPON_SHOTGUN:
+		case WEAPON_MP5:
+		case WEAPON_CROSSBOW:
+			if (RANDOM_LONG(0,1)) {
+				return player->SaySentence("PBA_GUN");
+			} else {
 				return player->SaySentence("PBA_WEAPON");
 			}
-		} else if (FStrEq(className, "monster_scientist")) {
+		case WEAPON_GAUSS:
+		case WEAPON_EGON:
+		case WEAPON_HORNETGUN:
+			return player->SaySentence("PBA_WEIRDGUN");
+		case WEAPON_RPG:
+			return player->SaySentence("PBA_RPG");
+		default:
+			return player->SaySentence("PBA_WEAPON");
+		}
+	}
+	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
+		const char* className = STRING(pObject->pev->classname);
+		if (FStrEq(className, "monster_scientist")) {
 			return player->SaySentence("PBA_DOC");
 		}
 		return false;
@@ -341,31 +348,31 @@ public:
 	bool lookGeneric(CBasePlayer *player) {
 		return player->SaySentence("PSC_LOOK");
 	}
-	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
-		const char* className = STRING(pObject->pev->classname);
-		if (strncmp(className, "weapon_", 7) == 0) {
-			CBasePlayerWeapon* weapon = (CBasePlayerWeapon*)pObject;
-			switch(weapon->m_iId) {
-			case WEAPON_GLOCK:
-			case WEAPON_PYTHON:
-			case WEAPON_SHOTGUN:
-			case WEAPON_MP5:
-			case WEAPON_GAUSS:
-			case WEAPON_RPG:
-			case WEAPON_HORNETGUN:
-				if (RANDOM_LONG(0,1)) {
-					return player->SaySentence("PSC_GUN");
-				} else {
-					return player->SaySentence("PSC_WEAPON");
-				}
-			case WEAPON_CROSSBOW:
-				return player->SaySentence("PSC_CROSSBOW");
-			case WEAPON_EGON:
-				return player->SaySentence("PSC_EGON");
-			default:
+	bool lookAtWeapon(CBasePlayer *player, CBasePlayerWeapon *weapon) {
+		switch(weapon->m_iId) {
+		case WEAPON_GLOCK:
+		case WEAPON_PYTHON:
+		case WEAPON_SHOTGUN:
+		case WEAPON_MP5:
+		case WEAPON_GAUSS:
+		case WEAPON_RPG:
+		case WEAPON_HORNETGUN:
+			if (RANDOM_LONG(0,1)) {
+				return player->SaySentence("PSC_GUN");
+			} else {
 				return player->SaySentence("PSC_WEAPON");
 			}
-		} else if (strncmp(className, "item_", 5) == 0 || strncmp(className, "ammo_", 5) == 0) {
+		case WEAPON_CROSSBOW:
+			return player->SaySentence("PSC_CROSSBOW");
+		case WEAPON_EGON:
+			return player->SaySentence("PSC_EGON");
+		default:
+			return player->SaySentence("PSC_WEAPON");
+		}
+	}
+	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
+		const char* className = STRING(pObject->pev->classname);
+		if (strncmp(className, "item_", 5) == 0 || strncmp(className, "ammo_", 5) == 0) {
 			return player->SaySentence("PSC_SUPPLIES");
 		} else if (FStrEq(className, "monster_scientist")) {
 			return player->SaySentence("PSC_DOC");
@@ -464,36 +471,36 @@ public:
 	bool lookGeneric(CBasePlayer *player) {
 		return player->SaySentence("PRO_LOOK");
 	}
-	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
-		const char* className = STRING(pObject->pev->classname);
-		if (strncmp(className, "weapon_", 7) == 0) {
-			CBasePlayerWeapon* weapon = (CBasePlayerWeapon*)pObject;
-			switch(weapon->m_iId) {
-			case WEAPON_GLOCK:
-			case WEAPON_PYTHON:
-			case WEAPON_SHOTGUN:
-			case WEAPON_MP5:
-			case WEAPON_CROSSBOW:
-				if (RANDOM_LONG(0,1)) {
-					return player->SaySentence("PRO_GUN");
-				} else {
-					return player->SaySentence("PRO_WEAPON");
-				}
-			case WEAPON_GAUSS:
-				return player->SaySentence("PRO_GAUSS");
-			case WEAPON_EGON:
-				return player->SaySentence("PRO_EGON");
-			case WEAPON_RPG:
-				return player->SaySentence("PRO_RPG");
-			case WEAPON_HANDGRENADE:
-				return player->SaySentence("PRO_GRENADE");
-			case WEAPON_HORNETGUN:
-			case WEAPON_SNARK:
-				return player->SaySentence("PRO_BIOGUN");
-			default:
+	bool lookAtWeapon(CBasePlayer *player, CBasePlayerWeapon *weapon) {
+		switch(weapon->m_iId) {
+		case WEAPON_GLOCK:
+		case WEAPON_PYTHON:
+		case WEAPON_SHOTGUN:
+		case WEAPON_MP5:
+		case WEAPON_CROSSBOW:
+			if (RANDOM_LONG(0,1)) {
+				return player->SaySentence("PRO_GUN");
+			} else {
 				return player->SaySentence("PRO_WEAPON");
 			}
-		} else if (strncmp(className, "ammo_", 5) == 0) {
+		case WEAPON_GAUSS:
+			return player->SaySentence("PRO_GAUSS");
+		case WEAPON_EGON:
+			return player->SaySentence("PRO_EGON");
+		case WEAPON_RPG:
+			return player->SaySentence("PRO_RPG");
+		case WEAPON_HANDGRENADE:
+			return player->SaySentence("PRO_GRENADE");
+		case WEAPON_HORNETGUN:
+		case WEAPON_SNARK:
+			return player->SaySentence("PRO_BIOGUN");
+		default:
+			return player->SaySentence("PRO_WEAPON");
+		}
+	}
+	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
+		const char* className = STRING(pObject->pev->classname);
+		if (strncmp(className, "ammo_", 5) == 0) {
 			return player->SaySentence("PRO_AMMO");
 		} else if (FStrEq(className, "item_healthkit")) {
 			return player->SaySentence("PRO_MEDKIT");
@@ -1069,7 +1076,7 @@ CBaseEntity* CBasePlayer::LookForSomethingToSayAbout()
 			{
 				pClosest = pObject;
 				flMaxDot = flDot;
-				ALERT( at_console, "%s : %f\n", STRING( pObject->pev->classname ), flDot );
+				//ALERT( at_console, "%s : %f\n", STRING( pObject->pev->classname ), flDot );
 			}
 		}
 	}
