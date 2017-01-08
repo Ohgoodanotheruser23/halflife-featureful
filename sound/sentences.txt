@@ -1335,13 +1335,12 @@ GM_WONTWORK gman/gman_nowork
 
 PBA_LOOK0 barney/youeverseen
 
-PBA_GUN0 barney/ba_idle6(s68)
-PBA_WEAPON0 barney/ba_ht07_17(s87)
+PBA_GUN barney/ba_idle6(s68)
+PBA_WEAPON barney/ba_ht07_17(s87)
 
-PBA_WEIRDGUN0 barney/c2a4_ba_1tau
-PBA_WEIRDGUN1 barney/c2a4_ba_3tau
+PBA_WEIRDGUN barney/c2a4_ba_1tau
 
-PBA_RPG0 barney/c2a5_ba_rpg(s16 e42)
+PBA_RPG barney/c2a5_ba_rpg(s16 e42)
 
 PBA_DOC0 barney/hayfella
 PBA_DOC1 barney/ba_hello0
@@ -1382,7 +1381,7 @@ PBA_WAIT1 barney/ba_generic0
 PBA_HELPME0 barney/ba_needhelp0
 PBA_HELPME1 barney/ba_needhelp1
 
-PBA_NICEJOB0 barney/ba_generic2
+PBA_NICEJOB barney/ba_generic2
 
 PBA_WOUND0 barney/imhit
 PBA_WOUND1 barney/hitbad
@@ -1462,11 +1461,11 @@ PSC_LOOK3 scientist/ushouldsee
 PSC_GUN0 scientist/c1a2_sci_6zomb(s46 e75)
 PSC_GUN1 scientist/sc_hello4(s85)
 
-PSC_WEAPON0 scientist/sc_hello1(s80)
+PSC_WEAPON scientist/sc_hello1(s80)
 
-PSC_CROSSBOW0 scientist/c2a3_sci_icky(s58 e68)
+PSC_CROSSBOW scientist/c2a3_sci_icky(s58 e68)
 
-PSC_EGON0 scientist/c3a2_sci_3glu(s10 e21)
+PSC_EGON scientist/c3a2_sci_3glu(s10 e21)
 
 PSC_SUPPLIES0 scientist/thiswillhelp
 PSC_SUPPLIES1 scientist/newhevsuit(s72)
@@ -1568,58 +1567,50 @@ PSC_RESCUEME3 scientist/sc_hello3
 
 // Player robo
 
-PRO_GUN0 vox/gun here
-PRO_WEAPON0 vox/weapon over here
+PRO_GUN vox/gun here
+PRO_WEAPON vox/weapon over here
 
-PRO_RPG0 vox/rocket weapon with laser sight
-PRO_RPG1 fvox/get_rpg
+PRO_RPG vox/rocket weapon with laser sight
 
-PRO_GAUSS0 vox/experimental laser weapon
+PRO_GAUSS vox/experimental laser weapon
 
-PRO_EGON0 vox/experimental energy weapon
-PRO_EGON1 fvox/get_egon
+PRO_EGON vox/experimental energy weapon
 
-PRO_BIOGUN0 vox/biological weapon
-PRO_BIOGUN1 fvox/get_alien_wpn
+PRO_BIOGUN vox/biological weapon
 
-PRO_GRENADE0 vox/grenade here
-PRO_GRENADE1 fvox/get_grenade
+PRO_GRENADE vox/grenade here
 
-PRO_AMMO0 vox/ammunition
+PRO_AMMO vox/ammunition
 
 PRO_LOOK0 vox/attention required
 PRO_LOOK1 vox/over there
 
-PRO_MEDKIT0 vox/medical kit
-PRO_MEDKIT1 fvox/get_medkit
-
-PRO_BATTERY0 vox/suit armor
-PRO_BATTERY1 fvox/get_battery
+PRO_MEDKIT vox/medical kit
+PRO_BATTERY vox/suit armor
 
 PRO_DOC0 vox/science personnel
 PRO_DOC1 vox/doctor
 
-PRO_GUARD0 vox/security guard
+PRO_GUARD vox/security guard
 
-PRO_YES0 vox/yes
+PRO_YES vox/yes
 
-PRO_NO0 vox/no
+PRO_NO vox/no
 
-PRO_SORRY0 vox/sorry
+PRO_SORRY vox/sorry
 
-PRO_LETSGO0 vox/move
+PRO_LETSGO vox/move
 
 PRO_LEADON0 vox/i got your back
 PRO_LEADON1 vox/i with you
 
-PRO_WAIT0 vox/do not move
+PRO_WAIT vox/do not move
 
 PRO_HELPME0 vox/help
 PRO_HELPME1 vox/help wanted
 
 PRO_NICEJOB0 vox/nice
 PRO_NICEJOB1 vox/good
-PRO_NICEJOB2 vox/not bad
 
 PRO_WOUND0 vox/i am in bad condition
 PRO_WOUND1 vox/i am damaged
@@ -1665,9 +1656,9 @@ PRO_MIL2 vox/hostile soldier here
 PRO_MIL3 vox/we got hostile
 PRO_MIL4 vox/military force detected
 
-PRO_TURRET0 vox/turret detected
+PRO_TURRET vox/turret detected
 
-PRO_HELIC0 vox/the military helicopter detected
+PRO_HELIC vox/the military helicopter detected
 
 PRO_CAREFUL0 vox/warning, danger is inside perimeter
 PRO_CAREFUL1 vox/team, be on guard
@@ -1689,13 +1680,20 @@ PRO_DEATH2 vox/woop
 
 // Player Gina
 
+PGI_WEAPON holo/tr_holo_target(s80 e83)
+
+PGI_GUARD holo/tr_holo_leadguard(s3 e10)
+
+PGI_MEDKIT holo/tr_holo_medkit(s34 e37)
+//PGI_MEDKIT holo/tr_holo_medkit(s88 e92)
+
 PGI_KILL0 gina/gina_kill0
 PGI_KILL1 gina/gina_kill1
 PGI_KILL2 gina/gina_kill2
 PGI_KILL3 gina/gina_kill3
 PGI_KILL4 gina/gina_kill4
 
-PGI_CAREFUL0 gina/gina_mad0
+PGI_CAREFUL gina/gina_mad0
 
 PGI_FF0 gina/gina_mad1
 PGI_FF1 gina/gina_mad2
@@ -1703,8 +1701,7 @@ PGI_FF1 gina/gina_mad2
 PGI_ENEMY0 gina/gina_attack1
 PGI_ENEMY1 gina/gina_attack2
 
-PGI_LETSGO0 gina/gina_use2
-//PGI_LETSGO1 holo/tr_holo_retry(s36 e53)
+PGI_LETSGO gina/gina_use2
 
 PGI_LEADON0 gina/gina_use1
 PGI_LEADON1 gina/gina_use1
@@ -1716,11 +1713,11 @@ PGI_WAIT0 gina/gina_stop0
 PGI_WAIT1 gina/gina_unuse2(s26)
 PGI_WAIT2 gina/gina_unuse4(s41)
 
-PGI_HELLO0 holo/tr_holo_intro(e3)
+//PGI_HELLO0 holo/tr_holo_intro(e3)
 
 PGI_NICEJOB0 holo/tr_holo_fantastic
 PGI_NICEJOB1 holo/tr_holo_nicejob
 PGI_NICEJOB2 holo/tr_holo_greatwork(e23)
 
-PGI_NO0 holo/tr_holo_tryagain(e21)
-PGI_YES0 gina/gina_unuse4(e38)
+PGI_NO holo/tr_holo_tryagain(e21)
+PGI_YES gina/gina_unuse4(e38)

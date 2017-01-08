@@ -212,18 +212,18 @@ public:
 		case WEAPON_MP5:
 		case WEAPON_CROSSBOW:
 			if (RANDOM_LONG(0,1)) {
-				return player->SaySentence("PBA_GUN");
+				return player->SaySentence("!PBA_GUN");
 			} else {
-				return player->SaySentence("PBA_WEAPON");
+				return player->SaySentence("!PBA_WEAPON");
 			}
 		case WEAPON_GAUSS:
 		case WEAPON_EGON:
 		case WEAPON_HORNETGUN:
-			return player->SaySentence("PBA_WEIRDGUN");
+			return player->SaySentence("!PBA_WEIRDGUN");
 		case WEAPON_RPG:
-			return player->SaySentence("PBA_RPG");
+			return player->SaySentence("!PBA_RPG");
 		default:
-			return player->SaySentence("PBA_WEAPON");
+			return player->SaySentence("!PBA_WEAPON");
 		}
 	}
 	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
@@ -261,7 +261,7 @@ public:
 		return player->SaySentence("PBA_HELPME");
 	}
 	bool niceJob(CBasePlayer *player) {
-		return player->SaySentence("PBA_NICEJOB");
+		return player->SaySentence("!PBA_NICEJOB");
 	}
 	bool lightDamage(CBasePlayer* player) {
 		return player->SaySentence("PBA_WOUND");
@@ -360,14 +360,14 @@ public:
 			if (RANDOM_LONG(0,1)) {
 				return player->SaySentence("PSC_GUN");
 			} else {
-				return player->SaySentence("PSC_WEAPON");
+				return player->SaySentence("!PSC_WEAPON");
 			}
 		case WEAPON_CROSSBOW:
-			return player->SaySentence("PSC_CROSSBOW");
+			return player->SaySentence("!PSC_CROSSBOW");
 		case WEAPON_EGON:
-			return player->SaySentence("PSC_EGON");
+			return player->SaySentence("!PSC_EGON");
 		default:
-			return player->SaySentence("PSC_WEAPON");
+			return player->SaySentence("!PSC_WEAPON");
 		}
 	}
 	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
@@ -479,39 +479,39 @@ public:
 		case WEAPON_MP5:
 		case WEAPON_CROSSBOW:
 			if (RANDOM_LONG(0,1)) {
-				return player->SaySentence("PRO_GUN");
+				return player->SaySentence("!PRO_GUN");
 			} else {
-				return player->SaySentence("PRO_WEAPON");
+				return player->SaySentence("!PRO_WEAPON");
 			}
 		case WEAPON_GAUSS:
-			return player->SaySentence("PRO_GAUSS");
+			return player->SaySentence("!PRO_GAUSS");
 		case WEAPON_EGON:
-			return player->SaySentence("PRO_EGON");
+			return player->SaySentence("!PRO_EGON");
 		case WEAPON_RPG:
-			return player->SaySentence("PRO_RPG");
+			return player->SaySentence("!PRO_RPG");
 		case WEAPON_HANDGRENADE:
-			return player->SaySentence("PRO_GRENADE");
+			return player->SaySentence("!PRO_GRENADE");
 		case WEAPON_HORNETGUN:
 		case WEAPON_SNARK:
-			return player->SaySentence("PRO_BIOGUN");
+			return player->SaySentence("!PRO_BIOGUN");
 		default:
-			return player->SaySentence("PRO_WEAPON");
+			return player->SaySentence("!PRO_WEAPON");
 		}
 	}
 	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
 		const char* className = STRING(pObject->pev->classname);
 		if (strncmp(className, "ammo_", 5) == 0) {
-			return player->SaySentence("PRO_AMMO");
+			return player->SaySentence("!PRO_AMMO");
 		} else if (FStrEq(className, "item_healthkit")) {
-			return player->SaySentence("PRO_MEDKIT");
+			return player->SaySentence("!PRO_MEDKIT");
 		} else if (FStrEq(className, "item_battery")) {
-			return player->SaySentence("PRO_BATTERY");
+			return player->SaySentence("!PRO_BATTERY");
 		} else if (FStrEq(className, "monster_scientist")) {
 			return player->SaySentence("PRO_DOC");
 		} else if (FStrEq(className, "monster_barney")) {
-			return player->SaySentence("PRO_GUARD");
+			return player->SaySentence("!PRO_GUARD");
 		} else if (FStrEq(className, "monster_miniturret") || FStrEq(className, "monster_turret") || FStrEq(className, "monster_sentry")) {
-			return player->SaySentence("PRO_TURRET");
+			return player->SaySentence("!PRO_TURRET");
 		}
 		return false;
 	}
@@ -528,22 +528,22 @@ public:
 		}
 	}
 	bool yes(CBasePlayer *player) {
-		return player->SaySentence("PRO_YES");
+		return player->SaySentence("!PRO_YES");
 	}
 	bool no(CBasePlayer *player) {
-		return player->SaySentence("PRO_NO");
+		return player->SaySentence("!PRO_NO");
 	}
 	bool sorry(CBasePlayer *player) {
-		return player->SaySentence("PRO_SORRY");
+		return player->SaySentence("!PRO_SORRY");
 	}
 	bool letsGo(CBasePlayer* player) {
-		return player->SaySentence("PRO_LETSGO");
+		return player->SaySentence("!PRO_LETSGO");
 	}
 	bool leadOn(CBasePlayer* player) {
 		return player->SaySentence("PRO_LEADON");
 	}
 	bool wait(CBasePlayer* player) {
-		return player->SaySentence("PRO_WAIT");
+		return player->SaySentence("!PRO_WAIT");
 	}
 	bool helpMe(CBasePlayer *player) {
 		return player->SaySentence("PRO_HELPME");
@@ -584,15 +584,15 @@ public:
 			return player->SaySentence("PRO_ALIEN");
 		case CLASS_HUMAN_MILITARY:
 			if (FClassnameIs(enemy->pev, "monster_apache")) {
-				return player->SaySentence("PRO_HELIC");
+				return player->SaySentence("!PRO_HELIC");
 			} else {
 				return player->SaySentence("PRO_MIL");
 			}
 		case CLASS_MACHINE:
 			if (FClassnameIs(enemy->pev, "monster_osprey")) {
-				return player->SaySentence("PRO_HELIC");
+				return player->SaySentence("!PRO_HELIC");
 			} else {
-				return player->SaySentence("PRO_TURRET");
+				return player->SaySentence("!PRO_TURRET");
 			}
 		default:
 			return false;
@@ -638,14 +638,35 @@ class GinaPhrases : public CharacterPhrases
 		}
 		return true;
 	}
+	bool lookAtWeapon(CBasePlayer *player, CBasePlayerWeapon *weapon) {
+		return player->SaySentence("!PGI_WEAPON");
+	}
+	bool lookAtPlayer(CBasePlayer *player, CBasePlayer *otherPlayer) {
+		switch(otherPlayer->m_playerCharacter)
+		{
+		case PLAYER_CHAR_BARNEY:
+			return player->SaySentence("!PGI_GUARD");
+		default:
+			return false;
+		}
+	}
+	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
+		const char* className = STRING(pObject->pev->classname);
+		if (FStrEq(className, "item_healthkit")) {
+			return player->SaySentence("!PGI_MEDKIT");
+		} else if (FStrEq(className, "monster_barney")) {
+			return player->SaySentence("!PGI_GUARD");
+		}
+		return false;
+	}
 	bool yes(CBasePlayer *player) {
-		return player->SaySentence("PGI_YES");
+		return player->SaySentence("!PGI_YES");
 	}
 	bool no(CBasePlayer *player) {
-		return player->SaySentence("PGI_NO");
+		return player->SaySentence("!PGI_NO");
 	}
 	bool letsGo(CBasePlayer* player) {
-		return player->SaySentence("PGI_LETSGO");
+		return player->SaySentence("!PGI_LETSGO");
 	}
 	bool leadOn(CBasePlayer* player) {
 		return player->SaySentence("PGI_LEADON");
@@ -666,7 +687,7 @@ class GinaPhrases : public CharacterPhrases
 		return player->SaySentence("PGI_ENEMY");
 	}
 	bool beCareful(CBasePlayer *player) {
-		return player->SaySentence("PGI_CAREFUL");
+		return player->SaySentence("!PGI_CAREFUL");
 	}
 };
 
@@ -1035,9 +1056,9 @@ CBaseEntity* CBasePlayer::LookForEnemy() {
 }
 
 
-bool IsSomethingInteresting(CBaseEntity* pObject)
+bool IsSomethingInteresting(CBaseEntity* pObject, CBasePlayer* player)
 {
-	if (pObject->IsPlayer()) {
+	if (pObject->IsPlayer() && pObject != player) {
 		return true;
 	}
 	if ((pObject->pev->flags & FL_MONSTER) && pObject->IsAlive()) {
@@ -1046,7 +1067,10 @@ bool IsSomethingInteresting(CBaseEntity* pObject)
 	const char* className = STRING(pObject->pev->classname);
 	if (className && *className) {
 		if (strncmp(className, "weapon_", 7) == 0) {
-			return true;
+			CBasePlayerWeapon* weapon = dynamic_cast<CBasePlayerWeapon*>(pObject);
+			if (!weapon->m_pPlayer) {
+				return true;
+			}
 		}
 		if (strncmp(className, "item_", 5) == 0) {
 			return true;
@@ -1063,14 +1087,14 @@ CBaseEntity* CBasePlayer::LookForSomethingToSayAbout()
 	CBaseEntity *pObject = NULL;
 	CBaseEntity *pClosest = NULL;
 	Vector vecLOS;
-	float flMaxDot = VIEW_FIELD_ULTRA_NARROW;
+	float flMaxDot = VIEW_FIELD_NARROW;
 	float flDot;
 
 	UTIL_MakeVectors( pev->v_angle );
 	while( ( pObject = UTIL_FindEntityInSphere( pObject, pev->origin, 512 ) ) != NULL )
 	{
-		if ( FVisible(pObject) && IsSomethingInteresting(pObject) && pObject != this ) {
-			vecLOS = ( pObject->pev->origin - ( pev->origin + pev->view_ofs ) ).Normalize();
+		if ( FVisible(pObject) && IsSomethingInteresting(pObject, this) ) {
+			vecLOS = ( pObject->pev->origin + pObject->pev->view_ofs - ( pev->origin + pev->view_ofs ) ).Normalize();
 			flDot = DotProduct( vecLOS , gpGlobals->v_forward );
 			if( flDot > flMaxDot )
 			{
