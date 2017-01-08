@@ -29,6 +29,7 @@
 #include "nodes.h"
 #include "soundent.h"
 #include "decals.h"
+#include "game.h"
 #include "gamerules.h"
 
 extern CGraph WorldGraph;
@@ -555,6 +556,29 @@ CBaseEntity* CBasePlayerItem::Respawn( void )
 
 void CBasePlayerItem::DefaultTouch( CBaseEntity *pOther )
 {
+	if (!use_to_take.value) {
+		TouchOrUse(pOther);
+	}
+}
+
+int CBasePlayerItem::ObjectCaps()
+{
+	if (use_to_take.value && !(pev->effects & EF_NODRAW)) {
+		return CBaseAnimating::ObjectCaps() | FCAP_IMPULSE_USE;
+	} else {
+		return CBaseAnimating::ObjectCaps();
+	}
+}
+
+void CBasePlayerItem::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if (use_to_take.value && !(pev->effects & EF_NODRAW) ) {
+		TouchOrUse(pActivator);
+	}
+}
+
+void CBasePlayerItem::TouchOrUse(CBaseEntity *pOther )
+{
 	// if it's not a player, ignore
 	if( !pOther->IsPlayer() )
 		return;
@@ -1043,6 +1067,29 @@ void CBasePlayerAmmo::Materialize( void )
 
 void CBasePlayerAmmo::DefaultTouch( CBaseEntity *pOther )
 {
+	if (!use_to_take.value) {
+		TouchOrUse(pOther);
+	}
+}
+
+int CBasePlayerAmmo::ObjectCaps()
+{
+	if (use_to_take.value && !(pev->effects & EF_NODRAW)) {
+		return CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE;
+	} else {
+		return CBaseEntity::ObjectCaps();
+	}
+}
+
+void CBasePlayerAmmo::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if (use_to_take.value && !(pev->effects & EF_NODRAW) ) {
+		TouchOrUse(pActivator);
+	}
+}
+
+void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
+{
 	if( !pOther->IsPlayer() )
 	{
 		return;
@@ -1216,7 +1263,31 @@ void CWeaponBox::Kill( void )
 // CWeaponBox - Touch: try to add my contents to the toucher
 // if the toucher is a player.
 //=========================================================
+
 void CWeaponBox::Touch( CBaseEntity *pOther )
+{
+	if (!use_to_take.value) {
+		TouchOrUse(pOther);
+	}
+}
+
+int CWeaponBox::ObjectCaps()
+{
+	if (use_to_take.value && !(pev->effects & EF_NODRAW)) {
+		return CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE;
+	} else {
+		return CBaseEntity::ObjectCaps();
+	}
+}
+
+void CWeaponBox::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if (use_to_take.value && !(pev->effects & EF_NODRAW) ) {
+		TouchOrUse(pActivator);
+	}
+}
+
+void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 {
 	if( !( pev->flags & FL_ONGROUND ) )
 	{

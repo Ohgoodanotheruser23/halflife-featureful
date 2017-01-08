@@ -3161,7 +3161,15 @@ void CBasePlayer::GiveNamedItem( const char *pszName )
 	pent->v.spawnflags |= SF_NORESPAWN;
 
 	DispatchSpawn( pent );
-	DispatchTouch( pent, ENT( pev ) );
+	
+	if (use_to_take.value) {
+		CBaseEntity* entity = (CBaseEntity *)GET_PRIVATE( pent );
+		if (entity) {
+			entity->Use(this, this, USE_TOGGLE, 0.0f);
+		}
+	} else {
+		DispatchTouch( pent, ENT( pev ) );
+	}
 }
 
 CBaseEntity *FindEntityForward( CBaseEntity *pMe )

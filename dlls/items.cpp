@@ -25,6 +25,7 @@
 #include "cbase.h"
 #include "weapons.h"
 #include "player.h"
+#include "game.h"
 #include "skill.h"
 #include "items.h"
 #include "gamerules.h"
@@ -105,6 +106,29 @@ void CItem::Spawn( void )
 extern int gEvilImpulse101;
 
 void CItem::ItemTouch( CBaseEntity *pOther )
+{
+	if (!use_to_take.value) {
+		TouchOrUse(pOther);
+	}
+}
+
+int CItem::ObjectCaps()
+{
+	if (use_to_take.value && !(pev->effects & EF_NODRAW)) {
+		return CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE;
+	} else {
+		return CBaseEntity::ObjectCaps();
+	}
+}
+
+void CItem::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if (use_to_take.value && !(pev->effects & EF_NODRAW)) {
+		TouchOrUse(pActivator);
+	}
+}
+
+void CItem::TouchOrUse(CBaseEntity *pOther)
 {
 	// if it's not a player, ignore
 	if( !pOther->IsPlayer() )
