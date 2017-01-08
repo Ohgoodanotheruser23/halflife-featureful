@@ -324,6 +324,7 @@ public:
 	bool SayOtherPlayerCondition();
 	bool TryToSayFriendlyFire();
 	CBaseEntity* LookForEnemy();
+	CBaseEntity* LookForSomethingToSayAbout();
 	void RefreshCharacter();
 	CharacterPhrases* GetCharPhrases();
 	int GetVoicePitch();

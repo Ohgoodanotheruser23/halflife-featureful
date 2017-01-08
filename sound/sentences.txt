@@ -821,8 +821,7 @@ SC_WAIT6 scientist/illwait
 // fail to follow player any more
 SC_STOP0 scientist/stop1
 SC_STOP1 scientist/stop2
-SC_STOP2 scientist/stop3
-SC_STOP3 scientist/stop4
+SC_STOP2 scientist/stop4
 
 
 // player is staring at scientist
@@ -1334,6 +1333,22 @@ GM_WONTWORK gman/gman_nowork
 
 // Player Barney
 
+PBA_LOOK0 barney/youeverseen
+
+PBA_GUN0 barney/ba_idle6(s68)
+PBA_WEAPON0 barney/ba_ht07_17(s87)
+
+PBA_WEIRDGUN0 barney/c2a4_ba_1tau
+PBA_WEIRDGUN1 barney/c2a4_ba_3tau
+
+PBA_RPG0 barney/c2a5_ba_rpg(s16 e42)
+
+PBA_DOC0 barney/hayfella
+PBA_DOC1 barney/ba_hello0
+
+PBA_MAM0 barney/ba_hello0
+PBA_MAM1 barney/ba_hello1
+
 PBA_YES0 barney/iguess
 PBA_YES1 barney/yessir
 PBA_YES2 barney/yup
@@ -1439,6 +1454,30 @@ PBA_HEAL1 barney/ba_button1
 
 // Player scientist
 
+PSC_LOOK0 scientist/everseen
+PSC_LOOK1 scientist/howinteresting
+PSC_LOOK2 scientist/peculiarmarks(e38)
+PSC_LOOK3 scientist/ushouldsee
+
+PSC_GUN0 scientist/c1a2_sci_6zomb(s46 e75)
+PSC_GUN1 scientist/sc_hello4(s85)
+
+PSC_WEAPON0 scientist/sc_hello1(s80)
+
+PSC_CROSSBOW0 scientist/c2a3_sci_icky(s58 e68)
+
+PSC_EGON0 scientist/c3a2_sci_3glu(s10 e21)
+
+PSC_SUPPLIES0 scientist/thiswillhelp
+PSC_SUPPLIES1 scientist/newhevsuit(s72)
+PSC_SUPPLIES2 scientist/protectme(s27 e66)
+
+PSC_DOC0 scientist/fellowscientist
+PSC_DOC1 scientist/goodtoseeyou
+PSC_DOC2 scientist/afellowsci
+
+PSC_GUARD0 scientist/sc_hello0
+
 PSC_YES0 scientist/absolutely
 PSC_YES1 scientist/ofcourse
 PSC_YES2 scientist/positively
@@ -1473,7 +1512,8 @@ PSC_WAIT2 scientist/delayagain(e49)
 PSC_HELPME0 scientist/sc_hello3(e45)
 
 PSC_NICEJOB0 scientist/fascinating
-PSC_NICEJOB1 scientist/excellentteam
+PSC_NICEJOB1 scientist/c1a4_sci_pwr(e18)
+PSC_NICEJOB2 scientist/neverseen(e32)
 
 PSC_YOUBAD0 scientist/youlookbad
 PSC_YOUBAD1 scientist/youwounded
@@ -1524,8 +1564,42 @@ PSC_RESCUED5 scientist/sc_hello5
 PSC_RESCUEME0 scientist/c1a4_sci_blind
 PSC_RESCUEME1 scientist/hello2
 PSC_RESCUEME2 scientist/sc_yard_box4
+PSC_RESCUEME3 scientist/sc_hello3
 
 // Player robo
+
+PRO_GUN0 vox/gun here
+PRO_WEAPON0 vox/weapon over here
+
+PRO_RPG0 vox/rocket weapon with laser sight
+PRO_RPG1 fvox/get_rpg
+
+PRO_GAUSS0 vox/experimental laser weapon
+
+PRO_EGON0 vox/experimental energy weapon
+PRO_EGON1 fvox/get_egon
+
+PRO_BIOGUN0 vox/biological weapon
+PRO_BIOGUN1 fvox/get_alien_wpn
+
+PRO_GRENADE0 vox/grenade here
+PRO_GRENADE1 fvox/get_grenade
+
+PRO_AMMO0 vox/ammunition
+
+PRO_LOOK0 vox/attention required
+PRO_LOOK1 vox/over there
+
+PRO_MEDKIT0 vox/medical kit
+PRO_MEDKIT1 fvox/get_medkit
+
+PRO_BATTERY0 vox/suit armor
+PRO_BATTERY1 fvox/get_battery
+
+PRO_DOC0 vox/science personnel
+PRO_DOC1 vox/doctor
+
+PRO_GUARD0 vox/security guard
 
 PRO_YES0 vox/yes
 
