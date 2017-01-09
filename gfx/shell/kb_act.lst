@@ -24,6 +24,8 @@
 "+voicerecord"	"#Valve_Use_Voice_Communication"
 "messagemode"	"#Valve_Chat_Message"
 "messagemode2"	"#Valve_Team_Message"
+"menu_orders"	"Orders"
+"menu_talk"		"Answers and emotions"
 "blank"			"=========================="
 "blank"			"#Valve_Combat_Title"
 "blank"			"=========================="
