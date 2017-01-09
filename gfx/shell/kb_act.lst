@@ -45,6 +45,7 @@
 "blank"			"COMMANDS"
 "blank"			"==========================="
 "drop"			"Drop current weapon"
+"dropammo"		"Drop ammo for current weapon"
 "kill"			"Commit suicide"
 "blank"			"=========================="
 "blank"			"#Valve_Miscellaneous_Title"
