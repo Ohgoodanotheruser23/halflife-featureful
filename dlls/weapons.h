@@ -258,6 +258,10 @@ public:
 	virtual int UpdateClientData( CBasePlayer *pPlayer ) { return 0; }
 
 	virtual CBasePlayerItem *GetWeaponPtr( void ) { return NULL; };
+	
+	int ObjectCaps();
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void TouchOrUse( CBaseEntity* other );
 
 	static ItemInfo ItemInfoArray[ MAX_WEAPONS ];
 	static AmmoInfo AmmoInfoArray[ MAX_AMMO_SLOTS ];
@@ -361,6 +365,9 @@ public:
 	virtual void Spawn( void );
 	void EXPORT DefaultTouch( CBaseEntity *pOther ); // default weapon touch
 	virtual BOOL AddAmmo( CBaseEntity *pOther ) { return TRUE; };
+	int ObjectCaps();
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void TouchOrUse( CBaseEntity* other );
 
 	CBaseEntity* Respawn( void );
 	void EXPORT Materialize( void );
@@ -435,6 +442,10 @@ class CWeaponBox : public CBaseEntity
 	BOOL IsEmpty( void );
 	int  GiveAmmo( int iCount, char *szName, int iMax, int *pIndex = NULL );
 	void SetObjectCollisionBox( void );
+	
+	int ObjectCaps();
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void TouchOrUse( CBaseEntity* other );
 
 public:
 	void EXPORT Kill ( void );

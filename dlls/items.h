@@ -26,5 +26,8 @@ public:
 	{
 		return FALSE;
 	};
+	int ObjectCaps();
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void TouchOrUse( CBaseEntity* pOther );
 };
 #endif // ITEMS_H

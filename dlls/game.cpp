@@ -51,6 +51,7 @@ cvar_t allowmonsterinfo = { "mp_allowmonsterinfo","1", FCVAR_SERVER };
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
 
 cvar_t npc_dropweapons = { "npc_dropweapon", "1", FCVAR_SERVER };
+cvar_t use_to_take = { "use_to_take","0", FCVAR_SERVER };
 
 // Engine Cvars
 cvar_t *g_psv_gravity = NULL;
@@ -508,6 +509,8 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &allowgaussjump );
 
 	CVAR_REGISTER( &mp_chattime );
+	
+	CVAR_REGISTER( &use_to_take );
 
 	CVAR_REGISTER( &npc_dropweapons );
 
