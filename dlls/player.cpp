@@ -5744,6 +5744,80 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 	}
 }
 
+void CBasePlayer::DropAmmo()
+{
+	if( !g_pGameRules->IsMultiplayer() )
+	{
+		// no dropping in single player.
+		return;
+	}
+	
+	const char* pszItemName = "";
+
+	if( !*pszItemName )
+	{
+		// if this string has no length, the client didn't type a name!
+		// assume player wants to drop the active item.
+		// make the string null to make future operations in this function easier
+		pszItemName = NULL;
+	} 
+
+	CBasePlayerItem *pWeapon;
+	int i;
+
+	for( i = 0; i < MAX_ITEM_TYPES; i++ )
+	{
+		pWeapon = m_rgpPlayerItems[i];
+
+		while( pWeapon )
+		{
+			if( pszItemName )
+			{
+				if( FStrEq( pszItemName, STRING( pWeapon->pev->classname ) ) ) {
+					break;
+				}
+			}
+			else
+			{
+				if( pWeapon == m_pActiveItem ) {
+					break;
+				}
+			}
+
+			pWeapon = pWeapon->m_pNext; 
+		}
+
+		if( pWeapon )
+		{
+			const char* entName = pWeapon->pszAmmoEntity();
+			int ammoCount = pWeapon->iDropAmmo();
+			if (entName && ammoCount) {
+				int iAmmoIndex = GetAmmoIndex( pWeapon->pszAmmo1() );
+				if( iAmmoIndex != -1 )
+				{
+					if (m_rgAmmo[iAmmoIndex] >= ammoCount) {
+						UTIL_MakeVectors( pev->angles );
+						
+						CBaseEntity* ammoEnt = CBaseEntity::Create( (char*)entName, pev->origin + gpGlobals->v_forward * 10, pev->angles, edict() );
+						if (ammoEnt) {
+							ammoEnt->pev->spawnflags |= SF_NORESPAWN;
+							//UTIL_SetSize( ammoEnt->pev, g_vecZero, g_vecZero );
+							//UTIL_SetOrigin( ammoEnt->pev, ammoEnt->pev->origin );
+							ammoEnt->pev->flags |= FL_IMMUNE_LAVA;
+							ammoEnt->pev->angles.x = 0;
+							ammoEnt->pev->angles.z = 0;
+							ammoEnt->pev->velocity = gpGlobals->v_forward * 300 + gpGlobals->v_forward * 100;
+							m_rgAmmo[iAmmoIndex] -= ammoCount;
+						}
+					}
+				}
+			}
+
+			return;
+		}
+	}
+}
+
 //=========================================================
 // HasPlayerItem Does the player already have this item?
 //=========================================================

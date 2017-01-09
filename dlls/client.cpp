@@ -444,6 +444,10 @@ void ClientCommand( edict_t *pEntity )
 		// player is dropping an item. 
 		GetClassPtr( (CBasePlayer *)pev )->DropPlayerItem( (char *)CMD_ARGV( 1 ) );
 	}
+	else if (FStrEq( pcmd, "dropammo") )
+	{
+		GetClassPtr( (CBasePlayer *)pev )->DropAmmo();
+	}
 	else if( FStrEq( pcmd, "fov" ) )
 	{
 		if( g_flWeaponCheat && CMD_ARGC() > 1 )

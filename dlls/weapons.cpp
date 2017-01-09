@@ -1045,6 +1045,11 @@ void CBasePlayerAmmo::Materialize( void )
 
 void CBasePlayerAmmo::DefaultTouch( CBaseEntity *pOther )
 {
+	//Prevent dropped ammo from touching at the same time
+	if( (pev->flags & FL_IMMUNE_LAVA) && !( pev->flags & FL_ONGROUND ) )
+	{
+		return;
+	}
 	if( !pOther->IsPlayer() )
 	{
 		return;
