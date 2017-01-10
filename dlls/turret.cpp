@@ -240,6 +240,7 @@ void CBaseTurret::KeyValue( KeyValueData *pkvd )
 void CBaseTurret::Spawn()
 { 
 	Precache();
+	pev->max_health = pev->health;
 	pev->nextthink		= gpGlobals->time + 1;
 	pev->movetype		= MOVETYPE_FLY;
 	pev->sequence		= 0;
