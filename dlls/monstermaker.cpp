@@ -208,6 +208,7 @@ void CMonsterMaker::MakeMonster( void )
 	pevCreate = VARS( pent );
 	pevCreate->origin = pev->origin;
 	pevCreate->angles = pev->angles;
+	pevCreate->weapons = pev->weapons;
 	SetBits( pevCreate->spawnflags, SF_MONSTER_FALL_TO_GROUND );
 
 	// Children hit monsterclip brushes

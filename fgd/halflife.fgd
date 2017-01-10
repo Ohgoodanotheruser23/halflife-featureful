@@ -2255,6 +2255,15 @@
 	target(string) : "Target On Release" 
 	monstertype(string) : "Monster Type"
 	netname(string) : "Childrens' Name"
+	weapons(Choices) : "Weapons" : 0 =
+	[
+		0 : "Default"
+		1 : "9mmAR"
+		3 : "9mmAR + HG"
+		5 : "9mmAR + GL"
+		8 : "Shotgun"
+		10 : "Shotgun + HG"
+	]
 	spawnflags(Flags) = 
 	[
 		1 : "Start ON" 	: 0
