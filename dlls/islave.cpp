@@ -62,11 +62,20 @@ enum
 #define ISLAVE_ZAP_GREEN 255
 #define ISLAVE_ZAP_BLUE 96
 
+#define ISLAVE_ARMBEAM_RED 96
+#define ISLAVE_ARMBEAM_GREEN 128
+#define ISLAVE_ARMBEAM_BLUE 16
+
 #define ISLAVE_ELECTROONLY	(1 << 0)
 #define ISLAVE_SNARKS		(1 << 1)
 #define ISLAVE_HEADCRABS	(1 << 2)
 
 #define ISLAVE_COIL_ATTACK_RADIUS 196
+
+static bool IsVortWounded(CBaseEntity* pEntity)
+{
+	return pEntity->pev->health < 20;
+}
 
 class CISlave : public CSquadMonster
 {
@@ -120,6 +129,14 @@ public:
 	CSprite* CreateHandGlow(int attachment);
 	CBeam* CreateSummonBeam(const Vector& vecEnd, int attachment);
 	
+	float HealPower();
+	float HealSacrifice();
+	void GiveSacrifice();
+	bool CanShareHealth();
+	bool CanRevive();
+	int HealOther(CBaseEntity* pEntity);
+	bool CanSpawnFamiliar();
+	
 	int m_iBravery;
 
 	CBeam *m_pBeam[ISLAVE_MAX_BEAMS];
@@ -130,6 +147,7 @@ public:
 	int m_voicePitch;
 
 	EHANDLE m_hDead;
+	EHANDLE m_hWounded;
 	
 	int m_iSpriteTexture;
 	
@@ -396,7 +414,7 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				Vector vecSrc = pev->origin + gpGlobals->v_forward * 2;
 				MakeDynamicLight(vecSrc, 12, (int)(20/pev->framerate));
 			}
-			if( m_hDead != NULL )
+			if( CanRevive() )
 			{
 				WackBeam( -1, m_hDead );
 				WackBeam( 1, m_hDead );
@@ -416,7 +434,7 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 		{
 			ClearBeams();
 
-			if( m_hDead != NULL )
+			if( CanRevive() )
 			{
 				Vector vecDest = m_hDead->pev->origin + Vector( 0, 0, 38 );
 				TraceResult trace;
@@ -425,12 +443,20 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				if( !trace.fStartSolid )
 				{
 					CBaseEntity *pNew = Create( "monster_alien_slave", m_hDead->pev->origin, m_hDead->pev->angles );
+					
+					if (m_hDead->pev->weapons) {
+						pNew->pev->weapons = m_hDead->pev->weapons;
+					}
+					
 					CBaseMonster *pNewMonster = pNew->MyMonsterPointer( );
 					//pNew->pev->spawnflags |= 1;
 					WackBeam( -1, pNew );
 					WackBeam( 1, pNew );
 					UTIL_Remove( m_hDead );
 					EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG( 130, 160 ) );
+					
+					GiveSacrifice();
+					
 					/*
 					CBaseEntity *pEffect = Create( "test_effect", pNew->Center(), pev->angles );
 					pEffect->Use( this, this, USE_ON, 1 );
@@ -440,7 +466,15 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 			}
 			ClearMultiDamage();
 
-			if ((pev->origin - m_vecEnemyLKP).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
+			bool coilAttack = false;
+			if (m_hWounded && CanShareHealth() && IsVortWounded(m_hWounded) && m_hWounded->IsAlive() && (pev->origin - m_hWounded->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
+				coilAttack = true;
+				ALERT(at_aiconsole, "Vort makes coil attack to heal friend\n");
+			} else if ((pev->origin - m_vecEnemyLKP).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
+				coilAttack = true;
+			}
+			
+			if (coilAttack) {
 				CoilBeam();
 				
 				float flAdjustedDamage = gSkillData.slaveDmgZap*3;
@@ -458,8 +492,9 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 							}
 						} else {
 							if (FClassnameIs(pEntity->pev, STRING(pev->classname))) {
-								pEntity->TakeHealth(gSkillData.slaveDmgZap, DMG_GENERIC);
-								ALERT(at_aiconsole, "Heal friend vortigaunt with coil attack\n");
+								if (HealOther(pEntity)) {
+									ALERT(at_aiconsole, "Vortigaunt healed friend with coil attack\n");
+								}
 							}
 						}
 					}
@@ -509,7 +544,7 @@ BOOL CISlave::CheckRangeAttack1( float flDot, float flDist )
 }
 
 //=========================================================
-// CheckRangeAttack2 - check bravery and try to resurect dead comrades
+// CheckRangeAttack2 - try to resurect dead comrades or heal wounded ones
 //=========================================================
 BOOL CISlave::CheckRangeAttack2( float flDot, float flDist )
 {
@@ -519,6 +554,7 @@ BOOL CISlave::CheckRangeAttack2( float flDot, float flDist )
 	}
 
 	m_hDead = NULL;
+	m_hWounded = NULL;
 
 	CBaseEntity *pEntity = NULL;
 	while( ( pEntity = UTIL_FindEntityByClassname( pEntity, "monster_alien_slave" ) ) != NULL )
@@ -537,9 +573,18 @@ BOOL CISlave::CheckRangeAttack2( float flDot, float flDist )
 					flDist = d;
 				}
 			}
+			else if ( pEntity != this && pEntity->IsAlive() && IsVortWounded(pEntity) ) 
+			{
+				float d = ( pev->origin - pEntity->pev->origin ).Length();
+				if( d < flDist )
+				{
+					m_hWounded = pEntity;
+					flDist = d;
+				}
+			}
 		}
 	}
-	if( m_hDead != NULL )
+	if( m_hDead != NULL || m_hWounded != NULL )
 		return TRUE;
 	else
 		return FALSE;
@@ -607,10 +652,13 @@ void CISlave::SpawnFamiliar(char *entityName, const Vector &origin, const Vector
 			SetBits( pNew->pev->spawnflags, SF_MONSTER_FALL_TO_GROUND );
 			if (pNewMonster) {
 				pNewMonster->m_hEnemy = m_hEnemy;
+				pNewMonster->m_vecEnemyLKP = m_vecEnemyLKP;
+				pNewMonster->Remember(bits_MEMORY_PROVOKED);
+				pNewMonster->m_IdealMonsterState = m_IdealMonsterState;
 			}
 		}
 	} else {
-		ALERT(at_console, "Not enough room to create %s\n", entityName);
+		ALERT(at_aiconsole, "Not enough room to create %s\n", entityName);
 	}
 }
 
@@ -655,6 +703,8 @@ void CISlave::Spawn()
 	}
 
 	MonsterInit();
+	
+	pev->max_health = gSkillData.slaveHealth * 3;
 }
 
 //=========================================================
@@ -746,7 +796,7 @@ Schedule_t	slSlaveAttack1[] =
 Task_t tlSlaveCoverAndSummon[] =
 {
 	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_WAIT, (float)0.2 },
+	{ TASK_WAIT, (float)0.1 },
 	{ TASK_FIND_COVER_FROM_ENEMY, (float)0 },
 	{ TASK_RUN_PATH, (float)0 },
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
@@ -769,7 +819,7 @@ Schedule_t slSlaveCoverAndSummon[] =
 Task_t tlSlaveSummon[] =
 {
 	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_FACE_ENEMY, (float)0 },
+	{ TASK_FACE_IDEAL, (float)0 },
 	{ TASK_ISLAVE_SUMMON_FAMILIAR, (float)0 }
 };
 
@@ -828,13 +878,13 @@ Schedule_t *CISlave::GetSchedule( void )
 			return CBaseMonster::GetSchedule();
 		}
 
-		if( pev->health < 20 )
+		if( IsVortWounded(this) )
 		{
 			if( !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )
 			{
 				m_failSchedule = SCHED_CHASE_ENEMY;
 				int sched = SCHED_TAKE_COVER_FROM_ENEMY;
-				if (pev->weapons & (ISLAVE_SNARKS | ISLAVE_HEADCRABS)) {
+				if (CanSpawnFamiliar()) {
 					sched = SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR;
 					m_failSchedule = SCHED_ISLAVE_SUMMON_FAMILIAR;
 				}
@@ -866,6 +916,16 @@ Schedule_t *CISlave::GetScheduleOfType( int Type )
 		{
 			return CSquadMonster::GetScheduleOfType( SCHED_MELEE_ATTACK1 );
 		}
+		else if (CanSpawnFamiliar())
+		{
+			ALERT(at_aiconsole, "Vort gonna spawn a familiar\n");
+			return GetScheduleOfType( SCHED_ISLAVE_SUMMON_FAMILIAR );
+		}
+		else if ( (m_hDead || m_hWounded) && HasConditions( bits_COND_CAN_RANGE_ATTACK2) )
+		{
+			ALERT(at_aiconsole, "Vort gonna heal friends after sched fail\n");
+			return GetScheduleOfType( SCHED_RANGE_ATTACK2 );
+		}
 		break;
 	case SCHED_RANGE_ATTACK1:
 		return slSlaveAttack1;
@@ -873,6 +933,8 @@ Schedule_t *CISlave::GetScheduleOfType( int Type )
 		return slSlaveAttack1;
 	case SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR:
 		return slSlaveCoverAndSummon;
+	case SCHED_ISLAVE_SUMMON_FAMILIAR:
+		return slSlaveSummon;
 	}
 	return CSquadMonster::GetScheduleOfType( Type );
 }
@@ -916,7 +978,7 @@ void CISlave::ArmBeam( int side )
 	m_pBeam[m_iBeams]->PointEntInit( tr.vecEndPos, entindex() );
 	m_pBeam[m_iBeams]->SetEndAttachment( side < 0 ? 2 : 1 );
 	// m_pBeam[m_iBeams]->SetColor( 180, 255, 96 );
-	m_pBeam[m_iBeams]->SetColor( 96, 128, 16 );
+	m_pBeam[m_iBeams]->SetColor( ISLAVE_ARMBEAM_RED, ISLAVE_ARMBEAM_GREEN, ISLAVE_ARMBEAM_BLUE );
 	m_pBeam[m_iBeams]->SetBrightness( 64 );
 	m_pBeam[m_iBeams]->SetNoise( 80 );
 	m_iBeams++;
@@ -981,7 +1043,14 @@ void CISlave::ZapBeam( int side )
 		return;
 
 	vecSrc = pev->origin + gpGlobals->v_up * 36;
-	vecAim = ShootAtEnemy( vecSrc );
+	
+	if (m_hWounded && m_hWounded->IsAlive()) {
+		vecAim = ( ( m_hWounded->BodyTarget( vecSrc ) ) - vecSrc ).Normalize();
+		ALERT(at_aiconsole, "Vort shoot friend on purpose to heal\n");
+	} else {
+		vecAim = ShootAtEnemy( vecSrc );
+	}
+	
 	float deflection = 0.01;
 	vecAim = vecAim + side * gpGlobals->v_right * RANDOM_FLOAT( 0, deflection ) + gpGlobals->v_up * RANDOM_FLOAT( -deflection, deflection );
 	UTIL_TraceLine( vecSrc, vecSrc + vecAim * 1024, dont_ignore_monsters, ENT( pev ), &tr );
@@ -1001,9 +1070,8 @@ void CISlave::ZapBeam( int side )
 	if( pEntity != NULL && pEntity->pev->takedamage )
 	{
 		if (IRelationship(pEntity) < R_DL && FClassnameIs(pEntity->pev, STRING(pev->classname))) {
-			if (pEntity->TakeHealth(gSkillData.slaveDmgZap, DMG_GENERIC)) // give health to friend
-			{
-				ALERT(at_aiconsole, "Heal friend vortigaunt with zap attack\n");
+			if (HealOther(pEntity)) {
+				ALERT(at_aiconsole, "Vortigaunt healed friend with zap attack\n");
 			}
 		} else {
 			pEntity->TraceAttack( pev, gSkillData.slaveDmgZap, vecAim, &tr, DMG_SHOCK );
@@ -1050,7 +1118,7 @@ void CISlave::CoilBeam()
 		WRITE_COORD( pev->origin.z + 16 );
 		WRITE_COORD( pev->origin.x );
 		WRITE_COORD( pev->origin.y );
-		WRITE_COORD( pev->origin.z + 16 + ISLAVE_COIL_ATTACK_RADIUS*4 ); 
+		WRITE_COORD( pev->origin.z + 16 + ISLAVE_COIL_ATTACK_RADIUS*5 ); 
 		WRITE_SHORT( m_iSpriteTexture );
 		WRITE_BYTE( 0 ); // startframe
 		WRITE_BYTE( 10 ); // framerate
@@ -1079,7 +1147,7 @@ void CISlave::CoilBeam()
 		WRITE_BYTE( 10 ); // framerate
 		WRITE_BYTE( 2 ); // life
 		WRITE_BYTE( 128 );  // width
-		WRITE_BYTE( 20 );   // noise
+		WRITE_BYTE( 25 );   // noise
 
 		WRITE_BYTE( ISLAVE_ZAP_RED );
 		WRITE_BYTE( ISLAVE_ZAP_GREEN );
@@ -1171,3 +1239,54 @@ void CISlave::RemoveSummonBeams()
 	UTIL_Remove(m_handsBeam2);
 	m_handsBeam2 = NULL;
 }
+
+float CISlave::HealPower()
+{
+	return gSkillData.slaveDmgZap;
+}
+
+float CISlave::HealSacrifice()
+{
+	//vortigaunt heals more health than loses, because friendship is magic
+	return gSkillData.slaveDmgZap / 2; 
+}
+
+void CISlave::GiveSacrifice()
+{
+	if (CanShareHealth()) {
+		pev->health -= HealSacrifice();
+	}
+}
+
+bool CISlave::CanShareHealth()
+{
+	return pev->health >= gSkillData.slaveHealth + HealSacrifice();
+}
+
+bool CISlave::CanRevive()
+{
+	return m_hDead != NULL && CanShareHealth();
+}
+
+int CISlave::HealOther(CBaseEntity *pEntity)
+{
+	int result = 0;
+	if (pEntity->IsAlive()) {
+		if (CanShareHealth()) {
+			result = pEntity->TakeHealth(HealPower(), DMG_GENERIC);
+			if (result) {
+				GiveSacrifice();
+			}
+		} else {
+			// vort was damaged to this moment, still give some health to friend
+			result = pEntity->TakeHealth(HealPower() / 2, DMG_GENERIC);
+		}
+	}
+	return result;
+}
+
+bool CISlave::CanSpawnFamiliar()
+{
+	return (pev->weapons & (ISLAVE_SNARKS | ISLAVE_HEADCRABS)) != 0;
+}
+
