@@ -33,7 +33,8 @@ extern DLL_GLOBAL int		g_iSkillLevel;
 //=========================================================
 enum
 {
-	SCHED_ISLAVE_COVER_AND_SUMMON_SNARKS = LAST_COMMON_SCHEDULE + 1
+	SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR = LAST_COMMON_SCHEDULE + 1,
+	SCHED_ISLAVE_SUMMON_FAMILIAR
 };
 
 //=========================================================
@@ -41,7 +42,7 @@ enum
 //=========================================================
 enum 
 {
-	TASK_ISLAVE_SUMMON_SNARKS = LAST_COMMON_TASK + 1,
+	TASK_ISLAVE_SUMMON_FAMILIAR = LAST_COMMON_TASK + 1,
 };
 
 //=========================================================
@@ -60,6 +61,10 @@ enum
 #define ISLAVE_ZAP_RED 180
 #define ISLAVE_ZAP_GREEN 255
 #define ISLAVE_ZAP_BLUE 96
+
+#define ISLAVE_ELECTROONLY	(1 << 0)
+#define ISLAVE_SNARKS		(1 << 1)
+#define ISLAVE_HEADCRABS	(1 << 2)
 
 #define ISLAVE_COIL_ATTACK_RADIUS 196
 
@@ -88,8 +93,7 @@ public:
 
 	void StartTask( Task_t *pTask );
 	void RunTask( Task_t *pTask );
-	Vector SnarkOrigin();
-	void SpawnSnark();
+	void SpawnFamiliar(char* entityName, const Vector& origin, const Vector& vecEnd, int hullType);
 	Schedule_t *GetSchedule( void );
 	Schedule_t *GetScheduleOfType( int Type );
 	CUSTOM_SCHEDULES
@@ -109,6 +113,7 @@ public:
 	void CreateSummonBeams();
 	void RemoveSummonBeams();
 	void CoilBeam();
+	void MakeDynamicLight(const Vector& vecSrc, int radius, int t);
 	
 	Vector HandPosition(int side);
 
@@ -127,7 +132,6 @@ public:
 	EHANDLE m_hDead;
 	
 	int m_iSpriteTexture;
-	BOOL m_gonnaMakeCoilZap;
 	
 	CSprite	*m_handGlow1;
 	CSprite	*m_handGlow2;
@@ -256,18 +260,7 @@ void CISlave::IdleSound( void )
 
 	UTIL_MakeAimVectors( pev->angles );
 	Vector vecSrc = pev->origin + gpGlobals->v_right * 2 * side;
-	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSrc );
-		WRITE_BYTE( TE_DLIGHT );
-		WRITE_COORD( vecSrc.x );	// X
-		WRITE_COORD( vecSrc.y );	// Y
-		WRITE_COORD( vecSrc.z );	// Z
-		WRITE_BYTE( 8 );		// radius * 0.1
-		WRITE_BYTE( 255 );		// r
-		WRITE_BYTE( 180 );		// g
-		WRITE_BYTE( 96 );		// b
-		WRITE_BYTE( 10 );		// time * 10
-		WRITE_BYTE( 0 );		// decay * 0.1
-	MESSAGE_END();
+	MakeDynamicLight(vecSrc, 8, 10);
 
 	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "debris/zap1.wav", 1, ATTN_NORM, 0, 100 );
 #endif
@@ -394,26 +387,14 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 		case ISLAVE_AE_ZAP_POWERUP:
 		{
 			// speed up attack when on hard
-			if( g_iSkillLevel == SKILL_HARD )
-				pev->framerate = 1.5;
+			pev->framerate = gSkillData.slaveZapRate;
 
 			UTIL_MakeAimVectors( pev->angles );
 
 			if( m_iBeams == 0 )
 			{
 				Vector vecSrc = pev->origin + gpGlobals->v_forward * 2;
-				MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSrc );
-					WRITE_BYTE( TE_DLIGHT );
-					WRITE_COORD( vecSrc.x );	// X
-					WRITE_COORD( vecSrc.y );	// Y
-					WRITE_COORD( vecSrc.z );	// Z
-					WRITE_BYTE( 12 );		// radius * 0.1
-					WRITE_BYTE( 255 );		// r
-					WRITE_BYTE( 180 );		// g
-					WRITE_BYTE( 96 );		// b
-					WRITE_BYTE( 20 / pev->framerate );		// time * 10
-					WRITE_BYTE( 0 );		// decay * 0.1
-				MESSAGE_END();
+				MakeDynamicLight(vecSrc, 12, (int)(20/pev->framerate));
 			}
 			if( m_hDead != NULL )
 			{
@@ -459,14 +440,14 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 			}
 			ClearMultiDamage();
 
-			if (m_gonnaMakeCoilZap && (pev->origin - m_vecEnemyLKP).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
+			if ((pev->origin - m_vecEnemyLKP).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
 				CoilBeam();
 				
 				float flAdjustedDamage = gSkillData.slaveDmgZap*3;
 				CBaseEntity *pEntity = NULL;
 				while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, ISLAVE_COIL_ATTACK_RADIUS ) ) != NULL )
 				{
-					if( pEntity->pev->takedamage != DAMAGE_NO && pEntity->MyMonsterPointer() != NULL ) {
+					if( pEntity != this && pEntity->pev->takedamage != DAMAGE_NO && pEntity->MyMonsterPointer() != NULL ) {
 						if (IRelationship(pEntity) >= R_DL) {
 							if( !FVisible( pEntity ) ) {
 								flAdjustedDamage *= 0.5;
@@ -495,7 +476,6 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				ApplyMultiDamage( pev, pev );
 			}
 
-			m_gonnaMakeCoilZap = FALSE;
 			m_flNextAttack = gpGlobals->time + RANDOM_FLOAT( 0.5, 4.0 );
 		}
 			break;
@@ -520,9 +500,8 @@ BOOL CISlave::CheckRangeAttack1( float flDot, float flDist )
 		return FALSE;
 	}
 	
-	if( flDist <= ISLAVE_COIL_ATTACK_RADIUS )
+	if( flDist > 32 && flDist <= ISLAVE_COIL_ATTACK_RADIUS )
 	{
-		m_gonnaMakeCoilZap = TRUE;
 		return TRUE;
 	}
 
@@ -573,10 +552,13 @@ void CISlave::StartTask( Task_t *pTask )
 {
 	ClearBeams();
 	
-	if (pTask->iTask == TASK_ISLAVE_SUMMON_SNARKS) {
-		ALERT(at_aiconsole, "start TASK_ISLAVE_SNARKS\n");
+	if (pTask->iTask == TASK_ISLAVE_SUMMON_FAMILIAR) {
+		ALERT(at_aiconsole, "start TASK_ISLAVE_FAMILIAR\n");
 		m_IdealActivity = ACT_CROUCH;
 		EMIT_SOUND( edict(), CHAN_BODY, "debris/beamstart1.wav", 1, ATTN_NORM );
+		UTIL_MakeAimVectors( pev->angles );
+		Vector vecSrc = pev->origin + gpGlobals->v_forward * 8;
+		MakeDynamicLight(vecSrc, 10, 15);
 		HandsGlowOn();
 		CreateSummonBeams();
 	} else {
@@ -586,10 +568,19 @@ void CISlave::StartTask( Task_t *pTask )
 
 void CISlave::RunTask(Task_t *pTask)
 {
-	if (pTask->iTask == TASK_ISLAVE_SUMMON_SNARKS) {
+	if (pTask->iTask == TASK_ISLAVE_SUMMON_FAMILIAR) {
 		if( m_fSequenceFinished )
 		{
-			SpawnSnark();
+			UTIL_MakeVectors( pev->angles );
+			if (pev->weapons & ISLAVE_HEADCRABS) {
+				Vector headcrabOrigin = pev->origin + gpGlobals->v_forward * 42;
+				Vector headcrabVecEnd =  pev->origin + gpGlobals->v_forward * 52;
+				SpawnFamiliar("monster_headcrab", headcrabOrigin, headcrabVecEnd, human_hull);
+			} else if (pev->weapons & ISLAVE_SNARKS) {
+				Vector snarkOrigin = pev->origin + gpGlobals->v_forward * 30;
+				Vector snarkVecEnd =  pev->origin + gpGlobals->v_forward * 40;
+				SpawnFamiliar("monster_snark", snarkOrigin, snarkVecEnd, head_hull);
+			}
 			HandsGlowOff();
 			TaskComplete();
 			RemoveSummonBeams();
@@ -599,29 +590,16 @@ void CISlave::RunTask(Task_t *pTask)
 	}
 }
 
-Vector CISlave::SnarkOrigin()
-{
-	UTIL_MakeVectors( pev->angles );
-	return pev->origin + gpGlobals->v_forward * 30;
-}
-
-void CISlave::SpawnSnark()
+void CISlave::SpawnFamiliar(char *entityName, const Vector &origin, const Vector &vecEnd, int hullType)
 {	
-	Vector snarkOrigin = SnarkOrigin();
-	
-	Vector mins = snarkOrigin - Vector( 4, 4, 0 );
-	Vector maxs = snarkOrigin + Vector( 4, 4, 0 );
-	maxs.z = snarkOrigin.z + 16;
-	mins.z = snarkOrigin.z + 8;
-
-	CBaseEntity *pList[2];
-	int count = UTIL_EntitiesInBox( pList, 2, mins, maxs, FL_CLIENT | FL_MONSTER );
-	if( !count ) {
-		CBaseEntity *pNew = Create( "monster_snark", snarkOrigin, pev->angles );
+	TraceResult tr;
+	UTIL_TraceHull( pev->origin, vecEnd, dont_ignore_monsters, hullType, ENT( pev ), &tr );
+	if (tr.flFraction == 1.0) {
+		CBaseEntity *pNew = Create( entityName, origin, pev->angles );
 		CBaseMonster *pNewMonster = pNew->MyMonsterPointer( );
 	
 		if(pNew) {
-			CSprite *pSpr = CSprite::SpriteCreate( "sprites/bexplo.spr", snarkOrigin, TRUE );
+			CSprite *pSpr = CSprite::SpriteCreate( "sprites/bexplo.spr", origin, TRUE );
 			pSpr->AnimateAndDie( 20 );
 			pSpr->SetTransparency( kRenderGlow,  77, 210, 130,  255, kRenderFxNoDissipation );
 			EMIT_SOUND( pNew->edict(), CHAN_BODY, "debris/beamstart7.wav", 0.9, ATTN_NORM );
@@ -632,7 +610,7 @@ void CISlave::SpawnSnark()
 			}
 		}
 	} else {
-		ALERT(at_console, "Not enough room to create snark\n");
+		ALERT(at_console, "Not enough room to create %s\n", entityName);
 	}
 }
 
@@ -672,7 +650,9 @@ void CISlave::Spawn()
 	
 	HandsGlowOff();
 	
-	m_gonnaMakeCoilZap = FALSE;
+	if (!pev->weapons) {
+		pev->weapons = ISLAVE_SNARKS;
+	}
 
 	MonsterInit();
 }
@@ -712,6 +692,7 @@ void CISlave::Precache()
 
 	UTIL_PrecacheOther( "test_effect" );
 	UTIL_PrecacheOther( "monster_snark" );
+	UTIL_PrecacheOther( "monster_headcrab" );
 }
 
 //=========================================================
@@ -771,7 +752,7 @@ Task_t tlSlaveCoverAndSummon[] =
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
 	{ TASK_REMEMBER, (float)bits_MEMORY_INCOVER },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_ISLAVE_SUMMON_SNARKS, (float)0 },
+	{ TASK_ISLAVE_SUMMON_FAMILIAR, (float)0 },
 };
 
 Schedule_t slSlaveCoverAndSummon[] =
@@ -785,10 +766,29 @@ Schedule_t slSlaveCoverAndSummon[] =
 	},
 };
 
+Task_t tlSlaveSummon[] =
+{
+	{ TASK_STOP_MOVING, (float)0 },
+	{ TASK_FACE_ENEMY, (float)0 },
+	{ TASK_ISLAVE_SUMMON_FAMILIAR, (float)0 }
+};
+
+Schedule_t slSlaveSummon[] =
+{
+	{
+		tlSlaveSummon,
+		ARRAYSIZE( tlSlaveSummon ),
+		bits_COND_NEW_ENEMY,
+		0,
+		"Slave Summon"
+	}
+};
+
 DEFINE_CUSTOM_SCHEDULES( CISlave )
 {
 	slSlaveAttack1,
 	slSlaveCoverAndSummon,
+	slSlaveSummon
 };
 
 IMPLEMENT_CUSTOM_SCHEDULES( CISlave, CSquadMonster )
@@ -833,14 +833,20 @@ Schedule_t *CISlave::GetSchedule( void )
 			if( !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )
 			{
 				m_failSchedule = SCHED_CHASE_ENEMY;
+				int sched = SCHED_TAKE_COVER_FROM_ENEMY;
+				if (pev->weapons & (ISLAVE_SNARKS | ISLAVE_HEADCRABS)) {
+					sched = SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR;
+					m_failSchedule = SCHED_ISLAVE_SUMMON_FAMILIAR;
+				}
+				
 				if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 				{
-					return GetScheduleOfType( SCHED_ISLAVE_COVER_AND_SUMMON_SNARKS );
+					return GetScheduleOfType( sched );
 				}
 				if( HasConditions( bits_COND_SEE_ENEMY ) && HasConditions( bits_COND_ENEMY_FACING_ME ) 
 						&& RANDOM_LONG(0,1) ) // give chance to use electro attack to restore health
 				{
-					return GetScheduleOfType( SCHED_ISLAVE_COVER_AND_SUMMON_SNARKS );
+					return GetScheduleOfType( sched );
 				}
 			}
 		}
@@ -865,7 +871,7 @@ Schedule_t *CISlave::GetScheduleOfType( int Type )
 		return slSlaveAttack1;
 	case SCHED_RANGE_ATTACK2:
 		return slSlaveAttack1;
-	case SCHED_ISLAVE_COVER_AND_SUMMON_SNARKS:
+	case SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR:
 		return slSlaveCoverAndSummon;
 	}
 	return CSquadMonster::GetScheduleOfType( Type );
@@ -1084,6 +1090,22 @@ void CISlave::CoilBeam()
 	MESSAGE_END();
 }
 
+void CISlave::MakeDynamicLight(const Vector &vecSrc, int radius, int t)
+{
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSrc );
+		WRITE_BYTE( TE_DLIGHT );
+		WRITE_COORD( vecSrc.x );	// X
+		WRITE_COORD( vecSrc.y );	// Y
+		WRITE_COORD( vecSrc.z );	// Z
+		WRITE_BYTE( radius );		// radius * 0.1
+		WRITE_BYTE( 255 );		// r
+		WRITE_BYTE( 180 );		// g
+		WRITE_BYTE( 96 );		// b
+		WRITE_BYTE( t );		// time * 10
+		WRITE_BYTE( 0 );		// decay * 0.1
+	MESSAGE_END();
+}
+
 void CISlave::HandsGlowOff()
 {
 	if (m_handGlow1) {
@@ -1118,7 +1140,8 @@ Vector CISlave::HandPosition(int side)
 
 void CISlave::CreateSummonBeams()
 {
-	Vector vecEnd = SnarkOrigin();
+	UTIL_MakeVectors(pev->angles);
+	Vector vecEnd = pev->origin + gpGlobals->v_forward * 30;
 	if (m_handGlow1) {
 		m_handsBeam1 = CreateSummonBeam(vecEnd, 1);
 	}

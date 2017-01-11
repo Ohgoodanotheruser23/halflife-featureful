@@ -1793,6 +1793,13 @@
 		32 : "SquadLeader" : 0
 		64 : "IgnorePlayer" : 0
 	]
+	weapons(Choices) : "Weapons" : 0 =
+	[
+		0 : "Default (Electricity + Snarks)"
+		1 : "Electricity only"
+		2 : "Electricity + Snarks"
+		4 : "Electricity + Headcrabs"
+	]
 ]
 @PointClass base(Monster, Sequence) size(-360 -360 -172, 360 360 8) studio("models/apache.mdl") = monster_apache : "Apache" 
 [
