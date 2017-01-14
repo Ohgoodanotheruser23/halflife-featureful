@@ -27,6 +27,7 @@
 #define	SF_MONSTERMAKER_START_ON	1 // start active ( if has targetname )
 #define	SF_MONSTERMAKER_CYCLIC		4 // drop one monster every time fired.
 #define SF_MONSTERMAKER_MONSTERCLIP	8 // Children are blocked by monsterclip
+#define SF_MONSTERMAKER_ALIGN_TO_PLAYER 16 // Align to closest player on spawn
 
 //=========================================================
 // MonsterMaker - this ent creates monsters during the game.
@@ -59,6 +60,8 @@ public:
 
 	BOOL m_fActive;
 	BOOL m_fFadeChildren;// should we make the children fadeout?
+	
+	int m_iMaxRandomAngleDeviation;
 };
 
 LINK_ENTITY_TO_CLASS( monstermaker, CMonsterMaker )
@@ -72,6 +75,7 @@ TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 	DEFINE_FIELD( CMonsterMaker, m_iMaxLiveChildren, FIELD_INTEGER ),
 	DEFINE_FIELD( CMonsterMaker, m_fActive, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CMonsterMaker, m_fFadeChildren, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CMonsterMaker, m_iMaxRandomAngleDeviation, FIELD_INTEGER),
 };
 
 IMPLEMENT_SAVERESTORE( CMonsterMaker, CBaseMonster )
@@ -91,6 +95,11 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 	else if( FStrEq( pkvd->szKeyName, "monstertype" ) )
 	{
 		m_iszMonsterClassname = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "yawdeviation" ) )
+	{
+		m_iMaxRandomAngleDeviation = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -208,6 +217,31 @@ void CMonsterMaker::MakeMonster( void )
 	pevCreate = VARS( pent );
 	pevCreate->origin = pev->origin;
 	pevCreate->angles = pev->angles;
+	if (pev->spawnflags & SF_MONSTERMAKER_ALIGN_TO_PLAYER) {
+		float minDist = 10000.0f;
+		CBaseEntity* foundPlayer = NULL;
+		for (int i = 1; i <= gpGlobals->maxClients; ++i) {
+			CBaseEntity* player = UTIL_PlayerByIndex(i);
+			if (player && player->IsPlayer() && player->IsAlive()) {
+				const float dist = (pev->origin - player->pev->origin).Length();
+				if (dist < minDist) {
+					minDist = dist;
+					foundPlayer = player;
+				}
+			}
+		}
+		if (foundPlayer) {
+			pevCreate->angles.y = UTIL_VecToYaw(foundPlayer->pev->origin - pev->origin);
+		}
+	}
+	if (m_iMaxRandomAngleDeviation) {
+		int deviation = RANDOM_LONG(0, m_iMaxRandomAngleDeviation);
+		if (RANDOM_LONG(0,1)) {
+			pevCreate->angles.y += deviation;
+		} else {
+			pevCreate->angles.y -= deviation;
+		}
+	}
 	pevCreate->weapons = pev->weapons;
 	SetBits( pevCreate->spawnflags, SF_MONSTER_FALL_TO_GROUND );
 

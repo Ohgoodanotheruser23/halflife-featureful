@@ -2270,6 +2270,7 @@
 	// 	2 : "PVS On/Off" : 0  // not implemented
 		4 : "Cyclic" : 0
 		8 : "MonsterClip" : 0
+		16 : "Align to player on spawn" : 0
 	]
 
 	// how many monsters the monstermaker can create (-1 = unlimited)
@@ -2282,6 +2283,7 @@
 	// maximum number of live children allowed at one time. (New ones will not be made until one dies)
 	// -1 no limit
 	m_imaxlivechildren(integer) : "Max live children" : 5
+	yawdeviation(integer) : "Max random angle deviation" : 0
 ]
 
 @PointClass base(Targetname) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager" 
