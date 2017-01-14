@@ -4281,6 +4281,26 @@ int CBasePlayer::GetCustomDecalFrames( void )
 	return m_nCustomSprayFrames;
 }
 
+static const char* const gWeaponModels[] = 
+{
+	"models/w_weaponbox.mdl",
+	"models/w_crowbar.mdl",
+	"models/w_9mmhandgun.mdl",
+	"models/w_357.mdl",
+	"models/w_9mmAR.mdl",
+	"models/w_weaponbox.mdl",
+	"models/w_crossbow.mdl",
+	"models/w_shotgun.mdl",
+	"models/w_rpg.mdl",
+	"models/w_gauss.mdl",
+	"models/w_egon.mdl",
+	"models/w_hgun.mdl",
+	"models/w_grenade.mdl",
+	"models/v_tripmine.mdl",
+	"models/w_satchel.mdl",
+	"models/w_sqknest.mdl"
+};
+
 //=========================================================
 // DropPlayerItem - drop the named item, or if no name,
 // the active item. 
@@ -4343,6 +4363,19 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 			pev->weapons &= ~( 1 << pWeapon->m_iId );// take item off hud
 
 			CWeaponBox *pWeaponBox = (CWeaponBox *)CBaseEntity::Create( "weaponbox", pev->origin + gpGlobals->v_forward * 10, pev->angles, edict() );
+			
+			if (pWeapon->m_iId > 0 && pWeapon->m_iId < ARRAYSIZE(gWeaponModels)) {
+				Vector weaponAngles = pev->angles;
+				weaponAngles.y += 180 + RANDOM_LONG(-15,15);
+				SET_MODEL( ENT( pWeaponBox->pev ), gWeaponModels[pWeapon->m_iId] );
+				pWeaponBox->pev->angles = weaponAngles;
+				
+				if (pWeapon->m_iId == WEAPON_TRIPMINE) {
+					pWeaponBox->pev->body = 3;
+					pWeaponBox->pev->sequence = 8;
+				}
+			}
+			
 			pWeaponBox->pev->angles.x = 0;
 			pWeaponBox->pev->angles.z = 0;
 			pWeaponBox->PackWeapon( pWeapon );
