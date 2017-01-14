@@ -85,6 +85,16 @@ public:
 			if (weapon) {
 				return lookAtWeapon(player, weapon) || lookGeneric(player);
 			}
+			if (FStrEq("weaponbox", STRING(pObject->pev->classname))) {
+				CWeaponBox* weaponBox = (CWeaponBox*)pObject;
+				for( int i = 0; i < MAX_ITEM_TYPES; i++ )
+				{
+					if( weaponBox->m_rgpPlayerItems[i] && weaponBox->m_rgpPlayerItems[i]->GetWeaponPtr() )
+					{
+						return lookAtWeapon(player, (CBasePlayerWeapon*)(weaponBox->m_rgpPlayerItems[i])) || lookGeneric(player);
+					}
+				}
+			}
 			return lookAtSomething(player, pObject) || lookGeneric(player);
 		}
 		return  lookGeneric(player);
@@ -1122,9 +1132,12 @@ bool IsSomethingInteresting(CBaseEntity* pObject, CBasePlayer* player)
 	if (className && *className) {
 		if (strncmp(className, "weapon_", 7) == 0) {
 			CBasePlayerWeapon* weapon = dynamic_cast<CBasePlayerWeapon*>(pObject);
-			if (!weapon->m_pPlayer) {
+			if (weapon && !weapon->m_pPlayer) {
 				return true;
 			}
+		}
+		if (FStrEq(className, "weaponbox")) {
+			return true;
 		}
 		if (strncmp(className, "item_", 5) == 0) {
 			return true;
