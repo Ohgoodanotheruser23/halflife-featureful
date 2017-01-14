@@ -1597,7 +1597,7 @@ void CBasePlayer::DeathSound( void )
 // bitsDamageType indicates type of damage healed. 
 int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 {
-	if ((flHealth == 1 && pev->health >= pev->max_health) || (pev->health < pev->max_health && pev->health + flHealth > pev->max_health) ) {
+	if (use_to_take.value || (flHealth == 1 && pev->health >= pev->max_health) || (pev->health < pev->max_health && pev->health + flHealth > pev->max_health) ) {
 		const int diff = (int)(pev->health + flHealth - pev->max_health);
 		for( int i = 0; i < MAX_ITEM_TYPES; i++ ) {
 			if( m_rgpPlayerItems[i] ) {
