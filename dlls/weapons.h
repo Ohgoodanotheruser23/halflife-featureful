@@ -437,6 +437,8 @@ public:
 	BOOL HasWeapon( CBasePlayerItem *pCheckItem );
 	BOOL PackWeapon( CBasePlayerItem *pWeapon );
 	BOOL PackAmmo( int iszName, int iCount );
+	
+	void SetWeaponModel(int iId);
 
 	CBasePlayerItem	*m_rgpPlayerItems[MAX_ITEM_TYPES];// one slot for each 
 
