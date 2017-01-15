@@ -1541,7 +1541,8 @@ static const char* const gWeaponModels[] =
 	"models/w_grenade.mdl",
 	"models/v_tripmine.mdl",
 	"models/w_satchel.mdl",
-	"models/w_sqknest.mdl"
+	"models/w_sqknest.mdl",
+	"models/w_medkit.mdl"
 };
 
 void CWeaponBox::SetWeaponModel(int iId)
