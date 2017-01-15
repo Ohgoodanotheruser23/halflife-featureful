@@ -2036,6 +2036,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	
 	iPW = 0;
 	
+	const float angleStart = RANDOM_LONG(0,360);
 	while( rgpPackWeapons[iPW] )
 	{
 		// create a box for each weapon
@@ -2049,48 +2050,17 @@ void CBasePlayer::PackDeadPlayerItems( void )
 		pWeaponBox->pev->nextthink = gpGlobals->time + 120;
 		
 		Vector weaponVelocity = pev->velocity;
-		weaponVelocity.x *= RANDOM_FLOAT(0.6, 1.8) + RANDOM_LONG(-32, 32);
-		weaponVelocity.y *= RANDOM_FLOAT(0.6, 1.8) + RANDOM_LONG(-32, 32);
+		weaponVelocity.x *= RANDOM_FLOAT(0.6, 1.8);
+		weaponVelocity.y *= RANDOM_FLOAT(0.6, 1.8);
 		weaponVelocity.z *= RANDOM_FLOAT(0.6, 1.8);
 		
 		// Put items around the corpse
-		const float shift = 48;
-		switch(iPW % 9)
-		{
-		case 0:
-			weaponVelocity.x += RANDOM_LONG(0, shift);
-			break;
-		case 1:
-			weaponVelocity.x += RANDOM_LONG(-shift, 0);
-			break;
-		case 2:
-			weaponVelocity.y += RANDOM_LONG(0, shift);
-			break;
-		case 3:
-			weaponVelocity.y += RANDOM_LONG(-shift, 0);
-			break;
-		case 4:
-			weaponVelocity.x += RANDOM_LONG(0, shift);
-			weaponVelocity.y += RANDOM_LONG(0, shift);
-			break;
-		case 5:
-			weaponVelocity.x += RANDOM_LONG(-shift, 0);
-			weaponVelocity.y += RANDOM_LONG(shift, 0);
-			break;
-		case 6:
-			weaponVelocity.x += RANDOM_LONG(-shift, 0);
-			weaponVelocity.y += RANDOM_LONG(-shift, 0);
-			break;
-		case 7:
-			weaponVelocity.x += RANDOM_LONG(shift, 0);
-			weaponVelocity.y += RANDOM_LONG(-shift, 0);
-			break;
-		case 8:
-			break;
-		default:
-			break;
-		}
+		Vector addAngles(0,0,0);
+		addAngles.y += angleStart + iPW * 45 + RANDOM_LONG(10,20);
+		UTIL_MakeVectors(addAngles);
+		Vector addVector = (gpGlobals->v_forward + gpGlobals->v_right + gpGlobals->v_up) * 48;
 		
+		weaponVelocity = weaponVelocity + addVector;
 		pWeaponBox->pev->velocity = weaponVelocity;// weaponbox has player's velocity, then some.
 		
 		CBasePlayerWeapon* weapon = rgpPackWeapons[iPW];
