@@ -666,7 +666,8 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	int iWeaponRules;
 	int iAmmoRules;
 	int i;
-	CBasePlayerWeapon *rgpPackWeapons[32] = {0};// 20 hardcoded for now. How to determine exactly how many weapons we have?
+	CBasePlayerWeapon *rgpPackWeapons[32] = {0};
+	memset(rgpPackWeapons, 0, sizeof(rgpPackWeapons));
 	AmmoCountInfo iPackAmmo[MAX_AMMO_SLOTS];
 	int iPW = 0;// index into packweapons array
 
@@ -703,7 +704,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 				int ammo2Index = GetAmmoIndex( pPlayerItem->pszAmmo2() );
 				if (ammo2Index >= 0) {
 					if (!iPackAmmo[ammo2Index].weaponCount) {
-						iPackAmmo[ammo2Index].ammoCount = AmmoInventory(ammoIndex);
+						iPackAmmo[ammo2Index].ammoCount = AmmoInventory(ammo2Index);
 					}
 					iPackAmmo[ammo2Index].weaponCount++;
 				}
@@ -731,8 +732,6 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	
 	iPW = 0;
 	
-	//Vector playerVelAngles = UTIL_VecToAngles(pev->velocity);
-	
 	while( rgpPackWeapons[iPW] )
 	{
 		// create a box for each weapon
@@ -743,14 +742,49 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	
 		pWeaponBox->SetThink( &CWeaponBox::Kill );
 		pWeaponBox->pev->nextthink = gpGlobals->time + 120;
-//		Vector velAngles = playerVelAngles;
-//		velAngles.y += RANDOM_LONG(-15,15);
-//		UTIL_MakeVectors(velAngles);
 		
 		Vector weaponVelocity = pev->velocity;
-		weaponVelocity.x *= RANDOM_FLOAT(0.6, 1.8);
-		weaponVelocity.y *= RANDOM_FLOAT(0.6, 1.8);
+		weaponVelocity.x *= RANDOM_FLOAT(0.6, 1.8) + RANDOM_LONG(-32, 32);
+		weaponVelocity.y *= RANDOM_FLOAT(0.6, 1.8) + RANDOM_LONG(-32, 32);
 		weaponVelocity.z *= RANDOM_FLOAT(0.6, 1.8);
+		
+		// Put items around the corpse
+		const float shift = 48;
+		switch(iPW % 9)
+		{
+		case 0:
+			weaponVelocity.x += RANDOM_LONG(0, shift);
+			break;
+		case 1:
+			weaponVelocity.x += RANDOM_LONG(-shift, 0);
+			break;
+		case 2:
+			weaponVelocity.y += RANDOM_LONG(0, shift);
+			break;
+		case 3:
+			weaponVelocity.y += RANDOM_LONG(-shift, 0);
+			break;
+		case 4:
+			weaponVelocity.x += RANDOM_LONG(0, shift);
+			weaponVelocity.y += RANDOM_LONG(0, shift);
+			break;
+		case 5:
+			weaponVelocity.x += RANDOM_LONG(-shift, 0);
+			weaponVelocity.y += RANDOM_LONG(shift, 0);
+			break;
+		case 6:
+			weaponVelocity.x += RANDOM_LONG(-shift, 0);
+			weaponVelocity.y += RANDOM_LONG(-shift, 0);
+			break;
+		case 7:
+			weaponVelocity.x += RANDOM_LONG(shift, 0);
+			weaponVelocity.y += RANDOM_LONG(-shift, 0);
+			break;
+		case 8:
+			break;
+		default:
+			break;
+		}
 		
 		pWeaponBox->pev->velocity = weaponVelocity;// weaponbox has player's velocity, then some.
 		
