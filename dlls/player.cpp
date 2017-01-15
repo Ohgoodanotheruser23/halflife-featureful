@@ -2063,6 +2063,10 @@ void CBasePlayer::PackDeadPlayerItems( void )
 		pWeaponBox->PackAmmo( MAKE_STRING( CBasePlayerItem::AmmoInfoArray[iPackAmmo[iPA]].pszName ), m_rgAmmo[iPackAmmo[iPA]] );
 		iPA++;
 	}
+	
+	if (rgpPackWeapons[iPW]) {
+		pWeaponBox->SetWeaponModel(rgpPackWeapons[iPW]->m_iId);
+	}
 
 	// now pack all of the items in the lists
 	while( rgpPackWeapons[iPW] )
@@ -5735,6 +5739,8 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 			pev->weapons &= ~( 1 << pWeapon->m_iId );// take item off hud
 
 			CWeaponBox *pWeaponBox = (CWeaponBox *)CBaseEntity::Create( "weaponbox", pev->origin + gpGlobals->v_forward * 10, pev->angles, edict() );
+			
+			pWeaponBox->SetWeaponModel(pWeapon->m_iId);
 			pWeaponBox->pev->angles.x = 0;
 			pWeaponBox->pev->angles.z = 0;
 			pWeaponBox->PackWeapon( pWeapon );
