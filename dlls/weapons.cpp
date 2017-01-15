@@ -1315,6 +1315,8 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 
 	CBasePlayer *pPlayer = (CBasePlayer *)pOther;
 	int i;
+	
+	bool shouldRemove = false;
 
 	// dole out ammo
 	for( i = 0; i < MAX_AMMO_SLOTS; i++ )
@@ -1322,13 +1324,13 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 		if( !FStringNull( m_rgiszAmmo[i] ) )
 		{
 			// there's some ammo of this type. 
-			pPlayer->GiveAmmo( m_rgAmmo[i], (char *)STRING( m_rgiszAmmo[i] ), MaxAmmoCarry( m_rgiszAmmo[i] ) );
-
-			//ALERT( at_console, "Gave %d rounds of %s\n", m_rgAmmo[i], STRING( m_rgiszAmmo[i] ) );
-
-			// now empty the ammo from the weaponbox since we just gave it to the player
-			m_rgiszAmmo[i] = iStringNull;
-			m_rgAmmo[i] = 0;
+			if (pPlayer->GiveAmmo( m_rgAmmo[i], (char *)STRING( m_rgiszAmmo[i] ), MaxAmmoCarry( m_rgiszAmmo[i] ) ) != -1) {
+				//ALERT( at_console, "Gave %d rounds of %s\n", m_rgAmmo[i], STRING( m_rgiszAmmo[i] ) );
+				shouldRemove = true;
+				// now empty the ammo from the weaponbox since we just gave it to the player
+				m_rgiszAmmo[i] = iStringNull;
+				m_rgAmmo[i] = 0;
+			}
 		}
 	}
 
@@ -1351,15 +1353,18 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 
 				if( pPlayer->AddPlayerItem( pItem ) )
 				{
+					shouldRemove = true;
 					pItem->AttachToPlayer( pPlayer );
 				}
 			}
 		}
 	}
 
-	EMIT_SOUND( pOther->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
-	SetTouch( NULL );
-	UTIL_Remove(this);
+	if (shouldRemove) {
+		EMIT_SOUND( pOther->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
+		SetTouch( NULL );
+		UTIL_Remove(this);
+	}
 }
 
 //=========================================================
