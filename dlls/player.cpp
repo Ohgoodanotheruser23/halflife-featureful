@@ -5751,11 +5751,8 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 			pWeaponBox->PackWeapon( pWeapon );
 			pWeaponBox->pev->velocity = gpGlobals->v_forward * 300 + gpGlobals->v_forward * 100;
 			
-			// drop half of the ammo for this weapon.
-			int iAmmoIndex;
-
-			iAmmoIndex = GetAmmoIndex( pWeapon->pszAmmo1() ); // ???
-
+			// drop ammo for this weapon.
+			int iAmmoIndex = GetAmmoIndex( pWeapon->pszAmmo1() ); // ???
 			if( iAmmoIndex != -1 )
 			{
 				// this weapon weapon uses ammo, so pack an appropriate amount.
@@ -5767,10 +5764,45 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 				}
 				else
 				{
-					// pack half of the ammo
-					pWeaponBox->PackAmmo( MAKE_STRING( pWeapon->pszAmmo1() ), m_rgAmmo[iAmmoIndex] / 2 );
-					m_rgAmmo[iAmmoIndex] /= 2; 
+					int weaponCount = 1; // number of weapons that use the same ammo
+					for( int j = 0; j < MAX_ITEM_TYPES; j++ )
+					{
+						CBasePlayerItem* otherWeapon = m_rgpPlayerItems[j];
+						while( otherWeapon )
+						{
+							if ( otherWeapon != pWeapon && otherWeapon->pszAmmo1() && FStrEq(otherWeapon->pszAmmo1(), pWeapon->pszAmmo1())) {
+								weaponCount++;
+							}
+							otherWeapon = otherWeapon->m_pNext; 
+						}
+					}
+					
+					int toPack = m_rgAmmo[iAmmoIndex] / weaponCount;
+					pWeaponBox->PackAmmo( MAKE_STRING( pWeapon->pszAmmo1() ), toPack );
+					m_rgAmmo[iAmmoIndex] -= toPack;
 				}
+			}
+			
+			// same for ammo2
+			iAmmoIndex = GetAmmoIndex( pWeapon->pszAmmo2() );
+			if( iAmmoIndex != -1 )
+			{
+				int weaponCount = 1; // number of weapons that use the same ammo
+				for( int j = 0; j < MAX_ITEM_TYPES; j++ )
+				{
+					CBasePlayerItem* otherWeapon = m_rgpPlayerItems[j];
+					while( otherWeapon )
+					{
+						if ( otherWeapon != pWeapon && otherWeapon->pszAmmo2() && FStrEq(otherWeapon->pszAmmo2(), pWeapon->pszAmmo2())) {
+							weaponCount++;
+						}
+						otherWeapon = otherWeapon->m_pNext; 
+					}
+				}
+				
+				int toPack = m_rgAmmo[iAmmoIndex] / weaponCount;
+				pWeaponBox->PackAmmo( MAKE_STRING( pWeapon->pszAmmo2() ), toPack );
+				m_rgAmmo[iAmmoIndex] -= toPack;
 			}
 
 			return;// we're done, so stop searching with the FOR loop.
