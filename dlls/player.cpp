@@ -1952,6 +1952,12 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	return fTookDamage;
 }
 
+struct AmmoCountInfo
+{
+	int ammoCount;
+	int weaponCount; // number of weapons that use this kind of ammo
+};
+
 //=========================================================
 // PackDeadPlayerItems - call this when a player dies to
 // pack up the appropriate weapons and ammo items, and to
@@ -1964,12 +1970,12 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	int iWeaponRules;
 	int iAmmoRules;
 	int i;
-	CBasePlayerWeapon *rgpPackWeapons[20] = {0};// 20 hardcoded for now. How to determine exactly how many weapons we have?
-	int iPackAmmo[MAX_AMMO_SLOTS + 1];
+	CBasePlayerWeapon *rgpPackWeapons[32] = {0};
+	memset(rgpPackWeapons, 0, sizeof(rgpPackWeapons));
+	AmmoCountInfo iPackAmmo[MAX_AMMO_SLOTS];
 	int iPW = 0;// index into packweapons array
-	int iPA = 0;// index into packammo array
 
-	memset( iPackAmmo, -1, sizeof(iPackAmmo) );
+	memset( iPackAmmo, 0, sizeof(iPackAmmo) );
 
 	// get the game rules
 	iWeaponRules = g_pGameRules->DeadPlayerWeapons( this );
@@ -1992,6 +1998,21 @@ void CBasePlayer::PackDeadPlayerItems( void )
 
 			while( pPlayerItem )
 			{
+				int ammoIndex = GetAmmoIndex( pPlayerItem->pszAmmo1() );
+				if (ammoIndex >= 0) {
+					if (!iPackAmmo[ammoIndex].weaponCount) {
+						iPackAmmo[ammoIndex].ammoCount = AmmoInventory(ammoIndex);
+					}
+					iPackAmmo[ammoIndex].weaponCount++;
+				}
+				int ammo2Index = GetAmmoIndex( pPlayerItem->pszAmmo2() );
+				if (ammo2Index >= 0) {
+					if (!iPackAmmo[ammo2Index].weaponCount) {
+						iPackAmmo[ammo2Index].ammoCount = AmmoInventory(ammo2Index);
+					}
+					iPackAmmo[ammo2Index].weaponCount++;
+				}
+				
 				switch( iWeaponRules )
 				{
 				case GR_PLR_DROP_GUN_ACTIVE:
@@ -2012,72 +2033,86 @@ void CBasePlayer::PackDeadPlayerItems( void )
 			}
 		}
 	}
-
-	// now go through ammo and make a list of which types to pack.
-	if( iAmmoRules != GR_PLR_DROP_AMMO_NO )
-	{
-		for( i = 0; i < MAX_AMMO_SLOTS; i++ )
-		{
-			if( m_rgAmmo[i] > 0 )
-			{
-				// player has some ammo of this type.
-				switch( iAmmoRules )
-				{
-				case GR_PLR_DROP_AMMO_ALL:
-					iPackAmmo[iPA++] = i;
-					break;
-				case GR_PLR_DROP_AMMO_ACTIVE:
-					if( m_pActiveItem && i == m_pActiveItem->PrimaryAmmoIndex() ) 
-					{
-						// this is the primary ammo type for the active weapon
-						iPackAmmo[iPA++] = i;
-					}
-					else if( m_pActiveItem && i == m_pActiveItem->SecondaryAmmoIndex() ) 
-					{
-						// this is the secondary ammo type for the active weapon
-						iPackAmmo[iPA++] = i;
-					}
-					break;
-				default:
-					break;
-				}
-			}
-		}
-	}
-	// create a box to pack the stuff into.
-	CWeaponBox *pWeaponBox = (CWeaponBox *)CBaseEntity::Create( "weaponbox", pev->origin, pev->angles, edict() );
-
-	pWeaponBox->pev->angles.x = 0;// don't let weaponbox tilt.
-	pWeaponBox->pev->angles.z = 0;
-
-	pWeaponBox->SetThink( &CWeaponBox::Kill );
-	pWeaponBox->pev->nextthink = gpGlobals->time + 120;
-
-	// back these two lists up to their first elements
-	iPA = 0;
-	iPW = 0;
-
-	// pack the ammo
-	while( iPackAmmo[iPA] != -1 )
-	{
-		pWeaponBox->PackAmmo( MAKE_STRING( CBasePlayerItem::AmmoInfoArray[iPackAmmo[iPA]].pszName ), m_rgAmmo[iPackAmmo[iPA]] );
-		iPA++;
-	}
 	
-	if (rgpPackWeapons[iPW]) {
-		pWeaponBox->SetWeaponModel(rgpPackWeapons[iPW]->m_iId);
-	}
-
-	// now pack all of the items in the lists
+	iPW = 0;
+	
 	while( rgpPackWeapons[iPW] )
 	{
-		// weapon unhooked from the player. Pack it into der box.
-		pWeaponBox->PackWeapon( rgpPackWeapons[iPW] );
-
+		// create a box for each weapon
+		CWeaponBox *pWeaponBox = (CWeaponBox *)CBaseEntity::Create( "weaponbox", pev->origin, pev->angles, edict() );
+	
+		pWeaponBox->pev->angles.x = 0;// don't let weaponbox tilt.
+		pWeaponBox->pev->angles.z = 0;
+		pWeaponBox->pev->angles.y += RANDOM_LONG(-180,180);
+	
+		pWeaponBox->SetThink( &CWeaponBox::Kill );
+		pWeaponBox->pev->nextthink = gpGlobals->time + 120;
+		
+		Vector weaponVelocity = pev->velocity;
+		weaponVelocity.x *= RANDOM_FLOAT(0.6, 1.8) + RANDOM_LONG(-32, 32);
+		weaponVelocity.y *= RANDOM_FLOAT(0.6, 1.8) + RANDOM_LONG(-32, 32);
+		weaponVelocity.z *= RANDOM_FLOAT(0.6, 1.8);
+		
+		// Put items around the corpse
+		const float shift = 48;
+		switch(iPW % 9)
+		{
+		case 0:
+			weaponVelocity.x += RANDOM_LONG(0, shift);
+			break;
+		case 1:
+			weaponVelocity.x += RANDOM_LONG(-shift, 0);
+			break;
+		case 2:
+			weaponVelocity.y += RANDOM_LONG(0, shift);
+			break;
+		case 3:
+			weaponVelocity.y += RANDOM_LONG(-shift, 0);
+			break;
+		case 4:
+			weaponVelocity.x += RANDOM_LONG(0, shift);
+			weaponVelocity.y += RANDOM_LONG(0, shift);
+			break;
+		case 5:
+			weaponVelocity.x += RANDOM_LONG(-shift, 0);
+			weaponVelocity.y += RANDOM_LONG(shift, 0);
+			break;
+		case 6:
+			weaponVelocity.x += RANDOM_LONG(-shift, 0);
+			weaponVelocity.y += RANDOM_LONG(-shift, 0);
+			break;
+		case 7:
+			weaponVelocity.x += RANDOM_LONG(shift, 0);
+			weaponVelocity.y += RANDOM_LONG(-shift, 0);
+			break;
+		case 8:
+			break;
+		default:
+			break;
+		}
+		
+		pWeaponBox->pev->velocity = weaponVelocity;// weaponbox has player's velocity, then some.
+		
+		CBasePlayerWeapon* weapon = rgpPackWeapons[iPW];
+		if (pWeaponBox->PackWeapon( weapon )) {
+			pWeaponBox->SetWeaponModel(weapon->m_iId);
+			int ammoIndex = GetAmmoIndex( weapon->pszAmmo1() );
+			if (ammoIndex >= 0 && iPackAmmo[ammoIndex].ammoCount && iPackAmmo[ammoIndex].weaponCount) {
+				const int toPack = iPackAmmo[ammoIndex].ammoCount / iPackAmmo[ammoIndex].weaponCount;
+				iPackAmmo[ammoIndex].ammoCount -= toPack;
+				pWeaponBox->PackAmmo( MAKE_STRING( CBasePlayerItem::AmmoInfoArray[ammoIndex].pszName ), toPack );
+				iPackAmmo[ammoIndex].weaponCount--;
+			}
+			int ammo2Index = GetAmmoIndex( weapon->pszAmmo2() );
+			if (ammo2Index >= 0 && iPackAmmo[ammo2Index].ammoCount && iPackAmmo[ammo2Index].weaponCount) {
+				const int toPack = iPackAmmo[ammo2Index].ammoCount / iPackAmmo[ammo2Index].weaponCount;
+				iPackAmmo[ammo2Index].ammoCount -= toPack;
+				pWeaponBox->PackAmmo( MAKE_STRING( CBasePlayerItem::AmmoInfoArray[ammo2Index].pszName ), toPack );
+				iPackAmmo[ammo2Index].weaponCount--;
+			}
+		}
 		iPW++;
 	}
-
-	pWeaponBox->pev->velocity = pev->velocity * 1.2;// weaponbox has player's velocity, then some.
 
 	RemoveAllItems( TRUE );// now strip off everything that wasn't handled by the code above.
 }

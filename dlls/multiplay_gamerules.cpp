@@ -1268,7 +1268,7 @@ int CHalfLifeMultiplay::DeadPlayerWeapons( CBasePlayer *pPlayer )
 	if (survival.value && m_survivalState != SurvivalEnabled) {
 		return GR_PLR_DROP_GUN_NO;
 	} else {
-		return GR_PLR_DROP_GUN_ACTIVE;
+		return GR_PLR_DROP_GUN_ALL;
 	}
 }
 
@@ -1279,7 +1279,7 @@ int CHalfLifeMultiplay::DeadPlayerAmmo( CBasePlayer *pPlayer )
 	if (survival.value && m_survivalState != SurvivalEnabled) {
 		return GR_PLR_DROP_AMMO_NO;
 	} else {
-		return GR_PLR_DROP_AMMO_ACTIVE;
+		return GR_PLR_DROP_AMMO_ALL;
 	}
 }
 
