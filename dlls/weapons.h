@@ -169,6 +169,15 @@ public:
 #define AMMO_URANIUMBOX_GIVE	20
 #define AMMO_SNARKBOX_GIVE		5
 
+// Weapon categories
+enum {
+	WEAPON_CATEGORY_NO,			// does not generate conflicts
+	WEAPON_CATEGORY_MELEE,		// crowbar, pipe wrench, etc.
+	WEAPON_CATEGORY_LIGHTWEIGHT,// pistols
+	WEAPON_CATEGORY_MEDIUM,		// riffles and shotguns
+	WEAPON_CATEGORY_HEAVY		// rpg, energy weapons, etc.
+};
+
 // bullet types
 typedef	enum
 {
@@ -283,6 +292,8 @@ public:
 	int			iFlags( void )		{ return ItemInfoArray[ m_iId ].iFlags; }
 	const char* pszAmmoEntity( void ) { return ItemInfoArray[ m_iId ].pszAmmoEntity; }
 	int			iDropAmmo( void )	{ return ItemInfoArray[ m_iId ].iDropAmmo; }
+	
+	virtual int WeaponCategory() { return WEAPON_CATEGORY_NO; }
 
 	// int		m_iIdPrimary;										// Unique Id for primary ammo
 	// int		m_iIdSecondary;										// Unique Id for secondary ammo
@@ -495,6 +506,8 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_LIGHTWEIGHT; }
 
 private:
 	int m_iShell;
@@ -528,6 +541,9 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_MELEE; }
+
 private:
 	unsigned short m_usCrowbar;
 };
@@ -559,6 +575,8 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_LIGHTWEIGHT; }
 
 private:
 	unsigned short m_usFirePython;
@@ -591,6 +609,8 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
 
 private:
 	unsigned short m_usMP5;
@@ -625,6 +645,8 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
 
 private:
 	unsigned short m_usCrossbow;
@@ -663,6 +685,8 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
 
 private:
 	unsigned short m_usDoubleFire;
@@ -721,6 +745,8 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_HEAVY; }
 
 private:
 	unsigned short m_usRpg;
@@ -785,6 +811,8 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_HEAVY; }
 
 private:
 	unsigned short m_usGaussFire;
@@ -843,6 +871,8 @@ public:
 		return FALSE;
 #endif
 	}
+	
+	int WeaponCategory() { return WEAPON_CATEGORY_HEAVY; }
 
 	unsigned short m_usEgonStop;
 

@@ -597,7 +597,7 @@ void CBasePlayerItem::TouchOrUse(CBaseEntity *pOther )
 		return;
 	}
 
-	if( pOther->AddPlayerItem( this ) )
+	if( pOther->AddPlayerItem( this ) == GOT_NEW_ITEM )
 	{
 		AttachToPlayer( pPlayer );
 		EMIT_SOUND( ENT( pPlayer->pev ), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
@@ -777,8 +777,9 @@ int CBasePlayerWeapon::AddToPlayer( CBasePlayer *pPlayer )
 		m_iSecondaryAmmoType = pPlayer->GetAmmoIndex( pszAmmo2() );
 	}
 
-	if( bResult )
+	if( bResult ) {
 		return AddWeapon();
+	}
 	return FALSE;
 }
 
@@ -1318,22 +1319,6 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 	
 	bool shouldRemove = false;
 
-	// dole out ammo
-	for( i = 0; i < MAX_AMMO_SLOTS; i++ )
-	{
-		if( !FStringNull( m_rgiszAmmo[i] ) )
-		{
-			// there's some ammo of this type. 
-			if (pPlayer->GiveAmmo( m_rgAmmo[i], (char *)STRING( m_rgiszAmmo[i] ), MaxAmmoCarry( m_rgiszAmmo[i] ) ) != -1) {
-				//ALERT( at_console, "Gave %d rounds of %s\n", m_rgAmmo[i], STRING( m_rgiszAmmo[i] ) );
-				shouldRemove = true;
-				// now empty the ammo from the weaponbox since we just gave it to the player
-				m_rgiszAmmo[i] = iStringNull;
-				m_rgAmmo[i] = 0;
-			}
-		}
-	}
-
 	// go through my weapons and try to give the usable ones to the player. 
 	// it's important the the player be given ammo first, so the weapons code doesn't refuse 
 	// to deploy a better weapon that the player may pick up because he has no ammo for it.
@@ -1351,11 +1336,27 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 				pItem = m_rgpPlayerItems[i];
 				m_rgpPlayerItems[i] = m_rgpPlayerItems[i]->m_pNext;// unlink this weapon from the box
 
-				if( pPlayer->AddPlayerItem( pItem ) )
+				if( pPlayer->AddPlayerItem( pItem ) > DID_NOT_GET_ITEM )
 				{
 					shouldRemove = true;
 					pItem->AttachToPlayer( pPlayer );
 				}
+			}
+		}
+	}
+	
+	// dole out ammo
+	for( i = 0; i < MAX_AMMO_SLOTS; i++ )
+	{
+		if( !FStringNull( m_rgiszAmmo[i] ) )
+		{
+			// there's some ammo of this type. 
+			if (pPlayer->GiveAmmo( m_rgAmmo[i], (char *)STRING( m_rgiszAmmo[i] ), MaxAmmoCarry( m_rgiszAmmo[i] ) ) != -1) {
+				//ALERT( at_console, "Gave %d rounds of %s\n", m_rgAmmo[i], STRING( m_rgiszAmmo[i] ) );
+				shouldRemove = true;
+				// now empty the ammo from the weaponbox since we just gave it to the player
+				m_rgiszAmmo[i] = iStringNull;
+				m_rgAmmo[i] = 0;
 			}
 		}
 	}

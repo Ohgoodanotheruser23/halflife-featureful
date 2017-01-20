@@ -110,6 +110,13 @@ class CSquadMonster;
 
 #define	SF_NORESPAWN	( 1 << 30 )// !!!set this bit on guns and stuff that should never respawn.
 
+enum
+{
+	DID_NOT_GET_ITEM,
+	GOT_NEW_ITEM,
+	GOT_DUP_ITEM
+};
+
 //
 // EHANDLE. Safe way to point to CBaseEntities who may die between frames
 //
@@ -175,7 +182,7 @@ public:
 	virtual	int GetToggleState( void ) { return TS_AT_TOP; }
 	virtual void AddPoints( int score, BOOL bAllowNegativeScore ) { AddFloatPoints((float)score, bAllowNegativeScore); }
 	virtual void AddPointsToTeam( int score, BOOL bAllowNegativeScore ) {}
-	virtual BOOL AddPlayerItem( CBasePlayerItem *pItem ) { return 0; }
+	virtual int AddPlayerItem( CBasePlayerItem *pItem ) { return DID_NOT_GET_ITEM; }
 	virtual BOOL RemovePlayerItem( CBasePlayerItem *pItem ) { return 0; }
 	virtual int GiveAmmo( int iAmount, char *szName, int iMax ) { return -1; };
 	virtual float GetDelay( void ) { return 0; }

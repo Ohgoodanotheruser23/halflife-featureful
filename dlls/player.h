@@ -263,6 +263,8 @@ public:
 	BOOL AddPlayerItem( CBasePlayerItem *pItem );
 	BOOL RemovePlayerItem( CBasePlayerItem *pItem );
 	void DropPlayerItem ( char *pszItemName );
+	void DropPlayerItemById( int iId );
+	void DropConflictingWeapons(CBasePlayerItem* newWeapon );
 	void DropAmmo();
 	BOOL HasPlayerItem( CBasePlayerItem *pCheckItem );
 	BOOL HasNamedPlayerItem( const char *pszItemName );
@@ -368,6 +370,15 @@ public:
 	float m_flPainTime;
 	
 	int m_currentMenu;
+	
+private:
+	enum {
+		NoAmmoDrop,
+		DropAllAmmo,
+		DropAmmoFair
+	};
+	
+	void DropPlayerItemImpl(CBasePlayerItem* pWeapon, int dropType = DropAmmoFair);
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025
