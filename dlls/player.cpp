@@ -2754,7 +2754,8 @@ void CBasePlayer::PlayerUse( void )
 
 			// This essentially moves the origin of the target to the corner nearest the player to test to see 
 			// if it's "hull" is in the view cone
-			vecLOS = UTIL_ClampVectorToBox( vecLOS, pObject->pev->size * 0.5 );
+			//vecLOS = UTIL_ClampVectorToBox( vecLOS, pObject->pev->size * 0.5 );
+			vecLOS = vecLOS.Normalize();
 
 			flDot = DotProduct( vecLOS , gpGlobals->v_forward );
 			if( flDot > flMaxDot )
@@ -2772,6 +2773,8 @@ void CBasePlayer::PlayerUse( void )
 	// Found an object
 	if( pObject )
 	{
+		//ALERT(at_console, "Trying to use %s\n", STRING(pObject->pev->classname));
+		
 		//!!!UNDONE: traceline here to prevent USEing buttons through walls			
 		int caps = pObject->ObjectCaps();
 

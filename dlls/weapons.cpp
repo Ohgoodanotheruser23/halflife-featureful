@@ -487,6 +487,8 @@ void CBasePlayerItem::Materialize( void )
 
 	pev->solid = SOLID_TRIGGER;
 
+	const int itemSize = 24;
+	UTIL_SetSize( pev, Vector( -itemSize, -itemSize, 0 ), Vector( itemSize, itemSize, itemSize ) );
 	UTIL_SetOrigin( pev, pev->origin );// link into world.
 	SetTouch( &CBasePlayerItem::DefaultTouch);
 	SetThink( NULL );
@@ -1038,7 +1040,9 @@ void CBasePlayerAmmo::Spawn( void )
 	
 	pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
-	UTIL_SetSize( pev, Vector( -16, -16, 0 ), Vector( 16, 16, 16 ) );
+	
+	const int ammoSize = 16;
+	UTIL_SetSize( pev, Vector( -ammoSize, -ammoSize, 0 ), Vector( ammoSize, ammoSize, ammoSize ) );
 	UTIL_SetOrigin( pev, pev->origin );
 
 	SetTouch( &CBasePlayerAmmo::DefaultTouch );
@@ -1292,7 +1296,10 @@ void CWeaponBox::Spawn( void )
 	pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 
-	UTIL_SetSize( pev, g_vecZero, g_vecZero );
+	//UTIL_SetSize( pev, g_vecZero, g_vecZero );
+	
+	const int itemSize = 24;
+	UTIL_SetSize( pev, Vector( -itemSize, -itemSize, 0 ), Vector( itemSize, itemSize, itemSize ) );
 
 	SET_MODEL( ENT( pev ), "models/w_weaponbox.mdl" );
 }
