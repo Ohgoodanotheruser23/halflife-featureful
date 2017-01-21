@@ -5785,7 +5785,7 @@ void CBasePlayer::DropConflictingWeapons(CBasePlayerItem *newWeapon)
 		while( pWeapon )
 		{
 			if ( pWeapon->m_iId != newWeapon->m_iId && pWeapon->WeaponCategory() == newWeapon->WeaponCategory()) {
-				DropPlayerItemImpl(pWeapon);
+				DropPlayerItemImpl(pWeapon, DropAmmoFair, 200);
 				return;
 			}
 			pWeapon = pWeapon->m_pNext; 
@@ -5793,7 +5793,7 @@ void CBasePlayer::DropConflictingWeapons(CBasePlayerItem *newWeapon)
 	}
 }
 
-void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType)
+void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, float speed)
 {
 	g_pGameRules->GetNextBestWeapon( this, pWeapon );
 
@@ -5807,7 +5807,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType)
 	pWeaponBox->pev->angles.x = 0;
 	pWeaponBox->pev->angles.z = 0;
 	pWeaponBox->PackWeapon( pWeapon );
-	pWeaponBox->pev->velocity = gpGlobals->v_forward * 300 + gpGlobals->v_forward * 100;
+	pWeaponBox->pev->velocity = gpGlobals->v_forward * speed;
 	
 	// drop ammo for this weapon.
 	int iAmmoIndex = GetAmmoIndex( pWeapon->pszAmmo1() ); // ???

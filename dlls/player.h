@@ -378,7 +378,7 @@ private:
 		DropAmmoFair
 	};
 	
-	void DropPlayerItemImpl(CBasePlayerItem* pWeapon, int dropType = DropAmmoFair);
+	void DropPlayerItemImpl(CBasePlayerItem* pWeapon, int dropType = DropAmmoFair, float speed = 400);
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025
