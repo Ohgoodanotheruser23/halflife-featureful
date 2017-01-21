@@ -576,30 +576,22 @@ class CRpgAmmo : public CBasePlayerAmmo
 	void Precache( void )
 	{
 		PRECACHE_MODEL( "models/w_rpgammo.mdl" );
-		PRECACHE_SOUND( "items/9mmclip1.wav" );
 	}
-	BOOL AddAmmo( CBaseEntity *pOther ) 
-	{ 
-		int iGive;
+	int AmmoAmount() {
 #ifdef CLIENT_DLL
-	if( bIsMultiplayer() )
+		if( bIsMultiplayer() )
 #else
-	if( g_pGameRules->IsMultiplayer() )
+		if( g_pGameRules->IsMultiplayer() )
 #endif
-		{
-			iGive = AMMO_RPGCLIP_GIVE;
-		}
+			return AMMO_RPGCLIP_GIVE;
 		else
-		{
-			iGive = AMMO_RPGCLIP_GIVE;
-		}
-
-		if( pOther->GiveAmmo( iGive, "rockets", ROCKET_MAX_CARRY ) != -1 )
-		{
-			EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM );
-			return TRUE;
-		}
-		return FALSE;
+			return AMMO_RPGCLIP_GIVE;
+	}
+	char* AmmoName() {
+		return "rockets";
+	}
+	int MaxAmmo() {
+		return ROCKET_MAX_CARRY;
 	}
 };
 

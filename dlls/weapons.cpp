@@ -1034,12 +1034,19 @@ void CBasePlayerWeapon::Holster( int skiplocal /* = 0 */ )
 
 void CBasePlayerAmmo::Spawn( void )
 {
+	Precache();
+	
 	pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 	UTIL_SetSize( pev, Vector( -16, -16, 0 ), Vector( 16, 16, 16 ) );
 	UTIL_SetOrigin( pev, pev->origin );
 
 	SetTouch( &CBasePlayerAmmo::DefaultTouch );
+}
+
+void CBasePlayerAmmo::Precache()
+{
+	PRECACHE_SOUND( "items/9mmclip1.wav" );
 }
 
 CBaseEntity* CBasePlayerAmmo::Respawn( void )
@@ -1080,6 +1087,31 @@ void CBasePlayerAmmo::DefaultTouch( CBaseEntity *pOther )
 	}
 }
 
+BOOL CBasePlayerAmmo::AddAmmo(CBaseEntity *pOther)
+{
+	if( pOther->GiveAmmo( AmmoAmount(), AmmoName(), MaxAmmo() ) != -1 )
+	{
+		EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM );
+		return TRUE;
+	}
+	return FALSE;
+}
+
+int CBasePlayerAmmo::AmmoAmount()
+{
+	return 0;
+}
+
+int CBasePlayerAmmo::MaxAmmo()
+{
+	return 0;
+}
+
+char* CBasePlayerAmmo::AmmoName()
+{
+	return NULL;
+}
+
 int CBasePlayerAmmo::ObjectCaps()
 {
 	if (use_to_take.value && !(pev->effects & EF_NODRAW)) {
@@ -1098,11 +1130,35 @@ void CBasePlayerAmmo::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 
 void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 {
-	if( !pOther->IsPlayer() )
+	if( !pOther->IsPlayer() || !pOther->IsAlive() )
 	{
 		return;
 	}
+	
+	CBasePlayer* pPlayer = (CBasePlayer*)pOther;
 
+	bool hasWeaponWithThisAmmo = false;
+	for( int i = 0; !hasWeaponWithThisAmmo && i < MAX_ITEM_TYPES; i++ )
+	{
+		CBasePlayerItem* pWeapon = pPlayer->m_rgpPlayerItems[i];
+		while( pWeapon )
+		{
+			if (pWeapon->pszAmmo1() && FStrEq(AmmoName(), pWeapon->pszAmmo1()) ) {
+				hasWeaponWithThisAmmo = true;
+				break;
+			}
+			if (pWeapon->pszAmmo2() && FStrEq(AmmoName(), pWeapon->pszAmmo2()) ) {
+				hasWeaponWithThisAmmo = true;
+				break;
+			}
+			pWeapon = pWeapon->m_pNext;
+		}
+	}
+	
+	if (!hasWeaponWithThisAmmo) {
+		return;
+	}
+	
 	if( AddAmmo( pOther ) )
 	{
 		if( g_pGameRules->AmmoShouldRespawn( this ) == GR_AMMO_RESPAWN_YES )

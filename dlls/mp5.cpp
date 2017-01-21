@@ -283,16 +283,16 @@ class CMP5AmmoClip : public CBasePlayerAmmo
 	void Precache( void )
 	{
 		PRECACHE_MODEL( "models/w_9mmARclip.mdl" );
-		PRECACHE_SOUND( "items/9mmclip1.wav" );
 	}
-	BOOL AddAmmo( CBaseEntity *pOther ) 
-	{ 
-		int bResult = ( pOther->GiveAmmo( AMMO_MP5CLIP_GIVE, "9mm", _9MM_MAX_CARRY ) != -1 );
-		if( bResult )
-		{
-			EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM );
-		}
-		return bResult;
+	
+	int AmmoAmount() {
+		return AMMO_MP5CLIP_GIVE;
+	}
+	char* AmmoName() {
+		return "9mm";
+	}
+	int MaxAmmo() {
+		return _9MM_MAX_CARRY;
 	}
 };
 
@@ -310,16 +310,16 @@ class CMP5Chainammo : public CBasePlayerAmmo
 	void Precache( void )
 	{
 		PRECACHE_MODEL( "models/w_chainammo.mdl" );
-		PRECACHE_SOUND( "items/9mmclip1.wav" );
 	}
-	BOOL AddAmmo( CBaseEntity *pOther ) 
-	{ 
-		int bResult = ( pOther->GiveAmmo( AMMO_CHAINBOX_GIVE, "9mm", _9MM_MAX_CARRY ) != -1 );
-		if( bResult )
-		{
-			EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM );
-		}
-		return bResult;
+
+	int AmmoAmount() {
+		return AMMO_CHAINBOX_GIVE;
+	}
+	char* AmmoName() {
+		return "9mm";
+	}
+	int MaxAmmo() {
+		return _9MM_MAX_CARRY;
 	}
 };
 
@@ -336,17 +336,15 @@ class CMP5AmmoGrenade : public CBasePlayerAmmo
 	void Precache( void )
 	{
 		PRECACHE_MODEL( "models/w_ARgrenade.mdl" );
-		PRECACHE_SOUND( "items/9mmclip1.wav" );
 	}
-	BOOL AddAmmo( CBaseEntity *pOther ) 
-	{ 
-		int bResult = ( pOther->GiveAmmo( AMMO_M203BOX_GIVE, "ARgrenades", M203_GRENADE_MAX_CARRY ) != -1 );
-
-		if( bResult )
-		{
-			EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM );
-		}
-		return bResult;
+	int AmmoAmount() {
+		return AMMO_M203BOX_GIVE;
+	}
+	char* AmmoName() {
+		return "ARgrenades";
+	}
+	int MaxAmmo() {
+		return M203_GRENADE_MAX_CARRY;
 	}
 };
 
