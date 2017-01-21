@@ -133,10 +133,10 @@ void CCrossbowBolt::BoltTouch( CBaseEntity *pOther )
 			break;
 		}
 
-		if( !g_pGameRules->IsMultiplayer() )
-		{
+		//if( !g_pGameRules->IsMultiplayer() )
+		//{
 			Killed( pev, GIB_NEVER );
-		}
+		//}
 	}
 	else
 	{
@@ -182,11 +182,11 @@ void CCrossbowBolt::BoltTouch( CBaseEntity *pOther )
 		}
 	}
 
-	if( g_pGameRules->IsMultiplayer() )
-	{
-		SetThink( &CCrossbowBolt::ExplodeThink );
-		pev->nextthink = gpGlobals->time + 0.1;
-	}
+//	if( g_pGameRules->IsMultiplayer() )
+//	{
+//		SetThink( &CCrossbowBolt::ExplodeThink );
+//		pev->nextthink = gpGlobals->time + 0.1;
+//	}
 }
 
 void CCrossbowBolt::BubbleThink( void )
@@ -339,15 +339,15 @@ void CCrossbow::Holster( int skiplocal /* = 0 */ )
 
 void CCrossbow::PrimaryAttack( void )
 {
-#ifdef CLIENT_DLL
-	if( m_fInZoom && bIsMultiplayer() )
-#else
-	if( m_fInZoom && g_pGameRules->IsMultiplayer() )
-#endif
-	{
-		FireSniperBolt();
-		return;
-	}
+//#ifdef CLIENT_DLL
+//	if( m_fInZoom && bIsMultiplayer() )
+//#else
+//	if( m_fInZoom && g_pGameRules->IsMultiplayer() )
+//#endif
+//	{
+//		FireSniperBolt();
+//		return;
+//	}
 
 	FireBolt();
 }
