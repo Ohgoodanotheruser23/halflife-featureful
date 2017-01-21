@@ -29,6 +29,14 @@
 #define SF_MONSTERMAKER_MONSTERCLIP	8 // Children are blocked by monsterclip
 #define SF_MONSTERMAKER_ALIGN_TO_PLAYER 16 // Align to closest player on spawn
 
+#define MONSTERMAKER_ORIGIN_MAX_COUNT 24
+
+struct OriginInfo
+{
+	EHANDLE entity;
+	float ground;
+};
+
 //=========================================================
 // MonsterMaker - this ent creates monsters during the game.
 //=========================================================
@@ -62,6 +70,10 @@ public:
 	BOOL m_fFadeChildren;// should we make the children fadeout?
 	
 	int m_iMaxRandomAngleDeviation;
+	
+	string_t m_originName;
+	OriginInfo m_cachedOrigins[MONSTERMAKER_ORIGIN_MAX_COUNT];
+	int m_originCount;
 };
 
 LINK_ENTITY_TO_CLASS( monstermaker, CMonsterMaker )
@@ -76,6 +88,7 @@ TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 	DEFINE_FIELD( CMonsterMaker, m_fActive, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CMonsterMaker, m_fFadeChildren, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CMonsterMaker, m_iMaxRandomAngleDeviation, FIELD_INTEGER),
+	DEFINE_FIELD( CMonsterMaker, m_originName, FIELD_STRING),
 };
 
 IMPLEMENT_SAVERESTORE( CMonsterMaker, CBaseMonster )
@@ -105,6 +118,11 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 	else if ( FStrEq( pkvd->szKeyName, "warpball" ) )
 	{
 		pev->message = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "spawnorigin" ) )
+	{
+		m_originName = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -181,6 +199,26 @@ void CMonsterMaker::MakeMonster( void )
 		// not allowed to make a new one yet. Too many live ones out right now.
 		return;
 	}
+	
+	if (!FStringNull(m_originName) && !m_originCount) {
+		ALERT(at_console, "Searching for origin entities %s\n", STRING(m_originName));
+		CBaseEntity* pOriginEntity = NULL;
+		int i = 0;
+		while( i < MONSTERMAKER_ORIGIN_MAX_COUNT && (pOriginEntity = UTIL_FindEntityByTargetname(pOriginEntity, STRING(m_originName))) != NULL) {
+			ALERT(at_console, "Found origin entity %d\n", i);
+			m_cachedOrigins[i].entity = pOriginEntity;
+			TraceResult tr;
+			UTIL_TraceLine( pOriginEntity->pev->origin, pOriginEntity->pev->origin - Vector( 0, 0, 2048 ), ignore_monsters, ENT( pOriginEntity->pev ), &tr );
+			m_cachedOrigins[i].ground = tr.vecEndPos.z;
+			i++;
+		}
+		if (i) {
+			ALERT(at_console, "Origin count: %d\n", i);
+			m_originCount = i;
+		} else {
+			m_originCount = -1; //don't build cache again
+		}
+	}
 
 	if( !m_flGround )
 	{
@@ -190,18 +228,55 @@ void CMonsterMaker::MakeMonster( void )
 		UTIL_TraceLine( pev->origin, pev->origin - Vector( 0, 0, 2048 ), ignore_monsters, ENT( pev ), &tr );
 		m_flGround = tr.vecEndPos.z;
 	}
-
-	Vector mins = pev->origin - Vector( 34, 34, 0 );
-	Vector maxs = pev->origin + Vector( 34, 34, 0 );
-	maxs.z = pev->origin.z;
-	mins.z = m_flGround;
-
-	CBaseEntity *pList[2];
-	int count = UTIL_EntitiesInBox( pList, 2, mins, maxs, FL_CLIENT | FL_MONSTER );
-	if( count )
-	{
-		// don't build a stack of monsters!
-		return;
+	
+	CBaseEntity* chosenOriginEntity = NULL;
+	if (!FStringNull(m_originName) && m_originCount > 0) {
+		int i = 0;
+		for ( ; i<m_originCount; ++i ) {
+			const int chosen = RANDOM_LONG(0, m_originCount-i-1);
+			if (m_cachedOrigins[chosen].entity && m_cachedOrigins[chosen].entity.Get()) {
+				Vector mins = m_cachedOrigins[chosen].entity->pev->origin - Vector( 34, 34, 0 );
+				Vector maxs = m_cachedOrigins[chosen].entity->pev->origin + Vector( 34, 34, 0 );
+				maxs.z = m_cachedOrigins[chosen].entity->pev->origin.z;
+				mins.z = m_cachedOrigins[chosen].ground;
+				
+				CBaseEntity *pList[2];
+				int count = UTIL_EntitiesInBox( pList, 2, mins, maxs, FL_CLIENT | FL_MONSTER );
+				if( !count ) {
+					chosenOriginEntity = m_cachedOrigins[chosen].entity;
+					break;
+				} else {
+					OriginInfo tmp = m_cachedOrigins[chosen];
+					m_cachedOrigins[chosen] = m_cachedOrigins[m_originCount-i-1];
+					m_cachedOrigins[m_originCount-i-1] = tmp;
+				}
+			} else {
+				m_cachedOrigins[chosen] = m_cachedOrigins[m_originCount-i-1];
+				m_originCount--;
+			}
+		}
+		
+		if (i >= m_originCount) {
+			// could not find place to spawn
+			return;
+		}
+	} else {
+		Vector mins = pev->origin - Vector( 34, 34, 0 );
+		Vector maxs = pev->origin + Vector( 34, 34, 0 );
+		maxs.z = pev->origin.z;
+		mins.z = m_flGround;
+		
+		CBaseEntity *pList[2];
+		int count = UTIL_EntitiesInBox( pList, 2, mins, maxs, FL_CLIENT | FL_MONSTER );
+		if( count )
+		{
+			// don't build a stack of monsters!
+			return;
+		}
+	}
+	
+	if (!chosenOriginEntity) {
+		chosenOriginEntity = this;
 	}
 
 	pent = CREATE_NAMED_ENTITY( m_iszMonsterClassname );
@@ -220,8 +295,8 @@ void CMonsterMaker::MakeMonster( void )
 	}
 
 	pevCreate = VARS( pent );
-	pevCreate->origin = pev->origin;
-	pevCreate->angles = pev->angles;
+	pevCreate->origin = chosenOriginEntity->pev->origin;
+	pevCreate->angles = chosenOriginEntity->pev->angles;
 	if (pev->spawnflags & SF_MONSTERMAKER_ALIGN_TO_PLAYER) {
 		float minDist = 10000.0f;
 		CBaseEntity* foundPlayer = NULL;
@@ -259,9 +334,9 @@ void CMonsterMaker::MakeMonster( void )
 
 	if ( !FStringNull( pev->message ) && !FStringNull( pev->targetname ) )
 	{
-		CBaseEntity* foundEntity = UTIL_FindEntityByString(NULL, "targetname", STRING(pev->message));
-		if (FClassnameIs(foundEntity->pev, "env_warpball")) {
-			foundEntity->pev->message = pev->targetname;
+		CBaseEntity* foundEntity = UTIL_FindEntityByTargetname(NULL, STRING(pev->message));
+		if ( foundEntity && FClassnameIs(foundEntity->pev, "env_warpball")) {
+			foundEntity->pev->dmg_inflictor = chosenOriginEntity->edict();
 			foundEntity->Use(this, this, USE_TOGGLE, 0.0f);
 		}
 	}

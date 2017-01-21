@@ -2385,10 +2385,15 @@ void CEnvWarpBall::Precache( void )
 
 void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	CBaseEntity *pEntity = UTIL_FindEntityByTargetname( NULL, STRING( pev->message ) );
+	CBaseEntity *pEntity = NULL;
 	edict_t *pos;
-
-	if( pEntity )//target found ?
+	
+	if (pev->dmg_inflictor && (pEntity = CBaseEntity::Instance(pev->dmg_inflictor)) != NULL) 
+	{
+		vecOrigin = pEntity->pev->origin;
+		pos = pEntity->edict();
+	}
+	else if( FStringNull( pev->message ) && (pEntity = UTIL_FindEntityByTargetname( NULL, STRING( pev->message ) )) != NULL )//target found ?
 	{
 		vecOrigin = pEntity->pev->origin;
 		pos = pEntity->edict();

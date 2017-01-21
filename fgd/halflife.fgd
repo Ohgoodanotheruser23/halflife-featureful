@@ -2305,6 +2305,7 @@
 	m_imaxlivechildren(integer) : "Max live children" : 5
 	yawdeviation(integer) : "Max random angle deviation" : 0
 	warpball(string) : "Warpball template" : "" : "env_warpball entity used as effect template for this monstermaker"
+	spawnorigin(target_destination) : "Spawn origin entity" : "" : "Other entity to spawn at its origin with its angles. If there're many entities with this name, the random one will be chosen"
 ]
 
 @PointClass base(Targetname) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager" 
