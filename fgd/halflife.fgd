@@ -2304,6 +2304,7 @@
 	// -1 no limit
 	m_imaxlivechildren(integer) : "Max live children" : 5
 	yawdeviation(integer) : "Max random angle deviation" : 0
+	warpball(string) : "Warpball template" : "" : "env_warpball entity used as effect template for this monstermaker"
 ]
 
 @PointClass base(Targetname) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager" 

@@ -102,6 +102,11 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 		m_iMaxRandomAngleDeviation = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if ( FStrEq( pkvd->szKeyName, "warpball" ) )
+	{
+		pev->message = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBaseMonster::KeyValue( pkvd );
 }
@@ -252,6 +257,15 @@ void CMonsterMaker::MakeMonster( void )
 	DispatchSpawn( ENT( pevCreate ) );
 	pevCreate->owner = edict();
 
+	if ( !FStringNull( pev->message ) && !FStringNull( pev->targetname ) )
+	{
+		CBaseEntity* foundEntity = UTIL_FindEntityByString(NULL, "targetname", STRING(pev->message));
+		if (FClassnameIs(foundEntity->pev, "env_warpball")) {
+			foundEntity->pev->message = pev->targetname;
+			foundEntity->Use(this, this, USE_TOGGLE, 0.0f);
+		}
+	}
+	
 	if( !FStringNull( pev->netname ) )
 	{
 		// if I have a netname (overloaded), give the child monster that name as a targetname
