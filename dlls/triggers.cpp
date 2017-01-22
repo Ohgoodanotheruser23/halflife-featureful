@@ -2403,10 +2403,12 @@ public:
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
 	
-	int ChooseTarget();
+	string_t ChooseTarget();
 	float GetRandomDelay();
+	int TargetCount();
+	
 	int m_targetCount;
-	int m_targets[TRIGGER_RANDOM_MAX_COUNT];
+	string_t m_targets[TRIGGER_RANDOM_MAX_COUNT];
 	int m_uniqueTargetsLeft;
 	int m_triggerNumberLimit;
 	int m_triggerCounter;
@@ -2482,7 +2484,7 @@ void CTriggerRandom::Spawn()
 {
 	m_triggerCounter = 0;
 	if (pev->spawnflags & SF_TRIGGER_RANDOM_UNIQUE) {
-		m_uniqueTargetsLeft = m_targetCount;
+		m_uniqueTargetsLeft = TargetCount();
 	}
 	m_active = FALSE;
 	if (pev->spawnflags & SF_TRIGGER_RANDOM_TIMED) {
@@ -2534,24 +2536,25 @@ void CTriggerRandom::Think()
 	}
 }
 
-int CTriggerRandom::ChooseTarget()
+string_t CTriggerRandom::ChooseTarget()
 {
 	if (pev->spawnflags & SF_TRIGGER_RANDOM_UNIQUE) {
 		if (m_uniqueTargetsLeft) {
 			int chosenTargetIndex = RANDOM_LONG(0, m_uniqueTargetsLeft - 1);
-			int chosenTarget = m_targets[chosenTargetIndex];
+			string_t chosenTarget = m_targets[chosenTargetIndex];
 			m_targets[chosenTargetIndex] = m_targets[m_uniqueTargetsLeft-1];
 			m_targets[m_uniqueTargetsLeft-1] = chosenTarget;
 			m_uniqueTargetsLeft--;
 			
 			if (!m_uniqueTargetsLeft && (pev->spawnflags & SF_TRIGGER_RANDOM_REUSABLE) ) {
-				m_uniqueTargetsLeft = m_targetCount;
+				m_uniqueTargetsLeft = TargetCount();
 			}
 			return chosenTarget;
 		}
 	} else {
-		if (m_targetCount) {
-			return m_targets[RANDOM_LONG(0, m_targetCount - 1)];
+		int targetCount = TargetCount();
+		if (targetCount) {
+			return m_targets[RANDOM_LONG(0, targetCount - 1)];
 		}
 	}
 	return 0;
@@ -2560,4 +2563,18 @@ int CTriggerRandom::ChooseTarget()
 float CTriggerRandom::GetRandomDelay()
 {
 	return RANDOM_FLOAT(m_minDelay, max(m_maxDelay, m_minDelay));
+}
+
+int CTriggerRandom::TargetCount()
+{
+	if (m_targetCount) {
+		return m_targetCount;
+	} else {
+		for (int i = ARRAYSIZE(m_targets) - 1; i>=0; --i ) {
+			if (!FStringNull(m_targets[i])) {
+				return i+1;
+			}
+		}
+	}
+	return 0;
 }

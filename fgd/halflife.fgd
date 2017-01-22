@@ -3020,7 +3020,7 @@
 		8 : "Timed" : 0
 		16 : "Unique" : 0
 	]
-	target_count(integer) : "Target Count" : 0
+	target_count(integer) : "Target Count" : 0 : "Amount of random targets you have specified. This is now optional and left for compatibility with Sven Co-op trigger_random"
 	target1(target_destination) : "Target 1"
 	target2(target_destination) : "Target 2"
 	target3(target_destination) : "Target 3"
