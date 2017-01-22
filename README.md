@@ -1,4 +1,4 @@
-# Half-Life SDK for Xash3D [![Build Status](https://travis-ci.org/FWGS/hlsdk-xash3d.svg)](https://travis-ci.org/FWGS/hlsdk-xash3d)
+# Half-Life SDK for Xash3D [![Build Status](https://travis-ci.org/FreeSlave/hlsdk-xash3d.svg)](https://travis-ci.org/FreeSlave/hlsdk-xash3d)
 
 Half-Life SDK for Xash3D & GoldSource with some fixes.
 
