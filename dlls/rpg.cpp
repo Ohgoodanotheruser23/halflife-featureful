@@ -377,20 +377,7 @@ int CRpg::GetItemInfo( ItemInfo *p )
 	p->iFlags = 0;
 	p->iWeight = RPG_WEIGHT;
 	p->pszAmmoEntity = "ammo_rpgclip";
-	
-#ifdef CLIENT_DLL
-	if( bIsMultiplayer() )
-#else
-	if( g_pGameRules->IsMultiplayer() )
-#endif
-	{
-		// hand out more ammo per rocket in multiplayer.
-		p->iDropAmmo = AMMO_RPGCLIP_GIVE * 2;
-	}
-	else
-	{
-		p->iDropAmmo = AMMO_RPGCLIP_GIVE;
-	}
+	p->iDropAmmo = AMMO_RPGCLIP_GIVE;
 
 	return 1;
 }
@@ -578,14 +565,7 @@ class CRpgAmmo : public CBasePlayerAmmo
 		PRECACHE_MODEL( "models/w_rpgammo.mdl" );
 	}
 	int AmmoAmount() {
-#ifdef CLIENT_DLL
-		if( bIsMultiplayer() )
-#else
-		if( g_pGameRules->IsMultiplayer() )
-#endif
-			return AMMO_RPGCLIP_GIVE;
-		else
-			return AMMO_RPGCLIP_GIVE;
+		return AMMO_RPGCLIP_GIVE;
 	}
 	char* AmmoName() {
 		return "rockets";
