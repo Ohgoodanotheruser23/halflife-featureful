@@ -749,6 +749,7 @@ void CBasePlayerItem::AttachToPlayer( CBasePlayer *pPlayer )
 	pev->model = iStringNull;
 	pev->owner = pPlayer->edict();
 	pev->nextthink = gpGlobals->time + .1;
+	UTIL_SetSize( pev, g_vecZero, g_vecZero );
 	SetTouch( NULL );
 	SetThink( NULL );
 }
