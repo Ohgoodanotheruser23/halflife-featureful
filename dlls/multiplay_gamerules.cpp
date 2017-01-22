@@ -781,7 +781,11 @@ BOOL CHalfLifeMultiplay::AllowAutoTargetCrosshair( void )
 //=========================================================
 int CHalfLifeMultiplay::IPointsForKill( CBasePlayer *pAttacker, CBasePlayer *pKilled )
 {
-	return 1;
+	if (PlayerRelationship(pAttacker, pKilled) == GR_TEAMMATE) {
+		return -10;
+	} else {
+		return 1;
+	}
 }
 
 //=========================================================

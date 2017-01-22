@@ -30,6 +30,7 @@
 #include "weapons.h"
 #include "func_break.h"
 #include "player.h"
+#include "gamerules.h"
 
 extern DLL_GLOBAL Vector		g_vecAttackDir;
 extern DLL_GLOBAL int			g_iSkillLevel;
@@ -888,15 +889,21 @@ int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 	}
 
 	CBaseEntity *attacker = CBaseEntity::Instance( pevAttacker );
-	if (attacker && attacker->IsPlayer() && !IsPlayer()) {
-		float dmg = flTake > pev->health ? pev->health : flTake;
-		float score = dmg / 50; // 1 score = 50 dmg
+	if (attacker && attacker->IsPlayer()) {
+		const float dmg = flTake > pev->health ? pev->health : flTake;
+		const float score = dmg / 50; // 1 score = 50 dmg
 		
-		int monsterClass = Classify();
-		if (monsterClass == CLASS_HUMAN_PASSIVE || monsterClass == CLASS_PLAYER_ALLY) {
-			attacker->AddFloatPoints(-score*2, true);
+		if (IsPlayer()) {
+			if (this != attacker && g_pGameRules->PlayerRelationship(attacker, this) == GR_TEAMMATE) {
+				attacker->AddFloatPoints(-score*2, true);
+			}
 		} else {
-			attacker->AddFloatPoints(score, true);
+			const int monsterClass = Classify();
+			if (monsterClass == CLASS_HUMAN_PASSIVE || monsterClass == CLASS_PLAYER_ALLY) {
+				attacker->AddFloatPoints(-score*2, true);
+			} else {
+				attacker->AddFloatPoints(score, true);
+			}
 		}
 	}
 
