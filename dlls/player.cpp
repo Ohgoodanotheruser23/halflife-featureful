@@ -5798,6 +5798,10 @@ void CBasePlayer::DropConflictingWeapons(CBasePlayerItem *newWeapon)
 
 void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, float speed)
 {
+	if (pWeapon->m_iId == WEAPON_MEDKIT) {
+		return;
+	}
+	
 	g_pGameRules->GetNextBestWeapon( this, pWeapon );
 
 	UTIL_MakeVectors( pev->angles ); 
