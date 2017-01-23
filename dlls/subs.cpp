@@ -144,6 +144,11 @@ void CBaseDelay::KeyValue( KeyValueData *pkvd )
 		m_flDelay = atof( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq( pkvd->szKeyName, "maxdelay" ) )
+	{
+		m_flMaxDelay = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else if( FStrEq( pkvd->szKeyName, "killtarget" ) )
 	{
 		m_iszKillTarget = ALLOC_STRING( pkvd->szValue );
@@ -217,13 +222,14 @@ void CBaseDelay::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, floa
 	//
 	// check for a delay
 	//
-	if( m_flDelay != 0 )
+	const float delay = GetTriggerDelay();
+	if( delay != 0 )
 	{
 		// create a temp object to fire at a later time
 		CBaseDelay *pTemp = GetClassPtr( (CBaseDelay *)NULL );
 		pTemp->pev->classname = MAKE_STRING( "DelayedUse" );
 
-		pTemp->pev->nextthink = gpGlobals->time + m_flDelay;
+		pTemp->pev->nextthink = gpGlobals->time + delay;
 
 		pTemp->SetThink( &CBaseDelay::DelayThink );
 
@@ -231,6 +237,7 @@ void CBaseDelay::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, floa
 		pTemp->pev->button = (int)useType;
 		pTemp->m_iszKillTarget = m_iszKillTarget;
 		pTemp->m_flDelay = 0; // prevent "recursion"
+		pTemp->m_flMaxDelay = 0;
 		pTemp->pev->target = pev->target;
 
 		// HACKHACK
@@ -318,6 +325,14 @@ void CBaseDelay::DelayThink( void )
 	// The use type is cached (and stashed) in pev->button
 	SUB_UseTargets( pActivator, (USE_TYPE)pev->button, 0 );
 	REMOVE_ENTITY( ENT( pev ) );
+}
+
+float CBaseDelay::GetTriggerDelay()
+{
+	if (m_flMaxDelay > m_flDelay) {
+		return RANDOM_FLOAT(m_flDelay, m_flMaxDelay);
+	}
+	return m_flDelay;
 }
 
 // Global Savedata for Toggle

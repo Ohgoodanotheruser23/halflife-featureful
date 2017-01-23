@@ -458,7 +458,7 @@ void CBreakable::BreakTouch( CBaseEntity *pOther )
 			m_flDelay = 0.1;
 		}
 
-		pev->nextthink = pev->ltime + m_flDelay;
+		pev->nextthink = pev->ltime + GetTriggerDelay();
 	}
 }
 

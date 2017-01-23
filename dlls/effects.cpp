@@ -1416,7 +1416,7 @@ CGib *CGibShooter::CreateGib( void )
 
 void CGibShooter::ShootThink( void )
 {
-	pev->nextthink = gpGlobals->time + m_flDelay;
+	pev->nextthink = gpGlobals->time + GetTriggerDelay();
 
 	Vector vecShootDir;
 

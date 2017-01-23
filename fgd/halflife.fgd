@@ -643,6 +643,7 @@
 		0 : "No Sound"
 	]
 	delay(string) : "Delay before trigger" : "0"
+	maxdelay(string) : "Max delay before trigger" : : "If this is bigger than Delay before trigger, the delay will be randomly chosen in the range between Delay before trigger and this value."
 	message(string) : "Message (set sound too!)"
 	spawnflags(flags) = 
 	[
@@ -2641,7 +2642,8 @@
 	
 	// if delay is -1, new monster will be made when last monster dies.
 	// else, delay is how often (seconds) a new monster will be dookied out.
-	delay(string) : "Frequency" : "5"
+	delay(string) : "Delay before respawn" : "5"
+	maxdelay(string) : "Max delay before respawn" : ""
 
 	// maximum number of live children allowed at one time. (New ones will not be made until one dies)
 	// -1 no limit
