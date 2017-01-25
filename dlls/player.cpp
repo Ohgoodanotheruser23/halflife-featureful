@@ -759,6 +759,10 @@ CharacterPhrases* CBasePlayer::GetCharPhrases(int playerCharacter)
 	static GinaPhrases ginaPhrases;
 	static CharacterPhrases genericPhrases;
 	
+	if (!char_phrases.value) {
+		return &genericPhrases;
+	}
+	
 	switch(playerCharacter) {
 	case PLAYER_CHAR_BARNEY:
 		return &barneyPhrases;

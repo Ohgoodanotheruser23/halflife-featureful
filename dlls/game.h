@@ -47,6 +47,7 @@ extern cvar_t allowmonsterinfo;
 extern cvar_t allowgaussjump;
 
 extern cvar_t use_to_take;
+extern cvar_t char_phrases;
 
 // Engine Cvars
 extern cvar_t *g_psv_gravity;
