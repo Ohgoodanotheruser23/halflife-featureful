@@ -658,7 +658,7 @@ public:
 		return SaySentence("PRO_RESCUEME", player, where);
 	}
 	bool healingPlayer(CBasePlayer *player) {
-		player->SaySentence("PRO_HEAL");
+		return player->SaySentence("PRO_HEAL");
 	}
 };
 
