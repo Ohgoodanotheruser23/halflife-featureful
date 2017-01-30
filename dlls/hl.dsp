@@ -488,6 +488,10 @@ SOURCE=.\soundent.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\spawnitems.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\spectator.cpp
 # End Source File
 # Begin Source File
@@ -705,6 +709,10 @@ SOURCE=.\skill.h
 # Begin Source File
 
 SOURCE=.\soundent.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\spawnitems.h
 # End Source File
 # Begin Source File
 
