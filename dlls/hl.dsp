@@ -360,6 +360,10 @@ SOURCE=.\items.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\medkit.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\leech.cpp
 # End Source File
 # Begin Source File
@@ -485,6 +489,10 @@ SOURCE=.\sound.cpp
 # Begin Source File
 
 SOURCE=.\soundent.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\spawnitems.cpp
 # End Source File
 # Begin Source File
 
@@ -640,6 +648,10 @@ SOURCE=.\items.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\medkit.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\monsterevent.h
 # End Source File
 # Begin Source File
@@ -705,6 +717,10 @@ SOURCE=.\skill.h
 # Begin Source File
 
 SOURCE=.\soundent.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\spawnitems.h
 # End Source File
 # Begin Source File
 
