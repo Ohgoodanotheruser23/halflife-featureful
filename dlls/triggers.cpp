@@ -1089,6 +1089,113 @@ void CTriggerOnce::Spawn( void )
 	CTriggerMultiple::Spawn();
 }
 
+#define SF_FORCE_PANIC_ON_FIRST_FIRE 8
+
+class CTriggerPanic : public CBaseTrigger
+{
+public:
+	void Spawn();
+	void EXPORT MyTouch(CBaseEntity *pActivator );
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
+	
+	float GetRandomDistance();
+	
+private:
+	float m_randomedDistance;
+	bool m_active;
+	Vector m_angles;
+	
+	static TYPEDESCRIPTION	m_SaveData[];
+};
+
+LINK_ENTITY_TO_CLASS( trigger_panic, CTriggerPanic )
+
+TYPEDESCRIPTION	CTriggerPanic::m_SaveData[] =
+{
+	DEFINE_FIELD( CTriggerPanic, m_active, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CTriggerPanic, m_randomedDistance, FIELD_FLOAT ),
+	DEFINE_FIELD( CTriggerPanic, m_angles, FIELD_VECTOR ),
+};
+
+IMPLEMENT_SAVERESTORE( CTriggerPanic, CBaseTrigger )
+
+void CTriggerPanic::Spawn()
+{
+	m_angles = pev->angles;
+	m_angles.x = 0;
+	m_angles.z = 0;
+	InitTrigger();
+	m_active = false;
+	SetTouch( &CTriggerPanic::MyTouch );
+}
+
+float CTriggerPanic::GetRandomDistance()
+{
+	const float length = pev->size.x;
+	const float width = pev->size.y;
+	const float distance = RANDOM_FLOAT(1, sqrt( length*length + width*width )/2 );
+	return distance;
+}
+
+void CTriggerPanic::MyTouch(CBaseEntity *pActivator)
+{
+	entvars_t *pevToucher = pActivator->pev;
+	if (!(pevToucher->flags & FL_CLIENT) || (pevToucher->flags & FL_SPECTATOR)) {
+		return;
+	}
+	
+	if ( (pev->spawnflags & SF_FORCE_PANIC_ON_FIRST_FIRE) || g_pGameRules->IsTimeForPanic() )
+	{
+		if (!m_active) {
+			m_randomedDistance = GetRandomDistance();
+			m_active = true;
+			//ALERT(at_console, "time for panic, setting the distance to %f\n", m_randomedDistance);
+		}
+		
+		Vector triggerOrigin = VecBModelOrigin(pev);
+		Vector activatorOrigin = pActivator->pev->origin;
+		Vector forward, right;
+		UTIL_MakeVectorsPrivate(m_angles, right, forward, NULL);
+		const float d = ( right.x * forward.y ) - ( right.y * forward.x );
+		
+		if (d) {
+			const float b1 = right.x	* triggerOrigin.x	+ right.y	* triggerOrigin.y;
+			const float b2 = forward.x	* activatorOrigin.x + forward.y * activatorOrigin.y;
+			
+			const float d1 = b1 * forward.y - b2 * right.y;
+			const float d2 = right.x * b2 - b1 * forward.x;
+			
+			const float x = d1/d;
+			const float y = d2/d;
+			
+			activatorOrigin.z = 0;
+			Vector intersection(x, y, 0);
+			
+			if ((activatorOrigin - intersection).Length() <= m_randomedDistance) {
+				if( !UTIL_IsMasterTriggered( m_sMaster,pActivator ) )
+					return;
+				
+				pev->spawnflags &= ~SF_FORCE_PANIC_ON_FIRST_FIRE;
+				
+				if( !FStringNull( pev->noise ) )
+					EMIT_SOUND( ENT( pev ), CHAN_VOICE, (char*)STRING( pev->noise ), 1, ATTN_NORM );
+			
+				m_hActivator = pActivator;
+				SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 );
+				m_active = false;
+				
+				g_pGameRules->DelayPanic( m_flWait );
+			
+				if( pev->message && pActivator->IsPlayer() )
+				{
+					UTIL_ShowMessage( STRING( pev->message ), pActivator );
+				}
+			}
+		}
+	}
+}
+
 void CBaseTrigger::MultiTouch( CBaseEntity *pOther )
 {
 	entvars_t *pevToucher;

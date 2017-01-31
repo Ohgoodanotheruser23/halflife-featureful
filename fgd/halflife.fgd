@@ -3002,6 +3002,15 @@
 
 @SolidClass base(Trigger) = trigger_once : "Trigger: Activate once" []
 
+@SolidClass base(Trigger, Angles) = trigger_panic : "Trigger: Activate panic event" 
+[
+	wait(integer) : "Delay panic" : 30
+	spawnflags(flags) =
+	[
+		8 : "Force panic on first fire"
+	]
+]
+
 @SolidClass base(Trigger, Angles) = trigger_push : "Trigger player push"
 [
 	spawnflags(flags) = 

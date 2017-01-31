@@ -310,6 +310,9 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.plrStomach = GetSkillCvar( "sk_player_stomach" );
 	gSkillData.plrLeg = GetSkillCvar( "sk_player_leg" );
 	gSkillData.plrArm = GetSkillCvar( "sk_player_arm" );
+	
+	// panic delay factor
+	gSkillData.panicDelayFactor = GetSkillCvar( "sk_panic_delay_factor" );
 }
 
 //=========================================================

@@ -139,6 +139,9 @@ struct skilldata_t
 	float plrStomach;
 	float plrLeg;
 	float plrArm;
+	
+	// panic delay factor
+	float panicDelayFactor;
 };
 
 extern	DLL_GLOBAL	skilldata_t	gSkillData;

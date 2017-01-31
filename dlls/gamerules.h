@@ -160,6 +160,9 @@ public:
 
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame( void ) {}
+	
+	virtual bool IsTimeForPanic() { return false; }
+	virtual void DelayPanic( float delay ) {}
 };
 
 extern CGameRules *InstallGameRules( void );
@@ -359,6 +362,9 @@ public:
 
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame( void ) { GoToIntermission(); }
+	
+	virtual bool IsTimeForPanic();
+	virtual void DelayPanic( float delay );
 
 	static BOOL IsAnyPlayerAlive( void );
 	static BOOL IsAnyPlayerConnected( void );
@@ -375,6 +381,8 @@ protected:
 	float m_flNextSurvivalStartTime;
 	SurvivalState m_survivalState;
 	void SendMOTDToClient( edict_t *client );
+	
+	float m_panicTime;
 };
 
 extern DLL_GLOBAL CGameRules *g_pGameRules;

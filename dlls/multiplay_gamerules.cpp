@@ -1330,6 +1330,26 @@ BOOL CHalfLifeMultiplay::FAllowMonsters( void )
 	return ( allowmonsters.value != 0 );
 }
 
+bool CHalfLifeMultiplay::IsTimeForPanic()
+{
+	return m_panicTime < gpGlobals->time;
+}
+
+void CHalfLifeMultiplay::DelayPanic(float delay)
+{
+	float toAdd = delay;
+	
+	if (!delay) {
+		toAdd = defaultpanicdelay.value;
+	} else if (delay < minpanicdelay.value) {
+		ALERT(at_console, "Too short panic delay detected (%f). Resetting to minimum panic delay value (%f)\n", delay, minpanicdelay.value);
+		toAdd = minpanicdelay.value;
+	}
+	toAdd *= gSkillData.panicDelayFactor;
+	ALERT(at_console, "Next panic delay: %f\n", toAdd);
+	m_panicTime = gpGlobals->time + toAdd;
+}
+
 //=========================================================
 //======== CHalfLifeMultiplay private functions ===========
 #define INTERMISSION_TIME		6

@@ -53,6 +53,8 @@ cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
 cvar_t npc_dropweapons = { "npc_dropweapon", "1", FCVAR_SERVER };
 cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
 cvar_t char_phrases = { "char_phrases","1", FCVAR_SERVER };
+cvar_t minpanicdelay = { "mp_minpanicdelay", "10", FCVAR_SERVER };
+cvar_t defaultpanicdelay = { "mp_defaultpanicdelay", "30", FCVAR_SERVER };
 
 // Engine Cvars
 cvar_t *g_psv_gravity = NULL;
@@ -473,6 +475,12 @@ cvar_t	sk_player_leg1	= { "sk_player_leg1","1" };
 cvar_t	sk_player_leg2	= { "sk_player_leg2","1" };
 cvar_t	sk_player_leg3	= { "sk_player_leg3","1" };
 
+// panic cvars that depend on skill level
+
+cvar_t sk_panic_delay_factor1 = {"sk_panic_delay_factor1","1.2"};
+cvar_t sk_panic_delay_factor2 = {"sk_panic_delay_factor2","1"};
+cvar_t sk_panic_delay_factor3 = {"sk_panic_delay_factor3","0.8"};
+
 // END Cvars for Skill Level settings
 
 // Register your console variables here
@@ -517,10 +525,15 @@ void GameDLLInit( void )
 
 	CVAR_REGISTER( &mp_chattime );
 	
+<<<<<<< HEAD
 	CVAR_REGISTER( &use_to_take );
 	CVAR_REGISTER( &char_phrases );
 
 	CVAR_REGISTER( &npc_dropweapons );
+=======
+	CVAR_REGISTER( &minpanicdelay );
+	CVAR_REGISTER( &defaultpanicdelay);
+>>>>>>> Add trigger_panic [ci skip]
 
 // REGISTER CVARS FOR SKILL LEVEL STUFF
 	// Agrunt
@@ -917,6 +930,13 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_player_leg1 );
 	CVAR_REGISTER( &sk_player_leg2 );
 	CVAR_REGISTER( &sk_player_leg3 );
+	
+	// panic delay factor
+	
+	CVAR_REGISTER( &sk_panic_delay_factor1 );
+	CVAR_REGISTER( &sk_panic_delay_factor2 );
+	CVAR_REGISTER( &sk_panic_delay_factor3 );
+	
 // END REGISTER CVARS FOR SKILL LEVEL STUFF
 
 	SERVER_COMMAND( "exec skill.cfg\n" );
