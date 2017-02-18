@@ -525,15 +525,11 @@ void GameDLLInit( void )
 
 	CVAR_REGISTER( &mp_chattime );
 	
-<<<<<<< HEAD
 	CVAR_REGISTER( &use_to_take );
 	CVAR_REGISTER( &char_phrases );
-
 	CVAR_REGISTER( &npc_dropweapons );
-=======
 	CVAR_REGISTER( &minpanicdelay );
 	CVAR_REGISTER( &defaultpanicdelay);
->>>>>>> Add trigger_panic [ci skip]
 
 // REGISTER CVARS FOR SKILL LEVEL STUFF
 	// Agrunt
