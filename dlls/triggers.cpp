@@ -1196,6 +1196,23 @@ void CTriggerPanic::MyTouch(CBaseEntity *pActivator)
 	}
 }
 
+class CTriggerPanicPoint : public CBaseToggle
+{
+public:
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+};
+
+void CTriggerPanicPoint::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if ((pev->spawnflags & SF_FORCE_PANIC_ON_FIRST_FIRE) || g_pGameRules->IsTimeForPanic()) {
+		SUB_UseTargets(pActivator, useType, value);
+		g_pGameRules->DelayPanic( m_flWait );
+		pev->spawnflags &= ~SF_FORCE_PANIC_ON_FIRST_FIRE;
+	}
+}
+
+LINK_ENTITY_TO_CLASS( trigger_panic_point, CTriggerPanicPoint )
+
 void CBaseTrigger::MultiTouch( CBaseEntity *pOther )
 {
 	entvars_t *pevToucher;

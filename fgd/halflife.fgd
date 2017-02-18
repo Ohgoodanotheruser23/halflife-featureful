@@ -3004,7 +3004,16 @@
 
 @SolidClass base(Trigger, Angles) = trigger_panic : "Trigger: Activate panic event" 
 [
-	wait(integer) : "Delay panic" : 30
+	wait(integer) : "Delay panic" : 0
+	spawnflags(flags) =
+	[
+		8 : "Force panic on first fire"
+	]
+]
+
+@PointClass base(Targetname, Targetx) = trigger_panic_point : "Trigger: Activate panic event. Point entity version"
+[
+	wait(integer) : "Delay panic" : 0
 	spawnflags(flags) =
 	[
 		8 : "Force panic on first fire"
