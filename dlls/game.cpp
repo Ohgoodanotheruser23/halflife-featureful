@@ -56,6 +56,9 @@ cvar_t char_phrases = { "char_phrases","1", FCVAR_SERVER };
 cvar_t minpanicdelay = { "mp_minpanicdelay", "10", FCVAR_SERVER };
 cvar_t defaultpanicdelay = { "mp_defaultpanicdelay", "30", FCVAR_SERVER };
 
+cvar_t dmgperscore = { "mp_dmgperscore", "50", FCVAR_SERVER };
+cvar_t allydmgpenalty = { "mp_allydmgpenalty", "2", FCVAR_SERVER };
+
 // Engine Cvars
 cvar_t *g_psv_gravity = NULL;
 cvar_t *g_psv_aim = NULL;
@@ -530,6 +533,8 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &npc_dropweapons );
 	CVAR_REGISTER( &minpanicdelay );
 	CVAR_REGISTER( &defaultpanicdelay);
+	CVAR_REGISTER( &dmgperscore );
+	CVAR_REGISTER( &allydmgpenalty );
 
 // REGISTER CVARS FOR SKILL LEVEL STUFF
 	// Agrunt

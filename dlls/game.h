@@ -52,6 +52,9 @@ extern cvar_t char_phrases;
 extern cvar_t minpanicdelay;
 extern cvar_t defaultpanicdelay;
 
+extern cvar_t dmgperscore;
+extern cvar_t allydmgpenalty;
+
 // Engine Cvars
 extern cvar_t *g_psv_gravity;
 extern cvar_t *g_psv_aim;

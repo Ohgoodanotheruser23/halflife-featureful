@@ -23,6 +23,7 @@
 #include "extdll.h"
 #include "util.h"
 #include "cbase.h"
+#include "game.h"
 #include "monsters.h"
 #include "soundent.h"
 #include "decals.h"
@@ -814,6 +815,30 @@ int CBaseMonster::TakeHealth( float flHealth, int bitsDamageType )
 	return CBaseEntity::TakeHealth( flHealth, bitsDamageType );
 }
 
+void AddScoreForDamage(entvars_t *pevAttacker, CBaseEntity* victim, const float damage)
+{
+	CBaseEntity *attacker = CBaseEntity::Instance( pevAttacker );
+	if (attacker && attacker->IsPlayer()) {
+		const float dmg = damage > victim->pev->health ? victim->pev->health : damage;
+		const float score = dmg / dmgperscore.value; 
+		
+		if (victim->IsPlayer()) {
+			if (victim != attacker && g_pGameRules->PlayerRelationship(attacker, victim) == GR_TEAMMATE) {
+				attacker->AddFloatPoints(-score * allydmgpenalty.value, true);
+			}
+		} else {
+			const int monsterClass = victim->Classify();
+			if (monsterClass == CLASS_HUMAN_PASSIVE || monsterClass == CLASS_PLAYER_ALLY) {
+				attacker->AddFloatPoints(-score * allydmgpenalty.value, true);
+			} else {
+				attacker->AddFloatPoints(score, true);
+			}
+		}
+	}
+	
+	
+}
+
 /*
 ============
 TakeDamage
@@ -888,24 +913,7 @@ int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 		pev->velocity = pev->velocity + vecDir * -DamageForce( flDamage );
 	}
 
-	CBaseEntity *attacker = CBaseEntity::Instance( pevAttacker );
-	if (attacker && attacker->IsPlayer()) {
-		const float dmg = flTake > pev->health ? pev->health : flTake;
-		const float score = dmg / 50; // 1 score = 50 dmg
-		
-		if (IsPlayer()) {
-			if (this != attacker && g_pGameRules->PlayerRelationship(attacker, this) == GR_TEAMMATE) {
-				attacker->AddFloatPoints(-score*2, true);
-			}
-		} else {
-			const int monsterClass = Classify();
-			if (monsterClass == CLASS_HUMAN_PASSIVE || monsterClass == CLASS_PLAYER_ALLY) {
-				attacker->AddFloatPoints(-score*2, true);
-			} else {
-				attacker->AddFloatPoints(score, true);
-			}
-		}
-	}
+	AddScoreForDamage(pevAttacker, this, flTake);
 
 	// do the damage
 	pev->health -= flTake;
