@@ -88,17 +88,11 @@ enum
 
 #define ISLAVE_SPAWNFAMILIAR_DELAY 6
 
+#define ISLAVE_MAXHEALTH_MULTIPLIER 3
+
 static bool IsVortWounded(CBaseEntity* pEntity)
 {
-	switch(gSkillData.iSkillLevel)
-	{
-	case SKILL_MEDIUM:
-	case SKILL_HARD:
-		return pEntity->pev->health < gSkillData.slaveHealth / 3;
-	case SKILL_EASY:
-	default:
-		return pEntity->pev->health < gSkillData.slaveHealth / 2;
-	}
+	return pEntity->pev->health < pEntity->pev->max_health / ISLAVE_MAXHEALTH_MULTIPLIER / 2;
 }
 
 static bool CanBeRevived(CBaseEntity* pEntity)
@@ -125,7 +119,7 @@ public:
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	BOOL CheckRangeAttack1( float flDot, float flDist );
 	BOOL CheckRangeAttack2( float flDot, float flDist );
-	BOOL CheckHealOrReviveTargets( float flDist, bool mustSee = false );
+	BOOL CheckHealOrReviveTargets( float flDist = 784, bool mustSee = false );
 	bool IsValidHealTarget( CBaseEntity* pEntity );
 	void CallForHelp( char *szClassname, float flDist, EHANDLE hEnemy, Vector &vecLocation );
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
@@ -609,10 +603,10 @@ BOOL CISlave::CheckRangeAttack2( float flDot, float flDist )
 		return FALSE;
 	}
 
-	return CheckHealOrReviveTargets(flDist, true);
+	return CanShareHealth() && CheckHealOrReviveTargets(flDist, true);
 }
 
-BOOL CISlave::CheckHealOrReviveTargets(float flDist = 784, bool mustSee)
+BOOL CISlave::CheckHealOrReviveTargets(float flDist, bool mustSee)
 {
 	m_hDead = NULL;
 	m_hWounded = NULL;
@@ -797,7 +791,7 @@ void CISlave::Spawn()
 
 	MonsterInit();
 	
-	pev->max_health = gSkillData.slaveHealth * 3;
+	pev->max_health = pev->max_health * ISLAVE_MAXHEALTH_MULTIPLIER;
 }
 
 //=========================================================
@@ -1020,15 +1014,13 @@ Schedule_t *CISlave::GetSchedule( void )
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
 		if ( CanShareHealth() && CheckHealOrReviveTargets()) {
-			if (m_hDead || m_hWounded) {
-				if (m_hDead) {
-					m_hTargetEnt = m_hDead;
-				} else if (m_hWounded) {
-					m_hTargetEnt = m_hWounded;
-				}
-				ALERT(at_aiconsole, "Vort gonna heal or revive friend when idle. State is %s\n", m_MonsterState == MONSTERSTATE_ALERT ? "alert" : "idle");
-				return GetScheduleOfType( SCHED_ISLAVE_HEAL_OR_REVIVE );
+			if (m_hDead) {
+				m_hTargetEnt = m_hDead;
+			} else if (m_hWounded) {
+				m_hTargetEnt = m_hWounded;
 			}
+			ALERT(at_aiconsole, "Vort gonna heal or revive friend when idle. State is %s\n", m_MonsterState == MONSTERSTATE_ALERT ? "alert" : "idle");
+			return GetScheduleOfType( SCHED_ISLAVE_HEAL_OR_REVIVE );
 		}
 		break;
 	default:
@@ -1046,7 +1038,7 @@ Schedule_t *CISlave::GetScheduleOfType( int Type )
 		{
 			return CSquadMonster::GetScheduleOfType( SCHED_MELEE_ATTACK1 );
 		}
-		else if (CanSpawnFamiliar()) 
+		else if ( m_MonsterState == MONSTERSTATE_COMBAT && CanSpawnFamiliar() )
 		{
 			return GetScheduleOfType( SCHED_ISLAVE_SUMMON_FAMILIAR );
 		}
@@ -1416,7 +1408,7 @@ void CISlave::GiveSacrifice()
 
 bool CISlave::CanShareHealth()
 {
-	return pev->health >= gSkillData.slaveHealth + HealSacrifice();
+	return pev->health >= pev->max_health / ISLAVE_MAXHEALTH_MULTIPLIER + HealSacrifice();
 }
 
 bool CISlave::CanRevive()
