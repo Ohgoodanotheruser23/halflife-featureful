@@ -278,7 +278,7 @@ int CHGrunt::IRelationship( CBaseEntity *pTarget )
 //=========================================================
 void CHGrunt::GibMonster( void )
 {
-	if( npc_dropweapons.value && GetBodygroup( 2 ) != 2 )
+	if( npc_dropweapons.value )
 	{
 		// throw a gun if the grunt has one
 		DropMyItems(TRUE);
@@ -308,7 +308,7 @@ void CHGrunt::DropMyItems(BOOL isGibbed)
 
 	if( FBitSet( pev->weapons, HGRUNT_SHOTGUN ) ) {
 		DropMyItem( "weapon_shotgun", vecGunPos, vecGunAngles, isGibbed );
-	} else {
+	} else if ( FBitSet( pev->weapons, HGRUNT_9MMAR ) ) {
 		DropMyItem( "weapon_9mmAR", vecGunPos, vecGunAngles, isGibbed );
 	}
 	if( FBitSet( pev->weapons, HGRUNT_GRENADELAUNCHER ) ) {
@@ -317,6 +317,7 @@ void CHGrunt::DropMyItems(BOOL isGibbed)
 	if ( FBitSet (pev->weapons, HGRUNT_HANDGRENADE ) ) {
 		DropMyItem( "weapon_handgrenade", BodyTarget( pev->origin ), vecGunAngles, isGibbed );
 	}
+	pev->weapons = 0;
 }
 
 //=========================================================
