@@ -145,6 +145,7 @@ public:
 
 	void ClearBeams();
 	void ArmBeam(int side );
+	void ArmBeamMessage(int side );
 	void WackBeam( int side, CBaseEntity *pEntity );
 	void ZapBeam( int side );
 	void BeamGlow( void );
@@ -313,8 +314,7 @@ void CISlave::IdleSound( void )
 #if 1
 	int side = RANDOM_LONG( 0, 1 ) * 2 - 1;
 
-	ClearBeams();
-	ArmBeam( side );
+	ArmBeamMessage( side );
 
 	UTIL_MakeAimVectors( pev->angles );
 	Vector vecSrc = pev->origin + gpGlobals->v_right * 2 * side;
@@ -1116,6 +1116,51 @@ void CISlave::ArmBeam( int side )
 	m_pBeam[m_iBeams]->SetBrightness( 64 );
 	m_pBeam[m_iBeams]->SetNoise( 80 );
 	m_iBeams++;
+}
+
+void CISlave::ArmBeamMessage( int side )
+{
+	TraceResult tr;
+	float flDist = 1.0;
+
+	UTIL_MakeAimVectors( pev->angles );
+	Vector vecSrc = HandPosition(side);
+
+	for( int i = 0; i < 3; i++ )
+	{
+		Vector vecAim = gpGlobals->v_right * side * RANDOM_FLOAT( 0, 1 ) + gpGlobals->v_up * RANDOM_FLOAT( -1, 1 );
+		TraceResult tr1;
+		UTIL_TraceLine( vecSrc, vecSrc + vecAim * 512, dont_ignore_monsters, ENT( pev ), &tr1 );
+		if( flDist > tr1.flFraction )
+		{
+			tr = tr1;
+			flDist = tr.flFraction;
+		}
+	}
+
+	// Couldn't find anything close enough
+	if( flDist == 1.0 )
+		return;
+
+	const Vector armBeamColor = GetArmBeamColor();
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY );
+		WRITE_BYTE( TE_BEAMENTPOINT );
+		WRITE_SHORT( entindex() + 0x1000 * (side < 0 ? 2 : 1) );
+		WRITE_COORD( tr.vecEndPos.x );
+		WRITE_COORD( tr.vecEndPos.y );
+		WRITE_COORD( tr.vecEndPos.z );
+		WRITE_SHORT( m_iSpriteTexture );
+		WRITE_BYTE( 0 ); // framestart
+		WRITE_BYTE( 10 ); // framerate
+		WRITE_BYTE( (int)(10*RANDOM_FLOAT( 0.8, 1.5 )) ); // life
+		WRITE_BYTE( 30 );  // width
+		WRITE_BYTE( 80 );   // noise
+		WRITE_BYTE( armBeamColor.x );   // r, g, b
+		WRITE_BYTE( armBeamColor.y );   // r, g, b
+		WRITE_BYTE( armBeamColor.z );   // r, g, b
+		WRITE_BYTE( 64 );	// brightness
+		WRITE_BYTE( 10 );		// speed
+	MESSAGE_END();
 }
 
 //=========================================================
