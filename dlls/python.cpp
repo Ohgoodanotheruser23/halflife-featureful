@@ -171,7 +171,7 @@ void CPython::PrimaryAttack()
 			Reload();
 		else
 		{
-			EMIT_SOUND( ENT( m_pPlayer->pev ), CHAN_WEAPON, "weapons/357_cock1.wav", 0.8, ATTN_NORM );
+			PlayEmptySound();
 			m_flNextPrimaryAttack = 0.15;
 		}
 
@@ -214,7 +214,7 @@ void CPython::PrimaryAttack()
 
 void CPython::Reload( void )
 {
-	if( m_pPlayer->ammo_357 <= 0 )
+	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iClip == PYTHON_MAX_CLIP )
 		return;
 
 	if( m_pPlayer->pev->fov != 0 )
@@ -229,7 +229,7 @@ void CPython::Reload( void )
 #else
 	bUseScope = g_pGameRules->IsMultiplayer();
 #endif
-	if( DefaultReload( 6, PYTHON_RELOAD, 2.0, bUseScope ) )
+	if( DefaultReload( PYTHON_MAX_CLIP, PYTHON_RELOAD, 2.0, bUseScope ) )
 	{
 		m_flSoundDelay = 1.5;
 	}

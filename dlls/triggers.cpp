@@ -527,7 +527,7 @@ void CBaseTrigger::InitTrigger()
 		SetMovedir( pev );
 	pev->solid = SOLID_TRIGGER;
 	pev->movetype = MOVETYPE_NONE;
-	SET_MODEL(ENT(pev), STRING( pev->model ) );    // set size and link into world
+	SET_MODEL( ENT( pev ), STRING( pev->model ) );    // set size and link into world
 	if( CVAR_GET_FLOAT( "showtriggers" ) == 0 )
 		SetBits( pev->effects, EF_NODRAW );
 }
@@ -688,7 +688,7 @@ void PlayCDTrack( int iTrack )
 
 	if( iTrack == -1 )
 	{
-		CLIENT_COMMAND( pClient, "cd pause\n" );
+		CLIENT_COMMAND( pClient, "cd stop\n" );
 	}
 	else
 	{
@@ -1179,7 +1179,7 @@ void CTriggerPanic::MyTouch(CBaseEntity *pActivator)
 				pev->spawnflags &= ~SF_FORCE_PANIC_ON_FIRST_FIRE;
 				
 				if( !FStringNull( pev->noise ) )
-					EMIT_SOUND( ENT( pev ), CHAN_VOICE, (char*)STRING( pev->noise ), 1, ATTN_NORM );
+					EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );
 			
 				m_hActivator = pActivator;
 				SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 );
@@ -1259,7 +1259,7 @@ void CBaseTrigger::ActivateMultiTrigger( CBaseEntity *pActivator )
 	}
 
 	if( !FStringNull( pev->noise ) )
-		EMIT_SOUND( ENT( pev ), CHAN_VOICE, (char*)STRING( pev->noise ), 1, ATTN_NORM );
+		EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );
 
 	// don't trigger again until reset
 	// pev->takedamage = DAMAGE_NO;
@@ -1388,8 +1388,8 @@ void CTriggerVolume::Spawn( void )
 {
 	pev->solid = SOLID_NOT;
 	pev->movetype = MOVETYPE_NONE;
-	SET_MODEL( ENT(pev), STRING( pev->model ) );    // set size and link into world
-	pev->model = NULL;
+	SET_MODEL( ENT( pev ), STRING( pev->model ) );    // set size and link into world
+	pev->model = 0;
 	pev->modelindex = 0;
 }
 
@@ -1462,7 +1462,7 @@ TYPEDESCRIPTION	CChangeLevel::m_SaveData[] =
 	DEFINE_FIELD( CChangeLevel, m_changeTargetDelay, FIELD_FLOAT ),
 };
 
-IMPLEMENT_SAVERESTORE(CChangeLevel,CBaseTrigger)
+IMPLEMENT_SAVERESTORE( CChangeLevel, CBaseTrigger )
 
 //
 // Cache user-entity-field values until spawn is called.
@@ -1562,7 +1562,7 @@ void CChangeLevel::UseChangeLevel( CBaseEntity *pActivator, CBaseEntity *pCaller
 void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 {
 	edict_t	*pentLandmark;
-	LEVELLIST levels[16];
+	//LEVELLIST levels[16];
 
 	ASSERT( !FStrEq( m_szMapName, "" ) );
 
@@ -1813,7 +1813,7 @@ void NextLevel( void )
 	// go back to start if no trigger_changelevel
 	if( FNullEnt( pent ) )
 	{
-		gpGlobals->mapname = ALLOC_STRING( "start" );
+		gpGlobals->mapname = MAKE_STRING( "start" );
 		pChange = GetClassPtr( (CChangeLevel *)NULL );
 		strcpy( pChange->m_szMapName, "start" );
 	}
@@ -2348,7 +2348,7 @@ void CTriggerCamera::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 	}
 
 	// Nothing to look at!
-	if( m_hTarget == NULL )
+	if( m_hTarget == 0 )
 	{
 		return;
 	}
@@ -2404,10 +2404,10 @@ void CTriggerCamera::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 
 void CTriggerCamera::FollowTarget()
 {
-	if( m_hPlayer == NULL )
+	if( m_hPlayer == 0 )
 		return;
 
-	if( m_hTarget == NULL || m_flReturnTime < gpGlobals->time )
+	if( m_hTarget == 0 || m_flReturnTime < gpGlobals->time )
 	{
 		if( m_hPlayer->IsAlive() )
 		{
@@ -2686,7 +2686,7 @@ string_t CTriggerRandom::ChooseTarget()
 
 float CTriggerRandom::GetRandomDelay()
 {
-	return RANDOM_FLOAT(m_minDelay, max(m_maxDelay, m_minDelay));
+	return RANDOM_FLOAT(m_minDelay, Q_max(m_maxDelay, m_minDelay));
 }
 
 int CTriggerRandom::TargetCount()

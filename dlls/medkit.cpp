@@ -220,7 +220,7 @@ void CMedkit::WeaponIdle(void)
 	{
 		if (m_secondaryAttack) {
 			const float diff = m_pPlayer->pev->max_health - m_pPlayer->pev->health;
-			const int toHeal = (int)(min(diff, gSkillData.plrDmgMedkit));
+			const int toHeal = (int)(Q_min(diff, gSkillData.plrDmgMedkit));
 			if ( m_pPlayer->TakeHealth(toHeal, DMG_GENERIC) ) {
 				m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= toHeal;
 			}
@@ -232,7 +232,7 @@ void CMedkit::WeaponIdle(void)
 	
 			if (healTarget) {
 				const float diff = healTarget->pev->max_health - healTarget->pev->health;
-				const int toHeal = (int)(min(diff, gSkillData.plrDmgMedkit));
+				const int toHeal = (int)(Q_min(diff, gSkillData.plrDmgMedkit));
 				if ( healTarget->TakeHealth(toHeal, DMG_GENERIC) ) {
 					m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= toHeal;
 					

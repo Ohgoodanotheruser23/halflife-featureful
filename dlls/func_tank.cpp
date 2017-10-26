@@ -100,6 +100,7 @@ public:
 	inline bool HaveBullets() { return m_bulletCount != 0; }
 	void RemoveBullet();
 	void OnEmptyGun();
+	virtual void StopFire( void ){}
 
 protected:
 	CBasePlayer* m_pController;
@@ -200,7 +201,7 @@ void CFuncTank::Spawn( void )
 
 	if( m_fireRate <= 0 )
 		m_fireRate = 1;
-	if( m_spread > MAX_FIRING_SPREADS )
+	if( m_spread > (int)MAX_FIRING_SPREADS )
 		m_spread = 0;
 
 	pev->oldorigin = pev->origin;
@@ -213,14 +214,14 @@ void CFuncTank::Spawn( void )
 void CFuncTank::Precache( void )
 {
 	if( m_iszSpriteSmoke )
-		PRECACHE_MODEL( (char *)STRING( m_iszSpriteSmoke ) );
+		PRECACHE_MODEL( STRING( m_iszSpriteSmoke ) );
 
 	if( m_iszSpriteFlash )
-		PRECACHE_MODEL( (char *)STRING( m_iszSpriteFlash ) );
+		PRECACHE_MODEL( STRING( m_iszSpriteFlash ) );
 
 	if( pev->noise )
-		PRECACHE_SOUND( (char *)STRING( pev->noise ) );
-	
+		PRECACHE_SOUND( STRING( pev->noise ) );
+
 	PRECACHE_SOUND("weapons/357_cock1.wav");
 }
 
@@ -349,7 +350,7 @@ BOOL CFuncTank::OnControls( entvars_t *pevTest )
 	if( !( pev->spawnflags & SF_TANK_CANCONTROL ) )
 		return FALSE;
 
-	Vector offset = pevTest->origin - pev->origin;
+	//Vector offset = pevTest->origin - pev->origin;
 
 	if( ( m_vecControllerUsePos - pevTest->origin ).Length() < 30 )
 		return TRUE;
@@ -372,6 +373,7 @@ BOOL CFuncTank::StartControl( CBasePlayer *pController )
 	ALERT( at_console, "using TANK!\n");
 
 	m_pController = pController;
+	m_pController->m_pTank = this;
 	if( m_pController->m_pActiveItem )
 	{
 		m_pController->m_pActiveItem->Holster();
@@ -389,6 +391,8 @@ BOOL CFuncTank::StartControl( CBasePlayer *pController )
 
 void CFuncTank::StopControl()
 {
+	StopFire();
+
 	// TODO: bring back the controllers current weapon
 	if( !m_pController )
 		return;
@@ -401,6 +405,8 @@ void CFuncTank::StopControl()
 	m_pController->m_iHideHUD &= ~HIDEHUD_WEAPONS;
 
 	pev->nextthink = 0;
+
+	m_pController->m_pTank = NULL;
 	m_pController = NULL;
 
 	if( IsActive() )
@@ -477,7 +483,6 @@ void CFuncTank::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 		}
 		else if( !m_pController && useType != USE_OFF )
 		{
-			( (CBasePlayer*)pActivator )->m_pTank = this;
 			StartControl( (CBasePlayer*)pActivator );
 		}
 		else
@@ -527,9 +532,9 @@ void CFuncTank::TrackTarget( void )
 {
 	TraceResult tr;
 	edict_t *pPlayer = FIND_CLIENT_IN_PVS( edict() );
-	BOOL updateTime = FALSE, lineOfSight;
+	BOOL updateTime = FALSE;
 	Vector angles, direction, targetPosition, barrelEnd;
-	edict_t *pTarget;
+	edict_t *pTarget = NULL;
 
 	// Get a position to aim for
 	if( m_pController )
@@ -566,12 +571,8 @@ void CFuncTank::TrackTarget( void )
 
 		UTIL_TraceLine( barrelEnd, targetPosition, dont_ignore_monsters, edict(), &tr );
 
-		lineOfSight = FALSE;
-		// No line of sight, don't track
 		if( tr.flFraction == 1.0 || tr.pHit == pTarget )
 		{
-			lineOfSight = TRUE;
-
 			CBaseEntity *pInstance = CBaseEntity::Instance(pTarget);
 			if( InRange( range ) && pInstance && pInstance->IsAlive() )
 			{
@@ -700,7 +701,7 @@ void CFuncTank::Fire( const Vector &barrelEnd, const Vector &forward, entvars_t 
 		{
 			CSprite *pSprite = CSprite::SpriteCreate( STRING( m_iszSpriteSmoke ), barrelEnd, TRUE );
 			pSprite->AnimateAndDie( RANDOM_FLOAT( 15.0, 20.0 ) );
-			pSprite->SetTransparency( kRenderTransAlpha, pev->rendercolor.x, pev->rendercolor.y, pev->rendercolor.z, 255, kRenderFxNone );
+			pSprite->SetTransparency( kRenderTransAlpha, (int)pev->rendercolor.x, (int)pev->rendercolor.y, (int)pev->rendercolor.z, 255, kRenderFxNone );
 			pSprite->pev->velocity.z = RANDOM_FLOAT( 40, 80 );
 			pSprite->SetScale( m_spriteScale );
 		}
@@ -743,13 +744,13 @@ void CFuncTank::StartRotSound( void )
 	if( !pev->noise || ( pev->spawnflags & SF_TANK_SOUNDON ) )
 		return;
 	pev->spawnflags |= SF_TANK_SOUNDON;
-	EMIT_SOUND( edict(), CHAN_STATIC, (char*)STRING( pev->noise ), 0.85, ATTN_NORM );
+	EMIT_SOUND( edict(), CHAN_STATIC, STRING( pev->noise ), 0.85, ATTN_NORM );
 }
 
 void CFuncTank::StopRotSound( void )
 {
 	if( pev->spawnflags & SF_TANK_SOUNDON )
-		STOP_SOUND( edict(), CHAN_STATIC, (char*)STRING( pev->noise ) );
+		STOP_SOUND( edict(), CHAN_STATIC, STRING( pev->noise ) );
 	pev->spawnflags &= ~SF_TANK_SOUNDON;
 }
 
@@ -775,7 +776,7 @@ void CFuncTankGun::Fire( const Vector &barrelEnd, const Vector &forward, entvars
 		// FireBullets needs gpGlobals->v_up, etc.
 		UTIL_MakeAimVectors( pev->angles );
 
-		int bulletCount = ( gpGlobals->time - m_fireLast ) * m_fireRate;
+		int bulletCount = (int)( ( gpGlobals->time - m_fireLast ) * m_fireRate );
 		if( bulletCount > 0 )
 		{
 			for( i = 0; i < bulletCount && HaveBullets(); i++ )
@@ -818,6 +819,7 @@ public:
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
+	virtual void StopFire( void );
 
 private:
 	CLaser *m_pLaser;
@@ -904,7 +906,7 @@ void CFuncTankLaser::Fire( const Vector &barrelEnd, const Vector &forward, entva
 		// TankTrace needs gpGlobals->v_up, etc.
 		UTIL_MakeAimVectors( pev->angles );
 
-		int bulletCount = ( gpGlobals->time - m_fireLast ) * m_fireRate;
+		int bulletCount = (int)( ( gpGlobals->time - m_fireLast ) * m_fireRate );
 		if( bulletCount )
 		{
 			for( i = 0; i < bulletCount && HaveBullets(); i++ )
@@ -926,6 +928,12 @@ void CFuncTankLaser::Fire( const Vector &barrelEnd, const Vector &forward, entva
 	{
 		CFuncTank::Fire( barrelEnd, forward, pevAttacker );
 	}
+}
+
+void CFuncTankLaser::StopFire( void )
+{
+	if( m_pLaser )
+		m_pLaser->TurnOff();
 }
 
 class CFuncTankRocket : public CFuncTank
@@ -954,13 +962,13 @@ void CFuncTankRocket::Fire( const Vector &barrelEnd, const Vector &forward, entv
 
 	if( m_fireLast != 0 )
 	{
-		int bulletCount = ( gpGlobals->time - m_fireLast ) * m_fireRate;
+		int bulletCount = (int)( ( gpGlobals->time - m_fireLast ) * m_fireRate );
 		if( bulletCount > 0 )
 		{
 			for( i = 0; i < bulletCount && HaveBullets(); i++ )
 			{
 				CBaseEntity* owner = CBaseEntity::Instance(pevAttacker);
-				CBaseEntity *pRocket = CBaseEntity::Create( "rpg_rocket", barrelEnd, pev->angles, owner ? owner->edict() : edict() );
+				CBaseEntity::Create( "rpg_rocket", barrelEnd, pev->angles, owner ? owner->edict() : edict() );
 			}
 			RemoveBullet();
 			CFuncTank::Fire( barrelEnd, forward, pev );
@@ -999,7 +1007,7 @@ void CFuncTankMortar::Fire( const Vector &barrelEnd, const Vector &forward, entv
 	
 	if( m_fireLast != 0 )
 	{
-		int bulletCount = ( gpGlobals->time - m_fireLast ) * m_fireRate;
+		int bulletCount = (int)( ( gpGlobals->time - m_fireLast ) * m_fireRate );
 		// Only create 1 explosion
 		if( bulletCount > 0 )
 		{

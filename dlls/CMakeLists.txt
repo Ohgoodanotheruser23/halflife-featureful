@@ -93,6 +93,7 @@ set (SVDLL_SOURCES
 	multiplay_gamerules.cpp
 	nihilanth.cpp
 	nodes.cpp
+	observer.cpp
 	osprey.cpp
 	pathcorner.cpp
 	plane.cpp

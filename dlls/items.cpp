@@ -176,7 +176,7 @@ void CItemRandom::SpawnItem(int itemType)
 	
 	if (itemType && itemType < ARRAYSIZE(gSpawnItems)) {
 		UTIL_PrecacheOther(gSpawnItems[itemType].name);
-		CBaseEntity *pEntity = CBaseEntity::Create( (char*)gSpawnItems[itemType].name, pev->origin, pev->angles, edict() );
+		CBaseEntity *pEntity = CBaseEntity::Create( gSpawnItems[itemType].name, pev->origin, pev->angles, edict() );
 		if( pEntity )
 		{
 			pEntity->pev->target = pev->target;
@@ -403,6 +403,7 @@ void CItem::Materialize( void )
 	}
 
 	SetTouch( &CItem::ItemTouch );
+	SetThink( NULL );
 }
 
 #define SF_SUIT_SHORTLOGON		0x0001
@@ -463,7 +464,7 @@ class CItemBattery : public CItem
 			char szcharge[64];
 
 			pPlayer->pev->armorvalue += gSkillData.batteryCapacity;
-			pPlayer->pev->armorvalue = min( pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY );
+			pPlayer->pev->armorvalue = Q_min( pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY );
 
 			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 
