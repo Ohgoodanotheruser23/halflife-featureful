@@ -26,6 +26,7 @@
 #include	"decals.h"
 #include	"soundent.h"
 #include	"game.h"
+#include	"bullsquid.h"
 
 #define		SQUID_SPRINT_DIST	256 // how close the squid has to get before starting to sprint and refusing to swerve
 
@@ -55,21 +56,6 @@ enum
 //=========================================================
 // Bullsquid's spit projectile
 //=========================================================
-class CSquidSpit : public CBaseEntity
-{
-public:
-	void Spawn( void );
-
-	static void Shoot( entvars_t *pevOwner, Vector vecStart, Vector vecVelocity );
-	void Touch( CBaseEntity *pOther );
-	void EXPORT Animate( void );
-
-	virtual int Save( CSave &save );
-	virtual int Restore( CRestore &restore );
-	static TYPEDESCRIPTION m_SaveData[];
-
-	int m_maxFrame;
-};
 
 LINK_ENTITY_TO_CLASS( squidspit, CSquidSpit )
 
@@ -82,14 +68,19 @@ IMPLEMENT_SAVERESTORE( CSquidSpit, CBaseEntity )
 
 void CSquidSpit::Spawn( void )
 {
+	SpawnHelper("sprites/bigspit.spr", "squidspit");
+}
+
+void CSquidSpit::SpawnHelper(const char *modelName, const char *className)
+{
 	pev->movetype = MOVETYPE_FLY;
-	pev->classname = MAKE_STRING( "squidspit" );
+	pev->classname = MAKE_STRING( className );
 
 	pev->solid = SOLID_BBOX;
 	pev->rendermode = kRenderTransAlpha;
 	pev->renderamt = 255;
 
-	SET_MODEL( ENT( pev ), "sprites/bigspit.spr" );
+	SET_MODEL( ENT( pev ), modelName );
 	pev->frame = 0;
 	pev->scale = 0.8;
 
@@ -323,36 +314,39 @@ void CBigSquidSpit::Touch( CBaseEntity *pOther )
 #define		BSQUID_AE_HOP		( 5 )
 #define		BSQUID_AE_THROW		( 6 )
 
+//=========================================================
+// CBullsquid
+//=========================================================
 class CBullsquid : public CBaseMonster
 {
 public:
-	void Spawn( void );
-	void Precache( void );
-	void SetYawSpeed( void );
-	int ISoundMask( void );
-	int DefaultClassify( void );
-	void HandleAnimEvent( MonsterEvent_t *pEvent );
-	void IdleSound( void );
-	void PainSound( void );
-	void DeathSound( void );
-	void AlertSound( void );
-	void AttackSound( bool bigSpit );
-	void StartTask( Task_t *pTask );
-	void RunTask( Task_t *pTask );
-	BOOL CheckMeleeAttack1( float flDot, float flDist );
-	BOOL CheckMeleeAttack2( float flDot, float flDist );
-	BOOL CheckRangeAttack1( float flDot, float flDist );
-	void RunAI( void );
-	BOOL FValidateHintType( short sHint );
-	Schedule_t *GetSchedule( void );
-	Schedule_t *GetScheduleOfType( int Type );
-	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
-	int IRelationship( CBaseEntity *pTarget );
-	int IgnoreConditions( void );
-	MONSTERSTATE GetIdealState( void );
+	virtual void Spawn(void);
+	virtual void Precache(void);
+	void SetYawSpeed(void);
+	int  ISoundMask(void);
+	virtual int  DefaultClassify(void);
+	virtual void HandleAnimEvent(MonsterEvent_t *pEvent);
+	virtual void IdleSound(void);
+	virtual void PainSound(void);
+	virtual void DeathSound(void);
+	virtual void AlertSound(void);
+	void AttackSound(bool bigSpit);
+	virtual void StartTask(Task_t *pTask);
+	void RunTask(Task_t *pTask);
+	virtual BOOL CheckMeleeAttack1(float flDot, float flDist);
+	virtual BOOL CheckMeleeAttack2(float flDot, float flDist);
+	virtual BOOL CheckRangeAttack1(float flDot, float flDist);
+	virtual void RunAI(void);
+	BOOL FValidateHintType(short sHint);
+	Schedule_t *GetSchedule(void);
+	Schedule_t *GetScheduleOfType(int Type);
+	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	virtual int IRelationship(CBaseEntity *pTarget);
+	virtual int IgnoreConditions(void);
+	MONSTERSTATE GetIdealState(void);
 
-	int Save( CSave &save ); 
-	int Restore( CRestore &restore );
+	int	Save(CSave &save);
+	int Restore(CRestore &restore);
 
 	CUSTOM_SCHEDULES
 	static TYPEDESCRIPTION m_SaveData[];
