@@ -72,31 +72,21 @@ static CMultiplayGameMgrHelper g_GameMgrHelper;
 
 void BecomeSpectator( CBasePlayer *pPlayer )
 {
-	pPlayer->pev->takedamage = DAMAGE_NO;
-	pPlayer->pev->deadflag = DEAD_NO;
 	pPlayer->pev->flags &= FL_PROXY;	// keep proxy flag sey by engine
 	pPlayer->pev->flags |= FL_CLIENT;
 	pPlayer->pev->flags |= FL_SPECTATOR;
-	pPlayer->pev->flags |= FL_NOTARGET;
 	pPlayer->pev->effects |= EF_NODRAW;
-	pPlayer->pev->solid = SOLID_NOT;
-	pPlayer->pev->movetype = MOVETYPE_NOCLIP;
-	pPlayer->pev->modelindex = 0;
-	pPlayer->pev->health = 1;
-	pPlayer->m_pGoalEnt = NULL;
+	pPlayer->StartObserver(pPlayer->pev->origin, pPlayer->pev->v_angle);
 }
 
 void SpawnPlayer( CBasePlayer *pPlayer, entvars_t* where )
 {
 	pPlayer->m_iRespawnFrames = 0;
 	pPlayer->pev->effects &= ~EF_NODRAW;
-
-	pPlayer->pev->takedamage = DAMAGE_YES;
 	pPlayer->pev->flags &= ~FL_SPECTATOR;
-	pPlayer->pev->movetype = MOVETYPE_WALK;
 	
 	pPlayer->m_bShouldBeRescued = TRUE;
-	pPlayer->Spawn();
+	pPlayer->StopObserver();
 	
 	pPlayer->pev->origin = where->origin + Vector( 0, 0, 1 );
 	pPlayer->pev->v_angle  = g_vecZero;
@@ -129,7 +119,13 @@ public:
 	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	
 	void UseOff();
-	
+	inline int RescueState() {
+		return pev->iuser1;
+	}
+	inline void SetResqueState(int state) {
+		pev->iuser1 = state;
+	}
+
 	enum {
 		InActive,
 		Active,
@@ -141,8 +137,8 @@ LINK_ENTITY_TO_CLASS( trigger_rescue, CTriggerRescue )
 
 void CTriggerRescue::UseOff()
 {
-	if (pev->iuser1 == Active) {
-		pev->iuser1 = InActive;
+	if (RescueState() == Active) {
+		SetResqueState( InActive );
 		SUB_UseTargets(this, USE_OFF, 0.0f);
 		EMIT_SOUND( edict(), CHAN_VOICE, "common/null.wav", 1.0, ATTN_IDLE );
 	}
@@ -152,7 +148,7 @@ void CTriggerRescue::Spawn()
 {
 	CPointEntity::Spawn();
 	pev->nextthink = gpGlobals->time + 5;
-	pev->iuser1 = InActive;
+	SetResqueState( InActive );
 	pev->frags = gpGlobals->time;
 }
 
@@ -161,15 +157,15 @@ void CTriggerRescue::Think()
 	if (survival.value) {
 		BOOL rescuablePlayersExist = CHalfLifeMultiplay::IsAnyPlayerRescuable();
 		
-		if (pev->iuser1 == InActive && rescuablePlayersExist) {
-			pev->iuser1 = Active;
+		if (RescueState() == InActive && rescuablePlayersExist) {
+			SetResqueState( Active );
 			SUB_UseTargets(this, USE_ON, 0.0f);
 			pev->frags = gpGlobals->time + RANDOM_LONG(1,4);
-		} else if (pev->iuser1 == Active && !rescuablePlayersExist) {
+		} else if (RescueState() == Active && !rescuablePlayersExist) {
 			UseOff();
 		}
 		
-		if (pev->iuser1 == Active && rescuablePlayersExist && pev->frags < gpGlobals->time) {
+		if (RescueState() == Active && rescuablePlayersExist && pev->frags < gpGlobals->time) {
 			CBasePlayer* players[4] = {NULL, NULL, NULL, NULL};
 			int j = 0;
 			
@@ -196,7 +192,7 @@ void CTriggerRescue::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 		((CTriggerRescue*)triggerRescue)->UseOff();
 	}
 	
-	pev->iuser1 = Disabled;
+	SetResqueState( Disabled );
 	if (survival.value) {
 		CBaseEntity *pEntity = NULL;
 		while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, 128 ) ) != NULL ) {

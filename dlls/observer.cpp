@@ -97,11 +97,7 @@ void CBasePlayer::Observer_HandleButtons()
 		else if( pev->iuser1 == OBS_IN_EYE )
 			Observer_SetMode( OBS_ROAMING );
 		else if( pev->iuser1 == OBS_ROAMING )
-			Observer_SetMode( OBS_MAP_FREE );
-		else if( pev->iuser1 == OBS_MAP_FREE )
-			Observer_SetMode( OBS_MAP_CHASE );
-		else
-			Observer_SetMode( OBS_CHASE_FREE );	// don't use OBS_CHASE_LOCKED anymore
+			Observer_SetMode( OBS_CHASE_LOCKED );
 
 		m_flNextObserverInput = gpGlobals->time + 0.2;
 	}
@@ -223,8 +219,8 @@ void CBasePlayer::Observer_SetMode( int iMode )
 		return;
 
 	// is valid mode ?
-	if( iMode < OBS_CHASE_LOCKED || iMode > OBS_MAP_CHASE )
-		iMode = OBS_IN_EYE; // now it is
+	if( iMode < OBS_CHASE_LOCKED || iMode > OBS_IN_EYE )
+		iMode = OBS_CHASE_FREE; // now it is
 	// verify observer target again
 	if( m_hObserverTarget != 0 )
 	{
@@ -278,7 +274,6 @@ void CBasePlayer::StopObserver()
 	m_iHideHUD = 0;
 
 	GetClassPtr( (CBasePlayer *)pev )->Spawn();
-	pev->nextthink = -1;
 
 	// Update Team Status
 	MESSAGE_BEGIN( MSG_ALL, gmsgTeamInfo );
