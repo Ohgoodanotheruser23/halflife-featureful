@@ -36,12 +36,13 @@ SpawnItem gSpawnItems[] =
 
 int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsLeft, const float* playerNeeds)
 {
+	int i;
 	float probabilities[ARRAYSIZE(gSpawnItems)];
-	for (int i=0; i<ARRAYSIZE(probabilities); ++i) {
+	for (i=0; i<ARRAYSIZE(probabilities); ++i) {
 		probabilities[i] = 0;
 	}
 	float probSum = 0;
-	for (int i=0; i<itemCount; ++i) {
+	for (i=0; i<itemCount; ++i) {
 		int itemType = items[i];
 		if (!pointsLeft || gSpawnItems[i].value <= *pointsLeft) {
 			probabilities[itemType] += 1;
@@ -54,7 +55,7 @@ int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsL
 	
 	float random = RANDOM_FLOAT(0, probSum);
 	float currentProb = 0;
-	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+	for (i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
 		if (random >= currentProb && random <= (currentProb + probabilities[i])) {
 			return i;
 		}
@@ -97,12 +98,13 @@ static int GetSpawnItemIndexByWeaponId(int IId) {
 
 void EvaluatePlayersNeeds(float* playerNeeds)
 {	
-	for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+	int i;
+	for (i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
 		playerNeeds[i] = 0;
 	}
 	
 	int playerCount = 0;
-	for(int i = 1; i <= gpGlobals->maxClients; i++ ) {
+	for(i = 1; i <= gpGlobals->maxClients; i++ ) {
 		CBasePlayer* player = (CBasePlayer*)UTIL_PlayerByIndex(i);
 		if (player && player->IsPlayer() && player->IsAlive()) {
 			playerCount++;
@@ -147,7 +149,7 @@ void EvaluatePlayersNeeds(float* playerNeeds)
 	}
 	
 	if (playerCount) {
-		for (int i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
+		for (i=0; i<ARRAYSIZE(gSpawnItems); ++i) {
 			playerNeeds[i] /= playerCount;
 		}
 	}

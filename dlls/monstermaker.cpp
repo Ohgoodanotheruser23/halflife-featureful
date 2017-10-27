@@ -234,7 +234,7 @@ void CMonsterMaker::MakeMonster( void )
 		int i = 0;
 		for ( ; i<m_originCount; ++i ) {
 			const int chosen = RANDOM_LONG(0, m_originCount-i-1);
-			if (m_cachedOrigins[chosen].entity && m_cachedOrigins[chosen].entity.Get()) {
+			if (m_cachedOrigins[chosen].entity.Get() && m_cachedOrigins[chosen].entity.Get()) {
 				Vector mins = m_cachedOrigins[chosen].entity->pev->origin - Vector( 34, 34, 0 );
 				Vector maxs = m_cachedOrigins[chosen].entity->pev->origin + Vector( 34, 34, 0 );
 				maxs.z = m_cachedOrigins[chosen].entity->pev->origin.z;

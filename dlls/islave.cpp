@@ -1028,7 +1028,7 @@ Schedule_t *CISlave::GetSchedule( void )
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
 		if ( CanShareHealth() && CheckHealOrReviveTargets()) {
-			if (m_hDead || m_hWounded) {
+			if (m_hDead.Get() || m_hWounded.Get()) {
 				if (m_hDead) {
 					m_hTargetEnt = m_hDead;
 				} else if (m_hWounded) {

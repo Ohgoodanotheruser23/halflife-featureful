@@ -239,7 +239,7 @@ void CMedkit::WeaponIdle(void)
 					CBaseMonster* monster = healTarget->MyMonsterPointer();
 					if (monster) {
 						monster->Forget(bits_MEMORY_PROVOKED|bits_MEMORY_SUSPICIOUS);
-						if (monster->m_hEnemy && monster->m_hEnemy->IsPlayer()) {
+						if (monster->m_hEnemy.Get() && monster->m_hEnemy->IsPlayer()) {
 							monster->m_hEnemy = NULL;
 						}
 					}
