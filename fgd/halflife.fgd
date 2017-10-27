@@ -2041,6 +2041,9 @@
 ]
 @PointClass size(-16 -16 0, 16 16 36) base(Weapon, RandomItem) = item_random : "Random item" []
 
+@PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/health_charger_body.mdl") = item_healthcharger : "Wall Health Kit" []
+@PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/hev.mdl") = item_recharge : "Wall Recharger" []
+
 //
 // lights
 //
