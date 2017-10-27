@@ -50,7 +50,7 @@ public:
 	int ISoundMask( void );
 	void BarneyFirePistol( void );
 	void AlertSound( void );
-	int Classify( void );
+	int DefaultClassify( void );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 
 	void RunTask( Task_t *pTask );
@@ -253,7 +253,7 @@ int CBarney::ISoundMask( void)
 // Classify - indicates this monster's place in the 
 // relationship table.
 //=========================================================
-int CBarney::Classify( void )
+int CBarney::DefaultClassify( void )
 {
 	return CLASS_PLAYER_ALLY;
 }
@@ -396,13 +396,13 @@ void CBarney::Spawn()
 {
 	Precache();
 
-	SET_MODEL( ENT( pev ), "models/barney.mdl" );
+	SetMyModel( "models/barney.mdl" );
 	UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
-	m_bloodColor = BLOOD_COLOR_RED;
-	pev->health = gSkillData.barneyHealth;
+	SetMyBloodColor( BLOOD_COLOR_RED );
+	SetMyHealth( gSkillData.barneyHealth );
 	pev->view_ofs = Vector ( 0, 0, 50 );// position of the eyes relative to monster's origin.
 	m_flFieldOfView = VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so npc will notice player and say hello
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -413,7 +413,10 @@ void CBarney::Spawn()
 	m_afCapability = bits_CAP_HEAR | bits_CAP_TURN_HEAD | bits_CAP_DOORS_GROUP;
 
 	MonsterInit();
-	SetUse( &CTalkMonster::FollowerUse );
+	
+	if (IsFriendWithPlayerBeforeProvoked()) {
+		SetUse( &CTalkMonster::FollowerUse );
+	}
 }
 
 //=========================================================
@@ -421,7 +424,7 @@ void CBarney::Spawn()
 //=========================================================
 void CBarney::Precache()
 {
-	PRECACHE_MODEL( "models/barney.mdl" );
+	PrecacheMyModel( "models/barney.mdl" );
 
 	PRECACHE_SOUND( "barney/ba_attack1.wav" );
 	PRECACHE_SOUND( "barney/ba_attack2.wav" );
@@ -499,7 +502,7 @@ int CBarney::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 	if( !IsAlive() || pev->deadflag == DEAD_DYING )
 		return ret;
 
-	if( m_MonsterState != MONSTERSTATE_PRONE && ( pevAttacker->flags & FL_CLIENT ) )
+	if( m_MonsterState != MONSTERSTATE_PRONE && ( pevAttacker->flags & FL_CLIENT ) && IsFriendWithPlayerBeforeProvoked() )
 	{
 		m_flPlayerDamage += flDamage;
 
@@ -775,29 +778,21 @@ void CBarney::DeclineFollowing( void )
 // the m_iFirstPose properly!
 //
 //=========================================================
-class CDeadBarney : public CBaseMonster
+class CDeadBarney : public CDeadMonster
 {
 public:
 	void Spawn( void );
-	int Classify( void ) { return CLASS_PLAYER_ALLY; }
+	int	DefaultClassify ( void ) { return	CLASS_PLAYER_ALLY; }
 
-	void KeyValue( KeyValueData *pkvd );
-
-	int m_iPose;// which sequence to display	-- temporary, don't need to save
+	const char* getPos(int pos) const;
 	static const char *m_szPoses[3];
 };
 
 const char *CDeadBarney::m_szPoses[] = { "lying_on_back", "lying_on_side", "lying_on_stomach" };
 
-void CDeadBarney::KeyValue( KeyValueData *pkvd )
+const char* CDeadBarney::getPos(int pos) const
 {
-	if( FStrEq( pkvd->szKeyName, "pose" ) )
-	{
-		m_iPose = atoi( pkvd->szValue );
-		pkvd->fHandled = TRUE;
-	}
-	else
-		CBaseMonster::KeyValue( pkvd );
+	return m_szPoses[pos % ARRAYSIZE(m_szPoses)];
 }
 
 LINK_ENTITY_TO_CLASS( monster_barney_dead, CDeadBarney )
@@ -805,23 +800,8 @@ LINK_ENTITY_TO_CLASS( monster_barney_dead, CDeadBarney )
 //=========================================================
 // ********** DeadBarney SPAWN **********
 //=========================================================
-void CDeadBarney::Spawn()
+void CDeadBarney :: Spawn( )
 {
-	PRECACHE_MODEL( "models/barney.mdl" );
-	SET_MODEL( ENT( pev ), "models/barney.mdl" );
-
-	pev->effects = 0;
-	pev->yaw_speed = 8;
-	pev->sequence = 0;
-	m_bloodColor = BLOOD_COLOR_RED;
-
-	pev->sequence = LookupSequence( m_szPoses[m_iPose] );
-	if( pev->sequence == -1 )
-	{
-		ALERT( at_console, "Dead barney with bad pose\n" );
-	}
-	// Corpses have less health
-	pev->health = 8;//gSkillData.barneyHealth;
-
+	SpawnHelper("models/barney.mdl", "Dead barney with bad pose");
 	MonsterInitDead();
 }

@@ -28,6 +28,11 @@ struct skilldata_t
 
 	float barnacleHealth;
 
+	float babygargantuaHealth;
+	float babygargantuaDmgSlash;
+	float babygargantuaDmgFire;
+	float babygargantuaDmgStomp;
+
 	float barneyHealth;
 
 	float bigmommaHealthFactor;		// Multiply each node's health by this

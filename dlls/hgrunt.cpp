@@ -126,7 +126,7 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	void SetYawSpeed( void );
-	int Classify( void );
+	int DefaultClassify( void );
 	int ISoundMask( void );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	BOOL FCanCheckAttacks( void );
@@ -265,7 +265,7 @@ void CHGrunt::SpeakSentence( void )
 //=========================================================
 int CHGrunt::IRelationship( CBaseEntity *pTarget )
 {
-	if( FClassnameIs( pTarget->pev, "monster_alien_grunt" ) || ( FClassnameIs( pTarget->pev,  "monster_gargantua" ) ) )
+	if( IDefaultRelationship(pTarget) >= R_DL && (FClassnameIs( pTarget->pev, "monster_alien_grunt" ) || ( FClassnameIs( pTarget->pev,  "monster_gargantua" ) )) )
 	{
 		return R_NM;
 	}
@@ -745,7 +745,7 @@ void CHGrunt::CheckAmmo( void )
 // Classify - indicates this monster's place in the 
 // relationship table.
 //=========================================================
-int CHGrunt::Classify( void )
+int CHGrunt::DefaultClassify( void )
 {
 	return CLASS_HUMAN_MILITARY;
 }
@@ -959,14 +959,14 @@ void CHGrunt::Spawn()
 {
 	Precache();
 
-	SET_MODEL( ENT( pev ), "models/hgrunt.mdl" );
+	SetMyModel( "models/hgrunt.mdl" );
 	UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
 
 	pev->solid		= SOLID_SLIDEBOX;
 	pev->movetype		= MOVETYPE_STEP;
-	m_bloodColor		= BLOOD_COLOR_RED;
+	SetMyBloodColor( BLOOD_COLOR_RED );
 	pev->effects		= 0;
-	pev->health		= gSkillData.hgruntHealth;
+	SetMyHealth( gSkillData.hgruntHealth );
 	m_flFieldOfView		= 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_flNextGrenadeCheck	= gpGlobals->time + 1;
@@ -1024,7 +1024,7 @@ void CHGrunt::Spawn()
 //=========================================================
 void CHGrunt::Precache()
 {
-	PRECACHE_MODEL( "models/hgrunt.mdl" );
+	PrecacheMyModel( "models/hgrunt.mdl" );
 
 	PRECACHE_SOUND( "hgrunt/gr_mgun1.wav" );
 	PRECACHE_SOUND( "hgrunt/gr_mgun2.wav" );
@@ -2386,29 +2386,21 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 //=========================================================
 // DEAD HGRUNT PROP
 //=========================================================
-class CDeadHGrunt : public CBaseMonster
+class CDeadHGrunt : public CDeadMonster
 {
 public:
 	void Spawn( void );
-	int Classify( void ) { return CLASS_HUMAN_MILITARY; }
+	int	DefaultClassify ( void ) { return	CLASS_HUMAN_MILITARY; }
 
-	void KeyValue( KeyValueData *pkvd );
-
-	int m_iPose;// which sequence to display	-- temporary, don't need to save
+	const char* getPos(int pos) const;
 	static const char *m_szPoses[3];
 };
 
 const char *CDeadHGrunt::m_szPoses[] = { "deadstomach", "deadside", "deadsitting" };
 
-void CDeadHGrunt::KeyValue( KeyValueData *pkvd )
+const char* CDeadHGrunt::getPos(int pos) const
 {
-	if( FStrEq( pkvd->szKeyName, "pose" ) )
-	{
-		m_iPose = atoi( pkvd->szValue );
-		pkvd->fHandled = TRUE;
-	}
-	else 
-		CBaseMonster::KeyValue( pkvd );
+	return m_szPoses[pos % ARRAYSIZE(m_szPoses)];
 }
 
 LINK_ENTITY_TO_CLASS( monster_hgrunt_dead, CDeadHGrunt )
@@ -2416,52 +2408,32 @@ LINK_ENTITY_TO_CLASS( monster_hgrunt_dead, CDeadHGrunt )
 //=========================================================
 // ********** DeadHGrunt SPAWN **********
 //=========================================================
-void CDeadHGrunt::Spawn( void )
+void CDeadHGrunt :: Spawn( void )
 {
-	PRECACHE_MODEL( "models/hgrunt.mdl" );
-	SET_MODEL( ENT( pev ), "models/hgrunt.mdl" );
-
-	pev->effects		= 0;
-	pev->yaw_speed		= 8;
-	pev->sequence		= 0;
-	m_bloodColor		= BLOOD_COLOR_RED;
-
-	pev->sequence = LookupSequence( m_szPoses[m_iPose] );
-
-	if( pev->sequence == -1 )
-	{
-		ALERT( at_console, "Dead hgrunt with bad pose\n" );
-	}
-
-	// Corpses have less health
-	pev->health = 8;
+	SpawnHelper("models/hgrunt.mdl", "Dead hgrunt with bad pose\n");
 
 	// map old bodies onto new bodies
 	switch( pev->body )
 	{
-	case 0:
-		// Grunt with Gun
+	case 0: // Grunt with Gun
 		pev->body = 0;
 		pev->skin = 0;
 		SetBodygroup( HEAD_GROUP, HEAD_GRUNT );
 		SetBodygroup( GUN_GROUP, GUN_MP5 );
 		break;
-	case 1:
-		// Commander with Gun
+	case 1: // Commander with Gun
 		pev->body = 0;
 		pev->skin = 0;
 		SetBodygroup( HEAD_GROUP, HEAD_COMMANDER );
 		SetBodygroup( GUN_GROUP, GUN_MP5 );
 		break;
-	case 2:
-		// Grunt no Gun
+	case 2: // Grunt no Gun
 		pev->body = 0;
 		pev->skin = 0;
 		SetBodygroup( HEAD_GROUP, HEAD_GRUNT );
 		SetBodygroup( GUN_GROUP, GUN_NONE );
 		break;
-	case 3:
-		// Commander no Gun
+	case 3: // Commander no Gun
 		pev->body = 0;
 		pev->skin = 0;
 		SetBodygroup( HEAD_GROUP, HEAD_COMMANDER );

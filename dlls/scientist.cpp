@@ -75,7 +75,7 @@ public:
 	void Precache( void );
 
 	void SetYawSpeed( void );
-	int Classify( void );
+	int DefaultClassify( void );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	void RunTask( Task_t *pTask );
 	void StartTask( Task_t *pTask );
@@ -567,7 +567,7 @@ void CScientist::RunTask( Task_t *pTask )
 // Classify - indicates this monster's place in the 
 // relationship table.
 //=========================================================
-int CScientist::Classify( void )
+int CScientist::DefaultClassify( void )
 {
 	return CLASS_HUMAN_PASSIVE;
 }
@@ -639,13 +639,13 @@ void CScientist::Spawn( void )
 {
 	Precache();
 
-	SET_MODEL( ENT( pev ), "models/scientist.mdl" );
+	SetMyModel( "models/scientist.mdl" );
 	UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
-	m_bloodColor = BLOOD_COLOR_RED;
-	pev->health = gSkillData.scientistHealth;
+	SetMyBloodColor( BLOOD_COLOR_RED );
+	SetMyHealth( gSkillData.scientistHealth );
 	pev->view_ofs = Vector( 0, 0, 50 );// position of the eyes relative to monster's origin.
 	m_flFieldOfView = VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so scientists will notice player and say hello
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -668,7 +668,9 @@ void CScientist::Spawn( void )
 		pev->skin = 1;
 
 	MonsterInit();
-	SetUse( &CTalkMonster::FollowerUse );
+	if (IsFriendWithPlayerBeforeProvoked()) {
+		SetUse( &CTalkMonster::FollowerUse );
+	}
 }
 
 //=========================================================
@@ -676,7 +678,7 @@ void CScientist::Spawn( void )
 //=========================================================
 void CScientist::Precache( void )
 {
-	PRECACHE_MODEL( "models/scientist.mdl" );
+	PrecacheMyModel( "models/scientist.mdl" );
 	PRECACHE_SOUND( "scientist/sci_pain1.wav" );
 	PRECACHE_SOUND( "scientist/sci_pain2.wav" );
 	PRECACHE_SOUND( "scientist/sci_pain3.wav" );
@@ -746,7 +748,7 @@ void CScientist::TalkInit()
 
 int CScientist::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
 {
-	if( pevInflictor && pevInflictor->flags & FL_CLIENT )
+	if( pevInflictor && pevInflictor->flags & FL_CLIENT && IsFriendWithPlayerBeforeProvoked() )
 	{
 		Remember( bits_MEMORY_PROVOKED );
 		StopFollowing( TRUE );
@@ -1085,76 +1087,40 @@ int CScientist::FriendNumber( int arrayNumber )
 //=========================================================
 // Dead Scientist PROP
 //=========================================================
-class CDeadScientist : public CBaseMonster
+class CDeadScientist : public CDeadMonster
 {
 public:
 	void Spawn( void );
-	int Classify( void )
-	{
-		return CLASS_HUMAN_PASSIVE;
-	}
+	int	DefaultClassify ( void ) { return	CLASS_HUMAN_PASSIVE; }
 
-	void KeyValue( KeyValueData *pkvd );
-	int m_iPose;// which sequence to display
+	const char* getPos(int pos) const;
 	static const char *m_szPoses[7];
 };
+const char *CDeadScientist::m_szPoses[] = { "lying_on_back", "lying_on_stomach", "dead_sitting", "dead_hang", "dead_table1", "dead_table2", "dead_table3" };
 
-const char *CDeadScientist::m_szPoses[] =
+const char* CDeadScientist::getPos(int pos) const
 {
-	"lying_on_back",
-	"lying_on_stomach",
-	"dead_sitting",
-	"dead_hang",
-	"dead_table1",
-	"dead_table2",
-	"dead_table3"
-};
-
-void CDeadScientist::KeyValue( KeyValueData *pkvd )
-{
-	if( FStrEq( pkvd->szKeyName, "pose" ) )
-	{
-		m_iPose = atoi( pkvd->szValue );
-		pkvd->fHandled = TRUE;
-	}
-	else
-		CBaseMonster::KeyValue( pkvd );
+	return m_szPoses[pos % ARRAYSIZE(m_szPoses)];
 }
+
 LINK_ENTITY_TO_CLASS( monster_scientist_dead, CDeadScientist )
 
 //
 // ********** DeadScientist SPAWN **********
 //
-void CDeadScientist::Spawn()
+void CDeadScientist :: Spawn( )
 {
-	PRECACHE_MODEL( "models/scientist.mdl" );
-	SET_MODEL( ENT( pev ), "models/scientist.mdl" );
+	SpawnHelper("models/scientist.mdl", "Dead scientist with bad pose\n");
 
-	pev->effects = 0;
-	pev->sequence = 0;
-
-	// Corpses have less health
-	pev->health = 8;//gSkillData.scientistHealth;
-	
-	m_bloodColor = BLOOD_COLOR_RED;
-
-	if( pev->body == -1 )
-	{
-		// -1 chooses a random head
-		pev->body = RANDOM_LONG( 0, NUM_SCIENTIST_HEADS - 1 );// pick a head, any head
+	if ( pev->body == -1 )
+	{// -1 chooses a random head
+		pev->body = RANDOM_LONG(0, NUM_SCIENTIST_HEADS-1);// pick a head, any head
 	}
-
 	// Luther is black, make his hands black
-	if( pev->body == HEAD_LUTHER )
+	if ( pev->body == HEAD_LUTHER )
 		pev->skin = 1;
 	else
 		pev->skin = 0;
-
-	pev->sequence = LookupSequence( m_szPoses[m_iPose] );
-	if( pev->sequence == -1 )
-	{
-		ALERT ( at_console, "Dead scientist with bad pose\n" );
-	}
 
 	//	pev->skin += 2; // use bloody skin -- UNDONE: Turn this back on when we have a bloody skin again!
 	MonsterInitDead();
@@ -1170,7 +1136,7 @@ public:
 	void Precache( void );
 
 	void EXPORT SittingThink( void );
-	int Classify( void );
+	int DefaultClassify( void );
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
@@ -1210,8 +1176,8 @@ SITTING_ANIM_sitting3
 //
 void CSittingScientist::Spawn()
 {
-	PRECACHE_MODEL( "models/scientist.mdl" );
-	SET_MODEL( ENT( pev ), "models/scientist.mdl" );
+	PrecacheMyModel( "models/scientist.mdl" );
+	SetMyModel( "models/scientist.mdl" );
 	Precache();
 	InitBoneControllers();
 
@@ -1220,9 +1186,9 @@ void CSittingScientist::Spawn()
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	pev->effects = 0;
-	pev->health = 50;
+	SetMyHealth( 50 );
 	
-	m_bloodColor = BLOOD_COLOR_RED;
+	SetMyBloodColor( BLOOD_COLOR_RED );
 	m_flFieldOfView = VIEW_FIELD_WIDE; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 
 	m_afCapability= bits_CAP_HEAR | bits_CAP_TURN_HEAD;
@@ -1258,7 +1224,7 @@ void CSittingScientist::Precache( void )
 //=========================================================
 // ID as a passive human
 //=========================================================
-int CSittingScientist::Classify( void )
+int CSittingScientist::DefaultClassify( void )
 {
 	return CLASS_HUMAN_PASSIVE;
 }
