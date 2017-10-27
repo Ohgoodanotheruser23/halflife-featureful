@@ -3212,7 +3212,14 @@
 @PointClass base(Weapon, Targetx) studio("models/v_tripmine.mdl") body(3) sequence(8) size(-16 -16 -5, 16 16 27) = weapon_tripmine : "Tripmine Ammo" []
 @PointClass base(Weapon, Targetx) studio("models/w_satchel.mdl") = weapon_satchel : "Satchel Charge Ammo" []
 @PointClass base(Weapon, Targetx) studio("models/w_grenade.mdl") = weapon_handgrenade : "Handgrenade Ammo" []
-@PointClass base(Weapon, Targetx) studio("models/w_squeak.mdl") = weapon_snark : "Squeak Grenade" []
+@PointClass base(Weapon, Targetx) studio("models/w_sqknest.mdl") = weapon_snark : "Squeak Grenade"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 1 =
+	[
+		0 : "walk"
+		1 : "idle"
+	]
+]
 @PointClass base(Weapon, Targetx) studio("models/w_hgun.mdl") = weapon_hornetgun : "Hornet Gun" []
 @PointClass base(Weapon, Targetx) studio("models/w_medkit.mdl") = weapon_medkit : "Medkit" []
 @PointClass size(-16 -16 0, 16 16 64) color(0 128 0) studio("models/w_chainammo.mdl") =  weaponbox : "Weapon/Ammo Container" []
