@@ -59,6 +59,7 @@ cvar_t bhopcap		= { "mp_bhopcap", "1", FCVAR_SERVER };
 cvar_t allow_spectators = { "allow_spectators", "0", FCVAR_SERVER };	// 0 prevents players from being spectators
 
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
+cvar_t mp_semclip = { "mp_semclip", "1", FCVAR_SERVER };
 
 cvar_t npc_dropweapons = { "npc_dropweapon", "1", FCVAR_SERVER };
 cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
@@ -613,6 +614,8 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &defaultpanicdelay);
 	CVAR_REGISTER( &dmgperscore );
 	CVAR_REGISTER( &allydmgpenalty );
+
+	CVAR_REGISTER( &mp_semclip );
 
 // REGISTER CVARS FOR SKILL LEVEL STUFF
 	// Agrunt

@@ -216,6 +216,7 @@ public:
 	virtual void Duck( void );
 	virtual void PreThink( void );
 	virtual void PostThink( void );
+	virtual void Touch( CBaseEntity *pOther );
 	virtual Vector GetGunPosition( void );
 	virtual int TakeHealth( float flHealth, int bitsDamageType );
 	virtual void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
@@ -397,6 +398,7 @@ private:
 	void DropPlayerItemImpl(CBasePlayerItem* pWeapon, int dropType = DropAmmoFair, float speed = 400);
 
 	bool m_bSentBhopcap; // If false, the player just joined and needs a bhopcap message.
+	float m_flSemclipTime;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025

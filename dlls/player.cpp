@@ -3287,7 +3287,67 @@ void CBasePlayer::PreThink( void )
 	{
 		pev->velocity = g_vecZero;
 	}
+
+	if( mp_semclip.value )
+	{
+		if (pev->solid == SOLID_NOT) {
+			pev->solid = SOLID_SLIDEBOX;
+			UTIL_SetOrigin(pev, pev->origin);
+		}
+
+//		for( int i = 1; i <= gpGlobals->maxClients; i++ )
+//		{
+//			CBaseEntity *plr = UTIL_PlayerByIndex( i );
+
+//			if( plr && plr->pev->solid == SOLID_SLIDEBOX && plr->IsPlayer() )
+//			{
+//				CBasePlayer* player = (CBasePlayer*)plr;
+//				if (gpGlobals->time - player->m_flSemclipTime < 0.5)
+//					plr->pev->solid = SOLID_NOT;
+//			}
+//		}
+	}
 }
+
+void CBasePlayer::Touch( CBaseEntity *pOther )
+{
+	if( mp_semclip.value && pOther && pOther->IsPlayer() )
+	{
+		m_flSemclipTime = gpGlobals->time;
+
+		CBaseEntity* toPush = NULL;
+		CBaseEntity* pusher = NULL;
+
+		if (pOther->pev->velocity.Make2D().Length() > pev->velocity.Make2D().Length()) {
+			toPush = this;
+			pusher = pOther;
+		} else {
+			toPush = pOther;
+			pusher = this;
+		}
+		Vector pushVelocity = pusher->pev->velocity;
+		pushVelocity.z = 0;
+
+		if (pushVelocity.Length() < 40) {
+			pushVelocity = pusher->pev->angles.Normalize() * 150;
+		}
+
+		Vector copy = pushVelocity;
+		if (RANDOM_LONG(0,1)) {
+			pushVelocity.x = - copy.y;
+			pushVelocity.y = copy.x;
+		} else {
+			pushVelocity.x = copy.y;
+			pushVelocity.y = -copy.x;
+		}
+
+		if (pushVelocity.Length() > 200) {
+			pushVelocity = pushVelocity.Normalize() * 200;
+		}
+		toPush->pev->velocity = toPush->pev->velocity + pushVelocity;
+	}
+}
+
 /* Time based Damage works as follows: 
 	1) There are several types of timebased damage:
 
@@ -3856,6 +3916,20 @@ void CBasePlayer::PostThink()
 	if( !IsAlive() )
 		goto pt_end;
 
+	if( mp_semclip.value )
+	{
+		if (gpGlobals->time - m_flSemclipTime < 0.5)
+			pev->solid = SOLID_NOT;
+//		for( int i = 1; i < gpGlobals->maxClients; i++ )
+//		{
+//			CBaseEntity *plr = UTIL_PlayerByIndex( i );
+
+//			if( plr && plr->pev->solid == SOLID_NOT && plr->IsPlayer() )
+//			{
+
+//			}
+//		}
+	}
 	// Handle Tank controlling
 	if( m_pTank != 0 )
 	{
