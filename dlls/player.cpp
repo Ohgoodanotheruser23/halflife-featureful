@@ -1798,7 +1798,6 @@ void CBasePlayer::UpdateStatusBar()
 #define	CLIMB_PUNCH_X			-7  // how far to 'punch' client X axis when climbing
 #define CLIMB_PUNCH_Z			7	// how far to 'punch' client Z axis when climbing
 
-static float g_flSemclipTime;
 void CBasePlayer::PreThink( void )
 {
 	int buttonsChanged = ( m_afButtonLast ^ pev->button );	// These buttons have changed this frame
@@ -1933,18 +1932,24 @@ void CBasePlayer::PreThink( void )
 		pev->velocity = g_vecZero;
 	}
 
-	// keep semclip 0.5 seconds
-	if( mp_semclip.value && (gpGlobals->time - g_flSemclipTime < 0.5 ) )
+	if( mp_semclip.value )
 	{
-		for( int i = 1; i <= gpGlobals->maxClients; i++ )
-		{
-			CBaseEntity *plr = UTIL_PlayerByIndex( i );
-
-			if( plr && plr->pev->solid == SOLID_SLIDEBOX && plr->IsPlayer() )
-			{
-				plr->pev->solid = SOLID_NOT;
-			}
+		if (pev->solid == SOLID_NOT) {
+			pev->solid = SOLID_SLIDEBOX;
+			UTIL_SetOrigin(pev, pev->origin);
 		}
+
+//		for( int i = 1; i <= gpGlobals->maxClients; i++ )
+//		{
+//			CBaseEntity *plr = UTIL_PlayerByIndex( i );
+
+//			if( plr && plr->pev->solid == SOLID_SLIDEBOX && plr->IsPlayer() )
+//			{
+//				CBasePlayer* player = (CBasePlayer*)plr;
+//				if (gpGlobals->time - player->m_flSemclipTime < 0.5)
+//					plr->pev->solid = SOLID_NOT;
+//			}
+//		}
 	}
 }
 
@@ -1952,16 +1957,38 @@ void CBasePlayer::Touch( CBaseEntity *pOther )
 {
 	if( mp_semclip.value && pOther && pOther->IsPlayer() )
 	{
-		for( int i = 1; i <= gpGlobals->maxClients; i++ )
-		{
-			CBaseEntity *plr = UTIL_PlayerByIndex( i );
+		m_flSemclipTime = gpGlobals->time;
 
-			if( plr && plr->pev->solid == SOLID_SLIDEBOX && plr->IsPlayer() )
-			{
-				plr->pev->solid = SOLID_NOT;
-			}
+		CBaseEntity* toPush = NULL;
+		CBaseEntity* pusher = NULL;
+
+		if (pOther->pev->velocity.Make2D().Length() > pev->velocity.Make2D().Length()) {
+			toPush = this;
+			pusher = pOther;
+		} else {
+			toPush = pOther;
+			pusher = this;
 		}
-		g_flSemclipTime = gpGlobals->time;
+		Vector pushVelocity = pusher->pev->velocity;
+		pushVelocity.z = 0;
+
+		if (pushVelocity.Length() < 40) {
+			pushVelocity = pusher->pev->angles.Normalize() * 150;
+		}
+
+		Vector copy = pushVelocity;
+		if (RANDOM_LONG(0,1)) {
+			pushVelocity.x = - copy.y;
+			pushVelocity.y = copy.x;
+		} else {
+			pushVelocity.x = copy.y;
+			pushVelocity.y = -copy.x;
+		}
+
+		if (pushVelocity.Length() > 200) {
+			pushVelocity = pushVelocity.Normalize() * 200;
+		}
+		toPush->pev->velocity = toPush->pev->velocity + pushVelocity;
 	}
 }
 
@@ -2535,16 +2562,17 @@ void CBasePlayer::PostThink()
 
 	if( mp_semclip.value )
 	{
-		for( int i = 1; i < gpGlobals->maxClients; i++ )
-		{
-			CBaseEntity *plr = UTIL_PlayerByIndex( i );
+		if (gpGlobals->time - m_flSemclipTime < 0.5)
+			pev->solid = SOLID_NOT;
+//		for( int i = 1; i < gpGlobals->maxClients; i++ )
+//		{
+//			CBaseEntity *plr = UTIL_PlayerByIndex( i );
 
-			if( plr && plr->pev->solid == SOLID_NOT && plr->IsPlayer() )
-			{
-				plr->pev->solid = SOLID_SLIDEBOX;
-				UTIL_SetOrigin(plr->pev, plr->pev->origin);
-			}
-		}
+//			if( plr && plr->pev->solid == SOLID_NOT && plr->IsPlayer() )
+//			{
+
+//			}
+//		}
 	}
 	// Handle Tank controlling
 	if( m_pTank != 0 )

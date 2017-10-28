@@ -326,6 +326,7 @@ public:
 	float m_flNextChatTime;
 
 	bool m_bSentBhopcap; // If false, the player just joined and needs a bhopcap message.
+	float m_flSemclipTime;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025
