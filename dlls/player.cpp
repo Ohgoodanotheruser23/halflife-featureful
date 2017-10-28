@@ -1798,6 +1798,7 @@ void CBasePlayer::UpdateStatusBar()
 #define	CLIMB_PUNCH_X			-7  // how far to 'punch' client X axis when climbing
 #define CLIMB_PUNCH_Z			7	// how far to 'punch' client Z axis when climbing
 
+static float g_flSemclipTime;
 void CBasePlayer::PreThink( void )
 {
 	int buttonsChanged = ( m_afButtonLast ^ pev->button );	// These buttons have changed this frame
@@ -1931,7 +1932,39 @@ void CBasePlayer::PreThink( void )
 	{
 		pev->velocity = g_vecZero;
 	}
+
+	// keep semclip 0.5 seconds
+	if( mp_semclip.value && (gpGlobals->time - g_flSemclipTime < 0.5 ) )
+	{
+		for( int i = 1; i <= gpGlobals->maxClients; i++ )
+		{
+			CBaseEntity *plr = UTIL_PlayerByIndex( i );
+
+			if( plr && plr->pev->solid == SOLID_SLIDEBOX && plr->IsPlayer() )
+			{
+				plr->pev->solid = SOLID_NOT;
+			}
+		}
+	}
 }
+
+void CBasePlayer::Touch( CBaseEntity *pOther )
+{
+	if( mp_semclip.value && pOther && pOther->IsPlayer() )
+	{
+		for( int i = 1; i <= gpGlobals->maxClients; i++ )
+		{
+			CBaseEntity *plr = UTIL_PlayerByIndex( i );
+
+			if( plr && plr->pev->solid == SOLID_SLIDEBOX && plr->IsPlayer() )
+			{
+				plr->pev->solid = SOLID_NOT;
+			}
+		}
+		g_flSemclipTime = gpGlobals->time;
+	}
+}
+
 /* Time based Damage works as follows: 
 	1) There are several types of timebased damage:
 
@@ -2500,6 +2533,19 @@ void CBasePlayer::PostThink()
 	if( !IsAlive() )
 		goto pt_end;
 
+	if( mp_semclip.value )
+	{
+		for( int i = 1; i < gpGlobals->maxClients; i++ )
+		{
+			CBaseEntity *plr = UTIL_PlayerByIndex( i );
+
+			if( plr && plr->pev->solid == SOLID_NOT && plr->IsPlayer() )
+			{
+				plr->pev->solid = SOLID_SLIDEBOX;
+				UTIL_SetOrigin(plr->pev, plr->pev->origin);
+			}
+		}
+	}
 	// Handle Tank controlling
 	if( m_pTank != 0 )
 	{

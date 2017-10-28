@@ -45,6 +45,7 @@ cvar_t bhopcap		= { "mp_bhopcap", "1", FCVAR_SERVER };
 cvar_t allow_spectators = { "allow_spectators", "0", FCVAR_SERVER };	// 0 prevents players from being spectators
 
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
+cvar_t mp_semclip = { "mp_semclip", "1", FCVAR_SERVER };
 
 // Engine Cvars
 cvar_t *g_psv_gravity = NULL;
@@ -482,6 +483,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &bhopcap );
 
 	CVAR_REGISTER( &mp_chattime );
+	CVAR_REGISTER( &mp_semclip );
 
 // REGISTER CVARS FOR SKILL LEVEL STUFF
 	// Agrunt
