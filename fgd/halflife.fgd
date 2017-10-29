@@ -1834,6 +1834,13 @@
 	// master(string) : "Master"
 ]
 
+@SolidClass base(Targetname) = game_zone_allplayers : "All Players Zone brush"
+[
+	intarget(target_destination) : "Fire when all players are in"
+	outtarget(target_destination) : "Fire when not all players are in"
+	// master(string) : "Master"
+]
+
 @PointClass base(gibshooterbase) = gibshooter : "Gib Shooter" []
 
 //

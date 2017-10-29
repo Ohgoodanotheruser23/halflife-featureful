@@ -586,6 +586,85 @@ void CGamePlayerZone::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	}
 }
 
+class CGameAllPlayersZone : public CRuleBrushEntity
+{
+public:
+	void		KeyValue( KeyValueData *pkvd );
+	void		Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+
+	virtual int		Save( CSave &save );
+	virtual int		Restore( CRestore &restore );
+	static	TYPEDESCRIPTION m_SaveData[];
+
+private:
+	string_t	m_iszInTarget; // fire when all players in
+	string_t	m_iszOutTarget; // fire when not all players in
+};
+
+LINK_ENTITY_TO_CLASS( game_zone_allplayers, CGameAllPlayersZone )
+TYPEDESCRIPTION	CGameAllPlayersZone::m_SaveData[] =
+{
+	DEFINE_FIELD( CGameAllPlayersZone, m_iszInTarget, FIELD_STRING ),
+	DEFINE_FIELD( CGameAllPlayersZone, m_iszOutTarget, FIELD_STRING ),
+};
+
+IMPLEMENT_SAVERESTORE( CGameAllPlayersZone, CRuleBrushEntity )
+
+void CGameAllPlayersZone::KeyValue( KeyValueData *pkvd )
+{
+	if( FStrEq(pkvd->szKeyName, "intarget" ) )
+	{
+		m_iszInTarget = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "outtarget" ) )
+	{
+		m_iszOutTarget = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CRuleBrushEntity::KeyValue( pkvd );
+}
+
+void CGameAllPlayersZone::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if( !CanFireForActivator( pActivator ) )
+		return;
+
+	bool hasPlayers = false;
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+		if ( pPlayer && pPlayer->IsAlive() && !(pPlayer->pev->flags & FL_SPECTATOR) )
+		{
+			TraceResult trace;
+			int			hullNumber;
+
+			hullNumber = human_hull;
+			if( pPlayer->pev->flags & FL_DUCKING )
+			{
+				hullNumber = head_hull;
+			}
+
+			UTIL_TraceModel( pPlayer->pev->origin, pPlayer->pev->origin, hullNumber, edict(), &trace );
+
+			if( trace.fStartSolid ) {
+				hasPlayers = true;
+			} else {
+				if( m_iszOutTarget ) {
+					FireTargets( STRING( m_iszOutTarget ), pActivator, pCaller, useType, value );
+				}
+				return;
+			}
+		}
+	}
+	if (hasPlayers) {
+		if( m_iszInTarget ) {
+			FireTargets( STRING( m_iszInTarget ), pActivator, pCaller, useType, value );
+		}
+	}
+}
+
 //
 // CGamePlayerHurt / game_player_hurt	-- Damages the player who fires it
 // Flag: Fire once
