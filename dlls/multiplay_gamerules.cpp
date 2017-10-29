@@ -210,6 +210,32 @@ void CTriggerRescue::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	UTIL_Remove(this);
 }
 
+class CTriggerSurvival : public CPointEntity
+{
+public:
+	void Spawn();
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+};
+
+LINK_ENTITY_TO_CLASS( trigger_survival, CTriggerSurvival )
+
+void CTriggerSurvival::Spawn()
+{
+	CPointEntity::Spawn();
+	if (!g_pGameRules->IsMultiplayer()) {
+		UTIL_Remove(this);
+	}
+}
+
+void CTriggerSurvival::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if (g_pGameRules->IsMultiplayer()) {
+		CHalfLifeMultiplay* rules = (CHalfLifeMultiplay*)g_pGameRules;
+		rules->EnableSurvival();
+	}
+	UTIL_Remove(this);
+}
+
 //*********************************************************
 // Rules for the half-life multiplayer game.
 //*********************************************************
@@ -225,6 +251,7 @@ CHalfLifeMultiplay::CHalfLifeMultiplay()
 	m_flNextSurvivalStartTime = gpGlobals->time;
 	m_survivalState = SurvivalWaitForPlayers;
 	m_restartTheSameMap = false;
+	m_hasTriggerSurvival = -1;
 	
 	// 11/8/98
 	// Modified by YWB:  Server .cfg file is now a cvar, so that 
@@ -453,7 +480,17 @@ void CHalfLifeMultiplay::Think( void )
 	last_frags = frags_remaining;
 	last_time = time_remaining;
 
-	if (survival.value) {
+	if (m_hasTriggerSurvival == -1) {
+		m_hasTriggerSurvival = !FNullEnt(FIND_ENTITY_BY_CLASSNAME(NULL, "trigger_survival"));
+
+		if (m_hasTriggerSurvival) {
+			ALERT(at_console, "trigger_survival exists on the map\n");
+		} else {
+			ALERT(at_console, "trigger_survival does not exist on the map\n");
+		}
+	}
+
+	if (!m_hasTriggerSurvival && survival.value) {
 		if (m_survivalState == SurvivalWaitForPlayers) {
 			if (IsAnyPlayerAlive()) {
 				m_survivalState = SurvivalCountdown;
@@ -470,8 +507,7 @@ void CHalfLifeMultiplay::Think( void )
 						m_flNextSurvivalStartTime = gpGlobals->time+1;
 					}
 				} else {
-					m_survivalState = SurvivalEnabled;
-					UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "Survival mode enabled!" )); 
+					EnableSurvival();
 				}
 			}
 		} else if (m_survivalState == SurvivalEnabled) {
@@ -493,6 +529,13 @@ void CHalfLifeMultiplay::Think( void )
 			}
 		}
 	}
+}
+
+void CHalfLifeMultiplay::EnableSurvival()
+{
+	m_survivalState = SurvivalEnabled;
+	m_hasTriggerSurvival = 0;
+	UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "Survival mode enabled!" ));
 }
 
 //=========================================================

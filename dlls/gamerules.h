@@ -371,6 +371,7 @@ public:
 	static BOOL IsAnyPlayerRescuable( void );
 	static CBasePlayer *FindRescuablePlayer( void );
 
+	void EnableSurvival();
 protected:
 	virtual void ChangeLevel( void );
 	virtual void GoToIntermission( void );
@@ -384,6 +385,7 @@ protected:
 	
 	float m_panicTime;
 	static int m_numberOfTries;
+	int m_hasTriggerSurvival;
 	bool m_restartTheSameMap;
 };
 

@@ -3192,6 +3192,8 @@
 
 @PointClass base(Targetname, Target) = trigger_rescue : "Rescue point" []
 
+@PointClass base(Targetname) = trigger_survival : "Enable survival mode" []
+
 @SolidClass base(Trigger) = trigger_teleport : "Trigger teleport" []
 
 @SolidClass base(Targetname) = trigger_transition : "Trigger: Select Transition Area" []
