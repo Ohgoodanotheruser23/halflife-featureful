@@ -355,7 +355,7 @@ void W_Precache( void )
 
 	// hornetgun
 	UTIL_PrecacheOtherWeapon( "weapon_hornetgun" );
-	
+
 	UTIL_PrecacheOtherWeapon( "weapon_medkit" );
 
 	if( g_pGameRules->IsDeathmatch() )
@@ -1051,10 +1051,10 @@ void CBasePlayerWeapon::Holster( int skiplocal /* = 0 */ )
 void CBasePlayerAmmo::Spawn( void )
 {
 	Precache();
-	
+
 	pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
-	
+
 	const int ammoSize = 16;
 	UTIL_SetSize( pev, Vector( -ammoSize, -ammoSize, 0 ), Vector( ammoSize, ammoSize, ammoSize ) );
 	UTIL_SetOrigin( pev, pev->origin );
@@ -1173,11 +1173,11 @@ void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 			pWeapon = pWeapon->m_pNext;
 		}
 	}
-	
+
 	if (!hasWeaponWithThisAmmo) {
 		return;
 	}
-	
+
 	if( AddAmmo( pOther ) )
 	{
 		if( g_pGameRules->AmmoShouldRespawn( this ) == GR_AMMO_RESPAWN_YES )
@@ -1352,7 +1352,7 @@ void CWeaponBox::Spawn( void )
 	pev->solid = SOLID_TRIGGER;
 
 	//UTIL_SetSize( pev, g_vecZero, g_vecZero );
-	
+
 	const int itemSize = 24;
 	UTIL_SetSize( pev, Vector( -itemSize, -itemSize, 0 ), Vector( itemSize, itemSize, itemSize ) );
 
@@ -1434,7 +1434,7 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 
 	CBasePlayer *pPlayer = (CBasePlayer *)pOther;
 	int i;
-	
+
 	bool shouldRemove = false;
 
 	// go through my weapons and try to give the usable ones to the player. 
@@ -1462,7 +1462,7 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 			}
 		}
 	}
-	
+
 	// dole out ammo
 	for( i = 0; i < MAX_AMMO_SLOTS; i++ )
 	{
@@ -1676,7 +1676,7 @@ void CWeaponBox::SetWeaponModel(int iId)
 		weaponAngles.y += 180 + RANDOM_LONG(-15,15);
 		SET_MODEL( ENT( pev ), gWeaponModels[iId] );
 		pev->angles = weaponAngles;
-		
+
 		if (iId == WEAPON_TRIPMINE) {
 			pev->body = 3;
 			pev->sequence = 8;

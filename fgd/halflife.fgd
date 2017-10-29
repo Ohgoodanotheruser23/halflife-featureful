@@ -3111,7 +3111,7 @@
 
 @SolidClass base(Trigger, Angles) = trigger_panic : "Trigger: Activate panic event"
 [
-	wait(integer) : "Delay panic" : 0
+	wait(integer) : "Delay next panic" : 0
 	spawnflags(flags) =
 	[
 		8 : "Force panic on first fire"

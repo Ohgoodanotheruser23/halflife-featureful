@@ -274,7 +274,7 @@ public:
 	void AddPoints( int score, BOOL bAllowNegativeScore );
 	void AddPointsToTeam( int score, BOOL bAllowNegativeScore );
 	void AddFloatPoints( float score, BOOL bAllowNegativeScore );
-	BOOL AddPlayerItem( CBasePlayerItem *pItem );
+	int AddPlayerItem( CBasePlayerItem *pItem );
 	BOOL RemovePlayerItem( CBasePlayerItem *pItem, bool bCallHoster );
 	void DropPlayerItem ( char *pszItemName );
 	void DropPlayerItemById( int iId );

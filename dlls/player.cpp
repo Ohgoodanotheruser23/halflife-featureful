@@ -761,11 +761,11 @@ CharacterPhrases* CBasePlayer::GetCharPhrases(int playerCharacter)
 	static RoboPhrases roboPhrases;
 	static GinaPhrases ginaPhrases;
 	static CharacterPhrases genericPhrases;
-	
+
 	if (!char_phrases.value) {
 		return &genericPhrases;
 	}
-	
+
 	switch(playerCharacter) {
 	case PLAYER_CHAR_BARNEY:
 		return &barneyPhrases;
@@ -797,9 +797,9 @@ public:
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-	
+
 	static TYPEDESCRIPTION m_SaveData[];
-	
+
 private:
 	float m_radius;
 	BOOL m_active;
@@ -846,7 +846,7 @@ void CInfoCareful::Think()
 				playerCountInArea++;
 			}
 		}
-		
+
 		if (playerCountInArea > 1) {
 			for( int i = 1; i <= gpGlobals->maxClients; i++ )
 			{
@@ -860,7 +860,7 @@ void CInfoCareful::Think()
 			}
 		}
 	}
-	
+
 	pev->nextthink = gpGlobals->time + 1;
 }
 
@@ -1193,14 +1193,14 @@ void CBasePlayer::PlayerSayThink()
 	if (!(IsAlive() && IsPlayer())) {
 		return;
 	}
-	
+
 	if (!CanSay()) {
 		m_enemyKilled = false;
 		return;
 	}
-	
+
 	bool saidSomething = false;
-	
+
 	if (!saidSomething && m_flSaySeeEnemyTime < gpGlobals->time && RANDOM_LONG(0,1)) {
 		CBaseEntity* pEnemy = LookForEnemy();
 		if (pEnemy) {
@@ -1208,7 +1208,7 @@ void CBasePlayer::PlayerSayThink()
 			m_flSaySeeEnemyTime = gpGlobals->time + 10;
 		}
 	}
-	
+
 	if (m_flSayKilledEnemyTime < gpGlobals->time && m_enemyKilled) {
 		m_enemyKilled = false;
 		if (!saidSomething && RANDOM_LONG(0,1)) {
@@ -1219,7 +1219,7 @@ void CBasePlayer::PlayerSayThink()
 	if (saidSomething) {
 		return;
 	}
-	
+
 	if (g_sayConditionTime < gpGlobals->time && m_flSayConditionTime < gpGlobals->time) {
 		switch(RANDOM_LONG(0,2))
 		{
@@ -1236,7 +1236,7 @@ void CBasePlayer::PlayerSayThink()
 			break;
 		}
 	}
-	
+
 	if (saidSomething) {
 		m_flSayConditionTime = gpGlobals->time + 20 + RANDOM_LONG(0, 20);
 		g_sayConditionTime = gpGlobals->time + 6;
@@ -1312,7 +1312,7 @@ static int GetTeamState()
 			sumHealth += pPlayer->pev->health + pPlayer->pev->armorvalue;
 		}
 	}
-	
+
 	float meanHealth = sumHealth / playerCount;
 	if (meanHealth < 40 || (meanHealth < 50 && playerCount > 1)) {
 		return TEAM_STATE_PESSIMISTIC;
@@ -1323,7 +1323,7 @@ static int GetTeamState()
 }
 
 bool CBasePlayer::SayTeamCondition()
-{	
+{
 	switch(GetTeamState()) {
 	case TEAM_STATE_PESSIMISTIC:
 		return GetCharPhrases()->pessimistic(this);
@@ -1335,7 +1335,7 @@ bool CBasePlayer::SayTeamCondition()
 }
 
 bool CBasePlayer::SayOtherPlayerCondition()
-{	
+{
 	for( int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
 		CBaseEntity *pEntity = UTIL_PlayerByIndex( i );
@@ -1590,12 +1590,14 @@ int TrainSpeed( int iSpeed, int iMax )
 
 static void RefreshMaxSpeed(CBasePlayer* player)
 {
-	if (PlayerHeavilyDamaged(player)) {
-		player->pev->maxspeed = 150;
-	} else if (PlayerLightlyDamaged(player)) {
-		player->pev->maxspeed = 200;
-	} else {
-		player->pev->maxspeed = 0;
+	if (mp_l4mcoop.value) {
+		if (PlayerHeavilyDamaged(player)) {
+			player->pev->maxspeed = 150;
+		} else if (PlayerLightlyDamaged(player)) {
+			player->pev->maxspeed = 200;
+		} else {
+			player->pev->maxspeed = 0;
+		}
 	}
 }
 
@@ -1609,11 +1611,26 @@ void CBasePlayer::DeathSound( void )
 		return;
 	}
 	*/
-	GetCharPhrases()->deathSound(this);
+	if (char_phrases.value) {
+		GetCharPhrases()->deathSound(this);
+	} else {
+		// temporarily using pain sounds for death sounds
+		switch( RANDOM_LONG( 1, 5 ) )
+		{
+		case 1:
+			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain5.wav", 1, ATTN_NORM );
+			break;
+		case 2:
+			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain6.wav", 1, ATTN_NORM );
+			break;
+		case 3:
+			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "player/pl_pain7.wav", 1, ATTN_NORM );
+			break;
+		}
 
-	// play one of the suit death alarms
-	// this substitue death sound, so comment it for now until find the way to play both death and HEV sounds
-	//EMIT_GROUPNAME_SUIT( ENT( pev ), "HEV_DEAD" );
+		// play one of the suit death alarms
+		EMIT_GROUPNAME_SUIT( ENT( pev ), "HEV_DEAD" );
+	}
 }
 
 // override takehealth
@@ -1644,7 +1661,7 @@ int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 			}
 		}
 	}
-	
+
 	int result = CBaseMonster::TakeHealth( flHealth, bitsDamageType );
 	RefreshMaxSpeed(this);
 	return result;
@@ -1745,7 +1762,7 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 		// Refuse the damage
 		return 0;
 	}
-	
+
 	if (pAttacker && pAttacker->IsPlayer() && 
 			g_pGameRules->PlayerRelationship(this, pAttacker) == GR_TEAMMATE && 
 			friendlyfire.value && smartfriendlyfire.value) {
@@ -1786,8 +1803,8 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	// this cast to INT is critical!!! If a player ends up with 0.5 health, the engine will get that
 	// as an int (zero) and think the player is dead! (this will incite a clientside screentilt, etc)
 	fTookDamage = CBaseMonster::TakeDamage( pevInflictor, pevAttacker, (int)flDamage, bitsDamageType );
-	
-	if (IsAlive()) {
+
+	if (IsAlive() && char_phrases.value) {
 		if (pAttacker && pAttacker != this && pAttacker->IsAlive() && pAttacker->IsPlayer()) {
 			TryToSayFriendlyFire();
 		} else {
@@ -2022,7 +2039,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 					}
 					iPackAmmo[ammo2Index].weaponCount++;
 				}
-				
+
 				switch( iWeaponRules )
 				{
 				case GR_PLR_DROP_GUN_ACTIVE:
@@ -2043,36 +2060,38 @@ void CBasePlayer::PackDeadPlayerItems( void )
 			}
 		}
 	}
-	
+
 	iPW = 0;
-	
+
 	const float angleStart = RANDOM_LONG(0,360);
 	while( rgpPackWeapons[iPW] )
 	{
 		// create a box for each weapon
 		CWeaponBox *pWeaponBox = (CWeaponBox *)CBaseEntity::Create( "weaponbox", pev->origin, pev->angles, edict() );
-	
+
 		pWeaponBox->pev->angles.x = 0;// don't let weaponbox tilt.
 		pWeaponBox->pev->angles.z = 0;
 		pWeaponBox->pev->angles.y += RANDOM_LONG(-180,180);
-	
-		//pWeaponBox->SetThink( &CWeaponBox::Kill );
-		//pWeaponBox->pev->nextthink = gpGlobals->time + 120;
-		
+
+		if (weapon_respawndelay.value != -1) {
+			pWeaponBox->SetThink( &CWeaponBox::Kill );
+			pWeaponBox->pev->nextthink = gpGlobals->time + 120;
+		}
+
 		Vector weaponVelocity = pev->velocity;
 		weaponVelocity.x *= RANDOM_FLOAT(0.6, 1.8);
 		weaponVelocity.y *= RANDOM_FLOAT(0.6, 1.8);
 		weaponVelocity.z *= RANDOM_FLOAT(0.6, 1.8);
-		
+
 		// Put items around the corpse
 		Vector addAngles(0,0,0);
 		addAngles.y += angleStart + iPW * 45 + RANDOM_LONG(10,20);
 		UTIL_MakeVectors(addAngles);
 		Vector addVector = (gpGlobals->v_forward + gpGlobals->v_right + gpGlobals->v_up) * 48;
-		
+
 		weaponVelocity = weaponVelocity + addVector;
 		pWeaponBox->pev->velocity = weaponVelocity;// weaponbox has player's velocity, then some.
-		
+
 		CBasePlayerWeapon* weapon = rgpPackWeapons[iPW];
 		if (pWeaponBox->PackWeapon( weapon )) {
 			pWeaponBox->SetWeaponModel(weapon->m_iId);
@@ -2164,7 +2183,7 @@ entvars_t *g_pevLastInflictor;  // Set in combat.cpp.  Used to pass the damage i
 void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 {
 	SentenceStop();
-	
+
 	CSound *pSound;
 
 	// Holster weapon immediately, to allow it to cleanup
@@ -2218,7 +2237,7 @@ void CBasePlayer::Killed( entvars_t *pevAttacker, int iGib )
 
 	MESSAGE_BEGIN( MSG_ONE, gmsgSetFOV, NULL, pev );
 		WRITE_BYTE( 0 );
-	MESSAGE_END();	
+	MESSAGE_END();
 
 	// UNDONE: Put this in, but add FFADE_PERMANENT and make fade time 8.8 instead of 4.12
 	// UTIL_ScreenFade( edict(), Vector( 128, 0, 0 ), 6, 15, 255, FFADE_OUT | FFADE_MODULATE );
@@ -2860,7 +2879,7 @@ void CBasePlayer::PlayerUse( void )
 	if( pObject )
 	{
 		//ALERT(at_console, "Trying to use %s\n", STRING(pObject->pev->classname));
-		
+
 		//!!!UNDONE: traceline here to prevent USEing buttons through walls			
 		int caps = pObject->ObjectCaps();
 
@@ -3030,7 +3049,7 @@ void CBasePlayer::InitStatusBar()
 {
 	m_flStatusBarDisappearDelay = 0;
 	m_SbarString1[0] = m_SbarString0[0] = 0; 
-	
+
 	m_lastSeenEntityIndex = -1;
 	m_lastSeenHealth = -1;
 	m_lastSeenArmor = -1;
@@ -3041,7 +3060,7 @@ static void ClearMonsterInfoChannel(CBasePlayer* player)
 	player->m_lastSeenEntityIndex = -1;
 	player->m_lastSeenHealth = -1;
 	player->m_lastSeenArmor = -1;
-	
+
 	hudtextparms_t  textParms;
 	textParms.channel = 3;
 	textParms.x = 0.1;
@@ -3082,7 +3101,7 @@ void CBasePlayer::UpdateStatusBar()
 					health = 0;
 				}
 				int armor = (int)pEntity->pev->armorvalue;
-				
+
 				bool isFriendPlayer = pEntity->IsPlayer() && g_pGameRules->PlayerRelationship(this, pEntity) == GR_TEAMMATE;
 				bool isFriendMonster = (pMonster->Classify() == CLASS_HUMAN_PASSIVE || pMonster->Classify() == CLASS_PLAYER_ALLY);
 				bool canSee = isFriendPlayer || allowmonsterinfo.value == 1 || (allowmonsterinfo.value == 2 && isFriendMonster);
@@ -3092,7 +3111,7 @@ void CBasePlayer::UpdateStatusBar()
 					m_lastSeenEntityIndex = entityIndex;
 					m_lastSeenHealth = health;
 					m_lastSeenArmor = armor;
-					
+
 					hudtextparms_t  textParms;
 					textParms.channel = 3;
 					textParms.x = 0.1;
@@ -3116,7 +3135,7 @@ void CBasePlayer::UpdateStatusBar()
 					textParms.fadeoutTime = 0;
 					textParms.holdTime = 1000.0;
 					textParms.fxTime = 0;
-					
+
 					char buf[256];
 					if (isFriendPlayer) {
 						sprintf(buf, "%s\nHealth: %d\nArmor: %d", STRING(pEntity->pev->netname), health, armor);
@@ -3294,18 +3313,6 @@ void CBasePlayer::PreThink( void )
 			pev->solid = SOLID_SLIDEBOX;
 			UTIL_SetOrigin(pev, pev->origin);
 		}
-
-//		for( int i = 1; i <= gpGlobals->maxClients; i++ )
-//		{
-//			CBaseEntity *plr = UTIL_PlayerByIndex( i );
-
-//			if( plr && plr->pev->solid == SOLID_SLIDEBOX && plr->IsPlayer() )
-//			{
-//				CBasePlayer* player = (CBasePlayer*)plr;
-//				if (gpGlobals->time - player->m_flSemclipTime < 0.5)
-//					plr->pev->solid = SOLID_NOT;
-//			}
-//		}
 	}
 }
 
@@ -3920,15 +3927,6 @@ void CBasePlayer::PostThink()
 	{
 		if (gpGlobals->time - m_flSemclipTime < 0.5)
 			pev->solid = SOLID_NOT;
-//		for( int i = 1; i < gpGlobals->maxClients; i++ )
-//		{
-//			CBaseEntity *plr = UTIL_PlayerByIndex( i );
-
-//			if( plr && plr->pev->solid == SOLID_NOT && plr->IsPlayer() )
-//			{
-
-//			}
-//		}
 	}
 	// Handle Tank controlling
 	if( m_pTank != 0 )
@@ -4100,7 +4098,7 @@ BOOL IsSpawnPointValid( CBaseEntity *pPlayer, CBaseEntity *pSpot )
 		return FALSE;
 	}
 
-	while( ( ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, 24 ) ) != NULL )
+	while( ( ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, mp_l4mcoop.value ? 24 : 128 ) ) != NULL )
 	{
 		// if ent is a client, don't spawn on 'em
 		if( ent->IsPlayer() && ent != pPlayer )
@@ -4262,7 +4260,7 @@ void CBasePlayer::Spawn( void )
 	m_flFallVelocity = 0;
 
 	g_pGameRules->SetDefaultPlayerTeam( this );
-	
+
 	if (!(survival.value && m_bShouldBeRescued)) {
 		g_pGameRules->GetPlayerSpawnSpot( this );
 	}
@@ -4304,25 +4302,25 @@ void CBasePlayer::Spawn( void )
 	m_lastx = m_lasty = 0;
 
 	m_flNextChatTime = gpGlobals->time;
-	
+
 	m_flSayTime = gpGlobals->time;
 	m_flSayConditionTime = gpGlobals->time + 10;
 	m_enemyKilled = false;
 	m_flSayKilledEnemyTime = gpGlobals->time;
 	m_flSaySeeEnemyTime = gpGlobals->time;
-	
+
 	SetThink( &CBasePlayer::PlayerSayThink );
 	pev->nextthink = gpGlobals->time + 0.1;
 
 	g_pGameRules->PlayerSpawn( this );
 	RefreshCharacter();
-	
+
 	g_sayConditionTime = 0;
 }
 
 void CBasePlayer::RefreshCharacter()
 {
-	char *playerModel = g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( edict() ), "model" );
+	const char *playerModel = g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( edict() ), "model" );
 	if (FStrEq(playerModel, "barney")) {
 		m_playerCharacter = PLAYER_CHAR_BARNEY;
 	} else if (FStrEq(playerModel, "scientist")) {
@@ -4721,7 +4719,7 @@ void CBasePlayer::GiveNamedItem( const char *pszName )
 	pent->v.spawnflags |= SF_NORESPAWN;
 
 	DispatchSpawn( pent );
-	
+
 	if (use_to_take.value) {
 		CBaseEntity* entity = (CBaseEntity *)GET_PRIVATE( pent );
 		if (entity) {
@@ -5068,10 +5066,10 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 //
 // Add a weapon to the player (Item == Weapon == Selectable Object)
 //
-BOOL CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
+int CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
 {
 	CBasePlayerItem *pInsert;
-	
+
 	if( pev->flags & FL_SPECTATOR )
 		return FALSE;
 
@@ -5105,7 +5103,9 @@ BOOL CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
 		pInsert = pInsert->m_pNext;
 	}
 
-	DropConflictingWeapons(pItem);
+	if (mp_l4mcoop.value) {
+		DropConflictingWeapons(pItem);
+	}
 	if( pItem->AddToPlayer( this ) )
 	{
 		g_pGameRules->PlayerGotWeapon( this, pItem );
@@ -5568,7 +5568,7 @@ void CBasePlayer::UpdateClientData( void )
 	if( m_flNextSBarUpdateTime < gpGlobals->time )
 	{
 		UpdateStatusBar();
-        m_flNextSBarUpdateTime = gpGlobals->time + 0.2;
+		m_flNextSBarUpdateTime = gpGlobals->time + 0.2;
 	}
 
 	// Send the current bhopcap state.
@@ -5955,7 +5955,7 @@ void CBasePlayer::DropPlayerItemById(int iId)
 	if( ItemDropIsProhibited() ) {
 		return;
 	}
-	
+
 	CBasePlayerItem *pWeapon;
 	for( int i = 0; i < MAX_ITEM_TYPES; i++ )
 	{
@@ -5966,7 +5966,7 @@ void CBasePlayer::DropPlayerItemById(int iId)
 				DropPlayerItemImpl(pWeapon);
 				return;
 			}
-			pWeapon = pWeapon->m_pNext; 
+			pWeapon = pWeapon->m_pNext;
 		}
 	}
 }
@@ -5976,11 +5976,11 @@ void CBasePlayer::DropConflictingWeapons(CBasePlayerItem *newWeapon)
 	if( ItemDropIsProhibited() ) {
 		return;
 	}
-	
+
 	if (!newWeapon->WeaponCategory()) {
 		return;
 	}
-	
+
 	CBasePlayerItem *pWeapon;
 	for( int i = 0; i < MAX_ITEM_TYPES; i++ )
 	{
@@ -6001,7 +6001,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, flo
 	if (pWeapon->m_iId == WEAPON_MEDKIT) {
 		return;
 	}
-	
+
 	g_pGameRules->GetNextBestWeapon( this, pWeapon );
 
 	UTIL_MakeVectors( pev->angles ); 
@@ -6009,13 +6009,13 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, flo
 	pev->weapons &= ~( 1 << pWeapon->m_iId );// take item off hud
 
 	CWeaponBox *pWeaponBox = (CWeaponBox *)CBaseEntity::Create( "weaponbox", pev->origin + gpGlobals->v_forward * 10, pev->angles, edict() );
-	
+
 	pWeaponBox->SetWeaponModel(pWeapon->m_iId);
 	pWeaponBox->pev->angles.x = 0;
 	pWeaponBox->pev->angles.z = 0;
 	pWeaponBox->PackWeapon( pWeapon );
 	pWeaponBox->pev->velocity = gpGlobals->v_forward * speed;
-	
+
 	// drop ammo for this weapon.
 	int iAmmoIndex = GetAmmoIndex( pWeapon->pszAmmo1() ); // ???
 	if( iAmmoIndex != -1 )
@@ -6052,7 +6052,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, flo
 			}
 		}
 	}
-	
+
 	// same for ammo2
 	iAmmoIndex = GetAmmoIndex( pWeapon->pszAmmo2() );
 	if( iAmmoIndex != -1 )
@@ -6134,7 +6134,7 @@ void CBasePlayer::DropAmmo()
 				{
 					if (m_rgAmmo[iAmmoIndex] >= ammoCount) {
 						UTIL_MakeVectors( pev->angles );
-						
+
 						CBaseEntity* ammoEnt = CBaseEntity::Create( entName, pev->origin + gpGlobals->v_forward * 10, pev->angles, edict() );
 						if (ammoEnt) {
 							ammoEnt->pev->spawnflags |= SF_NORESPAWN;

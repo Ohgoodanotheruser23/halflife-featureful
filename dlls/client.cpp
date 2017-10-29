@@ -127,7 +127,7 @@ void ClientDisconnect( edict_t *pEntity )
 	pEntity->v.solid = SOLID_NOT;// nonsolid
 	pEntity->v.effects = 0;// clear any effects
 	UTIL_SetOrigin( &pEntity->v, pEntity->v.origin );
-	
+
 	pEntity->v.netname = iStringNull;
 
 	g_pGameRules->ClientDisconnected( pEntity );
@@ -170,7 +170,7 @@ void ClientKill( edict_t *pEntity )
 		pev->health = 1;
 		return;
 	}
-	
+
 	CBasePlayer *pl = (CBasePlayer*)CBasePlayer::Instance( pev );
 
 	if( pl->m_fNextSuicideTime > gpGlobals->time )
@@ -566,33 +566,33 @@ void ClientCommand( edict_t *pEntity )
 	{
 		GetClassPtr( (CBasePlayer *)pev )->SelectLastItem();
 	}
-//	else if( FStrEq( pcmd, "spectate" ) ) // clients wants to become a spectator
-//	{
-//		CBasePlayer *pPlayer = GetClassPtr( (CBasePlayer *)pev );
-//		if( !pPlayer->IsObserver() )
-//		{
-//			// always allow proxies to become a spectator
-//			if( ( pev->flags & FL_PROXY ) || allow_spectators.value )
-//			{
-//				edict_t *pentSpawnSpot = g_pGameRules->GetPlayerSpawnSpot( pPlayer );
-//				pPlayer->StartObserver( pev->origin, VARS( pentSpawnSpot )->angles );
+	else if( !mp_l4mcoop.value && FStrEq( pcmd, "spectate" ) ) // clients wants to become a spectator
+	{
+		CBasePlayer *pPlayer = GetClassPtr( (CBasePlayer *)pev );
+		if( !pPlayer->IsObserver() )
+		{
+			// always allow proxies to become a spectator
+			if( ( pev->flags & FL_PROXY ) || allow_spectators.value )
+			{
+				edict_t *pentSpawnSpot = g_pGameRules->GetPlayerSpawnSpot( pPlayer );
+				pPlayer->StartObserver( pev->origin, VARS( pentSpawnSpot )->angles );
 
-//				// notify other clients of player switching to spectator mode
-//				UTIL_ClientPrintAll( HUD_PRINTNOTIFY, UTIL_VarArgs( "%s switched to spectator mode\n",
-//						( pev->netname && ( STRING( pev->netname ) )[0] != 0 ) ? STRING( pev->netname ) : "unconnected" ) );
-//			}
-//			else
-//				ClientPrint( pev, HUD_PRINTCONSOLE, "Spectator mode is disabled.\n" );
-//		}
-//		else
-//		{
-//			pPlayer->StopObserver();
+				// notify other clients of player switching to spectator mode
+				UTIL_ClientPrintAll( HUD_PRINTNOTIFY, UTIL_VarArgs( "%s switched to spectator mode\n",
+						( pev->netname && ( STRING( pev->netname ) )[0] != 0 ) ? STRING( pev->netname ) : "unconnected" ) );
+			}
+			else
+				ClientPrint( pev, HUD_PRINTCONSOLE, "Spectator mode is disabled.\n" );
+		}
+		else
+		{
+			pPlayer->StopObserver();
 
-//			// notify other clients of player left spectators
-//			UTIL_ClientPrintAll( HUD_PRINTNOTIFY, UTIL_VarArgs( "%s has left spectator mode\n",
-//					( pev->netname && ( STRING( pev->netname ) )[0] != 0 ) ? STRING( pev->netname ) : "unconnected" ) );
-//		}
-//	}
+			// notify other clients of player left spectators
+			UTIL_ClientPrintAll( HUD_PRINTNOTIFY, UTIL_VarArgs( "%s has left spectator mode\n",
+					( pev->netname && ( STRING( pev->netname ) )[0] != 0 ) ? STRING( pev->netname ) : "unconnected" ) );
+		}
+	}
 	else if( FStrEq( pcmd, "specmode" ) ) // new spectator mode
 	{
 		CBasePlayer *pPlayer = GetClassPtr( (CBasePlayer *)pev );
@@ -955,7 +955,7 @@ void ClientPrecache( void )
 	PRECACHE_SOUND( "player/geiger3.wav" );
 	PRECACHE_SOUND( "player/geiger2.wav" );
 	PRECACHE_SOUND( "player/geiger1.wav" );
-	
+
 	// Barney player character sounds
 	PRECACHE_SOUND( "barney/ba_pain1.wav" );
 	PRECACHE_SOUND( "barney/ba_pain2.wav" );
@@ -964,18 +964,18 @@ void ClientPrecache( void )
 	PRECACHE_SOUND( "barney/ba_die1.wav" );
 	PRECACHE_SOUND( "barney/ba_die2.wav" );
 	PRECACHE_SOUND( "barney/ba_die3.wav" );
-	
+
 	// Scientist player character sounds
 	PRECACHE_SOUND( "scientist/sci_pain1.wav" );
 	PRECACHE_SOUND( "scientist/sci_pain2.wav" );
 	PRECACHE_SOUND( "scientist/sci_pain4.wav" );
 	PRECACHE_SOUND( "scientist/sci_pain5.wav" );
-	
+
 	PRECACHE_SOUND( "scientist/sci_die1.wav" );
 	PRECACHE_SOUND( "scientist/sci_die2.wav" );
 	PRECACHE_SOUND( "scientist/sci_die3.wav" );
 	PRECACHE_SOUND( "scientist/sci_die4.wav" );
-	
+
 	// Gina player character sounds
 	PRECACHE_SOUND( "gina/gina_pain0.wav" );
 	PRECACHE_SOUND( "gina/gina_pain1.wav" );

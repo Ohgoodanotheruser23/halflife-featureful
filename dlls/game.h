@@ -60,6 +60,7 @@ extern cvar_t defaultpanicdelay;
 
 extern cvar_t dmgperscore;
 extern cvar_t allydmgpenalty;
+extern cvar_t mp_l4mcoop;
 
 extern cvar_t mp_semclip;
 

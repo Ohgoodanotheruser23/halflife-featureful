@@ -61,7 +61,7 @@ cvar_t allow_spectators = { "allow_spectators", "0", FCVAR_SERVER };	// 0 preven
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
 cvar_t mp_semclip = { "mp_semclip", "1", FCVAR_SERVER };
 
-cvar_t npc_dropweapons = { "npc_dropweapon", "1", FCVAR_SERVER };
+cvar_t npc_dropweapons = { "npc_dropweapons", "1", FCVAR_SERVER };
 cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
 cvar_t char_phrases = { "char_phrases","1", FCVAR_SERVER };
 cvar_t minpanicdelay = { "mp_minpanicdelay", "10", FCVAR_SERVER };
@@ -69,6 +69,7 @@ cvar_t defaultpanicdelay = { "mp_defaultpanicdelay", "30", FCVAR_SERVER };
 
 cvar_t dmgperscore = { "mp_dmgperscore", "50", FCVAR_SERVER };
 cvar_t allydmgpenalty = { "mp_allydmgpenalty", "2", FCVAR_SERVER };
+cvar_t mp_l4mcoop = { "mp_l4mcoop", "1", FCVAR_SERVER };
 
 // Engine Cvars
 cvar_t *g_psv_gravity = NULL;
@@ -614,6 +615,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &defaultpanicdelay);
 	CVAR_REGISTER( &dmgperscore );
 	CVAR_REGISTER( &allydmgpenalty );
+	CVAR_REGISTER( &mp_l4mcoop );
 
 	CVAR_REGISTER( &mp_semclip );
 

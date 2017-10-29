@@ -590,7 +590,7 @@ void CBaseMonster::Killed( entvars_t *pevAttacker, int iGib )
 	}
 
 	Remember( bits_MEMORY_KILLED );
-	
+
 	CBaseEntity* pEntity = CBaseEntity::Instance(pevAttacker);
 	if ( IsAlive() && (pev->flags & FL_MONSTER) && pEntity && pEntity->IsPlayer() && pEntity->IsAlive()) {
 		CBasePlayer* pPlayer = (CBasePlayer*)pEntity;
@@ -817,11 +817,14 @@ int CBaseMonster::TakeHealth( float flHealth, int bitsDamageType )
 
 void AddScoreForDamage(entvars_t *pevAttacker, CBaseEntity* victim, const float damage)
 {
+	if (!mp_l4mcoop.value) {
+		return;
+	}
 	CBaseEntity *attacker = CBaseEntity::Instance( pevAttacker );
 	if (attacker && attacker->IsPlayer()) {
 		const float dmg = damage > victim->pev->health ? victim->pev->health : damage;
 		const float score = dmg / dmgperscore.value; 
-		
+
 		if (victim->IsPlayer()) {
 			if (victim != attacker && g_pGameRules->PlayerRelationship(attacker, victim) == GR_TEAMMATE) {
 				attacker->AddFloatPoints(-score * allydmgpenalty.value, true);
@@ -835,8 +838,6 @@ void AddScoreForDamage(entvars_t *pevAttacker, CBaseEntity* victim, const float 
 			}
 		}
 	}
-	
-	
 }
 
 /*
