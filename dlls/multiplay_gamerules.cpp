@@ -43,8 +43,6 @@ extern int g_teamplay;
 #define ITEM_RESPAWN_TIME	30
 #define WEAPON_RESPAWN_TIME	20
 #define AMMO_RESPAWN_TIME	20
-#define SURVIVAL_WARMUP_TIME 30
-#define MAX_NUMBER_OF_TRIES 4
 
 float g_flIntermissionStartTime = 0;
 
@@ -459,7 +457,7 @@ void CHalfLifeMultiplay::Think( void )
 		if (m_survivalState == SurvivalWaitForPlayers) {
 			if (IsAnyPlayerAlive()) {
 				m_survivalState = SurvivalCountdown;
-				m_flSurvivalStartTime = gpGlobals->time + SURVIVAL_WARMUP_TIME;
+				m_flSurvivalStartTime = gpGlobals->time + survival_warmup_time.value;
 			}
 		} else if (m_survivalState == SurvivalCountdown) {
 			if (!IsAnyPlayerConnected()) {
@@ -479,7 +477,7 @@ void CHalfLifeMultiplay::Think( void )
 		} else if (m_survivalState == SurvivalEnabled) {
 			if (!IsAnyPlayerAlive()) {
 				m_numberOfTries++;
-				int triesLeft = MAX_NUMBER_OF_TRIES - m_numberOfTries;
+				int triesLeft = (int)survival_restart_number.value - m_numberOfTries;
 				if (triesLeft <= 0) {
 					UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "No alive players left.\n\nChanging the map." ));
 					m_numberOfTries = 0;

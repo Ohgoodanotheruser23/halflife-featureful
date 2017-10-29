@@ -51,7 +51,10 @@ cvar_t teamoverride	= { "mp_teamoverride","1" };
 cvar_t defaultteam	= { "mp_defaultteam","0" };
 
 cvar_t allowmonsters	= { "mp_allowmonsters","1", FCVAR_SERVER };
-cvar_t survival = { "mp_survival","1",FCVAR_SERVER };
+cvar_t survival = { "mp_survival", "1", FCVAR_SERVER };
+cvar_t survival_restart_number = { "mp_survival_restart_number", "4", FCVAR_SERVER };
+cvar_t survival_warmup_time = { "mp_survival_warmup_time", "30", FCVAR_SERVER };
+
 cvar_t allowmonsterinfo = { "mp_allowmonsterinfo","1", FCVAR_SERVER };
 
 cvar_t bhopcap		= { "mp_bhopcap", "1", FCVAR_SERVER };
@@ -602,6 +605,8 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &allowmonsters );
 
 	CVAR_REGISTER( &survival );
+	CVAR_REGISTER( &survival_warmup_time );
+	CVAR_REGISTER( &survival_restart_number );
 	CVAR_REGISTER( &allowmonsterinfo );
 	CVAR_REGISTER( &allowgaussjump );
 	CVAR_REGISTER( &bhopcap );
