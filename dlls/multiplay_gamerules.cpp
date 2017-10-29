@@ -73,7 +73,6 @@ static CMultiplayGameMgrHelper g_GameMgrHelper;
 void BecomeSpectator( CBasePlayer *pPlayer )
 {
 	pPlayer->pev->flags &= FL_PROXY;	// keep proxy flag sey by engine
-	pPlayer->pev->flags |= FL_CLIENT;
 	pPlayer->pev->flags |= FL_SPECTATOR;
 	pPlayer->pev->effects |= EF_NODRAW;
 	pPlayer->StartObserver(pPlayer->pev->origin, pPlayer->pev->v_angle);
