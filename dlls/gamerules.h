@@ -370,7 +370,7 @@ public:
 	static BOOL IsAnyPlayerConnected( void );
 	static BOOL IsAnyPlayerRescuable( void );
 	static CBasePlayer *FindRescuablePlayer( void );
-	
+
 protected:
 	virtual void ChangeLevel( void );
 	virtual void GoToIntermission( void );
@@ -383,6 +383,8 @@ protected:
 	void SendMOTDToClient( edict_t *client );
 	
 	float m_panicTime;
+	static int m_numberOfTries;
+	bool m_restartTheSameMap;
 };
 
 extern DLL_GLOBAL CGameRules *g_pGameRules;

@@ -44,6 +44,7 @@ extern int g_teamplay;
 #define WEAPON_RESPAWN_TIME	20
 #define AMMO_RESPAWN_TIME	20
 #define SURVIVAL_WARMUP_TIME 30
+#define MAX_NUMBER_OF_TRIES 4
 
 float g_flIntermissionStartTime = 0;
 
@@ -225,6 +226,7 @@ CHalfLifeMultiplay::CHalfLifeMultiplay()
 	m_flSurvivalStartTime = gpGlobals->time;
 	m_flNextSurvivalStartTime = gpGlobals->time;
 	m_survivalState = SurvivalWaitForPlayers;
+	m_restartTheSameMap = false;
 	
 	// 11/8/98
 	// Modified by YWB:  Server .cfg file is now a cvar, so that 
@@ -360,6 +362,8 @@ extern cvar_t timeleft, fragsleft;
 
 extern cvar_t mp_chattime;
 
+int CHalfLifeMultiplay::m_numberOfTries = 0;
+
 //=========================================================
 //=========================================================
 void CHalfLifeMultiplay::Think( void )
@@ -474,7 +478,19 @@ void CHalfLifeMultiplay::Think( void )
 			}
 		} else if (m_survivalState == SurvivalEnabled) {
 			if (!IsAnyPlayerAlive()) {
-				UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "No alive players left\n" )); 
+				m_numberOfTries++;
+				int triesLeft = MAX_NUMBER_OF_TRIES - m_numberOfTries;
+				if (triesLeft <= 0) {
+					UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "No alive players left.\n\nChanging the map." ));
+					m_numberOfTries = 0;
+					m_restartTheSameMap = false;
+				} else if (triesLeft == 1) {
+					UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "No alive players left.\n\nTry the last time." ));
+					m_restartTheSameMap = true;
+				} else {
+					UTIL_ClientPrintAll( HUD_PRINTCENTER, UTIL_VarArgs( "No alive players left.\n\nYou have %d more attempts.", triesLeft ));
+					m_restartTheSameMap = true;
+				}
 				GoToIntermission();
 			}
 		}
@@ -1837,6 +1853,10 @@ Server is changing to a new level, check mapcycle.txt for map name and setup inf
 */
 void CHalfLifeMultiplay::ChangeLevel( void )
 {
+	if (m_restartTheSameMap) {
+		CHANGE_LEVEL( STRING(gpGlobals->mapname), NULL );
+		return;
+	}
 	static char szPreviousMapCycleFile[256];
 	static mapcycle_t mapcycle;
 
