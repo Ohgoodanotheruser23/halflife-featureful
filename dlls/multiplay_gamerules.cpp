@@ -748,6 +748,7 @@ void CHalfLifeMultiplay::ClientDisconnected( edict_t *pClient )
 
 		if( pPlayer )
 		{
+			pPlayer->SentenceStop();
 			FireTargets( "game_playerleave", pPlayer, pPlayer, USE_TOGGLE, 0 );
 
 			// team match?
