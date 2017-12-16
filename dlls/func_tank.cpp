@@ -127,14 +127,14 @@ protected:
 
 	Vector		m_barrelPos;	// Length of the freakin barrel
 	float		m_spriteScale;	// Scale of any sprites we shoot
-	int			m_iszSpriteSmoke;
-	int			m_iszSpriteFlash;
+	string_t	m_iszSpriteSmoke;
+	string_t	m_iszSpriteFlash;
 	TANKBULLET	m_bulletType;	// Bullet type
 	int			m_iBulletDamage; // 0 means use Bullet type's default damage
 	
 	Vector		m_sightOrigin;	// Last sight of target
 	int			m_spread;		// firing spread
-	int			m_iszMaster;	// Master entity (game_team_master or multisource)
+	string_t	m_iszMaster;	// Master entity (game_team_master or multisource)
 	int			m_bulletCount;	// Bullet count left. Negative means infinite.
 	float		m_flEmptySoundTime;
 };

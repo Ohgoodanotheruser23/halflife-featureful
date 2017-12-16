@@ -12,6 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
+#pragma once
 #ifndef FUNC_BREAK_H
 #define FUNC_BREAK_H
 
@@ -84,8 +85,8 @@ public:
 	Explosions m_Explosion;
 	int m_idShard;
 	float m_angle;
-	int m_iszGibModel;
-	int m_iszSpawnObject;
+	string_t m_iszGibModel;
+	string_t m_iszSpawnObject;
 	
 	int ItemCount() const;
 	int m_spawnItems[BREAKABLE_RANDOM_SPAWN_MAX_COUNT];

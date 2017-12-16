@@ -100,6 +100,7 @@ set (SVDLL_SOURCES
 	plane.cpp
 	plats.cpp
 	player.cpp
+	playermonster.cpp
 	python.cpp
 	rat.cpp
 	roach.cpp

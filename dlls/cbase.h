@@ -12,6 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
+#pragma once
 #ifndef CBASE_H
 #define CBASE_H
 /*
@@ -448,7 +449,7 @@ class CBaseDelay : public CBaseEntity
 {
 public:
 	float m_flDelay;
-	int m_iszKillTarget;
+	string_t m_iszKillTarget;
 	float m_flMaxDelay;
 
 	virtual void KeyValue( KeyValueData *pkvd );
