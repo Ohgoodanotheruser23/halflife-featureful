@@ -62,6 +62,7 @@ void CBaseEntity::SUB_Remove( void ) { }
 void CBaseDelay::KeyValue( struct KeyValueData_s * ) { }
 int CBaseDelay::Restore( class CRestore & ) { return 1; }
 int CBaseDelay::Save( class CSave & ) { return 1; }
+float CBaseDelay::GetTriggerDelay() { return 0.0f; }
 
 // CBaseAnimating Stubs
 int CBaseAnimating::Restore( class CRestore & ) { return 1; }
@@ -237,6 +238,10 @@ int CBaseMonster::TakeHealth(float flHealth, int bitsDamageType) { return 0; }
 int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType ) { return 0; }
 int CBaseMonster::Restore( class CRestore & ) { return 1; }
 int CBaseMonster::Save( class CSave & ) { return 1; }
+void SetMyHealth( const float health ) {}
+void SetMyModel( const char* model ) {}
+void PrecacheMyModel( const char* model ) {}
+void SetMyBloodColor( int bloodColor ) {}
 int CBaseMonster::DefaultClassify() { return 0; }
 int CBaseMonster::Classify() { return 0; }
 
@@ -303,7 +308,9 @@ Vector CBasePlayer::GetGunPosition( void ) { return g_vecZero; }
 const char *CBasePlayer::TeamID( void ) { return ""; }
 int CBasePlayer::GiveAmmo( int iCount, const char *szName, int iMax ) { return 0; }
 void CBasePlayer::AddPoints( int score, BOOL bAllowNegativeScore ) { } 
+void CBasePlayer::AddFloatPoints(float score, BOOL bAllowNegativeScore) {}
 void CBasePlayer::AddPointsToTeam( int score, BOOL bAllowNegativeScore ) { } 
+void CBasePlayer::Touch(CBaseEntity *pOther) {}
 
 void ClearMultiDamage( void ) { }
 void ApplyMultiDamage( entvars_t *pevInflictor, entvars_t *pevAttacker ) { }
@@ -332,6 +339,8 @@ void CBasePlayerItem::Drop( void ) { }
 void CBasePlayerItem::Kill( void ) { }
 void CBasePlayerItem::Holster( int skiplocal ) { }
 void CBasePlayerItem::AttachToPlayer ( CBasePlayer *pPlayer ) { }
+void CBasePlayerItem::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value) {}
+int CBasePlayerItem::ObjectCaps() {return 0;}
 int CBasePlayerWeapon::AddDuplicate( CBasePlayerItem *pOriginal ) { return 0; }
 int CBasePlayerWeapon::AddToPlayer( CBasePlayer *pPlayer ) { return FALSE; }
 int CBasePlayerWeapon::UpdateClientData( CBasePlayer *pPlayer ) { return 0; }
@@ -344,6 +353,13 @@ void CBasePlayerAmmo::Spawn( void ) { }
 CBaseEntity* CBasePlayerAmmo::Respawn( void ) { return this; }
 void CBasePlayerAmmo::Materialize( void ) { }
 void CBasePlayerAmmo::DefaultTouch( CBaseEntity *pOther ) { }
+int CBasePlayerAmmo::AmmoAmount() {return 0;}
+int CBasePlayerAmmo::MaxAmmo() {return 0;}
+char* CBasePlayerAmmo::AmmoName() {return "";}
+void CBasePlayerAmmo::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value) {}
+BOOL CBasePlayerAmmo::AddAmmo(CBaseEntity *pOther) {}
+int CBasePlayerAmmo::ObjectCaps() {return 0;}
+void CBasePlayerAmmo::Precache() {}
 int CBasePlayerWeapon::ExtractAmmo( CBasePlayerWeapon *pWeapon ) { return 0; }
 int CBasePlayerWeapon::ExtractClipAmmo( CBasePlayerWeapon *pWeapon ) { return 0; }	
 void CBasePlayerWeapon::RetireWeapon( void ) { }
