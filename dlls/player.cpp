@@ -54,6 +54,13 @@ extern void respawn( entvars_t *pev, BOOL fCopyCorpse );
 extern Vector VecBModelOrigin( entvars_t *pevBModel );
 extern edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer );
 
+CBasePlayerWeapon* SafeCastToWeapon(CBaseEntity* pObject)
+{
+	if (strncmp(STRING(pObject->pev->classname), "weapon_", 7) == 0)
+		return (CBasePlayerWeapon*)(pObject);
+	return NULL;
+}
+
 class CharacterPhrases
 {
 public:
@@ -84,10 +91,10 @@ public:
 			if (pObject->IsPlayer()) {
 				return lookAtPlayer(player, (CBasePlayer*)pObject) || lookGeneric(player);
 			}
-			CBasePlayerWeapon* weapon = dynamic_cast<CBasePlayerWeapon*>(pObject);
-			if (weapon) {
+			CBasePlayerWeapon* weapon = SafeCastToWeapon(pObject);
+			if (weapon)
 				return lookAtWeapon(player, weapon) || lookGeneric(player);
-			}
+
 			if (FStrEq("weaponbox", STRING(pObject->pev->classname))) {
 				CWeaponBox* weaponBox = (CWeaponBox*)pObject;
 				for( int i = 0; i < MAX_ITEM_TYPES; i++ )
@@ -1140,11 +1147,9 @@ bool IsSomethingInteresting(CBaseEntity* pObject, CBasePlayer* player)
 	}
 	const char* className = STRING(pObject->pev->classname);
 	if (className && *className) {
-		if (strncmp(className, "weapon_", 7) == 0) {
-			CBasePlayerWeapon* weapon = dynamic_cast<CBasePlayerWeapon*>(pObject);
-			if (weapon && !weapon->m_pPlayer) {
-				return true;
-			}
+		CBasePlayerWeapon* weapon = SafeCastToWeapon(pObject);
+		if (weapon && !weapon->m_pPlayer) {
+			return true;
 		}
 		if (FStrEq(className, "weaponbox")) {
 			return true;

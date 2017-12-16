@@ -44,6 +44,7 @@ set SOURCES=agrunt.cpp^
 	globals.cpp^
 	glock.cpp^
 	gman.cpp^
+    gonome.cpp^
 	h_ai.cpp^
 	h_battery.cpp^
 	h_cine.cpp^
@@ -63,6 +64,7 @@ set SOURCES=agrunt.cpp^
 	leech.cpp^
 	lights.cpp^
 	maprules.cpp^
+	medkit.cpp^
 	monstermaker.cpp^
 	monsters.cpp^
 	monsterstate.cpp^
@@ -91,6 +93,7 @@ set SOURCES=agrunt.cpp^
 	skill.cpp^
 	sound.cpp^
 	soundent.cpp^
+	spawnitems.cpp^
 	spectator.cpp^
 	squadmonster.cpp^
 	squeakgrenade.cpp^
