@@ -357,7 +357,7 @@ int CBasePlayerAmmo::AmmoAmount() {return 0;}
 int CBasePlayerAmmo::MaxAmmo() {return 0;}
 char* CBasePlayerAmmo::AmmoName() {return "";}
 void CBasePlayerAmmo::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value) {}
-BOOL CBasePlayerAmmo::AddAmmo(CBaseEntity *pOther) {}
+BOOL CBasePlayerAmmo::AddAmmo(CBaseEntity *pOther) {return FALSE;}
 int CBasePlayerAmmo::ObjectCaps() {return 0;}
 void CBasePlayerAmmo::Precache() {}
 int CBasePlayerWeapon::ExtractAmmo( CBasePlayerWeapon *pWeapon ) { return 0; }
