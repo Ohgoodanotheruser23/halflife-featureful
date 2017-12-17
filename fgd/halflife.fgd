@@ -2090,7 +2090,13 @@
 
 @PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/health_charger_body.mdl") = item_healthcharger : "Wall Health Kit" []
 @PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/hev.mdl") = item_recharge : "Wall Recharger" []
-
+@PointClass base(Weapon, Targetx) studio() = item_generic : "Generic scenery item"
+[
+	model(studio) : "Model" : "models/w_security.mdl"
+	sequencename(string) : "Sequence Name" : "idle"
+	skin(integer) : "Skin" : 0
+	body(integer) : "Body" : 0
+]
 //
 // lights
 //
