@@ -170,6 +170,8 @@ void DecalGunshot( TraceResult *pTrace, int iBulletType )
 		case BULLET_MONSTER_MP5:
 		case BULLET_PLAYER_BUCKSHOT:
 		case BULLET_PLAYER_357:
+		case BULLET_PLAYER_762:
+		case BULLET_MONSTER_357:
 		default:
 			// smoke and decal
 			UTIL_GunshotDecalTrace( pTrace, DamageDecal( pEntity, DMG_BULLET ) );
@@ -363,6 +365,10 @@ void W_Precache( void )
 		UTIL_PrecacheOther( "weaponbox" );// container for dropped deathmatch weapons
 	}
 #endif
+	UTIL_PrecacheOtherWeapon( "weapon_eagle" );
+	UTIL_PrecacheOtherWeapon( "weapon_pipewrench" );
+	UTIL_PrecacheOtherWeapon( "weapon_sniperrifle" );
+	UTIL_PrecacheOther( "ammo_762" );
 	g_sModelIndexFireball = PRECACHE_MODEL( "sprites/zerogxplode.spr" );// fireball
 	g_sModelIndexWExplosion = PRECACHE_MODEL( "sprites/WXplo1.spr" );// underwater fireball
 	g_sModelIndexSmoke = PRECACHE_MODEL( "sprites/steam1.spr" );// smoke
@@ -1707,12 +1713,20 @@ static const char* const gWeaponModels[] =
 	"models/v_tripmine.mdl",
 	"models/w_satchel.mdl",
 	"models/w_sqknest.mdl",
-	"models/w_medkit.mdl"
+	"models/w_medkit.mdl",
+	"models/w_desert_eagle.mdl",
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	"models/w_pipe_wrench.mdl",
+	NULL,
+	"models/w_m40a1.mdl"
 };
 
 void CWeaponBox::SetWeaponModel(int iId)
 {
-	if (iId > 0 && iId < ARRAYSIZE(gWeaponModels)) {
+	if (iId > 0 && iId < ARRAYSIZE(gWeaponModels) && gWeaponModels[iId] != NULL) {
 		Vector weaponAngles = pev->angles;
 		weaponAngles.y += 180 + RANDOM_LONG(-15,15);
 		SET_MODEL( ENT( pev ), gWeaponModels[iId] );
@@ -1813,3 +1827,26 @@ TYPEDESCRIPTION	CSatchel::m_SaveData[] =
 };
 
 IMPLEMENT_SAVERESTORE( CSatchel, CBasePlayerWeapon )
+
+TYPEDESCRIPTION CEagle::m_SaveData[] =
+{
+	DEFINE_FIELD( CEagle, m_fEagleLaserActive, FIELD_INTEGER ),
+};
+
+IMPLEMENT_SAVERESTORE( CEagle, CBasePlayerWeapon )
+
+TYPEDESCRIPTION	CPipeWrench::m_SaveData[] =
+{
+	DEFINE_FIELD( CPipeWrench, m_iFirestate, FIELD_INTEGER ),
+	DEFINE_FIELD( CPipeWrench, m_flHoldStartTime, FIELD_TIME ),
+};
+
+IMPLEMENT_SAVERESTORE( CPipeWrench, CBasePlayerWeapon )
+
+TYPEDESCRIPTION	CSniperrifle::m_SaveData[] =
+{
+	DEFINE_FIELD( CSniperrifle, m_fNeedAjustBolt, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CSniperrifle, m_iBoltState, FIELD_INTEGER ),
+};
+
+IMPLEMENT_SAVERESTORE( CSniperrifle, CBasePlayerWeapon )

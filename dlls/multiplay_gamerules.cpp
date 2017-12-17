@@ -378,6 +378,15 @@ void CHalfLifeMultiplay::RefreshSkillData( void )
 
 	// hornet
 	gSkillData.plrDmgHornet = 10;
+
+	// Desert Eagle
+	gSkillData.plrDmgEagle = 34;
+
+	// Pipe wrench
+	gSkillData.plrDmgPWrench = 20;
+
+	// 762 Round
+	gSkillData.plrDmg762 = 100;
 }
 
 // longest the intermission can last, in seconds

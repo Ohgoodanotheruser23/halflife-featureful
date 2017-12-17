@@ -2447,6 +2447,7 @@ void CBasePlayer::TabulateAmmo()
 	ammo_rockets = AmmoInventory( GetAmmoIndex( "rockets" ) );
 	ammo_uranium = AmmoInventory( GetAmmoIndex( "uranium" ) );
 	ammo_hornets = AmmoInventory( GetAmmoIndex( "Hornets" ) );
+	ammo_762 = AmmoInventory( GetAmmoIndex( "762" ) );
 }
 
 /*
@@ -4949,6 +4950,10 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		GiveNamedItem( "weapon_hornetgun" );
 		GiveNamedItem( "weapon_medkit" );
 #endif
+		GiveNamedItem( "weapon_eagle" );
+		GiveNamedItem( "weapon_pipewrench" );
+		GiveNamedItem( "weapon_sniperrifle" );
+		GiveNamedItem( "ammo_762" );
 		gEvilImpulse101 = FALSE;
 		break;
 	case 102:

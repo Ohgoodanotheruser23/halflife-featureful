@@ -270,7 +270,7 @@ void CZombie::Precache()
 
 void CZombie::PrecacheSounds()
 {
-	int i;
+	size_t i;
 	for( i = 0; i < ARRAYSIZE( pAttackHitSounds ); i++ )
 		PRECACHE_SOUND( pAttackHitSounds[i] );
 

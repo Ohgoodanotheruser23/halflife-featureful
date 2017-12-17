@@ -50,6 +50,7 @@ set (SVDLL_SOURCES
 	crowbar.cpp
 	defaultai.cpp
 	doors.cpp
+	eagle.cpp
 	effects.cpp
 	egon.cpp
 	explode.cpp
@@ -97,6 +98,8 @@ set (SVDLL_SOURCES
 	observer.cpp
 	osprey.cpp
 	pathcorner.cpp
+	pipewrench.cpp
+	pitdrone.cpp
 	plane.cpp
 	plats.cpp
 	player.cpp
@@ -112,6 +115,7 @@ set (SVDLL_SOURCES
 	shotgun.cpp
 	singleplay_gamerules.cpp
 	skill.cpp
+	sniperrifle.cpp
 	sound.cpp
 	soundent.cpp
 	spawnitems.cpp
@@ -127,6 +131,7 @@ set (SVDLL_SOURCES
 	tripmine.cpp
 	turret.cpp
 	util.cpp
+	voltigore.cpp
 	weapons.cpp
 	world.cpp
 	xen.cpp

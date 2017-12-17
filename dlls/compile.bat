@@ -29,6 +29,7 @@ set SOURCES=agrunt.cpp^
 	crowbar.cpp^
 	defaultai.cpp^
 	doors.cpp^
+	eagle.cpp^
 	effects.cpp^
 	egon.cpp^
 	explode.cpp^
@@ -44,7 +45,7 @@ set SOURCES=agrunt.cpp^
 	globals.cpp^
 	glock.cpp^
 	gman.cpp^
-    gonome.cpp^
+	gonome.cpp^
 	h_ai.cpp^
 	h_battery.cpp^
 	h_cine.cpp^
@@ -76,6 +77,8 @@ set SOURCES=agrunt.cpp^
 	observer.cpp^
 	osprey.cpp^
 	pathcorner.cpp^
+	pipewrench.cpp^
+	pitdrone.cpp^
 	plane.cpp^
 	plats.cpp^
 	player.cpp^
@@ -91,6 +94,7 @@ set SOURCES=agrunt.cpp^
 	shotgun.cpp^
 	singleplay_gamerules.cpp^
 	skill.cpp^
+	sniperrifle.cpp^
 	sound.cpp^
 	soundent.cpp^
 	spawnitems.cpp^
