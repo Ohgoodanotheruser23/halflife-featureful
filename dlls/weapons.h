@@ -109,7 +109,7 @@ public:
 #define MEDKIT_WEIGHT		-1
 #define EAGLE_WEIGHT		15
 #define PIPEWRENCH_WEIGHT		0
-#define SNIPERRIFLE_WEIGHT		10
+#define SNIPERRIFLE_WEIGHT		15
 
 // weapon clip/carry ammo capacities
 #define URANIUM_MAX_CARRY		100
