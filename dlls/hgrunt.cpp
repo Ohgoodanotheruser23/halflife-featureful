@@ -3430,9 +3430,9 @@ void CSporeGrenade::SpawnExplosionParticles(const Vector& origin, const Vector& 
 #define STROOPER_SHOCKRIFLE			(1 << 0)
 #define STROOPER_HANDGRENADE		(1 << 1)
 
-#define GUN_GROUP					1
+#define STROOPER_GUN_GROUP			1
 #define GUN_SHOCKRIFLE				0
-#define GUN_NONE					1
+#define STROOPER_GUN_NONE			1
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -3720,13 +3720,13 @@ void CStrooper::HandleAnimEvent(MonsterEvent_t *pEvent)
 	case STROOPER_AE_DROP_GUN:
 	{
 		// switch to body group with no gun.
-		if (GetBodygroup(GUN_GROUP) != GUN_NONE)
+		if (GetBodygroup(STROOPER_GUN_GROUP) != STROOPER_GUN_NONE)
 		{
 			Vector	vecGunPos;
 			Vector	vecGunAngles;
 
 			GetAttachment(0, vecGunPos, vecGunAngles);
-			SetBodygroup(GUN_GROUP, GUN_NONE);
+			SetBodygroup(STROOPER_GUN_GROUP, STROOPER_GUN_NONE);
 
 			Vector vecDropAngles = vecGunAngles;
 
