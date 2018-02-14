@@ -67,6 +67,7 @@ public:
 	void	WriteFunction( const char *pname, void **value, int count );		// Save a function pointer
 	int		WriteEntVars( const char *pname, entvars_t *pev );		// Save entvars_t (entvars_t)
 	int		WriteFields( const char *pname, void *pBaseData, TYPEDESCRIPTION *pFields, int fieldCount );
+	void WriteStdVec( const char* pname, void* data );
 
 private:
 	int		DataEmpty( const char *pdata, int size );

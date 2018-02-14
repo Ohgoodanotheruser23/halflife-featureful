@@ -30,6 +30,7 @@
 #include "player.h"
 #include "weapons.h"
 #include "gamerules.h"
+#include <vector>
 
 float UTIL_WeaponTimeBase( void )
 {
@@ -1607,6 +1608,7 @@ static int gSizes[FIELD_TYPECOUNT] =
 	sizeof(float),		// FIELD_TIME
 	sizeof(int),		// FIELD_MODELNAME
 	sizeof(int),		// FIELD_SOUNDNAME
+	sizeof(std::vector<int>), // FIELD_STDVEC
 };
 
 // entities has different store size
@@ -1634,6 +1636,7 @@ static int gInputSizes[FIELD_TYPECOUNT] =
 	sizeof(float),		// FIELD_TIME
 	sizeof(int),		// FIELD_MODELNAME
 	sizeof(int),		// FIELD_SOUNDNAME
+	sizeof(std::vector<int>), // FIELD_STDVEC
 };
 
 // Base class includes common SAVERESTOREDATA pointer, and manages the entity table
@@ -1924,6 +1927,17 @@ void CSave::WriteFunction( const char *pname, void **data, int count )
 		ALERT( at_error, "Invalid function pointer in entity!\n" );
 }
 
+void CSave::WriteStdVec(const char *pname, void *data)
+{
+	ALERT(at_console, "In WriteStdVec\n");
+	const std::vector<int>& vec = *(static_cast<const std::vector<int>*>(data));
+	BufferHeader( pname, sizeof(int) + vec.size() * sizeof(int) );
+	const int vecSize = static_cast<int>(vec.size());
+	ALERT(at_console, "Writing vec size: %d\n", vecSize);
+	BufferData( (const char*)&vecSize, sizeof(int) );
+	BufferData( (const char*)&vec[0], vec.size() * sizeof(int) );
+}
+
 void EntvarsKeyvalue( entvars_t *pev, KeyValueData *pkvd )
 {
 	int i;
@@ -2070,6 +2084,9 @@ int CSave::WriteFields( const char *pname, void *pBaseData, TYPEDESCRIPTION *pFi
 			break;
 		case FIELD_FUNCTION:
 			WriteFunction( pTest->fieldName, (void **)pOutputData, pTest->fieldSize );
+			break;
+		case FIELD_STDVEC:
+			WriteStdVec(pTest->fieldName, (void*)pOutputData);
 			break;
 		default:
 			ALERT( at_error, "Bad field type\n" );
@@ -2295,6 +2312,18 @@ int CRestore::ReadField( void *pBaseData, TYPEDESCRIPTION *pFields, int fieldCou
 							*( (void**)pOutputData ) = 0;
 						else
 							*( (void**)pOutputData ) = (void*)FUNCTION_FROM_NAME( (char *)pInputData );
+						break;
+					case FIELD_STDVEC:
+					{
+						std::vector<int>& vec = *(static_cast<std::vector<int>*>(pOutputData));
+						const int vecSize = *(int *)pInputData;
+						ALERT(at_console, "Reading vector size: %d\n", vecSize);
+						vec.resize(vecSize);
+						for (int vecI=0; vecI<vecSize; ++vecI) {
+							ALERT(at_console, "Reading vector element %d: %d\n", vecI, vec[vecI]);
+							vec[vecI] = *(int*)((const char*)pInputData + (vecI+1)*sizeof(int));
+						}
+					}
 						break;
 					default:
 						ALERT( at_error, "Bad field type\n" );

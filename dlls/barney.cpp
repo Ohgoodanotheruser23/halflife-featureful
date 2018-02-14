@@ -27,6 +27,7 @@
 #include	"scripted.h"
 #include	"weapons.h"
 #include	"soundent.h"
+#include <vector>
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -81,6 +82,7 @@ public:
 	float m_painTime;
 	float m_checkAttackTime;
 	BOOL m_lastAttackCheck;
+	std::vector<int> m_testVector;
 
 	// UNDONE: What is this for?  It isn't used?
 	float m_flPlayerDamage;// how much pain has the player inflicted on me?
@@ -92,6 +94,7 @@ LINK_ENTITY_TO_CLASS( monster_barney, CBarney )
 
 TYPEDESCRIPTION	CBarney::m_SaveData[] =
 {
+	DEFINE_FIELD( CBarney, m_testVector, FIELD_STDVEC ),
 	DEFINE_FIELD( CBarney, m_fGunDrawn, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CBarney, m_painTime, FIELD_TIME ),
 	DEFINE_FIELD( CBarney, m_checkAttackTime, FIELD_TIME ),
@@ -393,6 +396,12 @@ void CBarney::HandleAnimEvent( MonsterEvent_t *pEvent )
 //=========================================================
 void CBarney::Spawn()
 {
+	m_testVector.resize(5);
+	m_testVector[0] = 42;
+	m_testVector[1] = 33;
+	m_testVector[2] = 21;
+	m_testVector[3] = 13;
+	m_testVector[4] = 2007;
 	Precache();
 
 	SET_MODEL( ENT( pev ), "models/barney.mdl" );
