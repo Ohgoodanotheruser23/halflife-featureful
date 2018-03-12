@@ -294,7 +294,7 @@ class CMP5AmmoClip : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_MP5CLIP_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "9mm";
 	}
 	int MaxAmmo() {
@@ -321,7 +321,7 @@ class CMP5Chainammo : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_CHAINBOX_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "9mm";
 	}
 	int MaxAmmo() {
@@ -346,7 +346,7 @@ class CMP5AmmoGrenade : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_M203BOX_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "ARgrenades";
 	}
 	int MaxAmmo() {

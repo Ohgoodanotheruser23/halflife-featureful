@@ -250,7 +250,7 @@ class CGlockAmmo : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_GLOCKCLIP_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "9mm";
 	}
 	int MaxAmmo() {

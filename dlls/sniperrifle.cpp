@@ -263,7 +263,7 @@ class CSniperrifleAmmo : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_762BOX_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "762";
 	}
 	int MaxAmmo() {

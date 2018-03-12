@@ -408,7 +408,7 @@ public:
 	
 	virtual int AmmoAmount();
 	virtual int MaxAmmo();
-	virtual char* AmmoName();
+	virtual const char *AmmoName();
 };
 
 extern DLL_GLOBAL	short	g_sModelIndexLaser;// holds the index for the laser beam

@@ -141,7 +141,7 @@ public:
 	void StartTask( Task_t *pTask );
 	void RunTask( Task_t *pTask );
 	void PrescheduleThink();
-	void SpawnFamiliar(char* entityName, const Vector& origin, int hullType);
+	void SpawnFamiliar(const char *entityName, const Vector& origin, int hullType);
 	Schedule_t *GetSchedule( void );
 	Schedule_t *GetScheduleOfType( int Type );
 	CUSTOM_SCHEDULES
@@ -563,7 +563,7 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 				coilAttack = true;
 				ALERT(at_aiconsole, "Vort makes coil attack to heal friends\n");
-			} else if ( m_hEnemy != NULL && (pev->origin - m_hEnemy->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS && !m_lastAttackWasCoil ) {
+			} else if ( m_hEnemy != 0 && (pev->origin - m_hEnemy->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS && !m_lastAttackWasCoil ) {
 				coilAttack = true;
 			}
 
@@ -686,7 +686,7 @@ BOOL CISlave::CheckHealOrReviveTargets(float flDist, bool mustSee)
 			}
 		}
 	}
-	if( m_hDead != NULL || m_hWounded != NULL )
+	if( m_hDead != 0 || m_hWounded != 0 )
 		return TRUE;
 	else
 		return FALSE;
@@ -775,7 +775,7 @@ void CISlave::PrescheduleThink()
 	}
 }
 
-void CISlave::SpawnFamiliar(char *entityName, const Vector &origin, int hullType)
+void CISlave::SpawnFamiliar(const char *entityName, const Vector &origin, int hullType)
 {	
 	TraceResult tr;
 	UTIL_TraceHull( origin, origin, dont_ignore_monsters, hullType, edict(), &tr );
@@ -1543,7 +1543,7 @@ bool CISlave::CanShareHealth()
 
 bool CISlave::CanRevive()
 {
-	return m_hDead != NULL && (CanShareHealth());
+	return m_hDead != 0 && (CanShareHealth());
 }
 
 int CISlave::HealOther(CBaseEntity *pEntity)

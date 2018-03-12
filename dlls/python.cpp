@@ -298,7 +298,7 @@ class CPythonAmmo : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_357BOX_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "357";
 	}
 	int MaxAmmo() {

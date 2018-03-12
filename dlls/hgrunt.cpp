@@ -2108,7 +2108,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 							if( ( m_hEnemy != 0 ) && m_hEnemy->IsPlayer() )
 								// player
 								SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_ALERT), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-							else if( ( m_hEnemy != NULL ) &&
+							else if( ( m_hEnemy != 0 ) &&
 									( m_hEnemy->Classify() != CLASS_PLAYER_ALLY ) &&
 									( m_hEnemy->Classify() != CLASS_HUMAN_PASSIVE ) &&
 									( m_hEnemy->Classify() != CLASS_MACHINE ) )
@@ -2594,7 +2594,7 @@ void CMassn::IdleSound(void)
 //=========================================================
 void CMassn::Sniperrifle(void)
 {
-	if (m_hEnemy == NULL)
+	if (m_hEnemy == 0)
 	{
 		return;
 	}

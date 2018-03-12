@@ -551,7 +551,7 @@ class CCrossbowAmmo : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_CROSSBOWCLIP_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "bolts";
 	}
 	int MaxAmmo() {

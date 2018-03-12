@@ -569,7 +569,7 @@ class CRpgAmmo : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_RPGCLIP_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "rockets";
 	}
 	int MaxAmmo() {

@@ -623,7 +623,7 @@ class CGaussAmmo : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_URANIUMBOX_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "uranium";
 	}
 	int MaxAmmo() {

@@ -355,7 +355,7 @@ void CBasePlayerAmmo::Materialize( void ) { }
 void CBasePlayerAmmo::DefaultTouch( CBaseEntity *pOther ) { }
 int CBasePlayerAmmo::AmmoAmount() {return 0;}
 int CBasePlayerAmmo::MaxAmmo() {return 0;}
-char* CBasePlayerAmmo::AmmoName() {return "";}
+const char* CBasePlayerAmmo::AmmoName() {return "";}
 void CBasePlayerAmmo::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value) {}
 BOOL CBasePlayerAmmo::AddAmmo(CBaseEntity *pOther) {return FALSE;}
 int CBasePlayerAmmo::ObjectCaps() {return 0;}

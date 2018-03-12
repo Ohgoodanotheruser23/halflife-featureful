@@ -2192,6 +2192,9 @@ void CBasePlayer::PackDeadPlayerItems( void )
 
 void CBasePlayer::RemoveAllItems( BOOL removeSuit )
 {
+	int i;
+	CBasePlayerItem *pPendingItem;
+
 	if( m_pActiveItem )
 	{
 		ResetAutoaim();
@@ -2204,8 +2207,8 @@ void CBasePlayer::RemoveAllItems( BOOL removeSuit )
 	if( m_pTank != 0 )
 		m_pTank->Use( this, this, USE_OFF, 0 );
 
-	int i;
-	CBasePlayerItem *pPendingItem;
+	m_iTrain = TRAIN_NEW; // turn off train
+
 	for( i = 0; i < MAX_ITEM_TYPES; i++ )
 	{
 		m_pActiveItem = m_rgpPlayerItems[i];
@@ -4873,6 +4876,10 @@ void CBasePlayer::ForceClientDllUpdate( void )
 	m_fWeapon = FALSE;          // Force weapon send
 	m_fKnownItem = FALSE;    // Force weaponinit messages.
 	m_fInitHUD = TRUE;		// Force HUD gmsgResetHUD message
+	m_bSentBhopcap = true; // a1ba: Update bhopcap state
+	memset( m_rgAmmoLast, 0, sizeof( m_rgAmmoLast )); // a1ba: Force update AmmoX
+
+
 
 	// Now force all the necessary messages
 	//  to be sent.
@@ -5492,7 +5499,7 @@ void CBasePlayer::UpdateClientData( void )
 		m_iClientHealth = (int)pev->health;
 	}
 
-	if( pev->armorvalue != m_iClientBattery )
+	if( (int)pev->armorvalue != m_iClientBattery )
 	{
 		m_iClientBattery = (int)pev->armorvalue;
 

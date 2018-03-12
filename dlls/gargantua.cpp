@@ -82,7 +82,7 @@ class CStomp : public CBaseEntity
 public:
 	void Spawn( void );
 	void Think( void );
-	static CStomp *StompCreate(const Vector &origin, const Vector &end, float speed, char* spriteName, const Vector& color , float damage, float scale);
+	static CStomp *StompCreate(const Vector &origin, const Vector &end, float speed, const char *spriteName, const Vector& color , float damage, float scale);
 
 private:
 // UNDONE: re-use this sprite list instead of creating new ones all the time
@@ -91,7 +91,7 @@ private:
 
 LINK_ENTITY_TO_CLASS( garg_stomp, CStomp )
 
-CStomp *CStomp::StompCreate(const Vector &origin, const Vector &end, float speed , char *spriteName, const Vector &color, float damage, float scale)
+CStomp *CStomp::StompCreate(const Vector &origin, const Vector &end, float speed , const char *spriteName, const Vector &color, float damage, float scale)
 {
 	CStomp *pStomp = GetClassPtr( (CStomp *)NULL );
 
@@ -253,11 +253,11 @@ protected:
 	virtual float DefaultHealth();
 	virtual float FireAttackDamage();
 	virtual float StompAttackDamage();
-	virtual char* DefaultModel();
-	virtual char* EyeSprite();
+	virtual const char* DefaultModel();
+	virtual const char* EyeSprite();
 	virtual float EyeScale();
 	virtual Vector EyeColor();
-	virtual char* StompSprite();
+	virtual const char *StompSprite();
 	virtual int MaxEyeBrightness();
 	virtual void FootEffect();
 	virtual void StompEffect();
@@ -1217,12 +1217,12 @@ float CGargantua::StompAttackDamage()
 	return gSkillData.gargantuaDmgStomp;
 }
 
-char* CGargantua::DefaultModel()
+const char* CGargantua::DefaultModel()
 {
 	return "models/garg.mdl";
 }
 
-char* CGargantua::EyeSprite()
+const char *CGargantua::EyeSprite()
 {
 	return GARG_EYE_SPRITE_NAME;
 }
@@ -1232,7 +1232,7 @@ float CGargantua::EyeScale()
 	return 1.0f;
 }
 
-char* CGargantua::StompSprite()
+const char* CGargantua::StompSprite()
 {
 	return GARG_STOMP_SPRITE_NAME;
 }
@@ -1455,11 +1455,11 @@ protected:
 	float DefaultHealth();
 	float FireAttackDamage();
 	float StompAttackDamage();
-	char* DefaultModel();
-	char* EyeSprite();
+	const char* DefaultModel();
+	const char* EyeSprite();
 	float EyeScale();
 	Vector EyeColor();
-	char* StompSprite();
+	const char* StompSprite();
 	int MaxEyeBrightness();
 	void FootEffect();
 	void StompEffect();
@@ -1621,12 +1621,12 @@ float CBabyGargantua::StompAttackDamage()
 	return gSkillData.babygargantuaDmgStomp;
 }
 
-char* CBabyGargantua::DefaultModel()
+const char *CBabyGargantua::DefaultModel()
 {
 	return "models/babygarg.mdl";
 }
 
-char* CBabyGargantua::EyeSprite()
+const char* CBabyGargantua::EyeSprite()
 {
 	return "sprites/flare3.spr";
 }
@@ -1636,7 +1636,7 @@ float CBabyGargantua::EyeScale()
 	return 0.5;
 }
 
-char* CBabyGargantua::StompSprite()
+const char *CBabyGargantua::StompSprite()
 {
 	return "sprites/flare3.spr";
 }

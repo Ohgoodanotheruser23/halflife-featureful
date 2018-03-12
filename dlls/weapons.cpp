@@ -1132,7 +1132,7 @@ int CBasePlayerAmmo::MaxAmmo()
 	return 0;
 }
 
-char* CBasePlayerAmmo::AmmoName()
+const char* CBasePlayerAmmo::AmmoName()
 {
 	return NULL;
 }

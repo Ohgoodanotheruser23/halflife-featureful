@@ -383,7 +383,7 @@ class CShotgunAmmo : public CBasePlayerAmmo
 	int AmmoAmount() {
 		return AMMO_BUCKSHOTBOX_GIVE;
 	}
-	char* AmmoName() {
+	const char* AmmoName() {
 		return "buckshot";
 	}
 	int MaxAmmo() {
