@@ -64,17 +64,17 @@ enum
 #define ISLAVE_ZAP_GREEN 255
 #define ISLAVE_ZAP_BLUE 96
 
-#define ISLAVE_LEADER_ZAP_RED 255
-#define ISLAVE_LEADER_ZAP_GREEN 222
-#define ISLAVE_LEADER_ZAP_BLUE 77
+#define ISLAVE_LEADER_ZAP_RED 150
+#define ISLAVE_LEADER_ZAP_GREEN 255
+#define ISLAVE_LEADER_ZAP_BLUE 120
 
 #define ISLAVE_ARMBEAM_RED 96
 #define ISLAVE_ARMBEAM_GREEN 128
 #define ISLAVE_ARMBEAM_BLUE 16
 
-#define ISLAVE_LEADER_ARMBEAM_RED 177
-#define ISLAVE_LEADER_ARMBEAM_GREEN 177
-#define ISLAVE_LEADER_ARMBEAM_BLUE 16
+#define ISLAVE_LEADER_ARMBEAM_RED 72
+#define ISLAVE_LEADER_ARMBEAM_GREEN 180
+#define ISLAVE_LEADER_ARMBEAM_BLUE 72
 
 #define ISLAVE_LIGHT_RED 255
 #define ISLAVE_LIGHT_GREEN 180
@@ -88,17 +88,16 @@ enum
 
 #define ISLAVE_SPAWNFAMILIAR_DELAY 6
 
+#define ISLAVE_MAXHEALTH_MULTIPLIER 3
+
+enum {
+	ISLAVE_LEFT_ARM = -1,
+	ISLAVE_RIGHT_ARM = 1
+};
+
 static bool IsVortWounded(CBaseEntity* pEntity)
 {
-	switch(gSkillData.iSkillLevel)
-	{
-	case SKILL_MEDIUM:
-	case SKILL_HARD:
-		return pEntity->pev->health < gSkillData.slaveHealth / 3;
-	case SKILL_EASY:
-	default:
-		return pEntity->pev->health < gSkillData.slaveHealth / 2;
-	}
+	return pEntity->pev->health < pEntity->pev->max_health / ISLAVE_MAXHEALTH_MULTIPLIER / 2;
 }
 
 static bool CanBeRevived(CBaseEntity* pEntity)
@@ -126,7 +125,7 @@ public:
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	BOOL CheckRangeAttack1( float flDot, float flDist );
 	BOOL CheckRangeAttack2( float flDot, float flDist );
-	BOOL CheckHealOrReviveTargets( float flDist, bool mustSee = false );
+	BOOL CheckHealOrReviveTargets( float flDist = 784, bool mustSee = false );
 	bool IsValidHealTarget( CBaseEntity* pEntity );
 	void CallForHelp( const char *szClassname, float flDist, EHANDLE hEnemy, Vector &vecLocation );
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
@@ -141,6 +140,7 @@ public:
 
 	void StartTask( Task_t *pTask );
 	void RunTask( Task_t *pTask );
+	void PrescheduleThink();
 	void SpawnFamiliar(char* entityName, const Vector& origin, int hullType);
 	Schedule_t *GetSchedule( void );
 	Schedule_t *GetScheduleOfType( int Type );
@@ -152,22 +152,26 @@ public:
 
 	void ClearBeams();
 	void ArmBeam(int side );
+	void ArmBeamMessage(int side );
 	void WackBeam( int side, CBaseEntity *pEntity );
 	void ZapBeam( int side );
 	void BeamGlow( void );
 	void HandsGlowOn(int brightness = 224);
-	void HandGlowOn(CSprite* handGlow, int brightness, int side);
+	void HandGlowOn(CSprite* handGlow, int brightness = 224);
+	void StartMeleeAttackGlow(int side);
+	bool CanUseGlowArms();
+	void HandGlowOff(CSprite* handGlow);
 	void HandsGlowOff();
 	void CreateSummonBeams();
 	void RemoveSummonBeams();
 	void CoilBeam();
 	void MakeDynamicLight(const Vector& vecSrc, int radius, int t);
-	
+
 	Vector HandPosition(int side);
 
 	CSprite* CreateHandGlow(int attachment);
 	CBeam* CreateSummonBeam(const Vector& vecEnd, int attachment);
-	
+
 	float HealPower();
 	float HealSacrifice();
 	void GiveSacrifice();
@@ -175,10 +179,14 @@ public:
 	bool CanRevive();
 	int HealOther(CBaseEntity* pEntity);
 	bool CanSpawnFamiliar();
-	
+
 	Vector GetZapColor();
-	Vector GetArmBeamColor();
-	
+	Vector GetArmBeamColor(int& brightness);
+
+	inline int AttachmentFromSide(int side) {
+		return side < 0 ? 2 : 1;
+	}
+
 	int m_iBravery;
 
 	CBeam *m_pBeam[ISLAVE_MAX_BEAMS];
@@ -192,19 +200,23 @@ public:
 	EHANDLE m_hWounded;
 	EHANDLE m_hWounded2;
 	
-	int m_iSpriteTexture;
-	
+	int m_iLightningTexture;
+	int m_iTrailTexture;
+
 	CSprite	*m_handGlow1;
 	CSprite	*m_handGlow2;
 	CBeam *m_handsBeam1;
 	CBeam *m_handsBeam2;
 	
 	float m_flSpawnFamiliarTime;
+	short m_clawStrikeNum;
+	bool m_lastAttackWasCoil;
 
 	static const char *pAttackHitSounds[];
 	static const char *pAttackMissSounds[];
 	static const char *pPainSounds[];
 	static const char *pDeathSounds[];
+	static const char *pGlowArmSounds[];
 };
 
 LINK_ENTITY_TO_CLASS( monster_alien_slave, CISlave )
@@ -224,6 +236,7 @@ TYPEDESCRIPTION	CISlave::m_SaveData[] =
 	DEFINE_FIELD( CISlave, m_hWounded, FIELD_EHANDLE ),
 	DEFINE_FIELD( CISlave, m_hWounded2, FIELD_EHANDLE ),
 	DEFINE_FIELD( CISlave, m_flSpawnFamiliarTime, FIELD_FLOAT ),
+	DEFINE_FIELD( CISlave, m_clawStrikeNum, FIELD_SHORT )
 };
 
 IMPLEMENT_SAVERESTORE( CISlave, CSquadMonster )
@@ -251,6 +264,12 @@ const char *CISlave::pDeathSounds[] =
 {
 	"aslave/slv_die1.wav",
 	"aslave/slv_die2.wav",
+};
+
+const char *CISlave::pGlowArmSounds[] =
+{
+	"debris/zap3.wav",
+	"debris/zap8.wav",
 };
 
 //=========================================================
@@ -320,8 +339,7 @@ void CISlave::IdleSound( void )
 #if 1
 	int side = RANDOM_LONG( 0, 1 ) * 2 - 1;
 
-	ClearBeams();
-	ArmBeam( side );
+	ArmBeamMessage( side );
 
 	UTIL_MakeAimVectors( pev->angles );
 	Vector vecSrc = pev->origin + gpGlobals->v_right * 2 * side;
@@ -412,13 +430,31 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 	{
 		case ISLAVE_AE_CLAW:
 		{
+			m_clawStrikeNum++;
+			int damageType = DMG_SLASH;
+			float damage = gSkillData.slaveDmgClaw;
+			if (CanUseGlowArms()) {
+				if ( m_clawStrikeNum == 1 ) {
+					HandGlowOff(m_handGlow1);
+					StartMeleeAttackGlow(ISLAVE_LEFT_ARM);
+				}
+				if ( m_clawStrikeNum == 2 ) {
+					HandGlowOff(m_handGlow2);
+					StartMeleeAttackGlow(ISLAVE_RIGHT_ARM);
+				}
+				if ( m_clawStrikeNum == 3 ) {
+					HandGlowOff(m_handGlow1);
+				}
+				damageType |= DMG_SHOCK;
+				damage *= 1.5;
+			}
 			// SOUND HERE!
-			CBaseEntity *pHurt = CheckTraceHullAttack( 70, gSkillData.slaveDmgClaw, DMG_SLASH );
+			CBaseEntity *pHurt = CheckTraceHullAttack( 70, damage, damageType );
 			if( pHurt )
 			{
 				if( pHurt->pev->flags & ( FL_MONSTER | FL_CLIENT ) )
 				{
-					pHurt->pev->punchangle.z = -18;
+					pHurt->pev->punchangle.z = 18;
 					pHurt->pev->punchangle.x = 5;
 				}
 				// Play a random attack hit sound
@@ -463,13 +499,13 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 			}
 			if( CanRevive() )
 			{
-				WackBeam( -1, m_hDead );
-				WackBeam( 1, m_hDead );
+				WackBeam( ISLAVE_LEFT_ARM, m_hDead );
+				WackBeam( ISLAVE_RIGHT_ARM, m_hDead );
 			}
 			else
 			{
-				ArmBeam( -1 );
-				ArmBeam( 1 );
+				ArmBeam( ISLAVE_LEFT_ARM );
+				ArmBeam( ISLAVE_RIGHT_ARM );
 				BeamGlow();
 			}
 
@@ -485,6 +521,7 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 			{
 				if( CanBeRevived(m_hDead) )
 				{
+					m_lastAttackWasCoil = false;
 					CBaseEntity *pNew = Create( "monster_alien_slave", m_hDead->pev->origin, m_hDead->pev->angles );
 
 					if (m_hDead->pev->weapons) {
@@ -496,8 +533,8 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 					
 					CBaseMonster *pNewMonster = pNew->MyMonsterPointer( );
 					//pNew->pev->spawnflags |= 1;
-					WackBeam( -1, pNew );
-					WackBeam( 1, pNew );
+					WackBeam( ISLAVE_LEFT_ARM, pNew );
+					WackBeam( ISLAVE_RIGHT_ARM, pNew );
 					UTIL_Remove( m_hDead );
 					EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG( 130, 160 ) );
 					
@@ -520,20 +557,20 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 			if ( CanShareHealth() && IsValidHealTarget(m_hWounded) && IsValidHealTarget(m_hWounded2) && 
 					(pev->origin - m_hWounded->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS &&
 					(pev->origin - m_hWounded2->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
-				
 				if (m_hWounded.Get() == m_hWounded2.Get()) {
 					ALERT(at_console, "m_hWounded && m_hWounded2 are the same!\n");
 				}
-				
+
 				coilAttack = true;
 				ALERT(at_aiconsole, "Vort makes coil attack to heal friends\n");
-			} else if ( m_hEnemy != NULL && (pev->origin - m_hEnemy->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
+			} else if ( m_hEnemy != NULL && (pev->origin - m_hEnemy->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS && !m_lastAttackWasCoil ) {
 				coilAttack = true;
 			}
-			
+
 			if (coilAttack) {
 				CoilBeam();
-				
+				m_lastAttackWasCoil = true;
+
 				float flAdjustedDamage = gSkillData.slaveDmgZap*3;
 				CBaseEntity *pEntity = NULL;
 				while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, ISLAVE_COIL_ATTACK_RADIUS ) ) != NULL )
@@ -543,7 +580,7 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 							if( !FVisible( pEntity ) ) {
 								flAdjustedDamage *= 0.5;
 							}
-			
+
 							if( flAdjustedDamage > 0 ) {
 								pEntity->TakeDamage( pev, pev, flAdjustedDamage, DMG_SHOCK );
 							}
@@ -558,10 +595,11 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				}
 				UTIL_EmitAmbientSound( ENT( pev ), pev->origin, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG( 140, 160 ) );
 			} else {
+				m_lastAttackWasCoil = false;
 				UTIL_MakeAimVectors( pev->angles );
-	
-				ZapBeam( -1 );
-				ZapBeam( 1 );
+
+				ZapBeam( ISLAVE_LEFT_ARM );
+				ZapBeam( ISLAVE_RIGHT_ARM );
 				
 				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG( 130, 160 ) );
 				// STOP_SOUND( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav" );
@@ -591,8 +629,8 @@ BOOL CISlave::CheckRangeAttack1( float flDot, float flDist )
 	{
 		return FALSE;
 	}
-	
-	if( flDist > 32 && flDist <= ISLAVE_COIL_ATTACK_RADIUS )
+
+	if( flDist > 64 && flDist <= ISLAVE_COIL_ATTACK_RADIUS )
 	{
 		return TRUE;
 	}
@@ -610,10 +648,10 @@ BOOL CISlave::CheckRangeAttack2( float flDot, float flDist )
 		return FALSE;
 	}
 
-	return CheckHealOrReviveTargets(flDist, true);
+	return CanShareHealth() && CheckHealOrReviveTargets(flDist, true);
 }
 
-BOOL CISlave::CheckHealOrReviveTargets(float flDist = 784, bool mustSee)
+BOOL CISlave::CheckHealOrReviveTargets(float flDist, bool mustSee)
 {
 	m_hDead = NULL;
 	m_hWounded = NULL;
@@ -726,6 +764,17 @@ void CISlave::RunTask(Task_t *pTask)
 	}
 }
 
+void CISlave::PrescheduleThink()
+{
+	CSquadMonster::PrescheduleThink();
+	if (m_Activity == ACT_MELEE_ATTACK1 && m_clawStrikeNum == 0) {
+		if ( m_handGlow1 && (m_handGlow1->pev->effects & EF_NODRAW) && CanUseGlowArms() ) {
+			StartMeleeAttackGlow(ISLAVE_RIGHT_ARM);
+			EMIT_SOUND_DYN(ENT(pev), CHAN_BODY, RANDOM_SOUND_ARRAY(pGlowArmSounds), RANDOM_FLOAT(0.6, 0.8), ATTN_NORM, 0, RANDOM_LONG(70,90));
+		}
+	}
+}
+
 void CISlave::SpawnFamiliar(char *entityName, const Vector &origin, int hullType)
 {	
 	TraceResult tr;
@@ -733,7 +782,7 @@ void CISlave::SpawnFamiliar(char *entityName, const Vector &origin, int hullType
 	if (!tr.fStartSolid) {
 		CBaseEntity *pNew = Create( entityName, origin, pev->angles );
 		CBaseMonster *pNewMonster = pNew->MyMonsterPointer( );
-	
+
 		if(pNew) {
 			CSprite *pSpr = CSprite::SpriteCreate( "sprites/bexplo.spr", origin, TRUE );
 			pSpr->AnimateAndDie( 20 );
@@ -798,7 +847,7 @@ void CISlave::Spawn()
 
 	MonsterInit();
 	
-	pev->max_health = gSkillData.slaveHealth * 3;
+	pev->max_health = pev->max_health * ISLAVE_MAXHEALTH_MULTIPLIER;
 }
 
 //=========================================================
@@ -806,12 +855,11 @@ void CISlave::Spawn()
 //=========================================================
 void CISlave::Precache()
 {
-	size_t i;
-
+	m_iLightningTexture = PRECACHE_MODEL( "sprites/lgtning.spr" );
+	m_iTrailTexture = PRECACHE_MODEL( "sprites/plasma.spr" );
 	PRECACHE_MODEL( ISLAVE_HAND_SPRITE_NAME );
 	PRECACHE_MODEL( "sprites/bexplo.spr" );
 	PrecacheMyModel( "models/islave.mdl" );
-	m_iSpriteTexture = PRECACHE_MODEL( "sprites/lgtning.spr" );
 	PRECACHE_SOUND( "debris/zap1.wav" );
 	PRECACHE_SOUND( "debris/zap4.wav" );
 	PRECACHE_SOUND( "debris/beamstart1.wav" );
@@ -822,18 +870,12 @@ void CISlave::Precache()
 	PRECACHE_SOUND( "headcrab/hc_headbite.wav" );
 	PRECACHE_SOUND( "weapons/cbar_miss1.wav" );
 
-	for( i = 0; i < ARRAYSIZE( pAttackHitSounds ); i++ )
-		PRECACHE_SOUND( pAttackHitSounds[i] );
+	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
+	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
+	PRECACHE_SOUND_ARRAY(pPainSounds);
+	PRECACHE_SOUND_ARRAY(pDeathSounds);
 
-	for( i = 0; i < ARRAYSIZE( pAttackMissSounds ); i++ )
-		PRECACHE_SOUND( pAttackMissSounds[i] );
-
-	for( i = 0; i < ARRAYSIZE( pPainSounds ); i++ )
-		PRECACHE_SOUND( pPainSounds[i] );
-
-	for( i = 0; i < ARRAYSIZE( pDeathSounds ); i++ )
-		PRECACHE_SOUND( pDeathSounds[i] );
-
+	PRECACHE_SOUND_ARRAY(pGlowArmSounds);
 	UTIL_PrecacheOther( "test_effect" );
 	UTIL_PrecacheOther( "monster_snark" );
 	UTIL_PrecacheOther( "monster_headcrab" );
@@ -972,6 +1014,7 @@ IMPLEMENT_CUSTOM_SCHEDULES( CISlave, CSquadMonster )
 Schedule_t *CISlave::GetSchedule( void )
 {
 	ClearBeams();
+	m_clawStrikeNum = 0;
 /*
 	if( pev->spawnflags )
 	{
@@ -1012,12 +1055,12 @@ Schedule_t *CISlave::GetSchedule( void )
 					sched = SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR;
 					m_failSchedule = SCHED_ISLAVE_SUMMON_FAMILIAR;
 				}
-				
+
 				if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 				{
 					return GetScheduleOfType( sched );
 				}
-				if( HasConditions( bits_COND_SEE_ENEMY ) && HasConditions( bits_COND_ENEMY_FACING_ME ) 
+				if( HasConditions( bits_COND_SEE_ENEMY ) && HasConditions( bits_COND_ENEMY_FACING_ME )
 						&& RANDOM_LONG(0,1) ) // give chance to use electro attack to restore health
 				{
 					return GetScheduleOfType( sched );
@@ -1028,15 +1071,13 @@ Schedule_t *CISlave::GetSchedule( void )
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
 		if ( CanShareHealth() && CheckHealOrReviveTargets()) {
-			if (m_hDead.Get() || m_hWounded.Get()) {
-				if (m_hDead) {
-					m_hTargetEnt = m_hDead;
-				} else if (m_hWounded) {
-					m_hTargetEnt = m_hWounded;
-				}
-				ALERT(at_aiconsole, "Vort gonna heal or revive friend when idle. State is %s\n", m_MonsterState == MONSTERSTATE_ALERT ? "alert" : "idle");
-				return GetScheduleOfType( SCHED_ISLAVE_HEAL_OR_REVIVE );
+			if (m_hDead) {
+				m_hTargetEnt = m_hDead;
+			} else if (m_hWounded) {
+				m_hTargetEnt = m_hWounded;
 			}
+			ALERT(at_aiconsole, "Vort gonna heal or revive friend when idle. State is %s\n", m_MonsterState == MONSTERSTATE_ALERT ? "alert" : "idle");
+			return GetScheduleOfType( SCHED_ISLAVE_HEAL_OR_REVIVE );
 		}
 		break;
 	default:
@@ -1054,7 +1095,7 @@ Schedule_t *CISlave::GetScheduleOfType( int Type )
 		{
 			return CSquadMonster::GetScheduleOfType( SCHED_MELEE_ATTACK1 );
 		}
-		else if (CanSpawnFamiliar()) 
+		else if ( m_MonsterState == MONSTERSTATE_COMBAT && CanSpawnFamiliar() )
 		{
 			return GetScheduleOfType( SCHED_ISLAVE_SUMMON_FAMILIAR );
 		}
@@ -1124,14 +1165,61 @@ void CISlave::ArmBeam( int side )
 	if( !m_pBeam[m_iBeams] )
 		return;
 
-	Vector armBeamColor = GetArmBeamColor();
+	int brightness;
+	const Vector armBeamColor = GetArmBeamColor(brightness);
 	m_pBeam[m_iBeams]->PointEntInit( tr.vecEndPos, entindex() );
-	m_pBeam[m_iBeams]->SetEndAttachment( side < 0 ? 2 : 1 );
+	m_pBeam[m_iBeams]->SetEndAttachment( AttachmentFromSide(side) );
 	// m_pBeam[m_iBeams]->SetColor( 180, 255, 96 );
 	m_pBeam[m_iBeams]->SetColor( armBeamColor.x, armBeamColor.y, armBeamColor.z );
-	m_pBeam[m_iBeams]->SetBrightness( 64 );
+	m_pBeam[m_iBeams]->SetBrightness( brightness );
 	m_pBeam[m_iBeams]->SetNoise( 80 );
 	m_iBeams++;
+}
+
+void CISlave::ArmBeamMessage( int side )
+{
+	TraceResult tr;
+	float flDist = 1.0;
+
+	UTIL_MakeAimVectors( pev->angles );
+	Vector vecSrc = HandPosition(side);
+
+	for( int i = 0; i < 3; i++ )
+	{
+		Vector vecAim = gpGlobals->v_right * side * RANDOM_FLOAT( 0, 1 ) + gpGlobals->v_up * RANDOM_FLOAT( -1, 1 );
+		TraceResult tr1;
+		UTIL_TraceLine( vecSrc, vecSrc + vecAim * 512, dont_ignore_monsters, ENT( pev ), &tr1 );
+		if( flDist > tr1.flFraction )
+		{
+			tr = tr1;
+			flDist = tr.flFraction;
+		}
+	}
+
+	// Couldn't find anything close enough
+	if( flDist == 1.0 )
+		return;
+
+	int brightness;
+	const Vector armBeamColor = GetArmBeamColor(brightness);
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY );
+		WRITE_BYTE( TE_BEAMENTPOINT );
+		WRITE_SHORT( entindex() + 0x1000 * (AttachmentFromSide(side)) );
+		WRITE_COORD( tr.vecEndPos.x );
+		WRITE_COORD( tr.vecEndPos.y );
+		WRITE_COORD( tr.vecEndPos.z );
+		WRITE_SHORT( m_iLightningTexture );
+		WRITE_BYTE( 0 ); // framestart
+		WRITE_BYTE( 10 ); // framerate
+		WRITE_BYTE( (int)(10*RANDOM_FLOAT( 0.8, 1.5 )) ); // life
+		WRITE_BYTE( 30 );  // width
+		WRITE_BYTE( 80 );   // noise
+		WRITE_BYTE( armBeamColor.x );   // r, g, b
+		WRITE_BYTE( armBeamColor.y );   // r, g, b
+		WRITE_BYTE( armBeamColor.z );   // r, g, b
+		WRITE_BYTE( brightness );	// brightness
+		WRITE_BYTE( 10 );		// speed
+	MESSAGE_END();
 }
 
 //=========================================================
@@ -1174,7 +1262,7 @@ void CISlave::WackBeam( int side, CBaseEntity *pEntity )
 
 	Vector zapColor = GetZapColor();
 	m_pBeam[m_iBeams]->PointEntInit( pEntity->Center(), entindex() );
-	m_pBeam[m_iBeams]->SetEndAttachment( side < 0 ? 2 : 1 );
+	m_pBeam[m_iBeams]->SetEndAttachment( AttachmentFromSide(side) );
 	m_pBeam[m_iBeams]->SetColor( zapColor.x, zapColor.y, zapColor.z );
 	m_pBeam[m_iBeams]->SetBrightness( 255 );
 	m_pBeam[m_iBeams]->SetNoise( 80 );
@@ -1194,14 +1282,13 @@ void CISlave::ZapBeam( int side )
 		return;
 
 	vecSrc = pev->origin + gpGlobals->v_up * 36;
-	
 	if (IsValidHealTarget(m_hWounded)) {
 		vecAim = ( ( m_hWounded->BodyTarget( vecSrc ) ) - vecSrc ).Normalize();
 		ALERT(at_aiconsole, "Vort shoot friend on purpose to heal\n");
 	} else {
 		vecAim = ShootAtEnemy( vecSrc );
 	}
-	
+
 	float deflection = 0.01;
 	vecAim = vecAim + side * gpGlobals->v_right * RANDOM_FLOAT( 0, deflection ) + gpGlobals->v_up * RANDOM_FLOAT( -deflection, deflection );
 	UTIL_TraceLine( vecSrc, vecSrc + vecAim * 1024, dont_ignore_monsters, ENT( pev ), &tr );
@@ -1210,9 +1297,9 @@ void CISlave::ZapBeam( int side )
 	if( !m_pBeam[m_iBeams] )
 		return;
 
-	Vector zapColor = GetZapColor();
+	const Vector zapColor = GetZapColor();
 	m_pBeam[m_iBeams]->PointEntInit( tr.vecEndPos, entindex() );
-	m_pBeam[m_iBeams]->SetEndAttachment( side < 0 ? 2 : 1 );
+	m_pBeam[m_iBeams]->SetEndAttachment( AttachmentFromSide(side) );
 	m_pBeam[m_iBeams]->SetColor( zapColor.x, zapColor.y, zapColor.z );
 	m_pBeam[m_iBeams]->SetBrightness( 255 );
 	m_pBeam[m_iBeams]->SetNoise( 20 );
@@ -1231,7 +1318,7 @@ void CISlave::ZapBeam( int side )
 				//TODO: check that target is actually a living creature, not machine
 				if (TakeHealth(gSkillData.slaveDmgZap/2, DMG_GENERIC)) // give some health to vortigaunt like in Decay bonus mission
 				{
-					ALERT(at_aiconsole, "Vortigaunt get health from enemy\n");
+					ALERT(at_aiconsole, "Vortigaunt gets health from enemy\n");
 				}
 			}
 		}
@@ -1273,7 +1360,7 @@ void CISlave::CoilBeam()
 		WRITE_COORD( pev->origin.x );
 		WRITE_COORD( pev->origin.y );
 		WRITE_COORD( pev->origin.z + 16 + ISLAVE_COIL_ATTACK_RADIUS*5 ); 
-		WRITE_SHORT( m_iSpriteTexture );
+		WRITE_SHORT( m_iLightningTexture );
 		WRITE_BYTE( 0 ); // startframe
 		WRITE_BYTE( 10 ); // framerate
 		WRITE_BYTE( 2 ); // life
@@ -1296,7 +1383,7 @@ void CISlave::CoilBeam()
 		WRITE_COORD( pev->origin.x );
 		WRITE_COORD( pev->origin.y );
 		WRITE_COORD( pev->origin.z + 48 + ISLAVE_COIL_ATTACK_RADIUS*2 ); 
-		WRITE_SHORT( m_iSpriteTexture );
+		WRITE_SHORT( m_iLightningTexture );
 		WRITE_BYTE( 0 ); // startframe
 		WRITE_BYTE( 10 ); // framerate
 		WRITE_BYTE( 2 ); // life
@@ -1328,31 +1415,58 @@ void CISlave::MakeDynamicLight(const Vector &vecSrc, int radius, int t)
 	MESSAGE_END();
 }
 
+void CISlave::HandGlowOff(CSprite *handGlow)
+{
+	if (handGlow) {
+		handGlow->pev->effects |= EF_NODRAW;
+	}
+}
+
 void CISlave::HandsGlowOff()
 {
-	if (m_handGlow1) {
-		m_handGlow1->pev->effects |= EF_NODRAW;
-	}
-	if (m_handGlow2) {
-		m_handGlow2->pev->effects |= EF_NODRAW;
-	}
+	HandGlowOff(m_handGlow1);
+	HandGlowOff(m_handGlow2);
 }
 
 void CISlave::HandsGlowOn(int brightness)
 {
-	HandGlowOn(m_handGlow1, brightness, -1);
-	HandGlowOn(m_handGlow2, brightness, 1);
+	HandGlowOn(m_handGlow1, brightness);
+	HandGlowOn(m_handGlow2, brightness);
 }
 
-void CISlave::HandGlowOn(CSprite *handGlow, int brightness, int side)
+void CISlave::HandGlowOn(CSprite *handGlow, int brightness)
 {
 	if (handGlow) {
 		Vector zapColor = GetZapColor();
 		handGlow->SetTransparency( kRenderTransAdd, zapColor.x, zapColor.y, zapColor.z, brightness, kRenderFxNoDissipation );
-		UTIL_SetOrigin(handGlow->pev, HandPosition(side));
+		UTIL_SetOrigin(handGlow->pev, pev->origin);
 		handGlow->SetScale(brightness / (float)255 * 0.3);
 		handGlow->pev->effects &= ~EF_NODRAW;
 	}
+}
+
+void CISlave::StartMeleeAttackGlow(int side)
+{
+	CSprite* handGlow = side == ISLAVE_LEFT_ARM ? m_handGlow2 : m_handGlow1;
+	HandGlowOn(handGlow);
+	int brightness;
+	const Vector armBeamColor = GetArmBeamColor(brightness);
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY );
+		WRITE_BYTE( TE_BEAMFOLLOW );
+		WRITE_SHORT( entindex() + 0x1000 * (AttachmentFromSide(side)) );
+		WRITE_SHORT( m_iTrailTexture );
+		WRITE_BYTE( 5 ); // life
+		WRITE_BYTE( 3 );  // width
+		WRITE_BYTE( armBeamColor.x );   // r, g, b
+		WRITE_BYTE( armBeamColor.y );   // r, g, b
+		WRITE_BYTE( armBeamColor.z );   // r, g, b
+		WRITE_BYTE( 128 );	// brightness
+	MESSAGE_END();
+}
+
+bool CISlave::CanUseGlowArms()
+{
+	return (pev->spawnflags & SF_SQUADMONSTER_LEADER) || (pev->health > pev->max_health / ISLAVE_MAXHEALTH_MULTIPLIER);
 }
 
 Vector CISlave::HandPosition(int side)
@@ -1424,7 +1538,7 @@ void CISlave::GiveSacrifice()
 
 bool CISlave::CanShareHealth()
 {
-	return pev->health >= gSkillData.slaveHealth + HealSacrifice();
+	return pev->health >= pev->max_health / ISLAVE_MAXHEALTH_MULTIPLIER + HealSacrifice();
 }
 
 bool CISlave::CanRevive()
@@ -1469,11 +1583,13 @@ Vector CISlave::GetZapColor()
 	}
 }
 
-Vector CISlave::GetArmBeamColor()
+Vector CISlave::GetArmBeamColor(int &brightness)
 {
 	if (pev->spawnflags & SF_SQUADMONSTER_LEADER) {
+		brightness = 128;
 		return Vector(ISLAVE_LEADER_ARMBEAM_RED, ISLAVE_LEADER_ARMBEAM_GREEN, ISLAVE_LEADER_ARMBEAM_BLUE);
 	} else {
+		brightness = 64;
 		return Vector(ISLAVE_ARMBEAM_RED, ISLAVE_ARMBEAM_GREEN, ISLAVE_ARMBEAM_BLUE);
 	}
 }
