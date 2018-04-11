@@ -19,6 +19,8 @@
 #ifndef SKILL_H
 #define SKILL_H
 
+#include "mod_features.h"
+
 struct skilldata_t
 {
 	int iSkillLevel; // game skill level
@@ -31,10 +33,13 @@ struct skilldata_t
 
 	float barnacleHealth;
 
+#if FEATURE_BABYGARG
+
 	float babygargantuaHealth;
 	float babygargantuaDmgSlash;
 	float babygargantuaDmgFire;
 	float babygargantuaDmgStomp;
+#endif
 
 	float barneyHealth;
 
@@ -48,8 +53,25 @@ struct skilldata_t
 	float bullsquidDmgWhip;
 	float bullsquidDmgSpit;
 
+#if FEATURE_CLEANSUIT_SCIENTIST
 	float cleansuitScientistHealth;
+#endif
 
+#if FEATURE_OPFOR_GRUNT
+	float fgruntHealth;
+	float fgruntDmgKick;
+	float fgruntShotgunPellets;
+	float fgruntGrenadeSpeed;
+
+	float medicHealth;
+	float medicDmgKick;
+	float medicGrenadeSpeed;
+	float medicHeal;
+
+	float torchHealth;
+	float torchDmgKick;
+	float torchGrenadeSpeed;
+#endif
 	float gargantuaHealth;
 	float gargantuaDmgSlash;
 	float gargantuaDmgFire;
@@ -85,22 +107,29 @@ struct skilldata_t
 	float controllerSpeedBall;
 	float controllerDmgBall;
 
+#if FEATURE_MASSN
 	float massnHealth;
 	float massnDmgKick;
 	float massnGrenadeSpeed;
+#endif
 
 	float nihilanthHealth;
 	float nihilanthZap;
-	
+
+#if FEATURE_PITDRONE
 	float pitdroneHealth;
 	float pitdroneDmgBite;
 	float pitdroneDmgWhip;
 	float pitdroneDmgSpit;
+#endif
 
+#if FEATURE_OTIS
 	float otisHealth;
+#endif
 
 	float scientistHealth;
 
+#if FEATURE_SHOCKTROOPER
 	float sroachHealth;
 	float sroachDmgBite;
 	float sroachLifespan;
@@ -110,35 +139,41 @@ struct skilldata_t
 	float strooperGrenadeSpeed;
 	float strooperMaxCharge;
 	float strooperRchgSpeed;
+#endif
 
 	float snarkHealth;
 	float snarkDmgBite;
 	float snarkDmgPop;
 
+#if FEATURE_VOLTIFORE
 	float voltigoreHealth;
 	float voltigoreDmgPunch;
 	float voltigoreDmgBeam;
 
 	float babyVoltigoreHealth;
 	float babyVoltigoreDmgPunch;
+#endif
 
 	float zombieHealth;
 	float zombieDmgOneSlash;
 	float zombieDmgBothSlash;
 
+#if FEATURE_ZOMBIE_BARNEY
 	float zombieBarneyHealth;
 	float zombieBarneyDmgOneSlash;
 	float zombieBarneyDmgBothSlash;
-
+#endif
+#if FEATURE_ZOMBIE_SOLDIER
 	float zombieSoldierHealth;
 	float zombieSoldierDmgOneSlash;
 	float zombieSoldierDmgBothSlash;
-
+#endif
+#if FEATURE_GONOME
 	float gonomeHealth;
 	float gonomeDmgOneSlash;
 	float gonomeDmgGuts;
 	float gonomeDmgOneBite;
-
+#endif
 	float turretHealth;
 	float miniturretHealth;
 	float sentryHealth;
@@ -160,14 +195,17 @@ struct skilldata_t
 	float plrDmgHandGrenade;
 	float plrDmgSatchel;
 	float plrDmgTripmine;
-	float plrDmgMedkit;
-	float plrMedkitTime;
 	float plrDmgEagle;
 	float plrDmgPWrench;
+	float plrDmgKnife;
+	float plrDmgGrapple;
+	float plrDmg556;
 	float plrDmg762;
 	float plrDmgShockroach;
 	float plrDmgShockroachM;
 	float plrDmgSpore;
+	float plrDmgMedkit;
+	float plrMedkitTime;
 	
 	// weapons shared by monsters
 	float monDmg9MM;
@@ -175,6 +213,7 @@ struct skilldata_t
 	float monDmg12MM;
 	float monDmgHornet;
 	float monDmg357;
+	float monDmg556;
 	float monDmg762;
 
 	// health/suit charge

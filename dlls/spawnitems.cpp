@@ -80,6 +80,7 @@ static int GetSpawnItemIndexByWeaponId(int IId) {
 	case WEAPON_GLOCK:
 		return 4;
 	case WEAPON_PYTHON:
+	case WEAPON_EAGLE:
 		return 13;
 	case WEAPON_MP5:
 		return 6;

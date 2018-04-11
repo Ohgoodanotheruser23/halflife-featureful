@@ -26,6 +26,7 @@
 #include	"scripted.h"
 #include	"animation.h"
 #include	"soundent.h"
+#include	"mod_features.h"
 
 #define NUM_SCIENTIST_HEADS		4 // four heads available for scientist model
 
@@ -711,15 +712,6 @@ void CScientist::TalkInit()
 {
 	CTalkMonster::TalkInit();
 
-	// scientist will try to talk to friends in this order:
-
-	m_szFriends[0] = "monster_scientist";
-	m_szFriends[1] = "monster_cleansuit_scientist";
-	m_szFriends[2] = "monster_sitting_scientist";
-	m_szFriends[3] = "monster_sitting_cleansuit_scientist";
-	m_szFriends[4] = "monster_barney";
-	m_szFriends[5] = "monster_otis";
-
 	// scientists speach group names (group names are in sentences.txt)
 
 	m_szGrp[TLK_ANSWER] = "SC_ANSWER";
@@ -1094,8 +1086,8 @@ void CScientist::Heal( void )
 
 int CScientist::FriendNumber( int arrayNumber )
 {
-	static int array[6] = { 1, 3, 4, 5, 0, 2 };
-	if( arrayNumber < 6 )
+	static int array[TLK_CFRIENDS] = { 1, 3, 4, 5, 0, 2, 8, 6, 7 };
+	if( arrayNumber < TLK_CFRIENDS )
 		return array[arrayNumber];
 	return arrayNumber;
 }
@@ -1160,6 +1152,8 @@ public:
 
 	virtual void SetAnswerQuestion( CTalkMonster *pSpeaker );
 	int FriendNumber( int arrayNumber );
+
+	virtual int SizeForGrapple() { return GRAPPLE_FIXED; }
 
 	int FIdleSpeak( void );
 	int m_baseSequence;	
@@ -1259,8 +1253,8 @@ int CSittingScientist::DefaultClassify( void )
 
 int CSittingScientist::FriendNumber( int arrayNumber )
 {
-	static int array[6] = { 4, 5, 1, 3, 0, 2 };
-	if( arrayNumber < 6 )
+	static int array[TLK_CFRIENDS] = { 4, 5, 1, 3, 0, 2, 8, 7, 6 };
+	if( arrayNumber < TLK_CFRIENDS )
 		return array[arrayNumber];
 	return arrayNumber;
 }
@@ -1424,6 +1418,7 @@ int CSittingScientist::FIdleSpeak( void )
 	return FALSE;
 }
 
+#ifdef FEATURE_CLEANSUIT_SCIENTIST
 class CCleansuitScientist : public CScientist
 {
 public:
@@ -1462,9 +1457,9 @@ public:
 	int	DefaultClassify ( void ) { return	CLASS_HUMAN_PASSIVE; }
 
 	const char* getPos(int pos) const;
-	static char *m_szPoses[7];
+	static const char *m_szPoses[7];
 };
-char *CDeadCleansuitScientist::m_szPoses[] = { "lying_on_back", "lying_on_stomach", "dead_sitting", "dead_hang", "dead_table1", "dead_table2", "dead_table3" };
+const char *CDeadCleansuitScientist::m_szPoses[] = { "lying_on_back", "lying_on_stomach", "dead_sitting", "dead_hang", "dead_table1", "dead_table2", "dead_table3" };
 
 const char* CDeadCleansuitScientist::getPos(int pos) const
 {
@@ -1494,3 +1489,4 @@ void CSittingCleansuitScientist::Spawn()
 }
 
 LINK_ENTITY_TO_CLASS( monster_sitting_cleansuit_scientist, CSittingCleansuitScientist )
+#endif

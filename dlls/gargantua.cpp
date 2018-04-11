@@ -30,6 +30,7 @@
 #include	"decals.h"
 #include	"explode.h"
 #include	"func_break.h"
+#include	"mod_features.h"
 
 //=========================================================
 // Gargantua Monster
@@ -91,7 +92,7 @@ private:
 
 LINK_ENTITY_TO_CLASS( garg_stomp, CStomp )
 
-CStomp *CStomp::StompCreate(const Vector &origin, const Vector &end, float speed , const char *spriteName, const Vector &color, float damage, float scale)
+CStomp *CStomp::StompCreate(const Vector &origin, const Vector &end, float speed, const char *spriteName, const Vector &color, float damage, float scale)
 {
 	CStomp *pStomp = GetClassPtr( (CStomp *)NULL );
 
@@ -248,6 +249,8 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	CUSTOM_SCHEDULES
+
+	virtual int SizeForGrapple() { return GRAPPLE_LARGE; }
 
 protected:
 	virtual float DefaultHealth();
@@ -1222,7 +1225,7 @@ const char* CGargantua::DefaultModel()
 	return "models/garg.mdl";
 }
 
-const char *CGargantua::EyeSprite()
+const char* CGargantua::EyeSprite()
 {
 	return GARG_EYE_SPRITE_NAME;
 }
@@ -1426,6 +1429,7 @@ void SpawnExplosion( Vector center, float randomRange, float time, int magnitude
 	pExplosion->pev->nextthink = gpGlobals->time + time;
 }
 
+#if FEATURE_BABYGARG
 class CBabyGargantua : public CGargantua
 {
 public:
@@ -1459,7 +1463,7 @@ protected:
 	const char* EyeSprite();
 	float EyeScale();
 	Vector EyeColor();
-	const char* StompSprite();
+	const char *StompSprite();
 	int MaxEyeBrightness();
 	void FootEffect();
 	void StompEffect();
@@ -1621,7 +1625,7 @@ float CBabyGargantua::StompAttackDamage()
 	return gSkillData.babygargantuaDmgStomp;
 }
 
-const char *CBabyGargantua::DefaultModel()
+const char* CBabyGargantua::DefaultModel()
 {
 	return "models/babygarg.mdl";
 }
@@ -1636,7 +1640,7 @@ float CBabyGargantua::EyeScale()
 	return 0.5;
 }
 
-const char *CBabyGargantua::StompSprite()
+const char* CBabyGargantua::StompSprite()
 {
 	return "sprites/flare3.spr";
 }
@@ -1714,5 +1718,6 @@ float CBabyGargantua::FlameTimeDivider()
 {
 	return 1.5;
 }
+#endif
 
 #endif

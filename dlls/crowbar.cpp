@@ -27,25 +27,6 @@
 
 LINK_ENTITY_TO_CLASS( weapon_crowbar, CCrowbar )
 
-enum crowbar_e
-{
-	CROWBAR_IDLE = 0,
-	CROWBAR_DRAW,
-	CROWBAR_HOLSTER,
-	CROWBAR_ATTACK1HIT,
-	CROWBAR_ATTACK1MISS,
-	CROWBAR_ATTACK2MISS,
-	CROWBAR_ATTACK2HIT,
-	CROWBAR_ATTACK3MISS,
-#ifndef CROWBAR_IDLE_ANIM	
-	CROWBAR_ATTACK3HIT
-#else
-	CROWBAR_ATTACK3HIT,
-	CROWBAR_IDLE2,
-	CROWBAR_IDLE3
-#endif
-};
-
 void CCrowbar::Spawn()
 {
 	Precache();
@@ -90,14 +71,7 @@ int CCrowbar::GetItemInfo( ItemInfo *p )
 
 int CCrowbar::AddToPlayer( CBasePlayer *pPlayer )
 {
-	if( CBasePlayerWeapon::AddToPlayer( pPlayer ) )
-	{
-		MESSAGE_BEGIN( MSG_ONE, gmsgWeapPickup, NULL, pPlayer->pev );
-			WRITE_BYTE( m_iId );
-		MESSAGE_END();
-		return TRUE;
-	}
-	return FALSE;
+	return AddToPlayerDefault(pPlayer);
 }
 
 BOOL CCrowbar::Deploy()
@@ -216,8 +190,8 @@ int CCrowbar::Swing( int fFirst )
 		{
 			// miss
 			m_flNextPrimaryAttack = GetNextAttackDelay( 0.5 );
-#ifdef CROWBAR_IDLE_ANIM
-			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10, 15 );
+#if FEATURE_CROWBAR_IDLE_ANIM
+			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 6, 10 );
 #endif
 			// player "shoot" animation
 			m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
@@ -247,8 +221,8 @@ int CCrowbar::Swing( int fFirst )
 		CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
 
 		// play thwack, smack, or dong sound
-                float flVol = 1.0;
-                int fHitWorld = TRUE;
+		float flVol = 1.0;
+		int fHitWorld = TRUE;
 
 		if( pEntity )
 		{
@@ -334,13 +308,13 @@ int CCrowbar::Swing( int fFirst )
 #endif
 		m_flNextPrimaryAttack = GetNextAttackDelay( 0.25 );
 	}
-#ifdef CROWBAR_IDLE_ANIM
+#if FEATURE_CROWBAR_IDLE_ANIM
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10, 15 );
 #endif
 	return fDidHit;
 }
 
-#ifdef CROWBAR_IDLE_ANIM
+#if FEATURE_CROWBAR_IDLE_ANIM
 void CCrowbar::WeaponIdle( void )
 {
 	if( m_flTimeWeaponIdle < UTIL_WeaponTimeBase() )
@@ -357,7 +331,7 @@ void CCrowbar::WeaponIdle( void )
 			if( flRand > 0.5 )
 			{
 				iAnim = CROWBAR_IDLE;
-				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 70.0 / 30.0;
+				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 70.0 / 25.0;
 			}
 			else
 			{

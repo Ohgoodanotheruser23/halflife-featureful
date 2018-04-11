@@ -24,7 +24,14 @@ set SOURCES=../dlls/crossbow.cpp^
 	../dlls/glock.cpp^
 	../dlls/eagle.cpp^
 	../dlls/pipewrench.cpp^
+	../dlls/knife.cpp^
+	../dlls/grapple.cpp^
+	../dlls/m249.cpp^
+	../dlls/displacer.cpp^
 	../dlls/sniperrifle.cpp^
+	../dlls/shockrifle.cpp^
+	../dlls/sporelauncher.cpp^
+	../dlls/medkit.cpp^
 	ev_hldm.cpp^
 	hl/hl_baseentity.cpp^
 	hl/hl_events.cpp^
@@ -57,6 +64,7 @@ set SOURCES=../dlls/crossbow.cpp^
 	input_xash3d.cpp^
 	menu.cpp^
 	message.cpp^
+	nightvision.cpp^
 	overview.cpp^
 	parsemsg.cpp^
 	../pm_shared/pm_debug.c^

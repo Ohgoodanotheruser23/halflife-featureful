@@ -31,6 +31,7 @@
 #include "../hud_iface.h"
 #include "../com_weapons.h"
 #include "../demo.h"
+#include "mod_features.h"
 
 extern globalvars_t *gpGlobals;
 extern int g_iUser1;
@@ -67,9 +68,36 @@ CHandGrenade g_HandGren;
 CSatchel g_Satchel;
 CTripmine g_Tripmine;
 CSqueak g_Snark;
+#if FEATURE_DESERT_EAGLE
 CEagle g_Eagle;
+#endif
+#if FEATURE_PIPEWRENCH
 CPipeWrench g_PipeWrench;
+#endif
+#if FEATURE_KNIFE
+CKnife g_Knife;
+#endif
+#if FEATURE_PENGUIN
+CPenguin g_Penguin;
+#endif
+#if FEATURE_M249
+CM249 g_M249;
+#endif
+#if FEATURE_SNIPERRIFLE
 CSniperrifle g_Sniper;
+#endif
+#if FEATURE_DISPLACER
+CDisplacer g_Displacer;
+#endif
+#if FEATURE_SHOCKRIFLE
+CShockrifle g_Shock;
+#endif
+#if FEATURE_SPORELAUNCHER
+CSporelauncher g_Spore;
+#endif
+#if FEATURE_MEDKIT
+CMedkit g_Medkit;
+#endif
 
 /*
 ======================
@@ -619,9 +647,36 @@ void HUD_InitClientWeapons( void )
 	HUD_PrepEntity( &g_Satchel, &player );
 	HUD_PrepEntity( &g_Tripmine, &player );
 	HUD_PrepEntity( &g_Snark, &player );
+#if FEATURE_DESERT_EAGLE
 	HUD_PrepEntity( &g_Eagle, &player );
+#endif
+#if FEATURE_PIPEWRENCH
 	HUD_PrepEntity( &g_PipeWrench, &player );
+#endif
+#if FEATURE_KNIFE
+	HUD_PrepEntity( &g_Knife, &player );
+#endif
+#if FEATURE_PENGUIN
+	HUD_PrepEntity( &g_Penguin, &player );
+#endif
+#if FEATURE_M249
+	HUD_PrepEntity( &g_M249, &player );
+#endif
+#if FEATURE_SNIPERRIFLE
 	HUD_PrepEntity( &g_Sniper, &player );
+#endif
+#if FEATURE_DISPLACER
+	HUD_PrepEntity( &g_Displacer, &player );
+#endif
+#if FEATURE_SHOCKRIFLE
+	HUD_PrepEntity( &g_Shock, &player );
+#endif
+#if FEATURE_SPORELAUNCHER
+	HUD_PrepEntity( &g_Spore, &player );
+#endif
+#if FEATURE_MEDKIT
+	HUD_PrepEntity( &g_Medkit, &player );
+#endif
 }
 
 /*
@@ -727,15 +782,56 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		case WEAPON_SNARK:
 			pWeapon = &g_Snark;
 			break;
+#if FEATURE_DESERT_EAGLE
 		case WEAPON_EAGLE:
 			pWeapon = &g_Eagle;
 			break;
+#endif
+#if FEATURE_PIPEWRENCH
 		case WEAPON_PIPEWRENCH:
 			pWeapon = &g_PipeWrench;
 			break;
+#endif
+#if FEATURE_KNIFE
+		case WEAPON_KNIFE:
+			pWeapon = &g_Knife;
+			break;
+#endif
+#if FEATURE_PENGUIN
+		case WEAPON_PENGUIN:
+			pWeapon = &g_Penguin;
+			break;
+#endif
+#if FEATURE_M249
+		case WEAPON_M249:
+			pWeapon = &g_M249;
+			break;
+#endif
+#if FEATURE_SNIPERRIFLE
 		case WEAPON_SNIPERRIFLE:
 			pWeapon = &g_Sniper;
 			break;
+#endif
+#if FEATURE_DISPLACER
+		case WEAPON_DISPLACER:
+			pWeapon = &g_Displacer;
+			break;
+#endif
+#if FEATURE_SHOCKRIFLE
+	case WEAPON_SHOCKRIFLE:
+			pWeapon = &g_Shock;
+			break;
+#endif
+#if FEATURE_SPORELAUNCHER
+	case WEAPON_SPORELAUNCHER:
+			pWeapon = &g_Spore;
+			break;
+#endif
+#if FEATURE_MEDKIT
+		case WEAPON_MEDKIT:
+			pWeapon = &g_Medkit;
+			break;
+#endif
 	}
 
 	// Store pointer to our destination entity_state_t so we can get our origin, etc. from it
@@ -824,16 +920,6 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	player.m_flNextAmmoBurn = from->client.fuser2;
 	player.m_flAmmoStartCharge = from->client.fuser3;
 
-	//Stores all our ammo info, so the client side weapons can use them.
-	player.ammo_9mm = (int)from->client.vuser1[0];
-	player.ammo_357 = (int)from->client.vuser1[1];
-	player.ammo_argrens = (int)from->client.vuser1[2];
-	player.ammo_bolts = (int)from->client.ammo_nails; //is an int anyways...
-	player.ammo_buckshot = (int)from->client.ammo_shells; 
-	player.ammo_uranium = (int)from->client.ammo_cells;
-	player.ammo_hornets = (int)from->client.vuser2[0];
-	player.ammo_rockets = (int)from->client.ammo_rockets;
-
 	// Point to current weapon object
 	if( from->client.m_iId )
 	{
@@ -845,10 +931,12 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		( (CRpg *)player.m_pActiveItem )->m_fSpotActive = (int)from->client.vuser2[1];
 		( (CRpg *)player.m_pActiveItem )->m_cActiveRockets = (int)from->client.vuser2[2];
 	}
-	else if( player.m_pActiveItem->m_iId == WEAPON_SNIPERRIFLE )
+#if FEATURE_DESERT_EAGLE
+	if( player.m_pActiveItem->m_iId == WEAPON_EAGLE )
 	{
-		player.ammo_762 = (int)from->client.vuser2[1];
+		( (CEagle *)player.m_pActiveItem )->m_fEagleLaserActive = (int)from->client.vuser2[1];
 	}
+#endif
 
 	// Don't go firing anything if we have died.
 	// Or if we don't have a weapon model deployed
@@ -901,26 +989,17 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	to->client.fuser3 = player.m_flAmmoStartCharge;
 	to->client.maxspeed = player.pev->maxspeed;
 
-	//HL Weapons
-	to->client.vuser1[0] = player.ammo_9mm;
-	to->client.vuser1[1] = player.ammo_357;
-	to->client.vuser1[2] = player.ammo_argrens;
-
-	to->client.ammo_nails = player.ammo_bolts;
-	to->client.ammo_shells = player.ammo_buckshot;
-	to->client.ammo_cells = player.ammo_uranium;
-	to->client.vuser2[0] = player.ammo_hornets;
-	to->client.ammo_rockets = player.ammo_rockets;
-
 	if( player.m_pActiveItem->m_iId == WEAPON_RPG )
 	{
 		from->client.vuser2[1] = ( (CRpg *)player.m_pActiveItem)->m_fSpotActive;
 		from->client.vuser2[2] = ( (CRpg *)player.m_pActiveItem)->m_cActiveRockets;
 	}
-	else if( player.m_pActiveItem->m_iId == WEAPON_SNIPERRIFLE )
+#if FEATURE_DESERT_EAGLE
+	else if( player.m_pActiveItem->m_iId == WEAPON_EAGLE )
 	{
-		from->client.vuser2[1] = player.ammo_762;
+		from->client.vuser2[1] = ( (CEagle *)player.m_pActiveItem )->m_fEagleLaserActive;;
 	}
+#endif
 
 	// Make sure that weapon animation matches what the game .dll is telling us
 	//  over the wire ( fixes some animation glitches )
@@ -935,6 +1014,18 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		//Show laser sight/scope combo
 		if( pWeapon == &g_Python && bIsMultiplayer() )
 			 body = 1;
+
+#if FEATURE_M249
+		if (pWeapon == &g_M249) {
+			if (g_M249.m_iClip == 0) {
+				body = 8;
+			} else if (g_M249.m_iClip > 0 && g_M249.m_iClip < 8) {
+				body = 9 - g_M249.m_iClip;
+			} else {
+				body = 0;
+			}
+		}
+#endif
 
 		// Force a fixed anim down to viewmodel
 		HUD_SendWeaponAnim( to->client.weaponanim, body, 1 );

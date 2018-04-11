@@ -29,6 +29,8 @@
 #include "wrect.h"
 #include "cl_dll.h"
 #include "ammo.h"
+#include "dlight.h"
+#include "mod_features.h"
 
 #define DHN_DRAWZERO 1
 #define DHN_2DIGITS  2
@@ -230,7 +232,7 @@ public:
 	void InitHUDData( void );
 	int VidInit( void );
 	int Draw( float flTime );
-	int DrawPlayers( int xoffset, float listslot, int nameoffset = 0, char *team = NULL ); // returns the ypos where it finishes drawing
+	int DrawPlayers( int xoffset, float listslot, int nameoffset = 0, const char *team = NULL ); // returns the ypos where it finishes drawing
 	void UserCmd_ShowScores( void );
 	void UserCmd_HideScores( void );
 	int MsgFunc_ScoreInfo( const char *pszName, int iSize, void *pbuf );
@@ -451,6 +453,37 @@ private:
 	int m_iWidth;		// width of the battery innards
 };
 
+class CHudNightvision : public CHudBase
+{
+public:
+	int Init( void );
+	int VidInit( void );
+	int Draw( float flTime );
+	void Reset( void );
+	int MsgFunc_Nightvision( const char *pszName, int iSize, void *pbuf );
+	int MsgFunc_Flashlight( const char *pszName, int iSize, void *pbuf );
+	int MsgImpl(const char *pszName, int iSize, void *pbuf);
+	void DrawCSNVG(float flTime);
+	void DrawOpforNVG(float flTime);
+	void RemoveCSdlight();
+	void UserCmd_ToggleNVGStyle();
+	void UserCmd_NVGAdjustDown();
+	void UserCmd_NVGAdjustUp();
+
+private:
+	int m_fOn;
+#if FEATURE_CS_NIGHTVISION && FEATURE_OPFOR_NIGHTVISION
+	bool m_nvgStyle;
+#endif
+#if FEATURE_CS_NIGHTVISION
+	dlight_t* m_pLight;
+#endif
+#if FEATURE_OPFOR_NIGHTVISION
+	HSPRITE m_hSprite;
+	wrect_t *m_prc;
+	int m_iFrame, m_nFrameCount;
+#endif
+};
 //
 //-----------------------------------------------------
 //
@@ -635,6 +668,7 @@ public:
 	CHudStatusIcons m_StatusIcons;
 	CHudScoreboard	m_Scoreboard;
 	CHudMOTD	m_MOTD;
+	CHudNightvision m_Nightvision;
 
 	void Init( void );
 	void VidInit( void );

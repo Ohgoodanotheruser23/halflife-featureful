@@ -22,18 +22,6 @@
 #include "player.h"
 #include "gamerules.h"
 
-enum python_e
-{
-	PYTHON_IDLE1 = 0,
-	PYTHON_FIDGET,
-	PYTHON_FIRE1,
-	PYTHON_RELOAD,
-	PYTHON_HOLSTER,
-	PYTHON_DRAW,
-	PYTHON_IDLE2,
-	PYTHON_IDLE3
-};
-
 LINK_ENTITY_TO_CLASS( weapon_python, CPython )
 LINK_ENTITY_TO_CLASS( weapon_357, CPython )
 
@@ -58,14 +46,7 @@ int CPython::GetItemInfo( ItemInfo *p )
 
 int CPython::AddToPlayer( CBasePlayer *pPlayer )
 {
-	if( CBasePlayerWeapon::AddToPlayer( pPlayer ) )
-	{
-		MESSAGE_BEGIN( MSG_ONE, gmsgWeapPickup, NULL, pPlayer->pev );
-			WRITE_BYTE( m_iId );
-		MESSAGE_END();
-		return TRUE;
-	}
-	return FALSE;
+	return AddToPlayerDefault(pPlayer);
 }
 
 void CPython::Spawn()

@@ -108,6 +108,8 @@ public:
 	CUSTOM_SCHEDULES
 	static TYPEDESCRIPTION m_SaveData[];
 
+	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
+
 	int m_iSpriteTexture;
 	BOOL m_fAsleep;// some houndeyes sleep in idle mode if this is set, the houndeye is lying down
 	BOOL m_fDontBlink;// don't try to open/close eye if this bit is set!
@@ -1372,3 +1374,27 @@ int CHoundeye::ISoundMask( void )
 		bits_SOUND_MEAT |
 		bits_SOUND_PLAYER;
 }
+
+#if FEATURE_HOUNDEYE_DEAD
+class CDeadHoundeye : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_ALIEN_MONSTER; }
+
+	const char* getPos(int pos) const;
+};
+
+const char* CDeadHoundeye::getPos(int pos) const
+{
+	return "dead";
+}
+
+LINK_ENTITY_TO_CLASS( monster_houndeye_dead, CDeadHoundeye )
+
+void CDeadHoundeye :: Spawn( )
+{
+	SpawnHelper("models/houndeye_dead.mdl", "Dead houndeye with bad pose", BLOOD_COLOR_YELLOW);
+	MonsterInitDead();
+}
+#endif

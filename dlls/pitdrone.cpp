@@ -21,7 +21,9 @@
 #include	"soundent.h"
 #include	"game.h"
 #include	"weapons.h"
+#include	"mod_features.h"
 
+#if FEATURE_PITDRONE
 int		iPitDroneSpitSprite;
 //=========================================================
 // CPitDrone's spit projectile
@@ -206,6 +208,8 @@ class CPitDrone : public CBaseMonster
 	void CheckAmmo();
 	void GibMonster();
 	CUSTOM_SCHEDULES
+
+	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
 
 	float	m_flNextSpitTime;// last time the PitDrone used the spit attack.
 	float	m_flNextFlinch;
@@ -599,10 +603,19 @@ void CPitDrone::Spawn()
 
 	m_flNextSpitTime = gpGlobals->time;
 
+#if FEATURE_PITDRONE_SPAWN_WITH_SPIKES
+	if (!spikes) {
+		spikes = 6;
+	}
+#endif
 	BodyChange(spikes);
+#if FEATURE_PITDRONE_ALWAYS_CAN_RELOAD
+	canReloadSpikes = TRUE;
+#else
 	if (spikes) {
 		canReloadSpikes = TRUE;
 	}
+#endif
 	MonsterInit();
 }
 
@@ -617,20 +630,11 @@ void CPitDrone::Precache()
 	PRECACHE_MODEL("models/pit_drone_spike.mdl");// spit projectile.
 	iPitDroneSpitSprite = PRECACHE_MODEL("sprites/tinyspit.spr");// client side spittle.
 
-	for (i = 0; i < ARRAYSIZE(pAttackMissSounds); i++)
-		PRECACHE_SOUND((char *)pAttackMissSounds[i]);
-
-	for (i = 0; i < ARRAYSIZE(pIdleSounds); i++)
-		PRECACHE_SOUND((char *)pIdleSounds[i]);
-
-	for (i = 0; i < ARRAYSIZE(pDieSounds); i++)
-		PRECACHE_SOUND((char *)pDieSounds[i]);
-
-	for (i = 0; i < ARRAYSIZE(pPainSounds); i++)
-		PRECACHE_SOUND((char *)pPainSounds[i]);
-
-	for (i = 0; i < ARRAYSIZE(pAlertSounds); i++)
-		PRECACHE_SOUND((char *)pAlertSounds[i]);
+	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
+	PRECACHE_SOUND_ARRAY(pIdleSounds);
+	PRECACHE_SOUND_ARRAY(pDieSounds);
+	PRECACHE_SOUND_ARRAY(pPainSounds);
+	PRECACHE_SOUND_ARRAY(pAlertSounds);
 
 	PRECACHE_SOUND("bullchicken/bc_bite2.wav");
 	PRECACHE_SOUND("bullchicken/bc_bite3.wav");
@@ -1101,3 +1105,4 @@ void CPitDrone::RunTask(Task_t *pTask)
 		}
 	}
 }
+#endif

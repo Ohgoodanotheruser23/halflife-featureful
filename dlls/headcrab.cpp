@@ -22,6 +22,11 @@
 #include	"monsters.h"
 #include	"schedule.h"
 #include	"game.h"
+#include	"mod_features.h"
+#if FEATURE_SHOCKRIFLE
+#include "player.h"
+#include "weapons.h"
+#endif
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -98,6 +103,8 @@ public:
 	Schedule_t* GetScheduleOfType ( int Type );
 
 	CUSTOM_SCHEDULES
+
+	virtual int SizeForGrapple() { return GRAPPLE_SMALL; }
 
 	static const char *pIdleSounds[];
 	static const char *pAlertSounds[];
@@ -559,11 +566,13 @@ Schedule_t *CBabyCrab::GetScheduleOfType( int Type )
 	return CHeadCrab::GetScheduleOfType( Type );
 }
 
+#ifdef FEATURE_SHOCKTROOPER
 class CShockRoach : public CHeadCrab
 {
 public:
 	void Spawn(void);
 	void Precache(void);
+	virtual float GetDamageAmount( void ) { return gSkillData.sroachDmgBite; }
 	void EXPORT LeapTouch(CBaseEntity *pOther);
 	void PainSound(void);
 	void DeathSound(void);
@@ -584,7 +593,8 @@ public:
 	static const char *pDeathSounds[];
 	static const char *pBiteSounds[];
 
-	float m_flDie;
+	float m_flBirthTime;
+	BOOL m_fRoachSolid;
 
 protected:
 	void AttackSound();
@@ -594,7 +604,8 @@ LINK_ENTITY_TO_CLASS(monster_shockroach, CShockRoach)
 
 TYPEDESCRIPTION	CShockRoach::m_SaveData[] =
 {
-	DEFINE_FIELD(CShockRoach, m_flDie, FIELD_TIME),
+	DEFINE_FIELD(CShockRoach, m_flBirthTime, FIELD_TIME),
+	DEFINE_FIELD(CShockRoach, m_fRoachSolid, FIELD_BOOLEAN),
 };
 
 IMPLEMENT_SAVERESTORE(CShockRoach, CHeadCrab)
@@ -638,7 +649,6 @@ void CShockRoach::Spawn()
 	Precache();
 
 	SetMyModel("models/w_shock_rifle.mdl");
-	UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 24));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -650,7 +660,8 @@ void CShockRoach::Spawn()
 	m_flFieldOfView = 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
-	m_flDie = gpGlobals->time + gSkillData.sroachLifespan;
+	m_fRoachSolid = 0;
+	m_flBirthTime = gpGlobals->time;
 
 	MonsterInit();
 }
@@ -693,17 +704,16 @@ void CShockRoach::LeapTouch(CBaseEntity *pOther)
 	{
 		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBiteSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 
-
+#if FEATURE_SHOCKRIFLE
 		// Give the shockrifle weapon to the player, if not already in possession.
-//		CBasePlayer* pPlayer = dynamic_cast<CBasePlayer*>(pOther);
-//		if (pPlayer && !(pPlayer->pev->weapons & (1 << WEAPON_SHOCKRIFLE)))
-//		{
-//			pPlayer->GiveNamedItem("weapon_shockrifle");
-//			pPlayer->pev->weapons |= (1 << WEAPON_SHOCKRIFLE);
-//			UTIL_Remove(this);
-//			return;
-//		}
-
+		if (pOther->IsPlayer() && pOther->IsAlive() && !(pOther->pev->weapons & (1 << WEAPON_SHOCKRIFLE))) {
+			CBasePlayer* pPlayer = (CBasePlayer*)(pOther);
+			pPlayer->GiveNamedItem("weapon_shockrifle");
+			pPlayer->pev->weapons |= (1 << WEAPON_SHOCKRIFLE);
+			UTIL_Remove(this);
+			return;
+		}
+#endif
 		pOther->TakeDamage(pev, pev, GetDamageAmount(), DMG_SLASH);
 	}
 
@@ -714,8 +724,12 @@ void CShockRoach::LeapTouch(CBaseEntity *pOther)
 //=========================================================
 void CShockRoach::PrescheduleThink(void)
 {
+	if (!m_fRoachSolid && m_flBirthTime + 0.2 >= gpGlobals->time) {
+		m_fRoachSolid = TRUE;
+		UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 24));
+	}
 	// explode when ready
-	if (gpGlobals->time >= m_flDie)
+	if (gpGlobals->time >= m_flBirthTime + gSkillData.sroachLifespan)
 	{
 		pev->health = -1;
 		Killed(pev, 0);
@@ -781,3 +795,4 @@ void CShockRoach::AttackSound()
 	if( iSound != 0 )
 		EMIT_SOUND_DYN( edict(), CHAN_VOICE, pAttackSounds[iSound], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch() );
 }
+#endif

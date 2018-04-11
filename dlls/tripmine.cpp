@@ -25,19 +25,6 @@
 
 #define	TRIPMINE_PRIMARY_VOLUME		450
 
-enum tripmine_e
-{
-	TRIPMINE_IDLE1 = 0,
-	TRIPMINE_IDLE2,
-	TRIPMINE_ARM1,
-	TRIPMINE_ARM2,
-	TRIPMINE_FIDGET,
-	TRIPMINE_HOLSTER,
-	TRIPMINE_DRAW,
-	TRIPMINE_WORLD,
-	TRIPMINE_GROUND
-};
-
 #ifndef CLIENT_DLL
 class CTripmineGrenade : public CGrenade
 {
@@ -104,8 +91,16 @@ void CTripmineGrenade::Spawn( void )
 	pev->sequence = TRIPMINE_WORLD;
 	ResetSequenceInfo();
 	pev->framerate = 0;
-	
+#if FEATURE_TRIPMINE_OPFOR_SIZE
+	if (pev->angles.y >= 270.0 || pev->angles.y <= 90.0) {
+		UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 1, 1, 1 ) );
+	} else {
+		UTIL_SetSize( pev, Vector( -1, -1, 0 ), Vector( 0, 0, 1 ) );
+	}
+#else
 	UTIL_SetSize( pev, Vector( -8, -8, -8 ), Vector( 8, 8, 8 ) );
+#endif
+
 	UTIL_SetOrigin( pev, pev->origin );
 
 	if( pev->spawnflags & 1 )
@@ -282,6 +277,12 @@ void CTripmineGrenade::BeamBreakThink( void )
 			m_hOwner = CBaseEntity::Instance( tr.pHit );	// reset owner too
 	}
 
+#if FEATURE_TRIPMINE_OPFOR_SIZE
+	if (tr.fStartSolid)
+	{
+		bBlowup = 1;
+	}
+#endif
 	if( fabs( m_flBeamLength - tr.flFraction ) > 0.001 )
 	{
 		bBlowup = 1;

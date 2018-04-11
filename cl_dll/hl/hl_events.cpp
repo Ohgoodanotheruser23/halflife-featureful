@@ -13,38 +13,11 @@
 *
 ****/
 
+#include "hl_events.h"
 #include "../hud.h"
 #include "../cl_util.h"
 #include "event_api.h"
-
-extern "C"
-{
-// HLDM
-void EV_FireGlock1( struct event_args_s *args  );
-void EV_FireGlock2( struct event_args_s *args  );
-void EV_FireShotGunSingle( struct event_args_s *args  );
-void EV_FireShotGunDouble( struct event_args_s *args  );
-void EV_FireMP5( struct event_args_s *args  );
-void EV_FireMP52( struct event_args_s *args  );
-void EV_FirePython( struct event_args_s *args  );
-void EV_FireGauss( struct event_args_s *args  );
-void EV_SpinGauss( struct event_args_s *args  );
-void EV_Crowbar( struct event_args_s *args );
-void EV_FireCrossbow( struct event_args_s *args );
-void EV_FireCrossbow2( struct event_args_s *args );
-void EV_FireRpg( struct event_args_s *args );
-void EV_EgonFire( struct event_args_s *args );
-void EV_EgonStop( struct event_args_s *args );
-void EV_HornetGunFire( struct event_args_s *args );
-void EV_TripmineFire( struct event_args_s *args );
-void EV_SnarkFire( struct event_args_s *args );
-
-void EV_TrainPitchAdjust( struct event_args_s *args );
-
-void EV_FireEagle( struct event_args_s *args );
-void EV_PipeWrench( struct event_args_s *args );
-void EV_FireSniper( struct event_args_s *args );
-}
+#include "mod_features.h"
 
 /*
 ======================
@@ -80,7 +53,34 @@ void Game_HookEvents( void )
 	gEngfuncs.pfnHookEvent( "events/firehornet.sc", EV_HornetGunFire );
 	gEngfuncs.pfnHookEvent( "events/tripfire.sc", EV_TripmineFire );
 	gEngfuncs.pfnHookEvent( "events/snarkfire.sc", EV_SnarkFire );
+#if FEATURE_DESERT_EAGLE
 	gEngfuncs.pfnHookEvent( "events/eagle.sc", EV_FireEagle );
+#endif
+#if FEATURE_PIPEWRENCH
 	gEngfuncs.pfnHookEvent( "events/pipewrench.sc", EV_PipeWrench );
+#endif
+#if FEATURE_KNIFE
+	gEngfuncs.pfnHookEvent( "events/knife.sc", EV_Knife );
+#endif
+#if FEATURE_PENGUIN
+	gEngfuncs.pfnHookEvent( "events/penguinfire.sc", EV_SnarkFire );
+#endif
+#if FEATURE_M249
+	gEngfuncs.pfnHookEvent( "events/m249.sc", EV_FireM249 );
+#endif
+#if FEATURE_SNIPERRIFLE
 	gEngfuncs.pfnHookEvent( "events/sniper.sc", EV_FireSniper );
+#endif
+#if FEATURE_DISPLACER
+	gEngfuncs.pfnHookEvent( "events/displacer.sc", EV_Displacer );
+#endif
+#if FEATURE_SHOCKRIFLE
+	gEngfuncs.pfnHookEvent( "events/shock.sc", EV_ShockFire );
+#endif
+#if FEATURE_SPORELAUNCHER
+	gEngfuncs.pfnHookEvent( "events/spore.sc", EV_SporeFire );
+#endif
+#if FEATURE_MEDKIT
+	gEngfuncs.pfnHookEvent( "events/medkit.sc", EV_MedkitFire );
+#endif
 }

@@ -21,6 +21,8 @@
 #include "pm_shared.h"
 #include "pm_movevars.h"
 #include "pm_debug.h"
+#include "pm_materials.h"
+#include "tex_materials.h"
 //#include <stdio.h>  // NULL
 #include <math.h>   // sqrt
 #include <string.h> // strcpy
@@ -59,19 +61,6 @@ playermove_t *pmove = NULL;
 #define	STOP_EPSILON		0.1
 
 #define CTEXTURESMAX		512			// max number of textures loaded
-#define CBTEXTURENAMEMAX	13			// only load first n chars of name
-
-#define CHAR_TEX_CONCRETE	'C'			// texture types
-#define CHAR_TEX_METAL		'M'
-#define CHAR_TEX_DIRT		'D'
-#define CHAR_TEX_VENT		'V'
-#define CHAR_TEX_GRATE		'G'
-#define CHAR_TEX_TILE		'T'
-#define CHAR_TEX_SLOSH		'S'
-#define CHAR_TEX_WOOD		'W'
-#define CHAR_TEX_COMPUTER	'P'
-#define CHAR_TEX_GLASS		'Y'
-#define CHAR_TEX_FLESH		'F'
 
 #define STEP_CONCRETE		0		// default step sound
 #define STEP_METAL		1		// metal floor
@@ -168,24 +157,23 @@ void PM_InitTextureTypes()
 	char buffer[512];
 	int i, j;
 	byte *pMemFile;
-	int fileSize, filePos;
+	int fileSize, filePos = 0;
 	static qboolean bTextureTypeInit = false;
 
 	if( bTextureTypeInit )
 		return;
 
-	memset(&( grgszTextureName[0][0] ), 0, CTEXTURESMAX * CBTEXTURENAMEMAX );
-	memset( grgchTextureType, 0, CTEXTURESMAX );
+	memset(&( grgszTextureName[0][0] ), 0, sizeof( grgszTextureName ) );
+	memset( grgchTextureType, 0, sizeof( grgchTextureType ) );
 
 	gcTextures = 0;
 
-	fileSize = pmove->COM_FileSize( "sound/materials.txt" );
-	pMemFile = pmove->COM_LoadFile( "sound/materials.txt", 5, NULL );
+	pMemFile = pmove->COM_LoadFile( "sound/materials.txt", 5, &fileSize );
 	if( !pMemFile )
 		return;
 
-	memset( buffer, 0, 512 );
-	filePos = 0;
+	memset( buffer, 0, sizeof( buffer ) );
+
 	// for each line in the file...
 	while( pmove->memfgets( pMemFile, fileSize, &filePos, buffer, 511 ) != NULL && (gcTextures < CTEXTURESMAX ) )
 	{
@@ -283,7 +271,6 @@ void PM_PlayStepSound( int step, float fvol )
 	// FIXME mp_footsteps needs to be a movevar
 	if( pmove->multiplayer && !pmove->movevars->footsteps )
 		return;
-
 	VectorCopy( pmove->velocity, hvel );
 	hvel[2] = 0.0;
 
@@ -466,6 +453,9 @@ void PM_PlayStepSound( int step, float fvol )
 		}
 		break;
 	case STEP_LADDER:
+		if (pmove->flags & FL_IMMUNE_SLIME) {
+			break;
+		}
 		switch( irand )
 		{
 		// right foot
@@ -535,16 +525,7 @@ void PM_CatagorizeTextureType( void )
 	if( !pTextureName )
 		return;
 
-	// strip leading '-0' or '+0~' or '{' or '!'
-	if( *pTextureName == '-' || *pTextureName == '+' )
-		pTextureName += 2;
-
-	if( *pTextureName == '{' || *pTextureName == '!' || *pTextureName == '~' || *pTextureName == ' ' )
-		pTextureName++;
-	// '}}'
-	
-	strcpy( pmove->sztexturename, pTextureName);
-	pmove->sztexturename[CBTEXTURENAMEMAX - 1] = 0;
+	GetStrippedTextureName(pmove->sztexturename, pTextureName);
 
 	// get texture type
 	pmove->chtexturetype = PM_FindTextureType( pmove->sztexturename );	

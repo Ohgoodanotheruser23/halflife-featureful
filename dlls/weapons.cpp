@@ -170,8 +170,12 @@ void DecalGunshot( TraceResult *pTrace, int iBulletType )
 		case BULLET_MONSTER_MP5:
 		case BULLET_PLAYER_BUCKSHOT:
 		case BULLET_PLAYER_357:
-		case BULLET_PLAYER_762:
+		case BULLET_PLAYER_EAGLE:
 		case BULLET_MONSTER_357:
+		case BULLET_PLAYER_556:
+		case BULLET_MONSTER_556:
+		case BULLET_PLAYER_762:
+		case BULLET_MONSTER_762:
 		default:
 			// smoke and decal
 			UTIL_GunshotDecalTrace( pTrace, DamageDecal( pEntity, DMG_BULLET ) );
@@ -357,18 +361,47 @@ void W_Precache( void )
 
 	// hornetgun
 	UTIL_PrecacheOtherWeapon( "weapon_hornetgun" );
-
+#if FEATURE_MEDKIT
 	UTIL_PrecacheOtherWeapon( "weapon_medkit" );
-
+#endif
 	if( g_pGameRules->IsDeathmatch() )
 	{
 		UTIL_PrecacheOther( "weaponbox" );// container for dropped deathmatch weapons
 	}
 #endif
+#if FEATURE_DESERT_EAGLE
 	UTIL_PrecacheOtherWeapon( "weapon_eagle" );
+#endif
+#if FEATURE_PIPEWRENCH
 	UTIL_PrecacheOtherWeapon( "weapon_pipewrench" );
+#endif
+#if FEATURE_KNIFE
+	UTIL_PrecacheOtherWeapon( "weapon_knife" );
+#endif
+#if FEATURE_GRAPPLE
+	UTIL_PrecacheOtherWeapon( "weapon_grapple" );
+	UTIL_PrecacheOther( "grapple_tip" );
+#endif
+#if FEATURE_PENGUIN
+	UTIL_PrecacheOtherWeapon( "weapon_penguin" );
+#endif
+#if FEATURE_M249
+	UTIL_PrecacheOtherWeapon( "weapon_m249" );
+	UTIL_PrecacheOther( "ammo_556" );
+#endif
+#if FEATURE_SNIPERRIFLE
 	UTIL_PrecacheOtherWeapon( "weapon_sniperrifle" );
 	UTIL_PrecacheOther( "ammo_762" );
+#endif
+#if FEATURE_DISPLACER
+	UTIL_PrecacheOtherWeapon( "weapon_displacer" );
+#endif
+#if FEATURE_SHOCKRIFLE
+	UTIL_PrecacheOtherWeapon( "weapon_shockrifle" );
+#endif
+#if FEATURE_SPORELAUNCHER
+	UTIL_PrecacheOtherWeapon( "weapon_sporelauncher" );
+#endif
 	g_sModelIndexFireball = PRECACHE_MODEL( "sprites/zerogxplode.spr" );// fireball
 	g_sModelIndexWExplosion = PRECACHE_MODEL( "sprites/WXplo1.spr" );// underwater fireball
 	g_sModelIndexSmoke = PRECACHE_MODEL( "sprites/steam1.spr" );// smoke
@@ -647,8 +680,6 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		m_iClip += j;
 		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= j;
 
-		m_pPlayer->TabulateAmmo();
-
 		m_fInReload = FALSE;
 	}
 
@@ -664,7 +695,6 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 			m_fFireOnEmpty = TRUE;
 		}
 
-		m_pPlayer->TabulateAmmo();
 		SecondaryAttack();
 		m_pPlayer->pev->button &= ~IN_ATTACK2;
 	}
@@ -675,7 +705,6 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 			m_fFireOnEmpty = TRUE;
 		}
 
-		m_pPlayer->TabulateAmmo();
 		PrimaryAttack();
 	}
 	else if( m_pPlayer->pev->button & IN_RELOAD && iMaxClip() != WEAPON_NOCLIP && !m_fInReload ) 
@@ -804,6 +833,18 @@ int CBasePlayerWeapon::AddToPlayer( CBasePlayer *pPlayer )
 	return FALSE;
 }
 
+int CBasePlayerWeapon::AddToPlayerDefault( CBasePlayer *pPlayer )
+{
+	if( CBasePlayerWeapon::AddToPlayer( pPlayer ) )
+	{
+		MESSAGE_BEGIN( MSG_ONE, gmsgWeapPickup, NULL, pPlayer->pev );
+			WRITE_BYTE( m_iId );
+		MESSAGE_END();
+		return TRUE;
+	}
+	return FALSE;
+}
+
 int CBasePlayerWeapon::UpdateClientData( CBasePlayer *pPlayer )
 {
 	BOOL bSend = FALSE;
@@ -875,7 +916,7 @@ void CBasePlayerWeapon::SendWeaponAnim( int iAnim, int skiplocal, int body )
 	MESSAGE_END();
 }
 
-BOOL CBasePlayerWeapon::AddPrimaryAmmo( int iCount, char *szName, int iMaxClip, int iMaxCarry )
+BOOL CBasePlayerWeapon::AddPrimaryAmmo( int iCount, const char *szName, int iMaxClip, int iMaxCarry )
 {
 	int iIdAmmo;
 
@@ -912,7 +953,7 @@ BOOL CBasePlayerWeapon::AddPrimaryAmmo( int iCount, char *szName, int iMaxClip, 
 	return iIdAmmo > 0 ? TRUE : FALSE;
 }
 
-BOOL CBasePlayerWeapon::AddSecondaryAmmo( int iCount, char *szName, int iMax )
+BOOL CBasePlayerWeapon::AddSecondaryAmmo(int iCount, const char *szName, int iMax )
 {
 	int iIdAmmo;
 
@@ -983,7 +1024,6 @@ BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWe
 	if( !CanDeploy() )
 		return FALSE;
 
-	m_pPlayer->TabulateAmmo();
 	m_pPlayer->pev->viewmodel = MAKE_STRING( szViewModel );
 	m_pPlayer->pev->weaponmodel = MAKE_STRING( szWeaponModel );
 	strcpy( m_pPlayer->m_szAnimExtention, szAnimExt );
@@ -1222,13 +1262,13 @@ int CBasePlayerWeapon::ExtractAmmo( CBasePlayerWeapon *pWeapon )
 	{
 		// blindly call with m_iDefaultAmmo. It's either going to be a value or zero. If it is zero,
 		// we only get the ammo in the weapon's clip, which is what we want. 
-		iReturn = pWeapon->AddPrimaryAmmo( m_iDefaultAmmo, (char *)pszAmmo1(), iMaxClip(), iMaxAmmo1() );
+		iReturn = pWeapon->AddPrimaryAmmo( m_iDefaultAmmo, pszAmmo1(), iMaxClip(), iMaxAmmo1() );
 		m_iDefaultAmmo = 0;
 	}
 
 	if( pszAmmo2() != NULL )
 	{
-		iReturn = pWeapon->AddSecondaryAmmo( 0, (char *)pszAmmo2(), iMaxAmmo2() );
+		iReturn = pWeapon->AddSecondaryAmmo( 0, pszAmmo2(), iMaxAmmo2() );
 	}
 
 	return iReturn;
@@ -1250,7 +1290,7 @@ int CBasePlayerWeapon::ExtractClipAmmo( CBasePlayerWeapon *pWeapon )
 		iAmmo = m_iClip;
 	}
 
-	return pWeapon->m_pPlayer->GiveAmmo( iAmmo, (char *)pszAmmo1(), iMaxAmmo1() ); // , &m_iPrimaryAmmoType
+	return pWeapon->m_pPlayer->GiveAmmo( iAmmo, pszAmmo1(), iMaxAmmo1() ); // , &m_iPrimaryAmmoType
 }
 	
 //=========================================================
@@ -1713,15 +1753,15 @@ static const char* const gWeaponModels[] =
 	"models/v_tripmine.mdl",
 	"models/w_satchel.mdl",
 	"models/w_sqknest.mdl",
-	"models/w_medkit.mdl",
+	NULL,
 	"models/w_desert_eagle.mdl",
-	NULL,
-	NULL,
-	NULL,
-	NULL,
 	"models/w_pipe_wrench.mdl",
 	NULL,
-	"models/w_m40a1.mdl"
+	NULL,
+	"models/w_medkit.mdl",
+	NULL,
+	NULL,
+	"models/w_m40a1.mdl",
 };
 
 void CWeaponBox::SetWeaponModel(int iId)
@@ -1828,25 +1868,81 @@ TYPEDESCRIPTION	CSatchel::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE( CSatchel, CBasePlayerWeapon )
 
+#if FEATURE_DESERT_EAGLE
 TYPEDESCRIPTION CEagle::m_SaveData[] =
 {
 	DEFINE_FIELD( CEagle, m_fEagleLaserActive, FIELD_INTEGER ),
 };
 
 IMPLEMENT_SAVERESTORE( CEagle, CBasePlayerWeapon )
+#endif
 
+#if FEATURE_PIPEWRENCH
 TYPEDESCRIPTION	CPipeWrench::m_SaveData[] =
 {
-	DEFINE_FIELD( CPipeWrench, m_iFirestate, FIELD_INTEGER ),
-	DEFINE_FIELD( CPipeWrench, m_flHoldStartTime, FIELD_TIME ),
+	DEFINE_FIELD( CPipeWrench, m_flBigSwingStart, FIELD_TIME ),
+	DEFINE_FIELD( CPipeWrench, m_iSwing, FIELD_INTEGER ),
+	DEFINE_FIELD( CPipeWrench, m_iSwingMode, FIELD_INTEGER ),
 };
-
 IMPLEMENT_SAVERESTORE( CPipeWrench, CBasePlayerWeapon )
+#endif
 
+#if FEATURE_KNIFE
+TYPEDESCRIPTION	CKnife::m_SaveData[] =
+{
+	DEFINE_FIELD( CKnife, m_flStabStart, FIELD_TIME ),
+	DEFINE_FIELD( CKnife, m_iSwing, FIELD_INTEGER ),
+	DEFINE_FIELD( CKnife, m_iSwingMode, FIELD_INTEGER ),
+};
+IMPLEMENT_SAVERESTORE( CKnife, CBasePlayerWeapon )
+#endif
+
+#if FEATURE_M249
+TYPEDESCRIPTION	CM249::m_SaveData[] =
+{
+	DEFINE_FIELD( CM249, m_iReloadState, FIELD_INTEGER ),
+	DEFINE_FIELD( CM249, m_flReloadStart, FIELD_TIME ),
+};
+IMPLEMENT_SAVERESTORE( CM249, CBasePlayerWeapon )
+#endif
+
+#if FEATURE_SNIPERRIFLE
 TYPEDESCRIPTION	CSniperrifle::m_SaveData[] =
 {
 	DEFINE_FIELD( CSniperrifle, m_fNeedAjustBolt, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CSniperrifle, m_iBoltState, FIELD_INTEGER ),
+	DEFINE_FIELD( CSniperrifle, m_fInSpecialReload, FIELD_INTEGER ),
 };
 
 IMPLEMENT_SAVERESTORE( CSniperrifle, CBasePlayerWeapon )
+#endif
+
+#if FEATURE_DISPLACER
+TYPEDESCRIPTION	CDisplacer::m_SaveData[] =
+{
+	DEFINE_FIELD( CDisplacer, m_iFireMode, FIELD_INTEGER ),
+	DEFINE_ARRAY( CDisplacer, m_pBeam, FIELD_CLASSPTR, 3 ),
+};
+IMPLEMENT_SAVERESTORE( CDisplacer, CBasePlayerWeapon )
+#endif
+
+#if FEATURE_GRAPPLE
+TYPEDESCRIPTION	CBarnacleGrapple::m_SaveData[] =
+{
+	DEFINE_FIELD( CBarnacleGrapple, m_pBeam, FIELD_CLASSPTR ),
+	DEFINE_FIELD( CBarnacleGrapple, m_flShootTime, FIELD_TIME ),
+	DEFINE_FIELD( CBarnacleGrapple, m_FireState, FIELD_INTEGER ),
+};
+IMPLEMENT_SAVERESTORE( CBarnacleGrapple, CBasePlayerWeapon )
+#endif
+
+#if FEATURE_MEDKIT
+TYPEDESCRIPTION	CMedkit::m_SaveData[] =
+{
+	DEFINE_FIELD( CMedkit, m_flSoundDelay, FIELD_TIME ),
+	DEFINE_FIELD( CMedkit, m_flRechargeTime, FIELD_TIME ),
+	DEFINE_FIELD( CMedkit, m_secondaryAttack, FIELD_BOOLEAN ),
+};
+
+IMPLEMENT_SAVERESTORE( CMedkit, CBasePlayerWeapon )
+#endif

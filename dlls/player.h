@@ -17,6 +17,7 @@
 #define PLAYER_H
 
 #include "pm_materials.h"
+#include "mod_features.h"
 
 #define PLAYER_FATAL_FALL_SPEED		1024// approx 60 feet
 #define PLAYER_MAX_SAFE_FALL_SPEED	580// approx 20 feet
@@ -34,6 +35,8 @@
 #define PFLAG_DUCKING		( 1<<3 )		// In the process of ducking, but totally squatted yet
 #define PFLAG_USING		( 1<<4 )		// Using a continuous entity
 #define PFLAG_OBSERVER		( 1<<5 )		// player is locked in stationary cam mode. Spectators can move, observers can't.
+#define	PFLAG_LATCHING		( 1<<6 )	// Player is latching to a target
+#define	PFLAG_ATTACHED		( 1<<7 )	// Player is attached by a barnacle tongue tip
 
 //
 // generic player
@@ -57,7 +60,11 @@
 #define CSUITNOREPEAT		32
 
 #define	SOUND_FLASHLIGHT_ON		"items/flashlight1.wav"
+#if FEATURE_NIGHTVISION
+#define	SOUND_FLASHLIGHT_OFF	"items/flashlight2.wav"
+#else
 #define	SOUND_FLASHLIGHT_OFF	"items/flashlight1.wav"
+#endif
 
 #define TEAM_NAME_LENGTH	16
 
@@ -324,8 +331,6 @@ public:
 	void SetCustomDecalFrames( int nFrames );
 	int GetCustomDecalFrames( void );
 
-	void TabulateAmmo( void );
-
 	Vector m_vecLastViewAngles;
 
 	float m_flStartCharge;
@@ -374,6 +379,13 @@ public:
 	int m_lastSeenArmor;
 
 	float m_flNextChatTime;
+
+	BOOL	m_fInXen;
+#if FEATURE_NIGHTVISION
+	BOOL	m_fNVGisON;
+#endif
+	friend class CDisplacer;
+	friend class CTriggerXenReturn;
 
 	float m_flKilledTime;
 	BOOL m_bShouldBeRescued;

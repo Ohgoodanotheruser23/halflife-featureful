@@ -32,7 +32,10 @@ if(NOT MSVC)
 	add_compile_options(-fno-exceptions) # GCC/Clang flag
 	add_compile_options(-Wno-write-strings) # GCC/Clang flag
 	add_definitions(-D_LINUX -DLINUX) # It seems enough for all non-Win32 systems
-	add_definitions(-Dstricmp=strcasecmp -Dstrnicmp=strncasecmp -D_snprintf=snprintf -D_vsnprintf=vsnprintf )
+	add_definitions(-Dstricmp=strcasecmp -Dstrnicmp=strncasecmp)
+	if(NOT MINGW)
+		add_definitions(-D_snprintf=snprintf -D_vsnprintf=vsnprintf)
+	endif()
 else()
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 endif()
@@ -49,6 +52,7 @@ set (CLDLL_SOURCES
 	../dlls/gauss.cpp
 	../dlls/handgrenade.cpp
 	../dlls/hornetgun.cpp
+	../dlls/knife.cpp
 	../dlls/mp5.cpp
 	../dlls/python.cpp
 	../dlls/rpg.cpp
@@ -59,7 +63,13 @@ set (CLDLL_SOURCES
 	../dlls/glock.cpp
 	../dlls/eagle.cpp
 	../dlls/pipewrench.cpp
+	../dlls/grapple.cpp
 	../dlls/sniperrifle.cpp
+	../dlls/m249.cpp
+	../dlls/displacer.cpp
+	../dlls/shockrifle.cpp
+	../dlls/sporelauncher.cpp
+	../dlls/medkit.cpp
 	ev_hldm.cpp
 	hl/hl_baseentity.cpp
 	hl/hl_events.cpp
@@ -92,11 +102,13 @@ set (CLDLL_SOURCES
 	input_xash3d.cpp
 	menu.cpp
 	message.cpp
+	nightvision.cpp
 	overview.cpp
 	parsemsg.cpp
 	../pm_shared/pm_debug.c
 	../pm_shared/pm_math.c
 	../pm_shared/pm_shared.c
+	../game_shared/tex_materials.c
 	saytext.cpp
 	status_icons.cpp
 	statusbar.cpp
@@ -128,8 +140,13 @@ set_target_properties (${CLDLL_LIBRARY} PROPERTIES
 	POSITION_INDEPENDENT_CODE 1)
 
 if(APPLE OR WIN32 OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+	set(CLDLL_NAME "client")
+	if(64BIT)
+		set(CLDLL_NAME "client64")
+	endif()
+
 	set_target_properties(${CLDLL_LIBRARY} PROPERTIES
-		OUTPUT_NAME "client"
+		OUTPUT_NAME ${CLDLL_NAME}
 		PREFIX "")
 endif()
 

@@ -229,6 +229,7 @@ void CHud::Init( void )
 	m_AmmoSecondary.Init();
 	m_TextMessage.Init();
 	m_StatusIcons.Init();
+	m_Nightvision.Init();
 	m_MOTD.Init();
 	m_Scoreboard.Init();
 
@@ -381,6 +382,18 @@ void CHud::VidInit( void )
 	// assumption: number_1, number_2, etc, are all listed and loaded sequentially
 	m_HUD_number_0 = GetSpriteIndex( "number_0" );
 
+	if( m_HUD_number_0 == -1 )
+	{
+		const char *msg = "There is something wrong with your game data! Please, reinstall\n";
+
+		if( HUD_MessageBox( msg ) )
+		{
+			gEngfuncs.pfnClientCmd( "quit\n" );
+		}
+
+		return;
+	}
+
 	m_iFontHeight = m_rgrcRects[m_HUD_number_0].bottom - m_rgrcRects[m_HUD_number_0].top;
 
 	m_Ammo.VidInit();
@@ -398,6 +411,7 @@ void CHud::VidInit( void )
 	m_AmmoSecondary.VidInit();
 	m_TextMessage.VidInit();
 	m_StatusIcons.VidInit();
+	m_Nightvision.VidInit();
 	m_Scoreboard.VidInit();
 	m_MOTD.VidInit();
 }
@@ -512,10 +526,6 @@ int CHud::MsgFunc_SetFOV( const char *pszName,  int iSize, void *pbuf )
 
 	int newfov = READ_BYTE();
 	int def_fov = CVAR_GET_FLOAT( "default_fov" );
-
-	//Weapon prediction already takes care of changing the fog. ( g_lastFOV ).
-	if( cl_lw && cl_lw->value )
-		return 1;
 
 	g_lastFOV = newfov;
 

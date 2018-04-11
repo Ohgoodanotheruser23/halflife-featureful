@@ -1018,6 +1018,11 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 	DEFINE_FIELD( CBasePlayer, m_iHideHUD, FIELD_INTEGER ),
 	DEFINE_FIELD( CBasePlayer, m_iFOV, FIELD_INTEGER ),
 
+	DEFINE_FIELD(CBasePlayer, m_fInXen, FIELD_BOOLEAN),
+#if FEATURE_NIGHTVISION
+	DEFINE_FIELD(CBasePlayer, m_fNVGisON, FIELD_BOOLEAN),
+#endif
+
 	//DEFINE_FIELD( CBasePlayer, m_fDeadTime, FIELD_FLOAT ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_fGameHUDInitialized, FIELD_INTEGER ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_flStopExtraSoundTime, FIELD_TIME ),
@@ -1087,6 +1092,10 @@ int gmsgBhopcap = 0;
 int gmsgStatusText = 0;
 int gmsgStatusValue = 0;
 
+#if FEATURE_NIGHTVISION
+int gmsgNightvision = 0;
+#endif
+
 void LinkUserMessages( void )
 {
 	// Already taken care of?
@@ -1133,6 +1142,9 @@ void LinkUserMessages( void )
 
 	gmsgStatusText = REG_USER_MSG( "StatusText", -1 );
 	gmsgStatusValue = REG_USER_MSG( "StatusValue", 3 );
+#if FEATURE_NIGHTVISION
+	gmsgNightvision = REG_USER_MSG( "Nightvision", 1 );
+#endif
 }
 
 LINK_ENTITY_TO_CLASS( player, CBasePlayer )
@@ -1711,31 +1723,34 @@ void CBasePlayer::DeathSound( void )
 // bitsDamageType indicates type of damage healed. 
 int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 {
-	if (use_to_take.value || (flHealth == 1 && pev->health >= pev->max_health) || (pev->health < pev->max_health && pev->health + flHealth > pev->max_health) ) {
-		const int diff = (int)(pev->health + flHealth - pev->max_health);
-		if (diff > 0) {
-			for( int i = 0; i < MAX_ITEM_TYPES; i++ ) {
-				if( m_rgpPlayerItems[i] ) {
-					CBasePlayerItem *pPlayerItem = m_rgpPlayerItems[i];
-					while( pPlayerItem ) {
-						if (pPlayerItem->m_iId == WEAPON_MEDKIT) {
-							//CBasePlayerWeapon* pPlayerWeapon = (CBasePlayerWeapon*)pPlayerItem;
-							int medAmmoIndex = GetAmmoIndex(pPlayerItem->pszAmmo1());
-							int medAmmo = AmmoInventory(medAmmoIndex);
-							if (medAmmo >= 0 && medAmmo < pPlayerItem->iMaxAmmo1()) {
-								m_rgAmmo[medAmmoIndex] += Q_min(diff, pPlayerItem->iMaxAmmo1() - medAmmo);
-								CBaseMonster::TakeHealth( flHealth, bitsDamageType );
-								RefreshMaxSpeed(this);
-								return 1;
+#if FEATURE_MEDKIT
+	if (pev->weapons & ( 1 << WEAPON_MEDKIT )) {
+		if (use_to_take.value || (flHealth == 1 && pev->health >= pev->max_health) || (pev->health < pev->max_health && pev->health + flHealth > pev->max_health) ) {
+			const int diff = (int)(pev->health + flHealth - pev->max_health);
+			if (diff > 0) {
+				for( int i = 0; i < MAX_ITEM_TYPES; i++ ) {
+					if( m_rgpPlayerItems[i] ) {
+						CBasePlayerItem *pPlayerItem = m_rgpPlayerItems[i];
+						while( pPlayerItem ) {
+							if (pPlayerItem->m_iId == WEAPON_MEDKIT) {
+								//CBasePlayerWeapon* pPlayerWeapon = (CBasePlayerWeapon*)pPlayerItem;
+								int medAmmoIndex = GetAmmoIndex(pPlayerItem->pszAmmo1());
+								int medAmmo = AmmoInventory(medAmmoIndex);
+								if (medAmmo >= 0 && medAmmo < pPlayerItem->iMaxAmmo1()) {
+									m_rgAmmo[medAmmoIndex] += Q_min(diff, pPlayerItem->iMaxAmmo1() - medAmmo);
+									CBaseMonster::TakeHealth( flHealth, bitsDamageType );
+									RefreshMaxSpeed(this);
+									return 1;
+								}
 							}
+							pPlayerItem = pPlayerItem->m_pNext;
 						}
-						pPlayerItem = pPlayerItem->m_pNext;
 					}
 				}
 			}
 		}
 	}
-
+#endif
 	int result = CBaseMonster::TakeHealth( flHealth, bitsDamageType );
 	RefreshMaxSpeed(this);
 	return result;
@@ -2380,7 +2395,13 @@ void CBasePlayer::SetAnimation( PLAYER_ANIM playerAnim )
 		break;
 	case PLAYER_IDLE:
 	case PLAYER_WALK:
-		if( !FBitSet( pev->flags, FL_ONGROUND ) && ( m_Activity == ACT_HOP || m_Activity == ACT_LEAP ) )	// Still jumping
+		if( ( m_afPhysicsFlags & PFLAG_LATCHING ) && ( pev->velocity.Length() > 100 ) )
+		{
+			ASSERT( ( m_pActiveItem && FClassnameIs( m_pActiveItem->pev, "weapon_grapple" ) ) == TRUE );
+
+			m_IdealActivity = ACT_SWIM;
+		}
+		else if( !FBitSet( pev->flags, FL_ONGROUND ) && ( m_Activity == ACT_HOP || m_Activity == ACT_LEAP ) )	// Still jumping
 		{
 			m_IdealActivity = m_Activity;
 		}
@@ -2500,26 +2521,6 @@ void CBasePlayer::SetAnimation( PLAYER_ANIM playerAnim )
 	pev->sequence = animDesired;
 	pev->frame = 0;
 	ResetSequenceInfo();
-}
-
-/*
-===========
-TabulateAmmo
-This function is used to find and store 
-all the ammo we have into the ammo vars.
-============
-*/
-void CBasePlayer::TabulateAmmo()
-{
-	ammo_9mm = AmmoInventory( GetAmmoIndex( "9mm" ) );
-	ammo_357 = AmmoInventory( GetAmmoIndex( "357" ) );
-	ammo_argrens = AmmoInventory( GetAmmoIndex( "ARgrenades" ) );
-	ammo_bolts = AmmoInventory( GetAmmoIndex( "bolts" ) );
-	ammo_buckshot = AmmoInventory( GetAmmoIndex( "buckshot" ) );
-	ammo_rockets = AmmoInventory( GetAmmoIndex( "rockets" ) );
-	ammo_uranium = AmmoInventory( GetAmmoIndex( "uranium" ) );
-	ammo_hornets = AmmoInventory( GetAmmoIndex( "Hornets" ) );
-	ammo_762 = AmmoInventory( GetAmmoIndex( "762" ) );
 }
 
 /*
@@ -3310,6 +3311,7 @@ void CBasePlayer::PreThink( void )
 	{
 		CBaseEntity *pTrain = CBaseEntity::Instance( pev->groundentity );
 		float vel;
+		int iGearId;	// Vit_amiN: keeps the train control HUD in sync
 
 		if( !pTrain )
 		{
@@ -3350,10 +3352,12 @@ void CBasePlayer::PreThink( void )
 			pTrain->Use( this, this, USE_SET, (float)vel );
 		}
 
-		if( vel )
+		iGearId = TrainSpeed( pTrain->pev->speed, pTrain->pev->impulse );
+
+		if( iGearId != ( m_iTrain & 0x0F ) )	// Vit_amiN: speed changed
 		{
-			m_iTrain = TrainSpeed( (int)pTrain->pev->speed, pTrain->pev->impulse );
-			m_iTrain |= TRAIN_ACTIVE|TRAIN_NEW;
+			m_iTrain = iGearId;
+			m_iTrain |= TRAIN_ACTIVE | TRAIN_NEW;
 		}
 	}
 	else if( m_iTrain & TRAIN_ACTIVE )
@@ -4381,6 +4385,7 @@ void CBasePlayer::Spawn( void )
 
 	m_flNextChatTime = gpGlobals->time;
 
+	m_fInXen = FALSE;
 	m_flSayTime = gpGlobals->time;
 	m_flSayConditionTime = gpGlobals->time + 10;
 	m_enemyKilled = false;
@@ -4457,6 +4462,8 @@ void CBasePlayer::Precache( void )
 
 	if( gInitHUD )
 		m_fInitHUD = TRUE;
+
+	pev->fov = m_iFOV;	// Vit_amiN: restore the FOV on level change or map/saved game load
 }
 
 int CBasePlayer::Save( CSave &save )
@@ -4824,7 +4831,14 @@ CBaseEntity *FindEntityForward( CBaseEntity *pMe )
 
 BOOL CBasePlayer::FlashlightIsOn( void )
 {
+#if FEATURE_NIGHTVISION
+	return m_fNVGisON;
+#if FEATURE_OPFOR_NIGHTVISION
+	return FBitSet( pev->effects, EF_BRIGHTLIGHT );
+#endif
+#else
 	return FBitSet( pev->effects, EF_DIMLIGHT );
+#endif
 }
 
 void CBasePlayer::FlashlightTurnOn( void )
@@ -4837,11 +4851,25 @@ void CBasePlayer::FlashlightTurnOn( void )
 	if( (pev->weapons & ( 1 << WEAPON_SUIT ) ) )
 	{
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_ON, 1.0, ATTN_NORM, 0, PITCH_NORM );
+#if FEATURE_NIGHTVISION
+		m_fNVGisON = TRUE;
+#if FEATURE_OPFOR_NIGHTVISION
+		SetBits( pev->effects, EF_BRIGHTLIGHT );
+#endif
+#else
 		SetBits( pev->effects, EF_DIMLIGHT );
+#endif
 		MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
 			WRITE_BYTE( 1 );
 			WRITE_BYTE( m_iFlashBattery );
 		MESSAGE_END();
+
+#if FEATURE_NIGHTVISION
+		// Send Nightvision On message.
+		MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
+			WRITE_BYTE( 1 );
+		MESSAGE_END();
+#endif
 
 		m_flFlashLightTime = FLASH_DRAIN_TIME + gpGlobals->time;
 	}
@@ -4850,11 +4878,25 @@ void CBasePlayer::FlashlightTurnOn( void )
 void CBasePlayer::FlashlightTurnOff( void )
 {
 	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_OFF, 1.0, ATTN_NORM, 0, PITCH_NORM );
+#if FEATURE_NIGHTVISION
+	m_fNVGisON = FALSE;
+#if FEATURE_OPFOR_NIGHTVISION
+	ClearBits( pev->effects, EF_BRIGHTLIGHT );
+#endif
+#else
 	ClearBits( pev->effects, EF_DIMLIGHT );
+#endif
 	MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
 		WRITE_BYTE( 0 );
 		WRITE_BYTE( m_iFlashBattery );
 	MESSAGE_END();
+
+#if FEATURE_NIGHTVISION
+	// Send Nightvision Off message.
+	MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
+		WRITE_BYTE( 0 );
+	MESSAGE_END();
+#endif
 
 	m_flFlashLightTime = FLASH_CHARGE_TIME + gpGlobals->time;
 }
@@ -4872,6 +4914,8 @@ void CBasePlayer::ForceClientDllUpdate( void )
 {
 	m_iClientHealth = -1;
 	m_iClientBattery = -1;
+	m_iClientHideHUD = -1;	// Vit_amiN: forcing to update
+	m_iClientFOV = -1;	// Vit_amiN: force client weapons to be sent
 	m_iTrain |= TRAIN_NEW;  // Force new train message.
 	m_fWeapon = FALSE;          // Force weapon send
 	m_fKnownItem = FALSE;    // Force weaponinit messages.
@@ -5024,12 +5068,42 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		GiveNamedItem( "weapon_satchel" );
 		GiveNamedItem( "weapon_snark" );
 		GiveNamedItem( "weapon_hornetgun" );
+#endif
+#if FEATURE_MEDKIT
 		GiveNamedItem( "weapon_medkit" );
 #endif
+#if FEATURE_DESERT_EAGLE
 		GiveNamedItem( "weapon_eagle" );
+#endif
+#if FEATURE_PIPEWRENCH
 		GiveNamedItem( "weapon_pipewrench" );
+#endif
+#if FEATURE_GRAPPLE
+		GiveNamedItem( "weapon_grapple" );
+#endif
+#if FEATURE_M249
+		GiveNamedItem( "weapon_m249" );
+		GiveNamedItem( "ammo_556" );
+#endif
+#if FEATURE_SNIPERRIFLE
 		GiveNamedItem( "weapon_sniperrifle" );
 		GiveNamedItem( "ammo_762" );
+#endif
+#if FEATURE_DISPLACER
+		GiveNamedItem( "weapon_displacer" );
+#endif
+#if FEATURE_SHOCKRIFLE
+		GiveNamedItem( "weapon_shockrifle" );
+#endif
+#if FEATURE_SPORELAUNCHER
+		GiveNamedItem( "weapon_sporelauncher" );
+#endif
+#if FEATURE_KNIFE
+		GiveNamedItem( "weapon_knife" );
+#endif
+#if FEATURE_PENGUIN
+		GiveNamedItem( "weapon_penguin" );
+#endif
 		gEvilImpulse101 = FALSE;
 		break;
 	case 102:
@@ -5296,8 +5370,6 @@ int CBasePlayer::GiveAmmo( int iCount, const char *szName, int iMax )
 		MESSAGE_END();
 	}
 
-	TabulateAmmo();
-
 	return i;
 }
 
@@ -5452,6 +5524,11 @@ void CBasePlayer::UpdateClientData( void )
 		MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
 			WRITE_BYTE( FlashlightIsOn() ? 1 : 0 );
 			WRITE_BYTE( m_iFlashBattery );
+		MESSAGE_END();
+
+		// Vit_amiN: the geiger state could run out of sync, too
+		MESSAGE_BEGIN( MSG_ONE, gmsgGeigerRange, NULL, pev );
+			WRITE_BYTE( 0 );
 		MESSAGE_END();
 
 		InitStatusBar();
@@ -6335,7 +6412,7 @@ LINK_ENTITY_TO_CLASS( monster_hevsuit_dead, CDeadHEV )
 //=========================================================
 void CDeadHEV :: Spawn( void )
 {
-	SpawnHelper("models/player.mdl", "Dead hevsuit with bad pose\n");
+	SpawnHelper(DEADHAZMODEL, "Dead hevsuit with bad pose\n");
 	pev->body			= 1;
 	MonsterInitDead();
 }

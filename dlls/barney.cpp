@@ -27,7 +27,8 @@
 #include	"scripted.h"
 #include	"weapons.h"
 #include	"soundent.h"
-#include    "game.h"
+#include	"mod_features.h"
+#include	"game.h"
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -842,6 +843,7 @@ void CDeadBarney :: Spawn( )
 	MonsterInitDead();
 }
 
+#if FEATURE_OTIS
 #define	OTIS_BODY_GUNHOLSTERED	0
 #define	OTIS_BODY_GUNDRAWN		1
 #define OTIS_BODY_DONUT			2
@@ -1013,7 +1015,7 @@ void COtis::Killed( entvars_t *pevAttacker, int iGib )
 
 		GetAttachment( 0, vecGunPos, vecGunAngles );
 		
-		CBaseEntity *pGun = DropItem( "weapon_eagle", vecGunPos, vecGunAngles );
+		CBaseEntity *pGun = DropItem( DESERT_EAGLE_DROP_NAME, vecGunPos, vecGunAngles );
 	}
 
 	SetUse( NULL );	
@@ -1060,3 +1062,4 @@ void CDeadOtis::KeyValue( KeyValueData *pkvd )
 	else 
 		CDeadBarney::KeyValue( pkvd );
 }
+#endif

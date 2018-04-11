@@ -23,6 +23,7 @@
 #include	"cbase.h"
 #include	"monsters.h"
 #include	"schedule.h"
+#include	"mod_features.h"
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -61,6 +62,8 @@ public:
 	BOOL CheckRangeAttack1( float flDot, float flDist ) { return FALSE; }
 	BOOL CheckRangeAttack2( float flDot, float flDist ) { return FALSE; }
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
+
+	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
 protected:
 	void HandleAnimEventHelper( MonsterEvent_t *pEvent, float dmg, vec3_t velocityAdd, float punchz );
 	void ZombieSpawnHelper(const char* modelName, float health);
@@ -318,6 +321,7 @@ int CZombie::IgnoreConditions( void )
 	return iIgnore;
 }
 
+#if FEATURE_ZOMBIE_BARNEY
 class CZombieBarney : public CZombie
 {
 	void Spawn( void );
@@ -360,7 +364,9 @@ void CZombieBarney::HandleAnimEvent( MonsterEvent_t *pEvent )
 			break;
 	}
 }
+#endif
 
+#if FEATURE_ZOMBIE_SOLDIER
 class CZombieSoldier : public CZombie
 {
 	void Spawn( void );
@@ -428,3 +434,4 @@ void CDeadZombieSoldier::Spawn( )
 	SpawnHelper("models/zombie_soldier.mdl", "Dead zombie soldier with bad pose\n", BLOOD_COLOR_YELLOW);
 	MonsterInitDead();
 }
+#endif

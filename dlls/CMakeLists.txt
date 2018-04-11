@@ -57,11 +57,13 @@ set (SVDLL_SOURCES
 	crossbow.cpp
 	crowbar.cpp
 	defaultai.cpp
+	displacer.cpp
 	doors.cpp
 	eagle.cpp
 	effects.cpp
 	egon.cpp
 	explode.cpp
+	fgrunt.cpp
 	flyingmonster.cpp
 	func_break.cpp
 	func_tank.cpp
@@ -75,6 +77,7 @@ set (SVDLL_SOURCES
 	glock.cpp
 	gman.cpp
 	gonome.cpp
+	grapple.cpp
 	h_ai.cpp
 	h_battery.cpp
 	h_cine.cpp
@@ -91,9 +94,12 @@ set (SVDLL_SOURCES
 	ichthyosaur.cpp
 	islave.cpp
 	items.cpp
+	knife.cpp
 	leech.cpp
 	lights.cpp
+	m249.cpp
 	maprules.cpp
+	massn.cpp
 	medkit.cpp
 	monstermaker.cpp
 	monsters.cpp
@@ -120,6 +126,9 @@ set (SVDLL_SOURCES
 	schedule.cpp
 	scientist.cpp
 	scripted.cpp
+	shockbeam.cpp
+	shockrifle.cpp
+	shocktrooper.cpp
 	shotgun.cpp
 	singleplay_gamerules.cpp
 	skill.cpp
@@ -128,6 +137,8 @@ set (SVDLL_SOURCES
 	soundent.cpp
 	spawnitems.cpp
 	spectator.cpp
+	spore.cpp
+	sporelauncher.cpp
 	squadmonster.cpp
 	squeakgrenade.cpp
 	subs.cpp
@@ -147,6 +158,7 @@ set (SVDLL_SOURCES
 	../pm_shared/pm_debug.c
 	../pm_shared/pm_math.c
 	../pm_shared/pm_shared.c
+	../game_shared/tex_materials.c
 )
 	
 include_directories (. wpn_shared ../common ../engine ../pm_shared ../game_shared ../public)
@@ -165,8 +177,13 @@ set_target_properties (${SVDLL_LIBRARY} PROPERTIES
 	POSITION_INDEPENDENT_CODE 1)
 
 if(APPLE OR WIN32 OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+	set(SVDLL_NAME "${SERVER_LIBRARY_NAME}")
+	if(64BIT)
+		set(SVDLL_NAME "${SERVER_LIBRARY_NAME}64")
+	endif()
+
 	set_target_properties(${SVDLL_LIBRARY} PROPERTIES
-		OUTPUT_NAME ${SERVER_LIBRARY_NAME}
+		OUTPUT_NAME ${SVDLL_NAME}
 		PREFIX "")
 endif()
 

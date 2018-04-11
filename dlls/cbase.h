@@ -28,7 +28,6 @@ CBaseEntity
 				CBasePlayer
 				CBaseGroup
 */
-
 #define		MAX_PATH_SIZE	10 // max number of nodes available for a path.
 
 // These are caps bits to indicate what an object's capabilities (currently used for save/restore and level transitions)
@@ -105,6 +104,7 @@ typedef void(CBaseEntity::*USEPTR)( CBaseEntity *pActivator, CBaseEntity *pCalle
 #define CLASS_PLAYER_BIOWEAPON		12 // hornets and snarks.launched by players
 #define CLASS_ALIEN_BIOWEAPON		13 // hornets and snarks.launched by the alien menace
 #define CLASS_RACEX_PREDATOR	14
+#define CLASS_PLAYER_ALLY_MILITARY 15
 #define	CLASS_BARNACLE			99 // special because no one pays attention to it, and it eats a wide cross-section of creatures.
 
 class CBaseEntity;
@@ -139,6 +139,15 @@ public:
 
 	CBaseEntity *operator = ( CBaseEntity *pEntity );
 	CBaseEntity *operator ->();
+};
+
+enum GrappleTarget
+{
+	GRAPPLE_NOT_A_TARGET	= 0,
+	GRAPPLE_SMALL			= 1,
+	GRAPPLE_MEDIUM			= 2,
+	GRAPPLE_LARGE			= 3,
+	GRAPPLE_FIXED			= 4,
 };
 
 //
@@ -344,25 +353,8 @@ public:
 	virtual	BOOL FVisible( const Vector &vecOrigin );
 
 	virtual void AddFloatPoints( float score, BOOL bAllowNegativeScore ) {}
+	virtual int SizeForGrapple() { return GRAPPLE_NOT_A_TARGET; }
 
-	//We use this variables to store each ammo count.
-	int ammo_9mm;
-	int ammo_357;
-	int ammo_bolts;
-	int ammo_buckshot;
-	int ammo_rockets;
-	int ammo_uranium;
-	int ammo_hornets;
-	int ammo_argrens;
-	int ammo_762;
-	//Special stuff for grenades and satchels.
-	float m_flStartThrow;
-	float m_flReleaseThrow;
-	int m_chargeReady;
-	int m_fInAttack;
-
-	enum EGON_FIRESTATE { FIRE_OFF, FIRE_CHARGE };
-	int m_fireState;
 };
 
 // Ugly technique to override base member functions

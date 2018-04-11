@@ -988,6 +988,9 @@ void ClientPrecache( void )
 
 	if( giPrecacheGrunt )
 		UTIL_PrecacheOther( "monster_human_grunt" );
+
+	// Teleport sounds. Used by trigger_xen_return
+	PRECACHE_SOUND( "debris/beamstart7.wav" );
 }
 
 /*
@@ -1816,14 +1819,6 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 			cd->m_flNextAttack = pl->m_flNextAttack;
 			cd->fuser2 = pl->m_flNextAmmoBurn;
 			cd->fuser3 = pl->m_flAmmoStartCharge;
-			cd->vuser1.x = pl->ammo_9mm;
-			cd->vuser1.y = pl->ammo_357;
-			cd->vuser1.z = pl->ammo_argrens;
-			cd->ammo_nails = pl->ammo_bolts;
-			cd->ammo_shells = pl->ammo_buckshot;
-			cd->ammo_rockets = pl->ammo_rockets;
-			cd->ammo_cells = pl->ammo_uranium;
-			cd->vuser2.x = pl->ammo_hornets;
 
 			if( pl->m_pActiveItem )
 			{
@@ -1846,10 +1841,12 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 						cd->vuser2.y = ( (CRpg *)pl->m_pActiveItem )->m_fSpotActive;
 						cd->vuser2.z = ( (CRpg *)pl->m_pActiveItem )->m_cActiveRockets;
 					}
-					else if( pl->m_pActiveItem->m_iId == WEAPON_SNIPERRIFLE )
+#if FEATURE_DESERT_EAGLE
+					else if( pl->m_pActiveItem->m_iId == WEAPON_EAGLE )
 					{
-						cd->vuser2.y = pl->ammo_762;
+						cd->vuser2.y = ( (CEagle *)pl->m_pActiveItem )->m_fEagleLaserActive;
 					}
+#endif
 				}
 			}
 		}

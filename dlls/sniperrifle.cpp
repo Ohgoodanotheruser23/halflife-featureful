@@ -21,19 +21,9 @@
 #include "nodes.h"
 #include "player.h"
 
-enum sniper_e {
-	SNIPER_DRAW = 0,
-	SNIPER_SLOWIDLE1,
-	SNIPER_FIRE,
-	SNIPER_FIRELASTROUND,
-	SNIPER_RELOAD1,
-	SNIPER_RELOAD2,
-	SNIPER_RELOAD3,
-	SNIPER_SLOWIDLE2,
-	SNIPER_HOLSTER,
-};
+#if FEATURE_SNIPERRIFLE
 
-LINK_ENTITY_TO_CLASS( weapon_sniperrifle, CSniperrifle );
+LINK_ENTITY_TO_CLASS( weapon_sniperrifle, CSniperrifle )
 
 void CSniperrifle::Spawn( )
 {
@@ -75,7 +65,7 @@ int CSniperrifle::GetItemInfo(ItemInfo *p)
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = 5;
 	p->iSlot = 2;
-	p->iPosition = 3;
+	p->iPosition = 4;
 	p->iFlags = 0;
 	p->iId = m_iId = WEAPON_SNIPERRIFLE;
 	p->iWeight = 10;
@@ -85,19 +75,12 @@ int CSniperrifle::GetItemInfo(ItemInfo *p)
 
 BOOL CSniperrifle::Deploy( )
 {
-	return DefaultDeploy( "models/v_m40a1.mdl", "models/p_m40a1.mdl", SNIPER_DRAW, "gauss", 0 );
+	return DefaultDeploy( "models/v_m40a1.mdl", "models/p_m40a1.mdl", SNIPER_DRAW, "bow", 0 );
 }
 
 int CSniperrifle::AddToPlayer( CBasePlayer *pPlayer )
 {
-	if ( CBasePlayerWeapon::AddToPlayer( pPlayer ) )
-	{
-		MESSAGE_BEGIN( MSG_ONE, gmsgWeapPickup, NULL, pPlayer->pev );
-			WRITE_BYTE( m_iId );
-		MESSAGE_END();
-		return TRUE;
-	}
-	return FALSE;
+	return AddToPlayerDefault(pPlayer);
 }
 
 void CSniperrifle::Holster( int skiplocal )
@@ -181,7 +164,7 @@ void CSniperrifle::PrimaryAttack()
 
 	vecDir = m_pPlayer->FireBulletsPlayer( 1, vecSrc, vecAiming, Vector( flSpread, flSpread, flSpread ), 8192, BULLET_PLAYER_762, 0, 0, m_pPlayer->pev, m_pPlayer->random_seed );
 	m_flNextPrimaryAttack = 1.75;
-	PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usSniper, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, 0, 0, ( m_iClip == 0 ) ? 1 : 0, 0 );
+	PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usSniper, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, ( m_iClip == 0 ) ? 1 : 0, 0, 0, 0 );
 
 	if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 	// HEV suit - indicate out of ammo condition
@@ -193,7 +176,7 @@ void CSniperrifle::PrimaryAttack()
 
 void CSniperrifle::Reload( void )
 {
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iClip == 5)
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iClip == SNIPERRIFLE_MAX_CLIP)
 		return;
 
 	int iResult;
@@ -203,7 +186,7 @@ void CSniperrifle::Reload( void )
 		SecondaryAttack();
 	}
 
-	if (m_iClip == 0 && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] != 0 )
+	if (m_iClip == 0)
 	{
 		iResult = DefaultReload( 5, SNIPER_RELOAD1, 80 / 34 );
 		m_fInSpecialReload = 1;
@@ -271,3 +254,5 @@ class CSniperrifleAmmo : public CBasePlayerAmmo
 	}
 };
 LINK_ENTITY_TO_CLASS( ammo_762, CSniperrifleAmmo )
+
+#endif
