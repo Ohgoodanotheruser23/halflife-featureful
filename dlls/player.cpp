@@ -2183,7 +2183,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 
 		CBasePlayerWeapon* weapon = rgpPackWeapons[iPW];
 		if (pWeaponBox->PackWeapon( weapon )) {
-			pWeaponBox->SetWeaponModel(weapon->m_iId);
+			pWeaponBox->SetWeaponModel(weapon);
 			int ammoIndex = GetAmmoIndex( weapon->pszAmmo1() );
 			if (ammoIndex >= 0 && iPackAmmo[ammoIndex].ammoCount && iPackAmmo[ammoIndex].weaponCount) {
 				const int toPack = iPackAmmo[ammoIndex].ammoCount / iPackAmmo[ammoIndex].weaponCount;
@@ -6173,7 +6173,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, flo
 
 	CWeaponBox *pWeaponBox = (CWeaponBox *)CBaseEntity::Create( "weaponbox", pev->origin + gpGlobals->v_forward * 10, pev->angles, edict() );
 
-	pWeaponBox->SetWeaponModel(pWeapon->m_iId);
+	pWeaponBox->SetWeaponModel(pWeapon);
 	pWeaponBox->pev->angles.x = 0;
 	pWeaponBox->pev->angles.z = 0;
 	pWeaponBox->PackWeapon( pWeapon );

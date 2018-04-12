@@ -345,6 +345,7 @@ public:
 	int			iDropAmmo( void )	{ return ItemInfoArray[ m_iId ].iDropAmmo; }
 	
 	virtual int WeaponCategory() { return WEAPON_CATEGORY_NO; }
+	virtual const char* MyWModel() { return 0; }
 
 	// int		m_iIdPrimary;										// Unique Id for primary ammo
 	// int		m_iIdSecondary;										// Unique Id for secondary ammo
@@ -539,7 +540,7 @@ public:
 	BOOL PackWeapon( CBasePlayerItem *pWeapon );
 	BOOL PackAmmo( int iszName, int iCount );
 	
-	void SetWeaponModel(int iId);
+	void SetWeaponModel( CBasePlayerItem* pItem );
 
 	CBasePlayerItem	*m_rgpPlayerItems[MAX_ITEM_TYPES];// one slot for each
 
@@ -580,6 +581,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_LIGHTWEIGHT; }
+	const char* MyWModel() { return "models/w_9mmhandgun.mdl"; }
 
 private:
 	int m_iShell;
@@ -619,6 +621,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_MELEE; }
+	const char* MyWModel() { return "models/w_crowbar.mdl"; }
 
 private:
 	unsigned short m_usCrowbar;
@@ -653,6 +656,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_LIGHTWEIGHT; }
+	const char* MyWModel() { return "models/w_357.mdl"; }
 
 private:
 	unsigned short m_usFirePython;
@@ -687,6 +691,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
+	const char* MyWModel() { return "models/w_9mmAR.mdl"; }
 
 private:
 	unsigned short m_usMP5;
@@ -723,6 +728,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
+	const char* MyWModel() { return "models/w_crossbow.mdl"; }
 
 private:
 	unsigned short m_usCrossbow;
@@ -763,6 +769,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
+	const char* MyWModel() { return "models/w_shotgun.mdl"; }
 
 private:
 	unsigned short m_usDoubleFire;
@@ -807,7 +814,7 @@ public:
 	void WeaponIdle( void );
 
 	void UpdateSpot( void );
-	BOOL ShouldWeaponIdle( void ) { return TRUE; };
+	BOOL ShouldWeaponIdle( void ) { return TRUE; }
 
 	CLaserSpot *m_pSpot;
 	int m_fSpotActive;
@@ -823,6 +830,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_HEAVY; }
+	const char* MyWModel() { return "models/w_rpg.mdl"; }
 
 private:
 	unsigned short m_usRpg;
@@ -889,6 +897,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_HEAVY; }
+	const char* MyWModel() { return "models/w_gauss.mdl"; }
 
 private:
 	unsigned short m_usGaussFire;
@@ -949,6 +958,7 @@ public:
 	}
 	
 	int WeaponCategory() { return WEAPON_CATEGORY_HEAVY; }
+	const char* MyWModel() { return "models/w_egon.mdl"; }
 
 	unsigned short m_usEgonStop;
 
@@ -998,6 +1008,8 @@ public:
 		return FALSE;
 #endif
 	}
+
+	const char* MyWModel() { return "models/w_hgun.mdl"; }
 private:
 	unsigned short m_usHornetFire;
 };
@@ -1024,6 +1036,8 @@ public:
 		return FALSE;
 #endif
 	}
+
+	const char* MyWModel() { return "models/w_grenade.mdl"; }
 };
 
 class CSatchel : public CBasePlayerWeapon
@@ -1058,6 +1072,8 @@ public:
 		return FALSE;
 #endif
 	}
+
+	const char* MyWModel() { return "models/w_satchel.mdl"; }
 };
 
 class CTripmine : public CBasePlayerWeapon
@@ -1088,6 +1104,7 @@ public:
 #endif
 	}
 
+	const char* MyWModel() { return "models/v_tripmine.mdl"; }
 private:
 	unsigned short m_usTripFire;
 };
@@ -1127,6 +1144,8 @@ public:
 	virtual const char* AmmoName() const;
 	virtual const char* EventsFile() const;
 
+	const char* MyWModel() { return NestModel(); }
+
 private:
 	unsigned short m_usSnarkFire;
 };
@@ -1165,6 +1184,8 @@ public:
 #endif
 	}
 	int WeaponCategory() { return WEAPON_CATEGORY_LIGHTWEIGHT; }
+
+	const char* MyWModel() { return "models/w_desert_eagle.mdl"; }
 private:
 	int m_iShell;
 
@@ -1213,6 +1234,7 @@ public:
 #endif
 	}
 	int WeaponCategory() { return WEAPON_CATEGORY_MELEE; }
+	const char* MyWModel() { return "models/w_pipe_wrench.mdl"; }
 private:
 
 	unsigned short m_usPWrench;
@@ -1252,6 +1274,8 @@ public:
 		return FALSE;
 #endif
 	}
+	const char* MyWModel() { return "models/w_medkit.mdl"; }
+
 	float	m_flSoundDelay;
 	float	m_flRechargeTime;
 	BOOL	m_secondaryAttack;
@@ -1389,6 +1413,7 @@ public:
 
 	BOOL ShouldWeaponIdle(void) { return TRUE; }
 	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
+	const char* MyWModel() { return "models/w_m40a1.mdl"; }
 
 	BOOL m_fInZoom;// don't save this.
 

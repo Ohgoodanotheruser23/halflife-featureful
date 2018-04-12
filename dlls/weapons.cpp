@@ -1735,44 +1735,16 @@ BOOL CWeaponBox::IsEmpty( void )
 	return TRUE;
 }
 
-static const char* const gWeaponModels[] = 
+void CWeaponBox::SetWeaponModel(CBasePlayerItem *pItem)
 {
-	"models/w_weaponbox.mdl",
-	"models/w_crowbar.mdl",
-	"models/w_9mmhandgun.mdl",
-	"models/w_357.mdl",
-	"models/w_9mmAR.mdl",
-	"models/w_weaponbox.mdl",
-	"models/w_crossbow.mdl",
-	"models/w_shotgun.mdl",
-	"models/w_rpg.mdl",
-	"models/w_gauss.mdl",
-	"models/w_egon.mdl",
-	"models/w_hgun.mdl",
-	"models/w_grenade.mdl",
-	"models/v_tripmine.mdl",
-	"models/w_satchel.mdl",
-	"models/w_sqknest.mdl",
-	NULL,
-	"models/w_desert_eagle.mdl",
-	"models/w_pipe_wrench.mdl",
-	NULL,
-	NULL,
-	"models/w_medkit.mdl",
-	NULL,
-	NULL,
-	"models/w_m40a1.mdl",
-};
-
-void CWeaponBox::SetWeaponModel(int iId)
-{
-	if (iId > 0 && iId < ARRAYSIZE(gWeaponModels) && gWeaponModels[iId] != NULL) {
+	if (pItem && pItem->MyWModel())
+	{
 		Vector weaponAngles = pev->angles;
 		weaponAngles.y += 180 + RANDOM_LONG(-15,15);
-		SET_MODEL( ENT( pev ), gWeaponModels[iId] );
-		pev->angles = weaponAngles;
 
-		if (iId == WEAPON_TRIPMINE) {
+		SET_MODEL( ENT( pev ), pItem->MyWModel() );
+		pev->angles = weaponAngles;
+		if (pItem->m_iId == WEAPON_TRIPMINE) {
 			pev->body = 3;
 			pev->sequence = 8;
 		}
