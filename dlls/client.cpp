@@ -1704,7 +1704,7 @@ int GetWeaponData( struct edict_s *player, struct weapon_data_s *info )
 
 			while( pPlayerItem )
 			{
-				gun = (CBasePlayerWeapon *)pPlayerItem->GetWeaponPtr();
+				gun = pPlayerItem->GetWeaponPtr();
 				if( gun && gun->UseDecrement() )
 				{
 					ItemInfo II = {0};
@@ -1823,7 +1823,7 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 			if( pl->m_pActiveItem )
 			{
 				CBasePlayerWeapon *gun;
-				gun = (CBasePlayerWeapon *)pl->m_pActiveItem->GetWeaponPtr();
+				gun = pl->m_pActiveItem->GetWeaponPtr();
 				if( gun && gun->UseDecrement() )
 				{
 					ItemInfo II = {0};

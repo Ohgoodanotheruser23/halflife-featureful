@@ -135,7 +135,7 @@ public:
 				{
 					if( weaponBox->m_rgpPlayerItems[i] && weaponBox->m_rgpPlayerItems[i]->GetWeaponPtr() )
 					{
-						CBasePlayerWeapon* boxWeapon = SafeCastToWeapon(weaponBox->m_rgpPlayerItems[i]);
+						CBasePlayerWeapon* boxWeapon = weaponBox->m_rgpPlayerItems[i]->GetWeaponPtr();
 						if (boxWeapon)
 							return lookAtWeapon(player, boxWeapon) || lookGeneric(player);
 					}
@@ -4117,7 +4117,7 @@ pt_end:
 			{
 				CBasePlayerWeapon *gun;
 
-				gun = (CBasePlayerWeapon *)pPlayerItem->GetWeaponPtr();
+				gun = pPlayerItem->GetWeaponPtr();
 
 				if( gun && gun->UseDecrement() )
 				{
