@@ -604,7 +604,6 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerW
 
 BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pCurrentWeapon )
 {
-	CBasePlayerWeapon *pCheck;
 	CBasePlayerWeapon *pBest;// this will be used in the event that we don't find a weapon in the same category.
 	int iBestWeight;
 	int i;
@@ -618,11 +617,11 @@ BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWea
 		return FALSE;
 	}
 
-	for( i = 0; i < MAX_ITEM_TYPES; i++ )
+	for( i = 0; i < MAX_WEAPONS; i++ )
 	{
-		pCheck = pPlayer->m_rgpPlayerItems[i];
+		CBasePlayerWeapon *pCheck = pPlayer->m_rgpPlayerWeapons[i];
 
-		while( pCheck )
+		if ( pCheck )
 		{
 			if( pCheck->iWeight() > -1 && pCheck->iWeight() == pCurrentWeapon->iWeight() && pCheck != pCurrentWeapon )
 			{
@@ -648,8 +647,6 @@ BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWea
 					pBest = pCheck;
 				}
 			}
-
-			pCheck = pCheck->m_pNext;
 		}
 	}
 
@@ -1264,19 +1261,8 @@ BOOL CHalfLifeMultiplay::CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerWea
 			return CGameRules::CanHavePlayerItem( pPlayer, pItem );
 
 		// check if the player already has this weapon
-		for( int i = 0; i < MAX_ITEM_TYPES; i++ )
-		{
-			CBasePlayerWeapon *it = pPlayer->m_rgpPlayerItems[i];
-
-			while( it != NULL )
-			{
-				if( it->m_iId == pItem->m_iId )
-				{
-					return FALSE;
-				}
-
-				it = it->m_pNext;
-			}
+		if (pPlayer->WeaponById(pItem->m_iId)) {
+			return FALSE;
 		}
 	}
 

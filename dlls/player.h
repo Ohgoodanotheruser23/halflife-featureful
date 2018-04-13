@@ -194,8 +194,8 @@ public:
 	int			m_iFOV;			// field of view
 	int			m_iClientFOV;	// client's known FOV
 
-	// usable player items 
-	CBasePlayerWeapon	*m_rgpPlayerItems[MAX_ITEM_TYPES];
+	// usable player items
+	CBasePlayerWeapon *m_rgpPlayerWeapons[MAX_WEAPONS];
 	CBasePlayerWeapon *m_pActiveItem;
 	CBasePlayerWeapon *m_pClientActiveItem;  // client version of the active item
 	CBasePlayerWeapon *m_pLastItem;
@@ -292,7 +292,6 @@ public:
 	BOOL HasNamedPlayerItem( const char *pszItemName );
 	BOOL HasWeapons( void );// do I have ANY weapons?
 	void SelectPrevItem( int iItem );
-	void SelectNextItem( int iItem );
 	void SelectLastItem(void);
 	void SelectItem(const char *pstr);
 	void ItemPreFrame( void );
@@ -341,6 +340,9 @@ public:
 	//Player ID
 	void InitStatusBar( void );
 	void UpdateStatusBar( void );
+
+	void InsertWeaponById( CBasePlayerWeapon* pItem );
+	CBasePlayerWeapon* WeaponById( int id );
 	
 	bool CanSay();
 	bool CanSayByCommand();

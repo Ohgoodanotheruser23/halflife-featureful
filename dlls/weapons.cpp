@@ -433,7 +433,6 @@ void W_Precache( void )
 TYPEDESCRIPTION	CBasePlayerWeapon::m_SaveData[] =
 {
 	DEFINE_FIELD( CBasePlayerWeapon, m_pPlayer, FIELD_CLASSPTR ),
-	DEFINE_FIELD( CBasePlayerWeapon, m_pNext, FIELD_CLASSPTR ),
 	//DEFINE_FIELD( CBasePlayerItem, m_fKnown, FIELD_INTEGER ),Reset to zero on load
 	DEFINE_FIELD( CBasePlayerWeapon, m_iId, FIELD_INTEGER ),
 	// DEFINE_FIELD( CBasePlayerItem, m_iIdPrimary, FIELD_INTEGER ),
@@ -787,12 +786,12 @@ int CBasePlayerWeapon::AddDuplicate( CBasePlayerWeapon *pOriginal )
 {
 	if( m_iDefaultAmmo )
 	{
-		return ExtractAmmo( (CBasePlayerWeapon *)pOriginal );
+		return ExtractAmmo( pOriginal );
 	}
 	else
 	{
 		// a dead player dropped this.
-		return ExtractClipAmmo( (CBasePlayerWeapon *)pOriginal );
+		return ExtractClipAmmo( pOriginal );
 	}
 }
 
@@ -868,9 +867,6 @@ int CBasePlayerWeapon::UpdateClientData( CBasePlayer *pPlayer )
 		m_iClientWeaponState = state;
 		pPlayer->m_fWeapon = TRUE;
 	}
-
-	if( m_pNext )
-		m_pNext->UpdateClientData( pPlayer );
 
 	return 1;
 }
@@ -1182,10 +1178,10 @@ void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 	CBasePlayer* pPlayer = (CBasePlayer*)pOther;
 
 	bool hasWeaponWithThisAmmo = false;
-	for( int i = 0; !hasWeaponWithThisAmmo && i < MAX_ITEM_TYPES; i++ )
+	for( int i = 0; !hasWeaponWithThisAmmo && i < MAX_WEAPONS; i++ )
 	{
-		CBasePlayerWeapon* pWeapon = pPlayer->m_rgpPlayerItems[i];
-		while( pWeapon )
+		CBasePlayerWeapon* pWeapon = pPlayer->m_rgpPlayerWeapons[i];
+		if( pWeapon )
 		{
 			if (pWeapon->pszAmmo1() && FStrEq(AmmoName(), pWeapon->pszAmmo1()) ) {
 				hasWeaponWithThisAmmo = true;
@@ -1195,7 +1191,6 @@ void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 				hasWeaponWithThisAmmo = true;
 				break;
 			}
-			pWeapon = pWeapon->m_pNext;
 		}
 	}
 
@@ -1335,7 +1330,7 @@ TYPEDESCRIPTION	CWeaponBox::m_SaveData[] =
 {
 	DEFINE_ARRAY( CWeaponBox, m_rgAmmo, FIELD_INTEGER, MAX_AMMO_SLOTS ),
 	DEFINE_ARRAY( CWeaponBox, m_rgiszAmmo, FIELD_STRING, MAX_AMMO_SLOTS ),
-	DEFINE_ARRAY( CWeaponBox, m_rgpPlayerItems, FIELD_CLASSPTR, MAX_ITEM_TYPES ),
+	DEFINE_ARRAY( CWeaponBox, m_rgpPlayerWeapons, FIELD_CLASSPTR, MAX_WEAPONS ),
 	DEFINE_FIELD( CWeaponBox, m_cAmmoTypes, FIELD_INTEGER ),
 };
 
@@ -1394,15 +1389,14 @@ void CWeaponBox::Kill( void )
 	int i;
 
 	// destroy the weapons
-	for( i = 0; i < MAX_ITEM_TYPES; i++ )
+	for( i = 0; i < MAX_WEAPONS; i++ )
 	{
-		pWeapon = m_rgpPlayerItems[i];
+		pWeapon = m_rgpPlayerWeapons[i];
 
-		while( pWeapon )
+		if( pWeapon )
 		{
 			pWeapon->SetThink( &CBaseEntity::SUB_Remove );
 			pWeapon->pev->nextthink = gpGlobals->time + 0.1;
-			pWeapon = pWeapon->m_pNext;
 		}
 	}
 
@@ -1488,16 +1482,15 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 			const char* weaponName = IsAmmoForExhaustibleWeapon(STRING(m_rgiszAmmo[i]), exhaustibleWeaponId);
 			if (weaponName) {
 				bool foundWeapon = false;
-				for( int j = 0; j < MAX_ITEM_TYPES && !foundWeapon; j++ )
+				for( int j = 0; j < MAX_WEAPONS && !foundWeapon; j++ )
 				{
-					CBasePlayerWeapon *pPlayerItem = pPlayer->m_rgpPlayerItems[j];
-					while( pPlayerItem )
+					CBasePlayerWeapon *pPlayerItem = pPlayer->m_rgpPlayerWeapons[j];
+					if( pPlayerItem )
 					{
 						if (pPlayerItem->m_iId == exhaustibleWeaponId) {
 							foundWeapon = true;
 							break;
 						}
-						pPlayerItem = pPlayerItem->m_pNext;
 					}
 				}
 				if (!foundWeapon) {
@@ -1523,25 +1516,21 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 		}
 	}
 
-	for( i = 0; i < MAX_ITEM_TYPES; i++ )
+	for( i = 0; i < MAX_WEAPONS; i++ )
 	{
-		if( m_rgpPlayerItems[i] )
+		CBasePlayerWeapon *pItem = m_rgpPlayerWeapons[i];
+
+		// have at least one weapon in this slot
+		if( pItem )
 		{
-			CBasePlayerWeapon *pItem;
+			//ALERT( at_console, "trying to give %s\n", STRING( m_rgpPlayerItems[i]->pev->classname ) );
 
-			// have at least one weapon in this slot
-			while( m_rgpPlayerItems[i] )
+			m_rgpPlayerWeapons[i] = NULL;// unlink this weapon from the box
+
+			if( pPlayer->AddPlayerItem( pItem ) > DID_NOT_GET_ITEM )
 			{
-				//ALERT( at_console, "trying to give %s\n", STRING( m_rgpPlayerItems[i]->pev->classname ) );
-
-				pItem = m_rgpPlayerItems[i];
-				m_rgpPlayerItems[i] = m_rgpPlayerItems[i]->m_pNext;// unlink this weapon from the box
-
-				if( pPlayer->AddPlayerItem( pItem ) > DID_NOT_GET_ITEM )
-				{
-					shouldRemove = true;
-					pItem->AttachToPlayer( pPlayer );
-				}
+				shouldRemove = true;
+				pItem->AttachToPlayer( pPlayer );
 			}
 		}
 	}
@@ -1573,20 +1562,7 @@ BOOL CWeaponBox::PackWeapon( CBasePlayerWeapon *pWeapon )
 		}
 	}
 
-	int iWeaponSlot = pWeapon->iItemSlot();
-
-	if( m_rgpPlayerItems[iWeaponSlot] )
-	{
-		// there's already one weapon in this slot, so link this into the slot's column
-		pWeapon->m_pNext = m_rgpPlayerItems[iWeaponSlot];	
-		m_rgpPlayerItems[iWeaponSlot] = pWeapon;
-	}
-	else
-	{
-		// first weapon we have for this slot
-		m_rgpPlayerItems[iWeaponSlot] = pWeapon;
-		pWeapon->m_pNext = NULL;	
-	}
+	InsertWeaponById(pWeapon);
 
 	pWeapon->pev->spawnflags |= SF_NORESPAWN;// never respawn
 	pWeapon->pev->movetype = MOVETYPE_NONE;
@@ -1674,18 +1650,7 @@ int CWeaponBox::GiveAmmo( int iCount, const char *szName, int iMax, int *pIndex/
 //=========================================================
 BOOL CWeaponBox::HasWeapon( CBasePlayerWeapon *pCheckItem )
 {
-	CBasePlayerWeapon *pItem = m_rgpPlayerItems[pCheckItem->iItemSlot()];
-
-	while( pItem )
-	{
-		if( FClassnameIs( pItem->pev, STRING( pCheckItem->pev->classname ) ) )
-		{
-			return TRUE;
-		}
-		pItem = pItem->m_pNext;
-	}
-
-	return FALSE;
+	return WeaponById(pCheckItem->m_iId) ? TRUE : FALSE;
 }
 
 //=========================================================
@@ -1695,9 +1660,9 @@ BOOL CWeaponBox::IsEmpty( void )
 {
 	int i;
 
-	for( i = 0; i < MAX_ITEM_TYPES; i++ )
+	for( i = 0; i < MAX_WEAPONS; i++ )
 	{
-		if( m_rgpPlayerItems[i] )
+		if( m_rgpPlayerWeapons[i] )
 		{
 			return FALSE;
 		}
@@ -1737,6 +1702,21 @@ void CWeaponBox::SetObjectCollisionBox( void )
 {
 	pev->absmin = pev->origin + Vector( -16, -16, 0 );
 	pev->absmax = pev->origin + Vector( 16, 16, 16 ); 
+}
+
+void CWeaponBox::InsertWeaponById(CBasePlayerWeapon *pItem)
+{
+	if (pItem && pItem->m_iId && pItem->m_iId <= MAX_WEAPONS) {
+		m_rgpPlayerWeapons[pItem->m_iId-1] = pItem;
+	}
+}
+
+CBasePlayerWeapon* CWeaponBox::WeaponById(int id)
+{
+	if (id && id <= MAX_WEAPONS) {
+		return m_rgpPlayerWeapons[id-1];
+	}
+	return NULL;
 }
 
 void CBasePlayerWeapon::PrintState( void )

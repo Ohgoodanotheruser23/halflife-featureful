@@ -281,11 +281,11 @@ class CBasePlayerWeapon : public CBaseAnimating
 public:
 	virtual void SetObjectCollisionBox( void );
 
+#ifndef CLIENT_DLL
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
-
 	static	TYPEDESCRIPTION m_SaveData[];
-
+#endif
 	virtual int AddToPlayer( CBasePlayer *pPlayer );	// return TRUE if the item you want the item added to the player inventory
 	void EXPORT DestroyItem( void );
 	void EXPORT DefaultTouch( CBaseEntity *pOther );	// default weapon touch
@@ -316,10 +316,7 @@ public:
 	static AmmoInfo AmmoInfoArray[ MAX_AMMO_SLOTS ];
 
 	CBasePlayer	*m_pPlayer;
-	CBasePlayerWeapon *m_pNext;
 	int		m_iId;												// WEAPON_???
-
-	virtual int iItemSlot( void ) { return 0; }			// return 0 to MAX_ITEMS_SLOTS, used in hud
 
 	int			iItemPosition( void ) { return ItemInfoArray[ m_iId ].iPosition; }
 	const char	*pszAmmo1( void )	{ return ItemInfoArray[ m_iId ].pszAmmo1; }
@@ -491,6 +488,7 @@ extern MULTIDAMAGE gMultiDamage;
 //=========================================================
 class CWeaponBox : public CBaseEntity
 {
+public:
 	void Precache( void );
 	void Spawn( void );
 	void Touch( CBaseEntity *pOther );
@@ -503,7 +501,6 @@ class CWeaponBox : public CBaseEntity
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void TouchOrUse( CBaseEntity* other );
 
-public:
 	void EXPORT Kill ( void );
 	int		Save( CSave &save );
 	int		Restore( CRestore &restore );
@@ -515,7 +512,10 @@ public:
 	
 	void SetWeaponModel( CBasePlayerWeapon* pItem );
 
-	CBasePlayerWeapon	*m_rgpPlayerItems[MAX_ITEM_TYPES];// one slot for each
+	void InsertWeaponById( CBasePlayerWeapon* pItem );
+	CBasePlayerWeapon* WeaponById( int id );
+
+	CBasePlayerWeapon	*m_rgpPlayerWeapons[MAX_WEAPONS];// one slot for each
 
 	string_t m_rgiszAmmo[MAX_AMMO_SLOTS];// ammo names
 	int	m_rgAmmo[MAX_AMMO_SLOTS];// ammo quantities
@@ -533,7 +533,6 @@ class CGlock : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 2; }
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -568,7 +567,6 @@ class CCrowbar : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 1; }
 	void EXPORT SwingAgain( void );
 	void EXPORT Smack( void );
 	int GetItemInfo( ItemInfo *p );
@@ -605,7 +603,6 @@ class CPython : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 2; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 	void PrimaryAttack( void );
@@ -640,7 +637,6 @@ class CMP5 : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 3; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -676,7 +672,6 @@ class CCrossbow : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( ) { return 3; }
 	int GetItemInfo(ItemInfo *p);
 
 	void FireBolt( void );
@@ -718,7 +713,6 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( ) { return 3; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -774,7 +768,6 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	void Reload( void );
-	int iItemSlot( void ) { return 4; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -837,7 +830,6 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 4; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 	BOOL IsUseable();
@@ -887,7 +879,6 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 4; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -956,7 +947,6 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 4; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -992,7 +982,6 @@ class CHandGrenade : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 5; }
 	int GetItemInfo(ItemInfo *p);
 
 	void PrimaryAttack( void );
@@ -1023,7 +1012,6 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 5; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 	void PrimaryAttack( void );
@@ -1054,7 +1042,6 @@ class CTripmine : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 5; }
 	int GetItemInfo(ItemInfo *p);
 	void SetObjectCollisionBox( void )
 	{
@@ -1087,7 +1074,6 @@ class CSqueak : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 5; }
 	int GetItemInfo(ItemInfo *p);
 
 	void PrimaryAttack( void );
@@ -1134,7 +1120,6 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 2; }
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -1178,7 +1163,6 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
-	int iItemSlot(void) { return 1; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 
@@ -1225,7 +1209,6 @@ public:
 #endif
 	void Spawn(void);
 	void Precache(void);
-	int iItemSlot(void) { return 1; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 
@@ -1373,7 +1356,6 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
-	int iItemSlot(void) { return 3; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 	void PrimaryAttack(void);

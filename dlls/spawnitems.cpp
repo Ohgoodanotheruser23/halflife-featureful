@@ -122,27 +122,22 @@ void EvaluatePlayersNeeds(float* playerNeeds)
 				playerNeeds[1] += 1;
 			}
 			
-			for(int j = 0; j < MAX_ITEM_TYPES; j++ )
+			for(int j = 0; j < MAX_WEAPONS; j++ )
 			{
-				if( player->m_rgpPlayerItems[j] )
+				CBasePlayerWeapon *pPlayerItem = player->m_rgpPlayerWeapons[j];
+				if( pPlayerItem )
 				{
-					CBasePlayerWeapon *pPlayerItem = (CBasePlayerWeapon*)player->m_rgpPlayerItems[j];
-					while( pPlayerItem )
-					{
-						int ammoAmount = player->AmmoInventory(player->GetAmmoIndex(pPlayerItem->pszAmmo1()));
-						if (ammoAmount >= 0) {
-							int spawnItemIndex = GetSpawnItemIndexByWeaponId(pPlayerItem->m_iId);
-							if (spawnItemIndex) {
-								int maxAmmo = pPlayerItem->iMaxAmmo1();
-								if (ammoAmount <= maxAmmo / 4) {
-									playerNeeds[spawnItemIndex] += 2;
-								} else if (ammoAmount <= maxAmmo / 2) {
-									playerNeeds[spawnItemIndex] += 1;
-								}
+					int ammoAmount = player->AmmoInventory(player->GetAmmoIndex(pPlayerItem->pszAmmo1()));
+					if (ammoAmount >= 0) {
+						int spawnItemIndex = GetSpawnItemIndexByWeaponId(pPlayerItem->m_iId);
+						if (spawnItemIndex) {
+							int maxAmmo = pPlayerItem->iMaxAmmo1();
+							if (ammoAmount <= maxAmmo / 4) {
+								playerNeeds[spawnItemIndex] += 2;
+							} else if (ammoAmount <= maxAmmo / 2) {
+								playerNeeds[spawnItemIndex] += 1;
 							}
 						}
-						
-						pPlayerItem = (CBasePlayerWeapon*)pPlayerItem->m_pNext;
 					}
 				}
 			}
