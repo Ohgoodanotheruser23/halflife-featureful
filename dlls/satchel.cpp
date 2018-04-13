@@ -189,7 +189,7 @@ LINK_ENTITY_TO_CLASS( weapon_satchel, CSatchel )
 //=========================================================
 // CALLED THROUGH the newly-touched weapon's instance. The existing player weapon is pOriginal
 //=========================================================
-int CSatchel::AddDuplicate( CBasePlayerItem *pOriginal )
+int CSatchel::AddDuplicate( CBasePlayerWeapon *pOriginal )
 {
 	CSatchel *pSatchel;
 
@@ -215,7 +215,7 @@ int CSatchel::AddDuplicate( CBasePlayerItem *pOriginal )
 //=========================================================
 int CSatchel::AddToPlayer( CBasePlayer *pPlayer )
 {
-	int bResult = CBasePlayerItem::AddToPlayer( pPlayer );
+	int bResult = CBasePlayerWeapon::AddToPlayer( pPlayer );
 
 	pPlayer->pev->weapons |= ( 1 << m_iId );
 	m_chargeReady = SATCHEL_IDLE;// this satchel charge weapon now forgets that any satchels are deployed by it.

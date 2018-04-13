@@ -570,7 +570,7 @@ BOOL CHalfLifeMultiplay::IsCoOp( void )
 
 //=========================================================
 //=========================================================
-BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerItem *pWeapon )
+BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon )
 {
 	if( !pWeapon->CanDeploy() )
 	{
@@ -602,10 +602,10 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerI
 	}
 }
 
-BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerItem *pCurrentWeapon )
+BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pCurrentWeapon )
 {
-	CBasePlayerItem *pCheck;
-	CBasePlayerItem *pBest;// this will be used in the event that we don't find a weapon in the same category.
+	CBasePlayerWeapon *pCheck;
+	CBasePlayerWeapon *pBest;// this will be used in the event that we don't find a weapon in the same category.
 	int iBestWeight;
 	int i;
 
@@ -1177,7 +1177,7 @@ void CHalfLifeMultiplay::DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, 
 // PlayerGotWeapon - player has grabbed a weapon that was
 // sitting in the world
 //=========================================================
-void CHalfLifeMultiplay::PlayerGotWeapon( CBasePlayer *pPlayer, CBasePlayerItem *pWeapon )
+void CHalfLifeMultiplay::PlayerGotWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon )
 {
 }
 
@@ -1185,7 +1185,7 @@ void CHalfLifeMultiplay::PlayerGotWeapon( CBasePlayer *pPlayer, CBasePlayerItem 
 // FlWeaponRespawnTime - what is the time in the future
 // at which this weapon may spawn?
 //=========================================================
-float CHalfLifeMultiplay::FlWeaponRespawnTime( CBasePlayerItem *pWeapon )
+float CHalfLifeMultiplay::FlWeaponRespawnTime( CBasePlayerWeapon *pWeapon )
 {
 	if( weaponstay.value > 0 )
 	{
@@ -1208,7 +1208,7 @@ float CHalfLifeMultiplay::FlWeaponRespawnTime( CBasePlayerItem *pWeapon )
 // now,  otherwise it returns the time at which it can try
 // to spawn again.
 //=========================================================
-float CHalfLifeMultiplay::FlWeaponTryRespawn( CBasePlayerItem *pWeapon )
+float CHalfLifeMultiplay::FlWeaponTryRespawn( CBasePlayerWeapon *pWeapon )
 {
 	if( pWeapon && pWeapon->m_iId && ( pWeapon->iFlags() & ITEM_FLAG_LIMITINWORLD ) )
 	{
@@ -1226,7 +1226,7 @@ float CHalfLifeMultiplay::FlWeaponTryRespawn( CBasePlayerItem *pWeapon )
 // VecWeaponRespawnSpot - where should this weapon spawn?
 // Some game variations may choose to randomize spawn locations
 //=========================================================
-Vector CHalfLifeMultiplay::VecWeaponRespawnSpot( CBasePlayerItem *pWeapon )
+Vector CHalfLifeMultiplay::VecWeaponRespawnSpot( CBasePlayerWeapon *pWeapon )
 {
 	return pWeapon->pev->origin;
 }
@@ -1235,7 +1235,7 @@ Vector CHalfLifeMultiplay::VecWeaponRespawnSpot( CBasePlayerItem *pWeapon )
 // WeaponShouldRespawn - any conditions inhibiting the
 // respawning of this weapon?
 //=========================================================
-int CHalfLifeMultiplay::WeaponShouldRespawn( CBasePlayerItem *pWeapon )
+int CHalfLifeMultiplay::WeaponShouldRespawn( CBasePlayerWeapon *pWeapon )
 {
 	if( pWeapon->pev->spawnflags & SF_NORESPAWN )
 	{
@@ -1256,7 +1256,7 @@ int CHalfLifeMultiplay::WeaponShouldRespawn( CBasePlayerItem *pWeapon )
 // CanHaveWeapon - returns FALSE if the player is not allowed
 // to pick up this weapon
 //=========================================================
-BOOL CHalfLifeMultiplay::CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerItem *pItem )
+BOOL CHalfLifeMultiplay::CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerWeapon *pItem )
 {
 	if( weaponstay.value > 0 )
 	{
@@ -1266,7 +1266,7 @@ BOOL CHalfLifeMultiplay::CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerIte
 		// check if the player already has this weapon
 		for( int i = 0; i < MAX_ITEM_TYPES; i++ )
 		{
-			CBasePlayerItem *it = pPlayer->m_rgpPlayerItems[i];
+			CBasePlayerWeapon *it = pPlayer->m_rgpPlayerItems[i];
 
 			while( it != NULL )
 			{

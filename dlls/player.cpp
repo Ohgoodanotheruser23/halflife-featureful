@@ -133,9 +133,9 @@ public:
 				CWeaponBox* weaponBox = (CWeaponBox*)pObject;
 				for( int i = 0; i < MAX_ITEM_TYPES; i++ )
 				{
-					if( weaponBox->m_rgpPlayerItems[i] && weaponBox->m_rgpPlayerItems[i]->GetWeaponPtr() )
+					if( weaponBox->m_rgpPlayerItems[i] && weaponBox->m_rgpPlayerItems[i] )
 					{
-						CBasePlayerWeapon* boxWeapon = weaponBox->m_rgpPlayerItems[i]->GetWeaponPtr();
+						CBasePlayerWeapon* boxWeapon = weaponBox->m_rgpPlayerItems[i];
 						if (boxWeapon)
 							return lookAtWeapon(player, boxWeapon) || lookGeneric(player);
 					}
@@ -1730,7 +1730,7 @@ int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 			if (diff > 0) {
 				for( int i = 0; i < MAX_ITEM_TYPES; i++ ) {
 					if( m_rgpPlayerItems[i] ) {
-						CBasePlayerItem *pPlayerItem = m_rgpPlayerItems[i];
+						CBasePlayerWeapon *pPlayerItem = m_rgpPlayerItems[i];
 						while( pPlayerItem ) {
 							if (pPlayerItem->m_iId == WEAPON_MEDKIT) {
 								//CBasePlayerWeapon* pPlayerWeapon = (CBasePlayerWeapon*)pPlayerItem;
@@ -2110,7 +2110,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 		if( m_rgpPlayerItems[i] )
 		{
 			// there's a weapon here. Should I pack it?
-			CBasePlayerItem *pPlayerItem = m_rgpPlayerItems[i];
+			CBasePlayerWeapon *pPlayerItem = m_rgpPlayerItems[i];
 
 			while( pPlayerItem && iPW < MAX_WEAPONS )
 			{
@@ -2188,14 +2188,14 @@ void CBasePlayer::PackDeadPlayerItems( void )
 			if (ammoIndex >= 0 && iPackAmmo[ammoIndex].ammoCount && iPackAmmo[ammoIndex].weaponCount) {
 				const int toPack = iPackAmmo[ammoIndex].ammoCount / iPackAmmo[ammoIndex].weaponCount;
 				iPackAmmo[ammoIndex].ammoCount -= toPack;
-				pWeaponBox->PackAmmo( MAKE_STRING( CBasePlayerItem::AmmoInfoArray[ammoIndex].pszName ), toPack );
+				pWeaponBox->PackAmmo( MAKE_STRING( CBasePlayerWeapon::AmmoInfoArray[ammoIndex].pszName ), toPack );
 				iPackAmmo[ammoIndex].weaponCount--;
 			}
 			int ammo2Index = GetAmmoIndex( weapon->pszAmmo2() );
 			if (ammo2Index >= 0 && iPackAmmo[ammo2Index].ammoCount && iPackAmmo[ammo2Index].weaponCount) {
 				const int toPack = iPackAmmo[ammo2Index].ammoCount / iPackAmmo[ammo2Index].weaponCount;
 				iPackAmmo[ammo2Index].ammoCount -= toPack;
-				pWeaponBox->PackAmmo( MAKE_STRING( CBasePlayerItem::AmmoInfoArray[ammo2Index].pszName ), toPack );
+				pWeaponBox->PackAmmo( MAKE_STRING( CBasePlayerWeapon::AmmoInfoArray[ammo2Index].pszName ), toPack );
 				iPackAmmo[ammo2Index].weaponCount--;
 			}
 		}
@@ -2208,7 +2208,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 void CBasePlayer::RemoveAllItems( BOOL removeSuit )
 {
 	int i;
-	CBasePlayerItem *pPendingItem;
+	CBasePlayerWeapon *pPendingItem;
 
 	if( m_pActiveItem )
 	{
@@ -4111,7 +4111,7 @@ pt_end:
 	{
 		if( m_rgpPlayerItems[i] )
 		{
-			CBasePlayerItem *pPlayerItem = m_rgpPlayerItems[i];
+			CBasePlayerWeapon *pPlayerItem = m_rgpPlayerItems[i];
 
 			while( pPlayerItem )
 			{
@@ -4546,7 +4546,7 @@ int CBasePlayer::Restore( CRestore &restore )
 
 void CBasePlayer::SelectNextItem( int iItem )
 {
-	CBasePlayerItem *pItem;
+	CBasePlayerWeapon *pItem;
 
 	pItem = m_rgpPlayerItems[iItem];
 
@@ -4562,7 +4562,7 @@ void CBasePlayer::SelectNextItem( int iItem )
 			return;
 		}
 
-		CBasePlayerItem *pLast;
+		CBasePlayerWeapon *pLast;
 		pLast = pItem;
 		while( pLast->m_pNext )
 			pLast = pLast->m_pNext;
@@ -4595,7 +4595,7 @@ void CBasePlayer::SelectItem( const char *pstr )
 	if( !pstr )
 		return;
 
-	CBasePlayerItem *pItem = NULL;
+	CBasePlayerWeapon *pItem = NULL;
 
 	for( int i = 0; i < MAX_ITEM_TYPES; i++ )
 	{
@@ -4655,7 +4655,7 @@ void CBasePlayer::SelectLastItem( void )
 	if( m_pActiveItem )
 		m_pActiveItem->Holster();
 
-	CBasePlayerItem *pTemp = m_pActiveItem;
+	CBasePlayerWeapon *pTemp = m_pActiveItem;
 	m_pActiveItem = m_pLastItem;
 	m_pLastItem = pTemp;
 	m_pActiveItem->Deploy();
@@ -5226,9 +5226,9 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 //
 // Add a weapon to the player (Item == Weapon == Selectable Object)
 //
-int CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
+int CBasePlayer::AddPlayerItem( CBasePlayerWeapon *pItem )
 {
-	CBasePlayerItem *pInsert;
+	CBasePlayerWeapon *pInsert;
 
 	if( pev->flags & FL_SPECTATOR )
 		return FALSE;
@@ -5291,7 +5291,7 @@ int CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
 	return DID_NOT_GET_ITEM;
 }
 
-int CBasePlayer::RemovePlayerItem( CBasePlayerItem *pItem, bool bCallHolster )
+int CBasePlayer::RemovePlayerItem( CBasePlayerWeapon *pItem, bool bCallHolster )
 {
 	pItem->pev->nextthink = 0;// crowbar may be trying to swing again, etc.
 	pItem->SetThink( NULL );
@@ -5310,7 +5310,7 @@ int CBasePlayer::RemovePlayerItem( CBasePlayerItem *pItem, bool bCallHolster )
 	if( m_pLastItem == pItem )
 		m_pLastItem = NULL;
 
-	CBasePlayerItem *pPrev = m_rgpPlayerItems[pItem->iItemSlot()];
+	CBasePlayerWeapon *pPrev = m_rgpPlayerItems[pItem->iItemSlot()];
 
 	if( pPrev == pItem )
 	{
@@ -5449,10 +5449,10 @@ int CBasePlayer::GetAmmoIndex( const char *psz )
 
 	for( i = 1; i < MAX_AMMO_SLOTS; i++ )
 	{
-		if( !CBasePlayerItem::AmmoInfoArray[i].pszName )
+		if( !CBasePlayerWeapon::AmmoInfoArray[i].pszName )
 			continue;
 
-		if( stricmp( psz, CBasePlayerItem::AmmoInfoArray[i].pszName ) == 0 )
+		if( stricmp( psz, CBasePlayerWeapon::AmmoInfoArray[i].pszName ) == 0 )
 			return i;
 	}
 
@@ -5690,7 +5690,7 @@ void CBasePlayer::UpdateClientData( void )
 
 		for( i = 0; i < MAX_WEAPONS; i++ )
 		{
-			ItemInfo& II = CBasePlayerItem::ItemInfoArray[i];
+			ItemInfo& II = CBasePlayerWeapon::ItemInfoArray[i];
 
 			if( !II.iId )
 				continue;
@@ -6073,7 +6073,7 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 		pszItemName = NULL;
 	} 
 
-	CBasePlayerItem *pWeapon;
+	CBasePlayerWeapon *pWeapon;
 	for( int i = 0; i < MAX_ITEM_TYPES; i++ )
 	{
 		pWeapon = m_rgpPlayerItems[i];
@@ -6120,7 +6120,7 @@ void CBasePlayer::DropPlayerItemById(int iId)
 		return;
 	}
 
-	CBasePlayerItem *pWeapon;
+	CBasePlayerWeapon *pWeapon;
 	for( int i = 0; i < MAX_ITEM_TYPES; i++ )
 	{
 		pWeapon = m_rgpPlayerItems[i];
@@ -6135,7 +6135,7 @@ void CBasePlayer::DropPlayerItemById(int iId)
 	}
 }
 
-void CBasePlayer::DropConflictingWeapons(CBasePlayerItem *newWeapon)
+void CBasePlayer::DropConflictingWeapons(CBasePlayerWeapon *newWeapon)
 {
 	if( ItemDropIsProhibited() ) {
 		return;
@@ -6145,7 +6145,7 @@ void CBasePlayer::DropConflictingWeapons(CBasePlayerItem *newWeapon)
 		return;
 	}
 
-	CBasePlayerItem *pWeapon;
+	CBasePlayerWeapon *pWeapon;
 	for( int i = 0; i < MAX_ITEM_TYPES; i++ )
 	{
 		pWeapon = m_rgpPlayerItems[i];
@@ -6160,7 +6160,7 @@ void CBasePlayer::DropConflictingWeapons(CBasePlayerItem *newWeapon)
 	}
 }
 
-void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, float speed)
+void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, float speed)
 {
 	if (pWeapon->m_iId == WEAPON_MEDKIT) {
 		return;
@@ -6196,7 +6196,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, flo
 				int weaponCount = 1; // number of weapons that use the same ammo
 				for( int j = 0; j < MAX_ITEM_TYPES; j++ )
 				{
-					CBasePlayerItem* otherWeapon = m_rgpPlayerItems[j];
+					CBasePlayerWeapon* otherWeapon = m_rgpPlayerItems[j];
 					while( otherWeapon )
 					{
 						if ( otherWeapon != pWeapon && otherWeapon->pszAmmo1() && FStrEq(otherWeapon->pszAmmo1(), pWeapon->pszAmmo1())) {
@@ -6224,7 +6224,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, flo
 			int weaponCount = 1; // number of weapons that use the same ammo
 			for( int j = 0; j < MAX_ITEM_TYPES; j++ )
 			{
-				CBasePlayerItem* otherWeapon = m_rgpPlayerItems[j];
+				CBasePlayerWeapon* otherWeapon = m_rgpPlayerItems[j];
 				while( otherWeapon )
 				{
 					if ( otherWeapon != pWeapon && otherWeapon->pszAmmo2() && FStrEq(otherWeapon->pszAmmo2(), pWeapon->pszAmmo2())) {
@@ -6263,7 +6263,7 @@ void CBasePlayer::DropAmmo()
 		pszItemName = NULL;
 	} 
 
-	CBasePlayerItem *pWeapon;
+	CBasePlayerWeapon *pWeapon;
 	int i;
 
 	for( i = 0; i < MAX_ITEM_TYPES; i++ )
@@ -6322,9 +6322,9 @@ void CBasePlayer::DropAmmo()
 //=========================================================
 // HasPlayerItem Does the player already have this item?
 //=========================================================
-BOOL CBasePlayer::HasPlayerItem( CBasePlayerItem *pCheckItem )
+BOOL CBasePlayer::HasPlayerItem( CBasePlayerWeapon *pCheckItem )
 {
-	CBasePlayerItem *pItem = m_rgpPlayerItems[pCheckItem->iItemSlot()];
+	CBasePlayerWeapon *pItem = m_rgpPlayerItems[pCheckItem->iItemSlot()];
 
 	while( pItem )
 	{
@@ -6343,7 +6343,7 @@ BOOL CBasePlayer::HasPlayerItem( CBasePlayerItem *pCheckItem )
 //=========================================================
 BOOL CBasePlayer::HasNamedPlayerItem( const char *pszItemName )
 {
-	CBasePlayerItem *pItem;
+	CBasePlayerWeapon *pItem;
 	int i;
 
 	for( i = 0; i < MAX_ITEM_TYPES; i++ )
@@ -6366,7 +6366,7 @@ BOOL CBasePlayer::HasNamedPlayerItem( const char *pszItemName )
 //=========================================================
 // 
 //=========================================================
-BOOL CBasePlayer::SwitchWeapon( CBasePlayerItem *pWeapon ) 
+BOOL CBasePlayer::SwitchWeapon( CBasePlayerWeapon *pWeapon )
 {
 	if( !pWeapon->CanDeploy() )
 	{

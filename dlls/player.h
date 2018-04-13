@@ -195,10 +195,10 @@ public:
 	int			m_iClientFOV;	// client's known FOV
 
 	// usable player items 
-	CBasePlayerItem	*m_rgpPlayerItems[MAX_ITEM_TYPES];
-	CBasePlayerItem *m_pActiveItem;
-	CBasePlayerItem *m_pClientActiveItem;  // client version of the active item
-	CBasePlayerItem *m_pLastItem;
+	CBasePlayerWeapon	*m_rgpPlayerItems[MAX_ITEM_TYPES];
+	CBasePlayerWeapon *m_pActiveItem;
+	CBasePlayerWeapon *m_pClientActiveItem;  // client version of the active item
+	CBasePlayerWeapon *m_pLastItem;
 
 	// shared ammo slots
 	int	m_rgAmmo[MAX_AMMO_SLOTS];
@@ -248,7 +248,7 @@ public:
 	void RenewItems(void);
 	void PackDeadPlayerItems( void );
 	void RemoveAllItems( BOOL removeSuit );
-	BOOL SwitchWeapon( CBasePlayerItem *pWeapon );
+	BOOL SwitchWeapon( CBasePlayerWeapon *pWeapon );
 
 	// JOHN:  sends custom messages if player HUD data has changed  (eg health, ammo)
 	virtual void UpdateClientData( void );
@@ -282,13 +282,13 @@ public:
 	void AddPoints( int score, BOOL bAllowNegativeScore );
 	void AddPointsToTeam( int score, BOOL bAllowNegativeScore );
 	void AddFloatPoints( float score, BOOL bAllowNegativeScore );
-	int AddPlayerItem( CBasePlayerItem *pItem );
-	BOOL RemovePlayerItem( CBasePlayerItem *pItem, bool bCallHoster );
+	int AddPlayerItem( CBasePlayerWeapon *pItem );
+	BOOL RemovePlayerItem( CBasePlayerWeapon *pItem, bool bCallHoster );
 	void DropPlayerItem ( char *pszItemName );
 	void DropPlayerItemById( int iId );
-	void DropConflictingWeapons(CBasePlayerItem* newWeapon );
+	void DropConflictingWeapons(CBasePlayerWeapon* newWeapon );
 	void DropAmmo();
-	BOOL HasPlayerItem( CBasePlayerItem *pCheckItem );
+	BOOL HasPlayerItem( CBasePlayerWeapon *pCheckItem );
 	BOOL HasNamedPlayerItem( const char *pszItemName );
 	BOOL HasWeapons( void );// do I have ANY weapons?
 	void SelectPrevItem( int iItem );
@@ -408,7 +408,7 @@ private:
 		DropAmmoFair
 	};
 	
-	void DropPlayerItemImpl(CBasePlayerItem* pWeapon, int dropType = DropAmmoFair, float speed = 400);
+	void DropPlayerItemImpl(CBasePlayerWeapon* pWeapon, int dropType = DropAmmoFair, float speed = 400);
 
 	bool m_bSentBhopcap; // If false, the player just joined and needs a bhopcap message.
 	float m_flSemclipTime;

@@ -275,10 +275,8 @@ typedef struct
 	int iId;
 } AmmoInfo;
 
-class CBasePlayerWeapon;
-
-// Items that the player has in their inventory that they can use
-class CBasePlayerItem : public CBaseAnimating
+// inventory items that
+class CBasePlayerWeapon : public CBaseAnimating
 {
 public:
 	virtual void SetObjectCollisionBox( void );
@@ -289,7 +287,6 @@ public:
 	static	TYPEDESCRIPTION m_SaveData[];
 
 	virtual int AddToPlayer( CBasePlayer *pPlayer );	// return TRUE if the item you want the item added to the player inventory
-	virtual int AddDuplicate( CBasePlayerItem *pItem ) { return FALSE; }	// return TRUE if you want your duplicate removed from world
 	void EXPORT DestroyItem( void );
 	void EXPORT DefaultTouch( CBaseEntity *pOther );	// default weapon touch
 	void EXPORT FallThink ( void );// when an item is first spawned, this think is run to determine when the object has hit the ground.
@@ -298,29 +295,19 @@ public:
 	CBaseEntity* Respawn ( void );// copy a weapon
 	void FallInit( void );
 	void CheckRespawn( void );
-	virtual int GetItemInfo(ItemInfo *p) { return 0; };	// returns 0 if struct not filled out
-	virtual BOOL CanDeploy( void ) { return TRUE; };
+	virtual int GetItemInfo(ItemInfo *p) { return 0; }	// returns 0 if struct not filled out
+	virtual BOOL CanDeploy( void );
 	virtual BOOL Deploy( )								// returns is deploy was successful
-		 { return TRUE; };
+		 { return TRUE; }
 
-	virtual BOOL CanHolster( void ) { return TRUE; };// can this weapon be put away right now?
-	virtual void Holster( int skiplocal = 0 );
-	virtual void UpdateItemInfo( void ) { return; };
+	virtual BOOL CanHolster( void ) { return TRUE; }// can this weapon be put away right now?
 
 	virtual void ItemPreFrame( void )	{ return; }		// called each frame by the player PreThink
-	virtual void ItemPostFrame( void ) { return; }		// called each frame by the player PostThink
 
 	virtual void Drop( void );
 	virtual void Kill( void );
 	virtual void AttachToPlayer ( CBasePlayer *pPlayer );
 
-	virtual int PrimaryAmmoIndex() { return -1; };
-	virtual int SecondaryAmmoIndex() { return -1; };
-
-	virtual int UpdateClientData( CBasePlayer *pPlayer ) { return 0; }
-
-	virtual CBasePlayerWeapon *GetWeaponPtr( void ) { return NULL; }
-	
 	int ObjectCaps();
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void TouchOrUse( CBaseEntity* other );
@@ -329,7 +316,7 @@ public:
 	static AmmoInfo AmmoInfoArray[ MAX_AMMO_SLOTS ];
 
 	CBasePlayer	*m_pPlayer;
-	CBasePlayerItem *m_pNext;
+	CBasePlayerWeapon *m_pNext;
 	int		m_iId;												// WEAPON_???
 
 	virtual int iItemSlot( void ) { return 0; }			// return 0 to MAX_ITEMS_SLOTS, used in hud
@@ -345,38 +332,23 @@ public:
 	int			iFlags( void )		{ return ItemInfoArray[ m_iId ].iFlags; }
 	const char* pszAmmoEntity( void ) { return ItemInfoArray[ m_iId ].pszAmmoEntity; }
 	int			iDropAmmo( void )	{ return ItemInfoArray[ m_iId ].iDropAmmo; }
-	
+
 	virtual int WeaponCategory() { return WEAPON_CATEGORY_NO; }
 	virtual const char* MyWModel() { return 0; }
 
-	// int		m_iIdPrimary;										// Unique Id for primary ammo
-	// int		m_iIdSecondary;										// Unique Id for secondary ammo
-};
-
-// inventory items that
-class CBasePlayerWeapon : public CBasePlayerItem
-{
-public:
-	virtual int		Save( CSave &save );
-	virtual int		Restore( CRestore &restore );
-
-	static	TYPEDESCRIPTION m_SaveData[];
-
-	// generic weapon versions of CBasePlayerItem calls
-	virtual int AddToPlayer( CBasePlayer *pPlayer );
 	int AddToPlayerDefault( CBasePlayer *pPlayer );
-	virtual int AddDuplicate( CBasePlayerItem *pItem );
+	virtual int AddDuplicate( CBasePlayerWeapon *pItem );
 
 	virtual int ExtractAmmo( CBasePlayerWeapon *pWeapon ); //{ return TRUE; };			// Return TRUE if you can add ammo to yourself when picked up
 	virtual int ExtractClipAmmo( CBasePlayerWeapon *pWeapon );// { return TRUE; };			// Return TRUE if you can add ammo to yourself when picked up
 
-	virtual int AddWeapon( void ) { ExtractAmmo( this ); return TRUE; };	// Return TRUE if you want to add yourself to the player
+	virtual int AddWeapon( void ) { ExtractAmmo( this ); return TRUE; }	// Return TRUE if you want to add yourself to the player
 
 	// generic "shared" ammo handlers
 	BOOL AddPrimaryAmmo(int iCount, const char *szName, int iMaxClip, int iMaxCarry );
 	BOOL AddSecondaryAmmo( int iCount, const char *szName, int iMaxCarry );
 
-	virtual void UpdateItemInfo( void ) {};	// updates HUD state
+	virtual void UpdateItemInfo( void ) {}	// updates HUD state
 
 	//Special stuff for grenades and satchels.
 	float m_flStartThrow;
@@ -395,7 +367,6 @@ public:
 
 	virtual void SendWeaponAnim( int iAnim, int skiplocal = 1, int body = 0 );  // skiplocal is 1 if client is predicting weapon animations
 
-	virtual BOOL CanDeploy( void );
 	virtual BOOL IsUseable( void );
 	BOOL DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int skiplocal = 0, int body = 0 );
 	BOOL DefaultReload( int iClipSize, int iAnim, float fDelay, int body = 0 );
@@ -409,9 +380,9 @@ public:
 	virtual void WeaponIdle( void ) { return; }					// called when no buttons pressed
 	virtual int UpdateClientData( CBasePlayer *pPlayer );		// sends hud info to client dll, if things have changed
 	virtual void RetireWeapon( void );
-	virtual BOOL ShouldWeaponIdle( void ) {return FALSE; };
+	virtual BOOL ShouldWeaponIdle( void ) {return FALSE; }
 	virtual void Holster( int skiplocal = 0 );
-	virtual BOOL UseDecrement( void ) { return FALSE; };
+	virtual BOOL UseDecrement( void ) { return FALSE; }
 
 	int	PrimaryAmmoIndex();
 	int	SecondaryAmmoIndex();
@@ -538,13 +509,13 @@ public:
 	int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
-	BOOL HasWeapon( CBasePlayerItem *pCheckItem );
-	BOOL PackWeapon( CBasePlayerItem *pWeapon );
+	BOOL HasWeapon( CBasePlayerWeapon *pCheckItem );
+	BOOL PackWeapon( CBasePlayerWeapon *pWeapon );
 	BOOL PackAmmo( int iszName, int iCount );
 	
-	void SetWeaponModel( CBasePlayerItem* pItem );
+	void SetWeaponModel( CBasePlayerWeapon* pItem );
 
-	CBasePlayerItem	*m_rgpPlayerItems[MAX_ITEM_TYPES];// one slot for each
+	CBasePlayerWeapon	*m_rgpPlayerItems[MAX_ITEM_TYPES];// one slot for each
 
 	string_t m_rgiszAmmo[MAX_AMMO_SLOTS];// ammo names
 	int	m_rgAmmo[MAX_AMMO_SLOTS];// ammo quantities
@@ -1057,7 +1028,7 @@ public:
 	int AddToPlayer( CBasePlayer *pPlayer );
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
-	int AddDuplicate( CBasePlayerItem *pOriginal );
+	int AddDuplicate( CBasePlayerWeapon *pOriginal );
 	BOOL CanDeploy( void );
 	BOOL Deploy( void );
 	BOOL IsUseable( void );
