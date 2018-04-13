@@ -5263,9 +5263,6 @@ int CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
 		pInsert = pInsert->m_pNext;
 	}
 
-	if (mp_l4mcoop.value) {
-		DropConflictingWeapons(pItem);
-	}
 	if( pItem->AddToPlayer( this ) )
 	{
 		g_pGameRules->PlayerGotWeapon( this, pItem );
@@ -5273,6 +5270,10 @@ int CBasePlayer::AddPlayerItem( CBasePlayerItem *pItem )
 
 		pItem->m_pNext = m_rgpPlayerItems[pItem->iItemSlot()];
 		m_rgpPlayerItems[pItem->iItemSlot()] = pItem;
+
+		if (mp_l4mcoop.value) {
+			DropConflictingWeapons(pItem);
+		}
 
 		// should we switch to this item?
 		if( g_pGameRules->FShouldSwitchWeapon( this, pItem ) )
@@ -6176,7 +6177,6 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, flo
 	pWeaponBox->SetWeaponModel(pWeapon);
 	pWeaponBox->pev->angles.x = 0;
 	pWeaponBox->pev->angles.z = 0;
-	pWeaponBox->PackWeapon( pWeapon );
 	pWeaponBox->pev->velocity = gpGlobals->v_forward * speed;
 
 	// drop ammo for this weapon.
@@ -6242,6 +6242,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerItem *pWeapon, int dropType, flo
 			m_rgAmmo[iAmmoIndex] = 0;
 		}
 	}
+	pWeaponBox->PackWeapon( pWeapon );
 }
 
 void CBasePlayer::DropAmmo()

@@ -1498,28 +1498,6 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 	// go through my weapons and try to give the usable ones to the player. 
 	// it's important the the player be given ammo first, so the weapons code doesn't refuse 
 	// to deploy a better weapon that the player may pick up because he has no ammo for it.
-	for( i = 0; i < MAX_ITEM_TYPES; i++ )
-	{
-		if( m_rgpPlayerItems[i] )
-		{
-			CBasePlayerItem *pItem;
-
-			// have at least one weapon in this slot
-			while( m_rgpPlayerItems[i] )
-			{
-				//ALERT( at_console, "trying to give %s\n", STRING( m_rgpPlayerItems[i]->pev->classname ) );
-
-				pItem = m_rgpPlayerItems[i];
-				m_rgpPlayerItems[i] = m_rgpPlayerItems[i]->m_pNext;// unlink this weapon from the box
-
-				if( pPlayer->AddPlayerItem( pItem ) > DID_NOT_GET_ITEM )
-				{
-					shouldRemove = true;
-					pItem->AttachToPlayer( pPlayer );
-				}
-			}
-		}
-	}
 
 	// dole out ammo
 	for( i = 0; i < MAX_AMMO_SLOTS; i++ )
@@ -1562,6 +1540,29 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 				// now empty the ammo from the weaponbox since we just gave it to the player
 				m_rgiszAmmo[i] = iStringNull;
 				m_rgAmmo[i] = 0;
+			}
+		}
+	}
+
+	for( i = 0; i < MAX_ITEM_TYPES; i++ )
+	{
+		if( m_rgpPlayerItems[i] )
+		{
+			CBasePlayerItem *pItem;
+
+			// have at least one weapon in this slot
+			while( m_rgpPlayerItems[i] )
+			{
+				//ALERT( at_console, "trying to give %s\n", STRING( m_rgpPlayerItems[i]->pev->classname ) );
+
+				pItem = m_rgpPlayerItems[i];
+				m_rgpPlayerItems[i] = m_rgpPlayerItems[i]->m_pNext;// unlink this weapon from the box
+
+				if( pPlayer->AddPlayerItem( pItem ) > DID_NOT_GET_ITEM )
+				{
+					shouldRemove = true;
+					pItem->AttachToPlayer( pPlayer );
+				}
 			}
 		}
 	}

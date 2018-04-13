@@ -590,12 +590,16 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerI
 		return FALSE;
 	}
 
-	if( pWeapon->iWeight() > pPlayer->m_pActiveItem->iWeight() )
-	{
+	if (mp_l4mcoop.value) {
 		return TRUE;
-	}
+	} else {
+		if( pWeapon->iWeight() > pPlayer->m_pActiveItem->iWeight() )
+		{
+			return TRUE;
+		}
 
-	return FALSE;
+		return FALSE;
+	}
 }
 
 BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerItem *pCurrentWeapon )
