@@ -1144,10 +1144,11 @@ void CBasePlayerAmmo::DefaultTouch( CBaseEntity *pOther )
 {
 	if (!use_to_take.value) {
 		//Prevent dropped ammo from touching at the same time
-		if( (pev->flags & FL_IMMUNE_LAVA) && !( pev->flags & FL_ONGROUND ) )
+		if( pev->bInDuck && !( pev->flags & FL_ONGROUND ) )
 		{
 			return;
 		}
+		pev->bInDuck = 0;
 		TouchOrUse(pOther);
 	}
 }

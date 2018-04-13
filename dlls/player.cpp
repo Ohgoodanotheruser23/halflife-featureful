@@ -6304,10 +6304,10 @@ void CBasePlayer::DropAmmo()
 							ammoEnt->pev->spawnflags |= SF_NORESPAWN;
 							//UTIL_SetSize( ammoEnt->pev, g_vecZero, g_vecZero );
 							//UTIL_SetOrigin( ammoEnt->pev, ammoEnt->pev->origin );
-							ammoEnt->pev->flags |= FL_IMMUNE_LAVA;
+							ammoEnt->pev->bInDuck = 1;
 							ammoEnt->pev->angles.x = 0;
 							ammoEnt->pev->angles.z = 0;
-							ammoEnt->pev->velocity = gpGlobals->v_forward * 300 + gpGlobals->v_forward * 100;
+							ammoEnt->pev->velocity = gpGlobals->v_forward * 400;
 							m_rgAmmo[iAmmoIndex] -= ammoCount;
 						}
 					}
