@@ -637,7 +637,6 @@ void CBasePlayerWeapon::TouchOrUse(CBaseEntity *pOther )
 
 	if( pOther->AddPlayerItem( this ) == GOT_NEW_ITEM )
 	{
-		AttachToPlayer( pPlayer );
 		EMIT_SOUND( ENT( pPlayer->pev ), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 	}
 
@@ -1498,9 +1497,7 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 					if (weapon) {
 						weapon->pev->spawnflags |= SF_NORESPAWN;
 						weapon->m_iDefaultAmmo = 0;
-						if (pPlayer->AddPlayerItem(weapon)) {
-							weapon->AttachToPlayer(pPlayer);
-						}
+						pPlayer->AddPlayerItem(weapon);
 					}
 				}
 			}
@@ -1530,7 +1527,6 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 			if( pPlayer->AddPlayerItem( pItem ) > DID_NOT_GET_ITEM )
 			{
 				shouldRemove = true;
-				pItem->AttachToPlayer( pPlayer );
 			}
 		}
 	}

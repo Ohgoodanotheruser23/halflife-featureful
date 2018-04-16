@@ -5147,14 +5147,14 @@ int CBasePlayer::AddPlayerItem( CBasePlayerWeapon *pItem )
 	if( pev->flags & FL_SPECTATOR )
 		return FALSE;
 
-	for (int i=0; i<MAX_WEAPONS; ++i)
+	CBasePlayerWeapon *pInsert = WeaponById(pItem->m_iId);
+	if( pInsert )
 	{
-		CBasePlayerWeapon *pInsert = WeaponById(pItem->m_iId);
-		if( pInsert )
+		if (!mp_l4mcoop.value || ((pItem->pev->spawnflags & SF_NORESPAWN) // HACKHACK consider it dropped by monster
+								  || (pItem->iFlags() & ITEM_FLAG_LIMITINWORLD) ))
+
 		{
-			if( ((pItem->pev->spawnflags & SF_NORESPAWN) // HACKHACK consider it dropped by monster
-				 || (pItem->iFlags() & ITEM_FLAG_LIMITINWORLD) )
-					&& pItem->AddDuplicate( pInsert ) )
+			if (pItem->AddDuplicate( pInsert ))
 			{
 				g_pGameRules->PlayerGotWeapon( this, pItem );
 				pItem->CheckRespawn();
@@ -5166,13 +5166,13 @@ int CBasePlayer::AddPlayerItem( CBasePlayerWeapon *pItem )
 
 				pItem->Kill();
 			}
-			else if( gEvilImpulse101 )
-			{
-				// FIXME: remove anyway for deathmatch testing
-				pItem->Kill();
-			}
-			return GOT_DUP_ITEM;
 		}
+		else if( gEvilImpulse101 )
+		{
+			// FIXME: remove anyway for deathmatch testing
+			pItem->Kill();
+		}
+		return GOT_DUP_ITEM;
 	}
 
 	if( pItem->AddToPlayer( this ) )
@@ -5192,6 +5192,7 @@ int CBasePlayer::AddPlayerItem( CBasePlayerWeapon *pItem )
 			SwitchWeapon( pItem );
 		}
 
+		pItem->AttachToPlayer(this);
 		return GOT_NEW_ITEM;
 	}
 	else if( gEvilImpulse101 )
