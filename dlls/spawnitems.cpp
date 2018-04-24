@@ -1,5 +1,4 @@
 #include "spawnitems.h"
-#include <cstddef>
 
 #include "extdll.h"
 #include "util.h"
@@ -10,7 +9,7 @@
 //Items spawned by func_breakable and item_random
 SpawnItem gSpawnItems[] = 
 {
-	{NULL, 0},			// 0
+	{0, 0},			// 0
 	{"item_battery", 1.5},		// 1
 	{"item_healthkit", 1},	// 2
 	{"weapon_9mmhandgun",2},	// 3
