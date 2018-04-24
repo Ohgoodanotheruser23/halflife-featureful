@@ -1714,15 +1714,15 @@ void CBasePlayer::DeathSound( void )
 int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 {
 #if FEATURE_MEDKIT
-	if (m_rgpPlayerWeapons[WEAPON_MEDKIT]) {
+	CBasePlayerWeapon* pPlayerMedkit = WeaponById(WEAPON_MEDKIT);
+	if (pPlayerMedkit) {
 		if (use_to_take.value || (flHealth == 1 && pev->health >= pev->max_health) || (pev->health < pev->max_health && pev->health + flHealth > pev->max_health) ) {
 			const int diff = (int)(pev->health + flHealth - pev->max_health);
 			if (diff > 0) {
-				CBasePlayerWeapon *pPlayerItem = m_rgpPlayerWeapons[WEAPON_MEDKIT];
-				int medAmmoIndex = GetAmmoIndex(pPlayerItem->pszAmmo1());
+				int medAmmoIndex = GetAmmoIndex(pPlayerMedkit->pszAmmo1());
 				int medAmmo = AmmoInventory(medAmmoIndex);
-				if (medAmmo >= 0 && medAmmo < pPlayerItem->iMaxAmmo1()) {
-					m_rgAmmo[medAmmoIndex] += Q_min(diff, pPlayerItem->iMaxAmmo1() - medAmmo);
+				if (medAmmo >= 0 && medAmmo < pPlayerMedkit->iMaxAmmo1()) {
+					m_rgAmmo[medAmmoIndex] += Q_min(diff, pPlayerMedkit->iMaxAmmo1() - medAmmo);
 					CBaseMonster::TakeHealth( flHealth, bitsDamageType );
 					RefreshMaxSpeed(this);
 					return 1;
