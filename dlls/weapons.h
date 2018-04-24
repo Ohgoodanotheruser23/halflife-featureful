@@ -386,7 +386,7 @@ public:
 
 	void PrintState( void );
 
-	virtual CBasePlayerWeapon *GetWeaponPtr( void ) { return this; }
+	virtual CBasePlayerWeapon *MyWeaponPointer( void ) { return this; }
 	float GetNextAttackDelay( float delay );
 
 	int		m_fInSpecialReload;									// Are we in the middle of a reload for the shotguns

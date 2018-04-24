@@ -354,6 +354,7 @@ public:
 
 	virtual void AddFloatPoints( float score, BOOL bAllowNegativeScore ) {}
 	virtual int SizeForGrapple() { return GRAPPLE_NOT_A_TARGET; }
+	virtual CBasePlayerWeapon* MyWeaponPointer() {return NULL;}
 
 };
 
