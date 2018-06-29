@@ -1,9 +1,9 @@
 /***
 *
 *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*	
-*	This product contains software technology licensed from Id 
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc. 
+*
+*	This product contains software technology licensed from Id
+*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
 *	All Rights Reserved.
 *
 *   Use, distribution, and modification of this source code and/or resulting
@@ -28,6 +28,7 @@
 #define	SF_MONSTERMAKER_CYCLIC		4 // drop one monster every time fired.
 #define SF_MONSTERMAKER_MONSTERCLIP	8 // Children are blocked by monsterclip
 #define SF_MONSTERMAKER_ALIGN_TO_PLAYER 16 // Align to closest player on spawn
+#define SF_MONSTERMAKER_NO_GROUND_CHECK 2048 // don't check if something on ground prevents a monster to fall on spawn
 
 #define MONSTERMAKER_ORIGIN_MAX_COUNT 24
 
@@ -56,11 +57,11 @@ public:
 	virtual int Restore( CRestore &restore );
 
 	static TYPEDESCRIPTION m_SaveData[];
-	
+
 	string_t m_iszMonsterClassname;// classname of the monster(s) that will be created.
-	
+
 	int m_cNumMonsters;// max number of monsters this ent can create
-	
+
 	int m_cLiveChildren;// how many monsters made by this monster maker that are currently alive
 	int m_iMaxLiveChildren;// max number of monsters that this maker may have out at one time.
 
@@ -68,9 +69,11 @@ public:
 
 	BOOL m_fActive;
 	BOOL m_fFadeChildren;// should we make the children fadeout?
-	
+
+	string_t m_customModel;
+	int m_classify;
+
 	int m_iMaxRandomAngleDeviation;
-	
 	string_t m_originName;
 	OriginInfo m_cachedOrigins[MONSTERMAKER_ORIGIN_MAX_COUNT];
 	int m_originCount;
@@ -87,6 +90,8 @@ TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 	DEFINE_FIELD( CMonsterMaker, m_iMaxLiveChildren, FIELD_INTEGER ),
 	DEFINE_FIELD( CMonsterMaker, m_fActive, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CMonsterMaker, m_fFadeChildren, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CMonsterMaker, m_customModel, FIELD_STRING ),
+	DEFINE_FIELD( CMonsterMaker, m_classify, FIELD_INTEGER ),
 	DEFINE_FIELD( CMonsterMaker, m_iMaxRandomAngleDeviation, FIELD_INTEGER),
 	DEFINE_FIELD( CMonsterMaker, m_originName, FIELD_STRING),
 };
@@ -115,14 +120,24 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 		m_iMaxRandomAngleDeviation = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if ( FStrEq( pkvd->szKeyName, "spawnorigin" ) )
+	{
+		m_originName = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else if ( FStrEq( pkvd->szKeyName, "warpball" ) )
 	{
 		pev->message = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
-	else if ( FStrEq( pkvd->szKeyName, "spawnorigin" ) )
+	else if ( FStrEq( pkvd->szKeyName, "new_model" ) )
 	{
-		m_originName = ALLOC_STRING( pkvd->szValue );
+		m_customModel = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "classify" ) )
+	{
+		m_classify = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -183,6 +198,8 @@ void CMonsterMaker::Precache( void )
 {
 	CBaseMonster::Precache();
 
+	if (!FStringNull(m_customModel))
+		PRECACHE_MODEL(STRING(m_customModel));
 	UTIL_PrecacheOther( STRING( m_iszMonsterClassname ) );
 }
 
@@ -220,15 +237,18 @@ void CMonsterMaker::MakeMonster( void )
 		}
 	}
 
-	if( !m_flGround )
+	if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
 	{
-		// set altitude. Now that I'm activated, any breakables, etc should be out from under me. 
-		TraceResult tr;
+		if( !m_flGround )
+		{
+			// set altitude. Now that I'm activated, any breakables, etc should be out from under me.
+			TraceResult tr;
 
-		UTIL_TraceLine( pev->origin, pev->origin - Vector( 0, 0, 2048 ), ignore_monsters, ENT( pev ), &tr );
-		m_flGround = tr.vecEndPos.z;
+			UTIL_TraceLine( pev->origin, pev->origin - Vector( 0, 0, 2048 ), ignore_monsters, ENT( pev ), &tr );
+			m_flGround = tr.vecEndPos.z;
+		}
 	}
-	
+
 	CBaseEntity* chosenOriginEntity = NULL;
 	if (!FStringNull(m_originName) && m_originCount > 0) {
 		int i = 0;
@@ -264,7 +284,8 @@ void CMonsterMaker::MakeMonster( void )
 		Vector mins = pev->origin - Vector( 34, 34, 0 );
 		Vector maxs = pev->origin + Vector( 34, 34, 0 );
 		maxs.z = pev->origin.z;
-		mins.z = m_flGround;
+		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
+			mins.z = m_flGround;
 		
 		CBaseEntity *pList[2];
 		int count = UTIL_EntitiesInBox( pList, 2, mins, maxs, FL_CLIENT | FL_MONSTER );
@@ -324,10 +345,25 @@ void CMonsterMaker::MakeMonster( void )
 	}
 	pevCreate->weapons = pev->weapons;
 	SetBits( pevCreate->spawnflags, SF_MONSTER_FALL_TO_GROUND );
+	pevCreate->body = pev->body;
+	pevCreate->skin = pev->skin;
+	pevCreate->health = pev->health;
+	if (!FStringNull(m_customModel))
+		pevCreate->model = m_customModel;
 
 	// Children hit monsterclip brushes
 	if( pev->spawnflags & SF_MONSTERMAKER_MONSTERCLIP )
 		SetBits( pevCreate->spawnflags, SF_MONSTER_HITMONSTERCLIP );
+
+	CBaseEntity* createdEnt = CBaseEntity::Instance(pent);
+	CBaseMonster* createdMonster = createdEnt->MyMonsterPointer();
+	if (createdMonster)
+	{
+		if (m_classify)
+			createdMonster->m_iClass = m_classify;
+		if (m_bloodColor)
+			createdMonster->m_bloodColor = m_bloodColor;
+	}
 
 	DispatchSpawn( ENT( pevCreate ) );
 	pevCreate->owner = edict();
@@ -335,12 +371,14 @@ void CMonsterMaker::MakeMonster( void )
 	if ( !FStringNull( pev->message ) && !FStringNull( pev->targetname ) )
 	{
 		CBaseEntity* foundEntity = UTIL_FindEntityByTargetname(NULL, STRING(pev->message));
-		if ( foundEntity && FClassnameIs(foundEntity->pev, "env_warpball")) {
+		if ( foundEntity && FClassnameIs(foundEntity->pev, "env_warpball"))
+		{
 			foundEntity->pev->dmg_inflictor = chosenOriginEntity->edict();
 			foundEntity->Use(this, this, USE_TOGGLE, 0.0f);
+			foundEntity->pev->dmg_inflictor = 0;
 		}
 	}
-	
+
 	if( !FStringNull( pev->netname ) )
 	{
 		// if I have a netname (overloaded), give the child monster that name as a targetname

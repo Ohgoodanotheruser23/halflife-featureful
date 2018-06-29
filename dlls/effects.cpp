@@ -2255,7 +2255,7 @@ public:
 	void KeyValue( KeyValueData *pkvd );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	virtual int ObjectCaps( void ) { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
-	
+
 	inline float Radius() { 
 		return pev->button ? pev->button : 192;
 	}
@@ -2290,7 +2290,7 @@ public:
 	const char* SpriteModel() {
 		return pev->model ? STRING(pev->model) : WARPBALL_SPRITE;
 	}
-	
+
 	inline void SetRadius( int radius ) {
 		pev->button = radius;
 	}
@@ -2312,7 +2312,7 @@ public:
 	inline void SetMaxBeamCount( int beamCount ) {
 		pev->team = beamCount;
 	}
-	
+
 	Vector vecOrigin;
 	int m_beamTexture;
 };
@@ -2389,13 +2389,12 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 {
 	CBaseEntity *pEntity = NULL;
 	edict_t *pos;
-	
-	if (pev->dmg_inflictor && (pEntity = CBaseEntity::Instance(pev->dmg_inflictor)) != NULL) 
+	if (pev->dmg_inflictor && (pEntity = CBaseEntity::Instance(pev->dmg_inflictor)) != NULL)
 	{
 		vecOrigin = pEntity->pev->origin;
 		pos = pEntity->edict();
 	}
-	else if( FStringNull( pev->message ) && (pEntity = UTIL_FindEntityByTargetname( NULL, STRING( pev->message ) )) != NULL )//target found ?
+	else if( !FStringNull( pev->message ) && (pEntity = UTIL_FindEntityByTargetname( NULL, STRING( pev->message ) )) != NULL )//target found ?
 	{
 		vecOrigin = pEntity->pev->origin;
 		pos = pEntity->edict();
@@ -2411,10 +2410,10 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	if (!(pev->spawnflags & SF_WARPBALL_NOSHAKE)) {
 		UTIL_ScreenShake( vecOrigin, Amplitude(), Frequency(), Duration(), Radius() );
 	}
-	
+
 	CSprite *pSpr = CSprite::SpriteCreate( SpriteModel(), vecOrigin, TRUE );
 	pSpr->AnimateAndDie( 18 );
-	
+
 	int red = pev->rendercolor.x;
 	int green = pev->rendercolor.y;
 	int blue = pev->rendercolor.z;
@@ -2423,16 +2422,16 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		green = 210;
 		blue = 130;
 	}
-	
+
 	pSpr->SetTransparency( RenderMode(),  red, green, blue, RenderAmount(), RenderFx() );
 	pSpr->SetScale(Scale());
-	
+
 	EMIT_SOUND( pos, CHAN_ITEM, WARPBALL_SOUND2, 1, ATTN_NORM );
-	
+
 	int beamRed = pev->punchangle.x;
 	int beamGreen = pev->punchangle.y;
 	int beamBlue = pev->punchangle.z;
-	
+
 	if (!beamRed && !beamGreen && !beamBlue) {
 		beamRed = 20;
 		beamGreen = 243;

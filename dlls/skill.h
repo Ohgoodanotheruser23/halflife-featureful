@@ -31,8 +31,6 @@ struct skilldata_t
 
 	float apacheHealth;
 
-	float barnacleHealth;
-
 #if FEATURE_BABYGARG
 
 	float babygargantuaHealth;
@@ -40,6 +38,8 @@ struct skilldata_t
 	float babygargantuaDmgFire;
 	float babygargantuaDmgStomp;
 #endif
+
+	float barnacleHealth;
 
 	float barneyHealth;
 

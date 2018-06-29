@@ -1623,7 +1623,8 @@ CBaseEntity *CHFGrunt :: Kick( void )
 	if ( tr.pHit )
 	{
 		CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
-		return pEntity;
+		if (pEntity && IRelationship(pEntity) != R_AL)
+			return pEntity;
 	}
 
 	return NULL;
@@ -2849,9 +2850,9 @@ LINK_ENTITY_TO_CLASS( monster_human_grunt_ally_dead, CDeadFGrunt )
 //=========================================================
 void CDeadFGrunt :: Spawn( )
 {
-	SpawnHelper("models/hgrunt_opfor.mdl", "Dead fgrunt with bad pose");
+	SpawnHelper("models/hgrunt_opfor.mdl");
 
-	if ( pev->weapons == 0 || pev->weapons == -1 )
+	if ( pev->weapons <= 0 )
 	{
 		SetBodygroup( FG_GUN_GROUP, FG_GUN_NONE );
 	}
@@ -3208,6 +3209,47 @@ void CTorch :: KillGas( void )
 	return;
 }
 
+//=========================================================
+// Torch Dead PROP
+//=========================================================
+
+class CDeadTorch : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_PLAYER_ALLY; }
+
+	const char* getPos(int pos) const;
+	static const char *m_szPoses[3];
+};
+
+const char *CDeadTorch::m_szPoses[] = { "deadstomach", "deadside", "deadsitting" };
+
+const char* CDeadTorch::getPos(int pos) const
+{
+	return m_szPoses[pos % ARRAYSIZE(m_szPoses)];
+}
+
+LINK_ENTITY_TO_CLASS( monster_human_torch_ally_dead, CDeadTorch )
+
+void CDeadTorch::Spawn( )
+{
+	SpawnHelper("models/hgrunt_torch.mdl");
+
+	if ( pev->weapons <= 0 )
+	{
+		SetBodygroup( TORCH_GUN_GROUP, TORCH_GUN_NONE );
+	}
+	else if ( FBitSet( pev->weapons, TORCH_EAGLE ) )
+	{
+		SetBodygroup( TORCH_GUN_GROUP, TORCH_GUN_EAGLE );
+	}
+	else if ( FBitSet( pev->weapons, TORCH_BLOWTORCH ) )
+	{
+		SetBodygroup( TORCH_GUN_GROUP, TORCH_GUN_TORCH );
+	}
+	MonsterInitDead();
+}
 
 #define MEDIC_CLIP_SIZE 17
 #define MEDIC_CLIP_SIZE_EAGLE 7
@@ -3365,8 +3407,11 @@ void CMedic::RunTask(Task_t *pTask)
 				TaskComplete();
 				StopHealing();
 			}
-			pev->ideal_yaw = UTIL_VecToYaw( m_hTargetEnt->pev->origin - pev->origin );
-			ChangeYaw( pev->yaw_speed );
+			if (m_hTargetEnt != 0)
+			{
+				pev->ideal_yaw = UTIL_VecToYaw( m_hTargetEnt->pev->origin - pev->origin );
+				ChangeYaw( pev->yaw_speed );
+			}
 		}
 		break;
 	default:
@@ -3629,6 +3674,57 @@ bool CMedic::CheckHealCharge()
 		return false;
 	}
 	return true;
+}
+
+//=========================================================
+// Medic Dead PROP
+//=========================================================
+
+class CDeadMedic : public CDeadFGrunt
+{
+public:
+	void Spawn( void );
+	const char* getPos(int pos) const;
+	static const char *m_szPoses[3];
+};
+
+const char *CDeadMedic::m_szPoses[] = { "deadstomach", "deadside", "deadsitting" };
+
+const char* CDeadMedic::getPos(int pos) const
+{
+	return m_szPoses[pos % ARRAYSIZE(m_szPoses)];
+}
+
+LINK_ENTITY_TO_CLASS( monster_human_medic_ally_dead, CDeadMedic )
+
+void CDeadMedic::Spawn( )
+{
+	SpawnHelper("models/hgrunt_medic.mdl");
+
+	if ( pev->weapons <= 0 )
+	{
+		SetBodygroup( FG_GUN_GROUP, FG_GUN_NONE );
+	}
+	if ( FBitSet( pev->weapons, MEDIC_EAGLE ) )
+	{
+		SetBodygroup( MEDIC_GUN_GROUP, MEDIC_GUN_EAGLE );
+	}
+	else if ( FBitSet( pev->weapons, MEDIC_HANDGUN ) )
+	{
+		SetBodygroup( MEDIC_GUN_GROUP, MEDIC_GUN_PISTOL );
+	}
+	else if ( FBitSet( pev->weapons, MEDIC_NEEDLE ) )
+	{
+		SetBodygroup( MEDIC_GUN_GROUP, MEDIC_GUN_NEEDLE );
+	}
+
+	if (m_iHead < 0 || m_iHead >= MEDIC_HEAD_COUNT) {
+		m_iHead = RANDOM_LONG(MEDIC_HEAD_WHITE, MEDIC_HEAD_BLACK);
+	}
+
+	SetBodygroup(MEDIC_HEAD_GROUP, m_iHead);
+
+	MonsterInitDead();
 }
 
 #endif
