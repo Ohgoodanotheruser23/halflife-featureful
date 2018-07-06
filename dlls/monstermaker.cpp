@@ -72,6 +72,7 @@ public:
 
 	string_t m_customModel;
 	int m_classify;
+	int m_iPose;
 
 	int m_iMaxRandomAngleDeviation;
 	string_t m_originName;
@@ -92,6 +93,7 @@ TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 	DEFINE_FIELD( CMonsterMaker, m_fFadeChildren, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CMonsterMaker, m_customModel, FIELD_STRING ),
 	DEFINE_FIELD( CMonsterMaker, m_classify, FIELD_INTEGER ),
+	DEFINE_FIELD( CMonsterMaker, m_iPose, FIELD_INTEGER ),
 	DEFINE_FIELD( CMonsterMaker, m_iMaxRandomAngleDeviation, FIELD_INTEGER),
 	DEFINE_FIELD( CMonsterMaker, m_originName, FIELD_STRING),
 };
@@ -138,6 +140,11 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 	else if( FStrEq( pkvd->szKeyName, "classify" ) )
 	{
 		m_classify = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "pose" ) )
+	{
+		m_iPose = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -200,6 +207,8 @@ void CMonsterMaker::Precache( void )
 
 	if (!FStringNull(m_customModel))
 		PRECACHE_MODEL(STRING(m_customModel));
+	if (!FStringNull(m_gibModel))
+		PRECACHE_MODEL(STRING(m_gibModel));
 	UTIL_PrecacheOther( STRING( m_iszMonsterClassname ) );
 }
 
@@ -355,14 +364,20 @@ void CMonsterMaker::MakeMonster( void )
 	if( pev->spawnflags & SF_MONSTERMAKER_MONSTERCLIP )
 		SetBits( pevCreate->spawnflags, SF_MONSTER_HITMONSTERCLIP );
 
-	CBaseEntity* createdEnt = CBaseEntity::Instance(pent);
-	CBaseMonster* createdMonster = createdEnt->MyMonsterPointer();
+	CBaseMonster* createdMonster = GetMonsterPointer(pent);
 	if (createdMonster)
 	{
 		if (m_classify)
 			createdMonster->m_iClass = m_classify;
 		if (m_bloodColor)
 			createdMonster->m_bloodColor = m_bloodColor;
+		if (!FStringNull(m_gibModel))
+			createdMonster->m_gibModel = m_gibModel;
+		if (createdMonster->IsInitiallyDead())
+		{
+			CDeadMonster* deadMonster = (CDeadMonster*)createdMonster;
+			deadMonster->m_iPose = m_iPose;
+		}
 	}
 
 	DispatchSpawn( ENT( pevCreate ) );

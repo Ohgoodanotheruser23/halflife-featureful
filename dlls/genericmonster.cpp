@@ -23,6 +23,7 @@
 
 // For holograms, make them not solid so the player can walk through them
 #define	SF_GENERICMONSTER_NOTSOLID					4 
+#define SF_HEAD_CONTROLLER					8
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -98,7 +99,14 @@ void CGenericMonster::Spawn()
 {
 	Precache();
 
-	SET_MODEL( ENT( pev ), STRING( pev->model ) );
+	if (FStringNull(pev->model))
+	{
+		ALERT(at_console, "Spawning monster_generic without model!\n");
+	}
+	else
+	{
+		SET_MODEL( ENT( pev ), STRING( pev->model ) );
+	}
 /*
 	if( FStrEq( STRING( pev->model ), "models/player.mdl" ) )
 		UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
@@ -119,6 +127,11 @@ void CGenericMonster::Spawn()
 
 	MonsterInit();
 
+	if( pev->spawnflags & SF_HEAD_CONTROLLER )
+	{
+		m_afCapability = bits_CAP_TURN_HEAD;
+	}
+
 	if( pev->spawnflags & SF_GENERICMONSTER_NOTSOLID )
 	{
 		pev->solid = SOLID_NOT;
@@ -131,7 +144,10 @@ void CGenericMonster::Spawn()
 //=========================================================
 void CGenericMonster::Precache()
 {
-	PRECACHE_MODEL( STRING( pev->model ) );
+	if (!FStringNull(pev->model))
+		PRECACHE_MODEL( STRING( pev->model ) );
+	if (!FStringNull(m_gibModel))
+		PRECACHE_MODEL( STRING(m_gibModel) );
 }
 
 //=========================================================

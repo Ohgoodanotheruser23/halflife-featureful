@@ -244,6 +244,10 @@ void PrecacheMyModel( const char* model ) {}
 void SetMyBloodColor( int bloodColor ) {}
 int CBaseMonster::DefaultClassify() { return 0; }
 int CBaseMonster::Classify() { return 0; }
+const char* CBaseMonster::DefaultGibModel() {return 0;}
+const char* CBaseMonster::GibModel() {return 0;}
+int CBaseMonster::DefaultGibCount() {return 0;}
+int CBaseMonster::GibCount() {return 0;}
 
 int TrainSpeed( int iSpeed, int iMax ) { return 0; }
 void CBasePlayer::DeathSound( void ) { }

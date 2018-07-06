@@ -165,6 +165,7 @@
 		195 : "Alien (yellow)"
 		-1 : "Don't bleed"
 	]
+	gibmodel(studio) : "Custom gib model"
 ]
 
 @BaseClass base(Target, Targetname, RenderFields, Angles) flags(Angle) color(0 200 200) = Monster
@@ -218,7 +219,9 @@
 		12 : "Player bioweapon"
 		13 : "Alien bioweapon"
 		14 : "Race X predator"
+		15 : "Race X shock"
 	]
+	gibmodel(studio) : "Custom gib model"
 ]
 
 @BaseClass = TalkMonster
@@ -2343,6 +2346,19 @@
 		32 : "SquadLeader" : 0
 	]
 ]
+@PointClass base(DeadMonster) size(-16 -16 0, 16 16 72) studio("models/agrunt.mdl") = monster_alien_grunt_dead : "Dead Alien Grunt"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 24 =
+	[
+		24 : "dieforward"
+        26 : "diebackward"
+	]
+	pose(Choices) : "Pose" : 0 =
+	[
+		0 : "On Stomach"
+        1 : "On Back"
+	]
+]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/islave.mdl") = monster_alien_slave : "Vortigaunt"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 2 =
@@ -2396,11 +2412,19 @@
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 32 =
 	[
+		18 : "dieheadshot"
+		19 : "diesimple"
+		20 : "diebackward"
+		21 : "dieforward"
 		32 : "dead_on_stomach"
 	]
 	pose(Choices) : "Pose" : 0 =
 	[
-		0 : "On Stomach"
+		0 : "On Stomach (OpFor)"
+        1 : "On Stomach (hands forward)"
+        2 : "On Side"
+        3 : "On Back"
+        4 : "On Stomach (hands backward)"
 	]
 ]
 @PointClass base(Monster, Sequence) size(-360 -360 -172, 360 360 8) studio("models/apache.mdl") = monster_apache : "Apache" 
@@ -2680,6 +2704,7 @@
 	spawnflags(Flags) =
 	[
 		4 : "Not solid"	: 0
+		8 : "Head controller" : 0
 	]
 	model(studio) : "model"
 	body(integer) : "Body" : 0
@@ -4481,6 +4506,7 @@
 	health(integer) : "Custom health"
 	body(integer) : "Body"
 	skin(integer) : "Skin"
+	pose(integer) : "Pose (Only for dead monsters)"
 	bloodcolor(choices) : "Blood Color" : : "Blood color of monster" =
 	[
 		0 : "Default"
@@ -4504,7 +4530,9 @@
 		12 : "Player bioweapon"
 		13 : "Alien bioweapon"
 		14 : "Race X predator"
+		15 : "Race X shock"
 	]
+	gibmodel(studio) : "Custom gib model"
 ]
 
 @PointClass base(Targetname) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager"
