@@ -1006,7 +1006,7 @@ void COtis::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 void COtis::Killed( entvars_t *pevAttacker, int iGib )
 {
-	if ( GetBodygroup(1) != OTIS_BODY_GUNHOLSTERED )
+	if ( GetBodygroup(1) != OTIS_BODY_GUNHOLSTERED && npc_dropweapons.value )
 	{
 		Vector vecGunPos;
 		Vector vecGunAngles;
@@ -1015,7 +1015,7 @@ void COtis::Killed( entvars_t *pevAttacker, int iGib )
 
 		GetAttachment( 0, vecGunPos, vecGunAngles );
 		
-		CBaseEntity *pGun = DropItem( DESERT_EAGLE_DROP_NAME, vecGunPos, vecGunAngles );
+		DropItem( DESERT_EAGLE_DROP_NAME, vecGunPos, vecGunAngles );
 	}
 
 	SetUse( NULL );	

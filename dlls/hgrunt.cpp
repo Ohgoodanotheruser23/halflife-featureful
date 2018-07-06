@@ -228,7 +228,6 @@ void CHGrunt::GibMonster( void )
 	if( npc_dropweapons.value )
 	{
 		DropMyItems(TRUE);
-		DropMyItems(TRUE);
 	}
 
 	CBaseMonster::GibMonster();
@@ -260,9 +259,6 @@ void CHGrunt::DropMyItems(BOOL isGibbed)
 	}
 	if( FBitSet( pev->weapons, HGRUNT_GRENADELAUNCHER ) ) {
 		DropMyItem( "ammo_ARgrenades", isGibbed ? vecGunPos : BodyTarget( pev->origin ), vecGunAngles, isGibbed );
-		DropMyItem( "weapon_shotgun", vecGunPos, vecGunAngles, isGibbed );
-	} else if ( FBitSet( pev->weapons, HGRUNT_9MMAR ) ) {
-		DropMyItem( "weapon_9mmAR", vecGunPos, vecGunAngles, isGibbed );
 	}
 	if ( FBitSet (pev->weapons, HGRUNT_HANDGRENADE ) ) {
 		DropMyItem( "weapon_handgrenade", BodyTarget( pev->origin ), vecGunAngles, isGibbed );

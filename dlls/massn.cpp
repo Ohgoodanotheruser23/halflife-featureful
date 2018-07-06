@@ -13,6 +13,7 @@
 #include	"gamerules.h"
 #include	"hgrunt.h"
 #include	"mod_features.h"
+#include	"game.h"
 
 #if FEATURE_MASSN
 
@@ -131,7 +132,7 @@ void CMassn::Sniperrifle(void)
 //=========================================================
 void CMassn::GibMonster( void )
 {
-	if( GetBodygroup( MASSN_GUN_GROUP ) != MASSN_GUN_NONE )
+	if( npc_dropweapons.value && GetBodygroup( MASSN_GUN_GROUP ) != MASSN_GUN_NONE )
 	{
 		DropMyItems(TRUE);
 	}
