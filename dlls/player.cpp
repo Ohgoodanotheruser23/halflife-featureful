@@ -1713,27 +1713,24 @@ void CBasePlayer::DeathSound( void )
 // bitsDamageType indicates type of damage healed. 
 int CBasePlayer::TakeHealth( float flHealth, int bitsDamageType )
 {
+	const int healed = CBaseMonster::TakeHealth(flHealth, bitsDamageType);
+	RefreshMaxSpeed(this);
 #if FEATURE_MEDKIT
 	CBasePlayerWeapon* pPlayerMedkit = WeaponById(WEAPON_MEDKIT);
 	if (pPlayerMedkit) {
-		if (use_to_take.value || (flHealth == 1 && pev->health >= pev->max_health) || (pev->health < pev->max_health && pev->health + flHealth > pev->max_health) ) {
-			const int diff = (int)(pev->health + flHealth - pev->max_health);
-			if (diff > 0) {
-				int medAmmoIndex = GetAmmoIndex(pPlayerMedkit->pszAmmo1());
-				int medAmmo = AmmoInventory(medAmmoIndex);
-				if (medAmmo >= 0 && medAmmo < pPlayerMedkit->iMaxAmmo1()) {
-					m_rgAmmo[medAmmoIndex] += Q_min(diff, pPlayerMedkit->iMaxAmmo1() - medAmmo);
-					CBaseMonster::TakeHealth( flHealth, bitsDamageType );
-					RefreshMaxSpeed(this);
-					return 1;
-				}
+		const int rest = (int)flHealth - healed;
+		if (rest > 0) {
+			const int medAmmoIndex = GetAmmoIndex(pPlayerMedkit->pszAmmo1());
+			const int medAmmo = AmmoInventory(medAmmoIndex);
+			if (medAmmo >= 0 && medAmmo < pPlayerMedkit->iMaxAmmo1()) {
+				const int toAdd = Q_min(rest, pPlayerMedkit->iMaxAmmo1() - medAmmo);
+				m_rgAmmo[medAmmoIndex] += toAdd;
+				return healed + toAdd;
 			}
 		}
 	}
 #endif
-	int result = CBaseMonster::TakeHealth( flHealth, bitsDamageType );
-	RefreshMaxSpeed(this);
-	return result;
+	return healed;
 }
 
 Vector CBasePlayer::GetGunPosition()
