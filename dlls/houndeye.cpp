@@ -888,7 +888,7 @@ void CHoundeye::PrescheduleThink( void )
 Task_t tlHoundGuardPack[] =
 {
 	{ TASK_STOP_MOVING,			(float)0		},
-	{ TASK_GUARD,				(float)0		},
+	{ TASK_PLAY_SEQUENCE,		(float)ACT_GUARD		},
 };
 
 Schedule_t	slHoundGuardPack[] =
@@ -1222,6 +1222,10 @@ Schedule_t *CHoundeye::GetScheduleOfType( int Type )
 			{
 				return &slHoundSleep[0];
 			}
+			else if ( IsLeader() && !m_fAsleep && RANDOM_LONG(0, 14) < 1 )
+			{
+				return GetScheduleOfType( SCHED_GUARD );
+			}
 			else
 			{
 				return CSquadMonster::GetScheduleOfType( Type );
@@ -1356,7 +1360,7 @@ int CHoundeye::IgnoreConditions()
 	if (pev->health >= pev->max_health) {
 		iIgnore |= bits_COND_SMELL_FOOD;
 	} else {
-		if (InSquad()) {
+		if (InSquad() && !IsLeader()) {
 			// Let leader to eat first if he is injured
 			if (MySquadLeader()->pev->health < MySquadLeader()->pev->max_health) {
 				iIgnore |= bits_COND_SMELL_FOOD;

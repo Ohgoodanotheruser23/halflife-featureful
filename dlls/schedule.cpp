@@ -26,6 +26,7 @@
 #include "nodes.h"
 #include "defaultai.h"
 #include "soundent.h"
+#include "mod_features.h"
 
 extern CGraph WorldGraph;
 
@@ -251,7 +252,7 @@ void CBaseMonster::MaintainSchedule( void )
 					pNewSchedule = GetScheduleOfType( SCHED_FAIL );
 
 				// schedule was invalid because the current task failed to start or complete
-				ALERT( at_aiconsole, "Schedule Failed at %d!\n", m_iScheduleIndex );
+				ALERT( at_aiconsole, "Schedule Failed at %d! (monster: %s)\n", m_iScheduleIndex, STRING(pev->classname) );
 				ChangeSchedule( pNewSchedule );
 			}
 			else
@@ -1307,9 +1308,11 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		TaskComplete();
 		break;
 	case TASK_GET_HEALTH_FROM_FOOD:
-		//ALERT(at_console, "Eating. Current health: %f. Max health: %f\n", pev->health, pev->max_health);
+#if FEATURE_EAT_FOR_HEALTH
+		ALERT(at_aiconsole, "%s eating. Current health: %d/%d\n", STRING(pev->classname), (int)pev->health, (int)pev->max_health);
 		TakeHealth( pev->max_health * pTask->flData, DMG_GENERIC);
-		//ALERT(at_console, "Health after eating: %f\n", pev->health);
+		ALERT(at_aiconsole, "%s health after eating: %d/%d\n", STRING(pev->classname), (int)pev->health, (int)pev->max_health);
+#endif
 		TaskComplete();
 		break;
 	default:
