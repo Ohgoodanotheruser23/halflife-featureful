@@ -26,8 +26,6 @@
 #include	"weapons.h"
 #include	"soundent.h"
 
-extern DLL_GLOBAL int		g_iSkillLevel;
-
 //=========================================================
 // monster-specific schedule types
 //=========================================================
@@ -97,7 +95,7 @@ enum {
 
 static bool IsVortWounded(CBaseEntity* pEntity)
 {
-	return pEntity->pev->health < pEntity->pev->max_health / ISLAVE_MAXHEALTH_MULTIPLIER / 2;
+	return pEntity->pev->health <= pEntity->pev->max_health / 2;
 }
 
 static bool CanBeRevived(CBaseEntity* pEntity)
@@ -173,9 +171,8 @@ public:
 	CBeam* CreateSummonBeam(const Vector& vecEnd, int attachment);
 
 	float HealPower();
-	float HealSacrifice();
-	void GiveSacrifice();
-	bool CanShareHealth();
+	void SpendEnergy(float energy);
+	bool HasFreeEnergy();
 	bool CanRevive();
 	int HealOther(CBaseEntity* pEntity);
 	bool CanSpawnFamiliar();
@@ -209,6 +206,7 @@ public:
 	CBeam *m_handsBeam2;
 	
 	float m_flSpawnFamiliarTime;
+	float m_freeEnergy;
 	short m_clawStrikeNum;
 	bool m_lastAttackWasCoil;
 
@@ -236,6 +234,7 @@ TYPEDESCRIPTION	CISlave::m_SaveData[] =
 	DEFINE_FIELD( CISlave, m_hWounded, FIELD_EHANDLE ),
 	DEFINE_FIELD( CISlave, m_hWounded2, FIELD_EHANDLE ),
 	DEFINE_FIELD( CISlave, m_flSpawnFamiliarTime, FIELD_FLOAT ),
+	DEFINE_FIELD( CISlave, m_freeEnergy, FIELD_FLOAT ),
 	DEFINE_FIELD( CISlave, m_clawStrikeNum, FIELD_SHORT )
 };
 
@@ -487,7 +486,7 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 			break;
 		case ISLAVE_AE_ZAP_POWERUP:
 		{
-			// speed up attack when on hard
+			// speed up attack depending on difficulty level
 			pev->framerate = gSkillData.slaveZapRate;
 
 			UTIL_MakeAimVectors( pev->angles );
@@ -522,24 +521,27 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				if( CanBeRevived(m_hDead) )
 				{
 					m_lastAttackWasCoil = false;
-					CBaseEntity *pNew = Create( "monster_alien_slave", m_hDead->pev->origin, m_hDead->pev->angles );
 
-					if (m_hDead->pev->weapons) {
-						pNew->pev->weapons = m_hDead->pev->weapons;
+					CBaseEntity *revivedVort = m_hDead;
+					if (revivedVort) {
+						revivedVort->pev->health = 0;
+						revivedVort->Spawn();
+
+						CBaseMonster* monster = revivedVort->MyMonsterPointer();
+						if (monster) {
+							CISlave* islave = (CISlave*)monster;
+							// revived vort starts with zero energy
+							islave->m_freeEnergy = 0;
+						}
+
+						WackBeam( ISLAVE_LEFT_ARM, revivedVort );
+						WackBeam( ISLAVE_RIGHT_ARM, revivedVort );
+						m_hDead = NULL;
+						EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG( 130, 160 ) );
+
+						SpendEnergy(pev->max_health);
 					}
-					
-					pNew->pev->spawnflags = m_hDead->pev->spawnflags;
-					pNew->pev->netname = m_hDead->pev->netname;
-					
-					CBaseMonster *pNewMonster = pNew->MyMonsterPointer( );
-					//pNew->pev->spawnflags |= 1;
-					WackBeam( ISLAVE_LEFT_ARM, pNew );
-					WackBeam( ISLAVE_RIGHT_ARM, pNew );
-					UTIL_Remove( m_hDead );
-					EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG( 130, 160 ) );
-					
-					GiveSacrifice();
-					
+
 					/*
 					CBaseEntity *pEffect = Create( "test_effect", pNew->Center(), pev->angles );
 					pEffect->Use( this, this, USE_ON, 1 );
@@ -554,7 +556,7 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 			bool coilAttack = false;
 			// make coil attack on purpose to heal only if two wounded friends around
-			if ( CanShareHealth() && IsValidHealTarget(m_hWounded) && IsValidHealTarget(m_hWounded2) && 
+			if ( HasFreeEnergy() && IsValidHealTarget(m_hWounded) && IsValidHealTarget(m_hWounded2) &&
 					(pev->origin - m_hWounded->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS &&
 					(pev->origin - m_hWounded2->pev->origin).Length() <= ISLAVE_COIL_ATTACK_RADIUS) {
 				if (m_hWounded.Get() == m_hWounded2.Get()) {
@@ -648,7 +650,7 @@ BOOL CISlave::CheckRangeAttack2( float flDot, float flDist )
 		return FALSE;
 	}
 
-	return CanShareHealth() && CheckHealOrReviveTargets(flDist, true);
+	return HasFreeEnergy() && CheckHealOrReviveTargets(flDist, true);
 }
 
 BOOL CISlave::CheckHealOrReviveTargets(float flDist, bool mustSee)
@@ -797,6 +799,9 @@ void CISlave::SpawnFamiliar(const char *entityName, const Vector &origin, int hu
 					pNewMonster->SetConditions( bits_COND_NEW_ENEMY );
 					pNewMonster->m_MonsterState = MONSTERSTATE_COMBAT;
 					pNewMonster->m_IdealMonsterState = MONSTERSTATE_COMBAT;
+					if (Classify() != DefaultClassify()) {
+						pNewMonster->m_iClass = Classify();
+					}
 				}
 			}
 		}
@@ -845,9 +850,11 @@ void CISlave::Spawn()
 		pev->weapons = ISLAVE_SNARKS;
 	}
 
+	// leader starts with some energy pool
+	if (pev->spawnflags & SF_SQUADMONSTER_LEADER)
+		m_freeEnergy = pev->max_health;
+
 	MonsterInit();
-	
-	pev->max_health = pev->max_health * ISLAVE_MAXHEALTH_MULTIPLIER;
 }
 
 //=========================================================
@@ -1070,7 +1077,7 @@ Schedule_t *CISlave::GetSchedule( void )
 		break;
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
-		if ( CanShareHealth() && CheckHealOrReviveTargets()) {
+		if ( HasFreeEnergy() && CheckHealOrReviveTargets()) {
 			if (m_hDead) {
 				m_hTargetEnt = m_hDead;
 			} else if (m_hWounded) {
@@ -1100,7 +1107,7 @@ Schedule_t *CISlave::GetScheduleOfType( int Type )
 			return GetScheduleOfType( SCHED_ISLAVE_SUMMON_FAMILIAR );
 		}
 	case SCHED_CHASE_ENEMY_FAILED:
-		if ( CanShareHealth() && CheckHealOrReviveTargets() )
+		if ( HasFreeEnergy() && CheckHealOrReviveTargets() )
 		{
 			if (m_hDead) {
 				m_hTargetEnt = m_hDead;
@@ -1316,9 +1323,16 @@ void CISlave::ZapBeam( int side )
 			pEntity->TraceAttack( pev, gSkillData.slaveDmgZap, vecAim, &tr, DMG_SHOCK );
 			if (pEntity->pev->flags & (FL_CLIENT | FL_MONSTER)) {
 				//TODO: check that target is actually a living creature, not machine
-				if (TakeHealth(gSkillData.slaveDmgZap/2, DMG_GENERIC)) // give some health to vortigaunt like in Decay bonus mission
+				const float toHeal = gSkillData.slaveDmgZap;
+				const int healed = TakeHealth(toHeal, DMG_GENERIC);
+				if (healed) // give some health to vortigaunt like in Decay bonus mission
 				{
 					ALERT(at_aiconsole, "Vortigaunt gets health from enemy\n");
+				}
+				if (toHeal > healed)
+				{
+					m_freeEnergy += toHeal - healed;
+					ALERT(at_aiconsole, "Vortigaunt gets energy from enemy. Energy level: %d\n", (int)m_freeEnergy);
 				}
 			}
 		}
@@ -1466,7 +1480,7 @@ void CISlave::StartMeleeAttackGlow(int side)
 
 bool CISlave::CanUseGlowArms()
 {
-	return (pev->spawnflags & SF_SQUADMONSTER_LEADER) || (pev->health > pev->max_health / ISLAVE_MAXHEALTH_MULTIPLIER);
+	return (pev->spawnflags & SF_SQUADMONSTER_LEADER) || HasFreeEnergy();
 }
 
 Vector CISlave::HandPosition(int side)
@@ -1512,53 +1526,35 @@ void CISlave::RemoveSummonBeams()
 
 float CISlave::HealPower()
 {
-	return gSkillData.slaveDmgZap;
+	return Q_min(gSkillData.slaveDmgZap, m_freeEnergy);
 }
 
-float CISlave::HealSacrifice()
+void CISlave::SpendEnergy(float energy)
 {
-	if (pev->spawnflags & SF_SQUADMONSTER_LEADER) {
-		return 0;
-	}
-	
-	if (InSquad()) {
-		return gSkillData.slaveDmgZap / SquadCount();
-	} else {
-		//vortigaunt heals more health than loses, because friendship is magic
-		return gSkillData.slaveDmgZap / 2; 
-	}
+	// It's ok to be negative. Vort must restore power to positive values to proceed with healing or reviving.
+
+	if (pev->spawnflags & SF_SQUADMONSTER_LEADER) // leader spends less energy
+		m_freeEnergy -= energy/2;
+	else
+		m_freeEnergy -= energy;
 }
 
-void CISlave::GiveSacrifice()
+bool CISlave::HasFreeEnergy()
 {
-	if (CanShareHealth()) {
-		pev->health -= HealSacrifice();
-	}
-}
-
-bool CISlave::CanShareHealth()
-{
-	return pev->health >= pev->max_health / ISLAVE_MAXHEALTH_MULTIPLIER + HealSacrifice();
+	return m_freeEnergy > 0;
 }
 
 bool CISlave::CanRevive()
 {
-	return m_hDead != 0 && (CanShareHealth());
+	return m_hDead != 0 && HasFreeEnergy();
 }
 
 int CISlave::HealOther(CBaseEntity *pEntity)
 {
 	int result = 0;
 	if (pEntity->IsAlive()) {
-		if (CanShareHealth()) {
-			result = pEntity->TakeHealth(HealPower(), DMG_GENERIC);
-			if (result) {
-				GiveSacrifice();
-			}
-		} else {
-			// vort was damaged to this moment, still give some health to friend
-			result = pEntity->TakeHealth(HealPower() / 2, DMG_GENERIC);
-		}
+		result = pEntity->TakeHealth(HealPower(), DMG_GENERIC);
+		SpendEnergy(result);
 	}
 	return result;
 }
