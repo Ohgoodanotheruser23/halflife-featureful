@@ -202,6 +202,10 @@ int gmsgPlayMP3 = 0;
 int gmsgItems = 0;
 int gmsgWallPuffs = 0;
 
+int gmsgAddFollower = 0;
+int gmsgUpdateFollower = 0;
+int gmsgRemoveFollower = 0;
+
 int gmsgStatusText = 0;
 int gmsgStatusValue = 0;
 
@@ -223,6 +227,26 @@ int gmsgMovementState = 0;
 int gmsgUseSound = 0;
 
 int gmsgCaption = 0;
+
+static CFollowingMonster* CanRecruit(CBaseEntity* pFriend, CBasePlayer* player)
+{
+	if (!pFriend->IsFullyAlive())
+		return NULL;
+	CBaseMonster *pMonster = pFriend->MyMonsterPointer();
+	if( !pMonster || pMonster->m_MonsterState == MONSTERSTATE_SCRIPT || pMonster->m_MonsterState == MONSTERSTATE_PRONE )
+		return NULL;
+	const int rel = pMonster->IRelationship(player);
+	if ( rel >= R_DL || rel == R_FR ) {
+		return NULL;
+	}
+	CFollowingMonster* pFollowingMonster = pMonster->MyFollowingMonsterPointer();
+	if (pFollowingMonster)
+	{
+		if (pFollowingMonster->ShouldDeclineFollowing())
+			return NULL;
+	}
+	return pFollowingMonster;
+}
 
 void LinkUserMessages( void )
 {
@@ -273,6 +297,10 @@ void LinkUserMessages( void )
 	gmsgPlayMP3 = REG_USER_MSG( "PlayMP3", -1 );
 	gmsgItems = REG_USER_MSG( "Items", 4 );
 	gmsgWallPuffs = REG_USER_MSG( "WallPuffs", 8 );
+
+	gmsgAddFollower = REG_USER_MSG("AddFollower", 9);
+	gmsgUpdateFollower = REG_USER_MSG("UpdFollower", 6);
+	gmsgRemoveFollower = REG_USER_MSG("DelFollower", 4);
 
 	gmsgStatusText = REG_USER_MSG( "StatusText", -1 );
 	gmsgStatusValue = REG_USER_MSG( "StatusValue", 3 );
@@ -3234,6 +3262,46 @@ void CBasePlayer::PostThink()
 	if( !IsAlive() )
 		goto pt_end;
 
+	if (!m_bRecruitsChecked)
+	{
+		m_bRecruitsChecked = true;
+		if (gmsgRemoveFollower)
+		{
+			// Clear followers
+			MESSAGE_BEGIN( MSG_ONE, gmsgRemoveFollower, NULL, pev );
+				WRITE_LONG(0);
+			MESSAGE_END();
+		}
+		if (gmsgAddFollower)
+		{
+			for (int j=0; j<ARRAYSIZE(CTalkMonster::m_szFriends); ++j)
+			{
+				if (!CTalkMonster::m_szFriends[j].name[0])
+					break;
+				if (!CTalkMonster::m_szFriends[j].canFollow)
+					continue;
+				CBaseEntity *pFriend = NULL;
+				const char* pszFriend = CTalkMonster::m_szFriends[j].name;
+				while( ( pFriend = UTIL_FindEntityByClassname( pFriend, pszFriend ) ) )
+				{
+					CFollowingMonster *pMonster = CanRecruit(pFriend, this);
+					if (!pMonster)
+						continue;
+					CTalkMonster* talkMonster = (CTalkMonster*)pMonster;
+					if (talkMonster->IsFollowingPlayer(this))
+					{
+						MESSAGE_BEGIN( MSG_ONE, gmsgAddFollower, NULL, pev );
+							WRITE_BYTE( talkMonster->FollowerType() );
+							WRITE_LONG(talkMonster->entindex());
+							WRITE_SHORT((int)ceil(talkMonster->pev->health));
+							WRITE_SHORT((int)ceil(talkMonster->pev->max_health));
+						MESSAGE_END();
+					}
+				}
+			}
+		}
+	}
+
 	// Handle Tank controlling
 	if( m_pTank != 0 )
 	{
@@ -5732,6 +5800,86 @@ void CBasePlayer::SetLongjump(bool enabled)
 void CBasePlayer::SetLoopedMp3(string_t loopedMp3)
 {
 	m_loopedMp3 = loopedMp3;
+}
+
+void CBasePlayer::RecruitSoldiers()
+{
+	const float maxRange = 500;
+	Vector vecStart = pev->origin;
+	vecStart.z = pev->absmax.z;
+
+	bool saySentence = true;
+	for (int i=0; i<ARRAYSIZE(CTalkMonster::m_szFriends); ++i)
+	{
+		if (!CTalkMonster::m_szFriends[i].name[0])
+			break;
+		if (CTalkMonster::m_szFriends[i].category != TALK_FRIEND_SOLDIER)
+			continue;
+		CBaseEntity *pFriend = NULL;
+		while( ( pFriend = UTIL_FindEntityByClassname( pFriend, CTalkMonster::m_szFriends[i].name ) ) )
+		{
+			CFollowingMonster *pMonster = CanRecruit(pFriend, this); pFriend->MyMonsterPointer();
+			if (!pMonster)
+				continue;
+			Vector vecCheck = pFriend->pev->origin;
+			vecCheck.z = pFriend->pev->absmax.z;
+			if ((vecCheck - vecStart).Length() <= maxRange)
+			{
+				TraceResult tr;
+				UTIL_TraceLine( vecStart, vecCheck, ignore_monsters, ENT( pev ), &tr );
+				if( tr.flFraction == 1.0 )
+				{
+					CFollowingMonster* talkMonster = pMonster->MyFollowingMonsterPointer();
+					if (talkMonster && talkMonster->CanFollow())
+					{
+						int result = talkMonster->DoFollowerUse(this, saySentence, USE_ON);
+						if (result == FOLLOWING_STARTED)
+						{
+							saySentence = false;
+						}
+						else if (result == FOLLOWING_NOTREADY)
+						{
+							talkMonster->DoFollowerUse(this, false, USE_ON, true);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void CBasePlayer::DissolveSoldiers()
+{
+	bool saySentence = true;
+	for (int i=0; i<ARRAYSIZE(CTalkMonster::m_szFriends); ++i)
+	{
+		if (!CTalkMonster::m_szFriends[i].name[0])
+			break;
+		if (CTalkMonster::m_szFriends[i].category != TALK_FRIEND_SOLDIER)
+			continue;
+		CBaseEntity *pFriend = NULL;
+		const char* pszFriend = CTalkMonster::m_szFriends[i].name;
+		while( ( pFriend = UTIL_FindEntityByClassname( pFriend, pszFriend ) ) )
+		{
+			CBaseMonster *pMonster = pFriend->MyMonsterPointer();
+			if (pMonster)
+			{
+				CFollowingMonster* talkMonster = pMonster->MyFollowingMonsterPointer();
+				if (talkMonster && !talkMonster->ShouldDeclineFollowing())
+				{
+					int result = talkMonster->DoFollowerUse(this, saySentence, USE_OFF);
+					if (result == FOLLOWING_STOPPED)
+					{
+						saySentence = false;
+					}
+					else if (result == FOLLOWING_NOTREADY)
+					{
+						talkMonster->DoFollowerUse(this, false, USE_OFF, true);
+					}
+				}
+			}
+		}
+	}
 }
 
 //=========================================================

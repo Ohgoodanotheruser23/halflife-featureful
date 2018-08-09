@@ -382,6 +382,8 @@ public:
 	int GetCustomDecalFrames( void );
 
 	void SetMovementMode();
+	void RecruitSoldiers();
+	void DissolveSoldiers();
 
 	float m_flStartCharge;
 	float m_flAmmoStartCharge;
@@ -437,6 +439,8 @@ public:
 
 	bool m_bSentMessages;
 	bool m_bSentSpriteIndices;
+
+	bool m_bRecruitsChecked;
 
 #if FEATURE_ROPE
 	bool m_bIsClimbing;

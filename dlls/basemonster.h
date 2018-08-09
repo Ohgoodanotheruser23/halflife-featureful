@@ -376,6 +376,8 @@ public:
 	void SetScriptedMoveGoal(CBaseEntity* pEntity);
 	CBaseEntity* ScriptedMoveGoal();
 
+	virtual void PossessedByScript() {}
+
 	Schedule_t* StartPatrol( CBaseEntity* path );
 	CBaseEntity* DropItem ( const char *pszItemName, const Vector &vecPos, const Vector &vecAng );// drop an item.
 

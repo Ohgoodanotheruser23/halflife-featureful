@@ -200,6 +200,7 @@ public:
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	int DefaultToleranceLevel() { return TOLERANCE_HIGH; }
 	int IRelationship ( CBaseEntity *pTarget );
+	virtual int FollowerType() {return FOLLOWER_TYPE_GRUNT;}
 
 	void SetHead(int head);
 
@@ -294,6 +295,7 @@ public:
 	void StopFollowing( BOOL clearSchedule, bool saySentence = true );
 	void ClearFollowedPlayer();
 	bool SetAnswerQuestion(CTalkMonster *pSpeaker);
+	virtual int FollowerType() {return FOLLOWER_TYPE_MEDIC;}
 
 	void DropMyItems(BOOL isGibbed);
 
@@ -2936,6 +2938,7 @@ public:
 	void UpdateOnRemove();
 	void TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	void PrescheduleThink();
+	virtual int FollowerType() {return FOLLOWER_TYPE_TORCH;}
 
 	void DropMyItems(BOOL isGibbed);
 

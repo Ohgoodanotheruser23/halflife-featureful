@@ -328,6 +328,8 @@ void CBasePlayer::AddPointsToTeam( int score, BOOL bAllowNegativeScore ) { }
 void CBasePlayer::SetMovementMode() {}
 void CBasePlayer::InsertWeaponById( CBasePlayerWeapon* pItem ) {}
 CBasePlayerWeapon* CBasePlayer::WeaponById( int id ) {return 0;}
+void CBasePlayer::RecruitSoldiers() {}
+void CBasePlayer::DissolveSoldiers() {}
 
 void ClearMultiDamage( void ) { }
 void ApplyMultiDamage( entvars_t *pevInflictor, entvars_t *pevAttacker ) { }

@@ -134,6 +134,8 @@ public:
 
 	const char* DefaultSentenceGroup(int group);
 
+	int FollowerType() { return FOLLOWER_TYPE_SCIENTIST; }
+
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
@@ -1173,8 +1175,18 @@ BOOL CScientist::CanHeal( void )
 	return TRUE;
 }
 
+extern int gmsgRemoveFollower;
+
 void CScientist::StartFollowingHealTarget(CBaseEntity *pTarget)
 {
+	CBaseEntity* player = FollowedPlayer();
+	if (gmsgRemoveFollower && FollowerType() && player != 0)
+	{
+		MESSAGE_BEGIN( MSG_ONE, gmsgRemoveFollower, NULL, player->pev );
+			WRITE_LONG(entindex());
+		MESSAGE_END();
+	}
+
 	StopScript();
 
 	m_hTargetEnt = pTarget;

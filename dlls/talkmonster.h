@@ -112,6 +112,16 @@ enum
 #define	SPEAK_DISREGARD_ENEMY (1 << 0)
 #define	SPEAK_DISREGARD_OTHER_SPEAKING (1 << 1)
 
+enum
+{
+	FOLLOWER_TYPE_NONE = 0,
+	FOLLOWER_TYPE_GRUNT,
+	FOLLOWER_TYPE_MEDIC,
+	FOLLOWER_TYPE_TORCH,
+	FOLLOWER_TYPE_SCIENTIST,
+	FOLLOWER_TYPE_SECURITY_GUARD,
+};
+
 class CTalkMonster : public CFollowingMonster
 {
 public:
@@ -126,6 +136,7 @@ public:
 	bool			CanBePushed(CBaseEntity *pPusher);
 	void			Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	void			OnDying();
+	void			UpdateOnRemove();
 	void			StartMonster( void );
 	int				IRelationship ( CBaseEntity *pTarget );
 	bool			IsFriendWithPlayerBeforeProvoked();
@@ -170,6 +181,7 @@ public:
 
 	// Following related
 	virtual void	StartFollowing( CBaseEntity *pLeader, bool saySentence = true );
+	virtual void	StopFollowing( BOOL clearSchedule, bool saySentence = true );
 	void			LimitFollowers( CBaseEntity *pPlayer, int maxFollowers );
 	virtual int		TalkFriendCategory() { return TALK_FRIEND_PERSONNEL; }
 	bool	InScriptedSentence();
@@ -205,6 +217,10 @@ public:
 	static const char* GetRedefinedSentence(string_t sentence);
 
 	void ReportAIState(ALERT_TYPE level);
+
+	virtual int FollowerType() { return FOLLOWER_TYPE_NONE; }
+	void PossessedByScript();
+	void SendUpdateToPlayer();
 
 	struct TalkFriend
 	{
