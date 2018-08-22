@@ -151,7 +151,7 @@ void COsprey::Spawn( void )
 	UTIL_SetSize( pev, Vector( -400, -400, -100 ), Vector( 400, 400, 32 ) );
 	UTIL_SetOrigin( pev, pev->origin );
 
-	pev->flags |= FL_MONSTER;
+	pev->flags |= FL_MONSTER | FL_FLY;
 	pev->takedamage = DAMAGE_YES;
 	m_flRightHealth = 200;
 	m_flLeftHealth = 200;
