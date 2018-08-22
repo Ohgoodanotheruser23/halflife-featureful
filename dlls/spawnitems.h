@@ -7,7 +7,7 @@ struct SpawnItem
 	float value;
 };
 
-extern SpawnItem gSpawnItems[22];
+extern SpawnItem gSpawnItems[39];
 
 int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsLeft, const float *playerNeeds);
 int CountSpawnItems(const int items[], int maxCount);

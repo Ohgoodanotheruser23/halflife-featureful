@@ -28,14 +28,23 @@
 #include	"soundent.h"
 #include	"mod_features.h"
 
-#define NUM_SCIENTIST_HEADS		4 // four heads available for scientist model
+#define		NUM_SCIENTIST_HEADS		4 // four heads available for scientist model, used when randoming a scientist head
+
+// used for body change when scientist uses the needle
+#if FEATURE_OPFOR
+#define		NUM_SCIENTIST_BODIES		6
+#else
+#define		NUM_SCIENTIST_BODIES 4
+#endif
 
 enum
 {
 	HEAD_GLASSES = 0,
 	HEAD_EINSTEIN = 1,
 	HEAD_LUTHER = 2,
-	HEAD_SLICK = 3
+	HEAD_SLICK = 3,
+	HEAD_EINSTEIN_WITH_BOOK = 4,
+	HEAD_SLICK_WITH_STICK = 5
 };
 
 enum
@@ -82,7 +91,6 @@ public:
 	void StartTask( Task_t *pTask );
 	int ObjectCaps( void ) { return CTalkMonster::ObjectCaps() | FCAP_IMPULSE_USE; }
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
-	virtual int FriendNumber( int arrayNumber );
 	void SetActivity( Activity newActivity );
 	Activity GetStoppedActivity( void );
 	int ISoundMask( void );
@@ -623,13 +631,13 @@ void CScientist::HandleAnimEvent( MonsterEvent_t *pEvent )
 	case SCIENTIST_AE_NEEDLEON:
 		{
 			int oldBody = pev->body;
-			pev->body = ( oldBody % NUM_SCIENTIST_HEADS ) + NUM_SCIENTIST_HEADS * 1;
+			pev->body = ( oldBody % NUM_SCIENTIST_BODIES ) + NUM_SCIENTIST_BODIES * 1;
 		}
 		break;
 	case SCIENTIST_AE_NEEDLEOFF:
 		{
 			int oldBody = pev->body;
-			pev->body = ( oldBody % NUM_SCIENTIST_HEADS ) + NUM_SCIENTIST_HEADS * 0;
+			pev->body = ( oldBody % NUM_SCIENTIST_BODIES ) + NUM_SCIENTIST_BODIES * 0;
 		}
 		break;
 	default:
@@ -744,12 +752,14 @@ void CScientist::TalkInit()
 		m_voicePitch = 105;
 		break;	//glasses
 	case HEAD_EINSTEIN:
+	case HEAD_EINSTEIN_WITH_BOOK:
 		m_voicePitch = 100;
 		break;	//einstein
 	case HEAD_LUTHER:
 		m_voicePitch = 95;
 		break;	//luther
 	case HEAD_SLICK:
+	case HEAD_SLICK_WITH_STICK:
 		m_voicePitch = 100;
 		break;	//slick
 	}
@@ -1084,15 +1094,6 @@ void CScientist::Heal( void )
 	m_healTime = gpGlobals->time + 60;
 }
 
-int CScientist::FriendNumber( int arrayNumber )
-{
-	static int array[TLK_CFRIENDS] = { 1, 3, 4, 5, 0, 2, 8, 6, 7 };
-	if( arrayNumber < TLK_CFRIENDS )
-		return array[arrayNumber];
-	return arrayNumber;
-}
-
-
 //=========================================================
 // Dead Scientist PROP
 //=========================================================
@@ -1151,7 +1152,6 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual void SetAnswerQuestion( CTalkMonster *pSpeaker );
-	int FriendNumber( int arrayNumber );
 
 	virtual int SizeForGrapple() { return GRAPPLE_FIXED; }
 
@@ -1249,14 +1249,6 @@ void CSittingScientist::Precache( void )
 int CSittingScientist::DefaultClassify( void )
 {
 	return CLASS_HUMAN_PASSIVE;
-}
-
-int CSittingScientist::FriendNumber( int arrayNumber )
-{
-	static int array[TLK_CFRIENDS] = { 4, 5, 1, 3, 0, 2, 8, 7, 6 };
-	if( arrayNumber < TLK_CFRIENDS )
-		return array[arrayNumber];
-	return arrayNumber;
 }
 
 //=========================================================
@@ -1418,7 +1410,7 @@ int CSittingScientist::FIdleSpeak( void )
 	return FALSE;
 }
 
-#ifdef FEATURE_CLEANSUIT_SCIENTIST
+#if FEATURE_CLEANSUIT_SCIENTIST
 class CCleansuitScientist : public CScientist
 {
 public:
@@ -1457,9 +1449,9 @@ public:
 	int	DefaultClassify ( void ) { return	CLASS_HUMAN_PASSIVE; }
 
 	const char* getPos(int pos) const;
-	static const char *m_szPoses[7];
+	static const char *m_szPoses[9];
 };
-const char *CDeadCleansuitScientist::m_szPoses[] = { "lying_on_back", "lying_on_stomach", "dead_sitting", "dead_hang", "dead_table1", "dead_table2", "dead_table3" };
+const char *CDeadCleansuitScientist::m_szPoses[] = { "lying_on_back", "lying_on_stomach", "dead_sitting", "dead_hang", "dead_table1", "dead_table2", "dead_table3", "scientist_deadpose1", "dead_against_wall" };
 
 const char* CDeadCleansuitScientist::getPos(int pos) const
 {

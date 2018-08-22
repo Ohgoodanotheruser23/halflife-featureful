@@ -96,11 +96,11 @@ public:
 	BOOL StartControl( CBasePlayer* pController );
 	void StopControl( void );
 	void ControllerPostFrame( void );
-	
+	virtual void StopFire( void ){}
+
 	inline bool HaveBullets() { return m_bulletCount != 0; }
 	void RemoveBullet();
 	void OnEmptyGun();
-	virtual void StopFire( void ){}
 
 protected:
 	CBasePlayer* m_pController;
@@ -761,6 +761,9 @@ public:
 };
 
 LINK_ENTITY_TO_CLASS( func_tank, CFuncTankGun )
+#if FEATURE_OPFOR
+LINK_ENTITY_TO_CLASS( func_tank_of, CFuncTankGun )
+#endif
 
 void CFuncTankGun::Fire( const Vector &barrelEnd, const Vector &forward, entvars_t *pevAttacker )
 {
@@ -827,6 +830,9 @@ private:
 };
 
 LINK_ENTITY_TO_CLASS( func_tanklaser, CFuncTankLaser )
+#if FEATURE_OPFOR
+LINK_ENTITY_TO_CLASS( func_tanklaser_of, CFuncTankLaser )
+#endif
 
 TYPEDESCRIPTION	CFuncTankLaser::m_SaveData[] =
 {
@@ -986,6 +992,9 @@ public:
 };
 
 LINK_ENTITY_TO_CLASS( func_tankmortar, CFuncTankMortar )
+#if FEATURE_OPFOR
+LINK_ENTITY_TO_CLASS( func_tankmortar_of, CFuncTankMortar )
+#endif
 
 void CFuncTankMortar::KeyValue( KeyValueData *pkvd )
 {
@@ -1047,6 +1056,9 @@ public:
 };
 
 LINK_ENTITY_TO_CLASS( func_tankcontrols, CFuncTankControls )
+#if FEATURE_OPFOR
+LINK_ENTITY_TO_CLASS( func_tankcontrols_of, CFuncTankControls )
+#endif
 
 TYPEDESCRIPTION	CFuncTankControls::m_SaveData[] =
 {

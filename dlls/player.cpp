@@ -1012,6 +1012,9 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 #if FEATURE_NIGHTVISION
 	DEFINE_FIELD(CBasePlayer, m_fNVGisON, FIELD_BOOLEAN),
 #endif
+#if FEATURE_ROPE
+	DEFINE_FIELD(CBasePlayer, m_pRope, FIELD_CLASSPTR),
+#endif
 
 	//DEFINE_FIELD( CBasePlayer, m_fDeadTime, FIELD_FLOAT ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_fGameHUDInitialized, FIELD_INTEGER ), // only used in multiplayer games
@@ -2843,6 +2846,8 @@ void CBasePlayer::StartObserver( Vector vecPosition, Vector vecViewAngle )
 //
 #define	PLAYER_SEARCH_RADIUS	(float)64
 
+extern cvar_t use_through_walls;
+
 void CBasePlayer::PlayerUse( void )
 {
 	if( IsObserver() )
@@ -2908,6 +2913,16 @@ void CBasePlayer::PlayerUse( void )
 			//vecLOS = UTIL_ClampVectorToBox( vecLOS, pObject->pev->size * 0.5 );
 			vecLOS = vecLOS.Normalize();
 
+			if (!use_through_walls.value)
+			{
+				TraceResult tr;
+				UTIL_TraceLine(pev->origin, pObject->Center(), dont_ignore_monsters, edict(), &tr);
+				if (tr.flFraction < 1.0f && tr.pHit != pObject->edict())
+				{
+					continue;
+				}
+			}
+
 			flDot = DotProduct( vecLOS , gpGlobals->v_forward );
 			if( flDot > flMaxDot )
 			{
@@ -2924,9 +2939,6 @@ void CBasePlayer::PlayerUse( void )
 	// Found an object
 	if( pObject )
 	{
-		//ALERT(at_console, "Trying to use %s\n", STRING(pObject->pev->classname));
-
-		//!!!UNDONE: traceline here to prevent USEing buttons through walls			
 		int caps = pObject->ObjectCaps();
 
 		if( m_afButtonPressed & IN_USE )
@@ -3272,6 +3284,137 @@ void CBasePlayer::PreThink( void )
 		pev->flags |= FL_ONTRAIN;
 	else 
 		pev->flags &= ~FL_ONTRAIN;
+
+#if FEATURE_ROPE
+	//We're on a rope. - Solokiller
+	if( (m_afPhysicsFlags & PFLAG_ONROPE) && m_pRope )
+	{
+		pev->velocity = g_vecZero;
+
+		Vector vecAttachPos = m_pRope->GetAttachedObjectsPosition();
+
+		pev->origin = vecAttachPos;
+
+		Vector vecForce;
+
+		/*
+		//This causes sideways acceleration that doesn't occur in Op4. - Solokiller
+		if( pev->button & IN_DUCK )
+		{
+			vecForce.x = gpGlobals->v_right.x;
+			vecForce.y = gpGlobals->v_right.y;
+			vecForce.z = 0;
+			m_pRope->ApplyForceFromPlayer( vecForce );
+		}
+		if( pev->button & IN_JUMP )
+		{
+			vecForce.x = -gpGlobals->v_right.x;
+			vecForce.y = -gpGlobals->v_right.y;
+			vecForce.z = 0;
+			m_pRope->ApplyForceFromPlayer( vecForce );
+		}
+		*/
+
+		//Determine if any force should be applied to the rope, or if we should move around. - Solokiller
+		if( pev->button & ( IN_BACK | IN_FORWARD ) )
+		{
+			if( ( gpGlobals->v_forward.x * gpGlobals->v_forward.x +
+				gpGlobals->v_forward.y * gpGlobals->v_forward.y -
+				gpGlobals->v_forward.z * gpGlobals->v_forward.z ) <= 0.0 )
+			{
+				if( m_bIsClimbing )
+				{
+					const float flDelta = gpGlobals->time - m_flLastClimbTime;
+					m_flLastClimbTime = gpGlobals->time;
+					if( pev->button & IN_FORWARD )
+					{
+						if( gpGlobals->v_forward.z < 0.0 )
+						{
+							if( !m_pRope->MoveDown( flDelta ) )
+							{
+								//Let go of the rope, detach. - Solokiller
+								pev->movetype = MOVETYPE_WALK;
+								pev->solid = SOLID_SLIDEBOX;
+
+								m_afPhysicsFlags &= ~PFLAG_ONROPE;
+								m_pRope->DetachObject();
+								m_pRope = NULL;
+								m_bIsClimbing = false;
+							}
+						}
+						else
+						{
+							m_pRope->MoveUp( flDelta );
+						}
+					}
+					if( pev->button & IN_BACK )
+					{
+						if( gpGlobals->v_forward.z < 0.0 )
+						{
+							m_pRope->MoveUp( flDelta );
+						}
+						else if( !m_pRope->MoveDown( flDelta ) )
+						{
+							//Let go of the rope, detach. - Solokiller
+							pev->movetype = MOVETYPE_WALK;
+							pev->solid = SOLID_SLIDEBOX;
+							m_afPhysicsFlags &= ~PFLAG_ONROPE;
+							m_pRope->DetachObject();
+							m_pRope = NULL;
+							m_bIsClimbing = false;
+						}
+					}
+				}
+				else
+				{
+					m_bIsClimbing = true;
+					m_flLastClimbTime = gpGlobals->time;
+				}
+			}
+			else
+			{
+				vecForce.x = gpGlobals->v_forward.x;
+				vecForce.y = gpGlobals->v_forward.y;
+				vecForce.z = 0.0;
+				if( pev->button & IN_BACK )
+				{
+					vecForce.x = -gpGlobals->v_forward.x;
+					vecForce.y = -gpGlobals->v_forward.y;
+					vecForce.z = 0;
+				}
+				m_pRope->ApplyForceFromPlayer( vecForce );
+				m_bIsClimbing = false;
+			}
+		}
+		else
+		{
+			m_bIsClimbing = false;
+		}
+
+		if( m_afButtonPressed & IN_JUMP )
+		{
+			//We've jumped off the rope, give us some momentum - Solokiller
+			pev->movetype = MOVETYPE_WALK;
+			pev->solid = SOLID_SLIDEBOX;
+			this->m_afPhysicsFlags &= ~PFLAG_ONROPE;
+
+			Vector vecDir = gpGlobals->v_up * 165.0 + gpGlobals->v_forward * 150.0;
+
+			Vector vecVelocity = m_pRope->GetAttachedObjectsVelocity() * 2;
+
+			vecVelocity = vecVelocity.Normalize();
+
+			vecVelocity = vecVelocity * 200;
+
+			pev->velocity = vecVelocity + vecDir;
+
+			m_pRope->DetachObject();
+			m_pRope = NULL;
+			m_bIsClimbing = false;
+		}
+		return;
+	}
+#endif
 
 	// Train speed control
 	if( m_afPhysicsFlags & PFLAG_ONTRAIN )
@@ -3695,6 +3838,10 @@ void CBasePlayer::CheckSuitUpdate()
 	// if in range of radiation source, ping geiger counter
 	UpdateGeigerCounter();
 
+#if FEATURE_SUIT_NO_SOUNDS
+	return;
+#endif
+
 	if( g_pGameRules->IsMultiplayer() )
 	{
 		// don't bother updating HEV voice in multiplayer.
@@ -3752,6 +3899,10 @@ void CBasePlayer::SetSuitUpdate( const char *name, int fgroup, int iNoRepeatTime
 	// Ignore suit updates if no suit
 	if( !( pev->weapons & ( 1 << WEAPON_SUIT ) ) )
 		return;
+
+#if FEATURE_SUIT_NO_SOUNDS
+	return;
+#endif
 
 	if( g_pGameRules->IsMultiplayer() )
 	{
@@ -6250,6 +6401,7 @@ void CDeadHEV :: Spawn( void )
 	MonsterInitDead();
 }
 
+#define STRIP_SUIT 1
 class CStripWeapons : public CPointEntity
 {
 public:
@@ -6273,8 +6425,12 @@ void CStripWeapons::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 		pPlayer = (CBasePlayer *)CBaseEntity::Instance( g_engfuncs.pfnPEntityOfEntIndex( 1 ) );
 	}
 
-	if( pPlayer )
-		pPlayer->RemoveAllItems( FALSE );
+	if( pPlayer ) {
+		const bool removeSuit = (pev->spawnflags & STRIP_SUIT) ? true : false;
+		pPlayer->RemoveAllItems( removeSuit );
+		if (removeSuit)
+			pPlayer->FlashlightTurnOff();
+	}
 }
 
 class CRevertSaved : public CPointEntity

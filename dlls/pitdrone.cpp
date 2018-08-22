@@ -24,33 +24,31 @@
 #include	"mod_features.h"
 
 #if FEATURE_PITDRONE
+
+/*
+ * In Opposing Force pitdrone spawned via monstermaker did not have spikes
+ * That's probably a bug, because number of spikes is set in level editor,
+ * so spawned pitdrones always had 0 spikes.
+ * Having no spikes after spawn also prevented spike reloading.
+ * Those who want to keep original Opposing Force behavior can set these constants to zero.
+ */
+#define FEATURE_PITDRONE_SPAWN_WITH_SPIKES 1
+#define FEATURE_PITDRONE_ALWAYS_CAN_RELOAD 1
+
 int		iPitDroneSpitSprite;
 //=========================================================
 // CPitDrone's spit projectile
 //=========================================================
 class CPitDroneSpit : public CBaseMonster
 {
+public:
 	void Spawn(void);
 	void Precache(void);
 	int  Classify(void);
-	void EXPORT Touch(CBaseEntity *pOther);
-
-	Vector m_vecForward;
-
-public:
-	static CPitDroneSpit *SpitCreate(void);
+	void Touch(CBaseEntity *pOther);
 };
 
 LINK_ENTITY_TO_CLASS(pitdronespit, CPitDroneSpit)
-
-CPitDroneSpit *CPitDroneSpit::SpitCreate(void)
-{
-	// Create a new entity with CShock private data
-	CPitDroneSpit *pSpit = GetClassPtr((CPitDroneSpit *)NULL);
-	pSpit->Spawn();
-
-	return pSpit;
-}
 
 int	CPitDroneSpit::Classify(void)
 {
@@ -72,9 +70,6 @@ void CPitDroneSpit::Spawn(void)
 
 	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
 	UTIL_SetOrigin(pev, pev->origin);
-	UTIL_MakeAimVectors(pev->angles);
-	m_vecForward = gpGlobals->v_forward;
-	SetTouch(&CPitDroneSpit::Touch);
 }
 
 void CPitDroneSpit::Precache(void)
@@ -180,6 +175,7 @@ enum
 
 class CPitDrone : public CBaseMonster
 {
+public:
 	void Spawn(void);
 	void Precache(void);
 	void HandleAnimEvent(MonsterEvent_t *pEvent);
@@ -516,7 +512,12 @@ void CPitDrone::HandleAnimEvent(MonsterEvent_t *pEvent)
 		vecSpitOffset = (gpGlobals->v_right * 4 + gpGlobals->v_forward * 37 + gpGlobals->v_up * 40);
 		vecSpitOffset = (pev->origin + vecSpitOffset);
 		//vecSpitDir = ((m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs) - vecSpitOffset).Normalize();
-		vecSpitDir = (m_hEnemy->BodyTarget(pev->origin) - vecSpitOffset).Normalize();
+		Vector vecEnemyPosition;
+		if (m_hEnemy != 0)
+			vecEnemyPosition = m_hEnemy->BodyTarget(pev->origin);
+		else
+			vecEnemyPosition = m_vecEnemyLKP;
+		vecSpitDir = (vecEnemyPosition - vecSpitOffset).Normalize();
 
 		vecSpitDir.x += RANDOM_FLOAT(-0.01, 0.01);
 		vecSpitDir.y += RANDOM_FLOAT(-0.01, 0.01);

@@ -172,6 +172,7 @@ typedef enum
 		TASK_FORGET,
 		TASK_WAIT_FOR_MOVEMENT,			// wait until MovementIsComplete()
 		TASK_GET_HEALTH_FROM_FOOD,
+		TASK_CHECK_FIRE, // check friendly fire
 		LAST_COMMON_TASK // LEAVE THIS AT THE BOTTOM!! (sjb)
 } SHARED_TASKS;
 
@@ -275,6 +276,7 @@ struct WayPoint_t
 #define bits_COND_SEE_CLIENT			( 1 << 21) // see a client
 #define bits_COND_SEE_NEMESIS			( 1 << 22) // see my nemesis
 
+#define bits_COND_NOFIRE				( 1 << 27) // no friendly fire
 #define bits_COND_SPECIAL1				( 1 << 28) // Defined by individual monster
 #define bits_COND_SPECIAL2				( 1 << 29) // Defined by individual monster
 

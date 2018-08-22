@@ -25,6 +25,27 @@
 #include "cbase.h"
 #include "trains.h"
 #include "saverestore.h"
+#include "soundradius.h"
+
+float SoundAttenuation(short soundRadius)
+{
+	switch (soundRadius) {
+	case SOUND_RADIUS_SMALL:
+		return ATTN_IDLE;
+	case SOUND_RADIUS_MEDIUM:
+		return ATTN_STATIC;
+	case SOUND_RADIUS_LARGE:
+		return ATTN_NORM;
+	case SOUND_RADIUS_HUGE:
+		return 0.5;
+	case SOUND_RADIUS_ENORMOUS:
+		return 0.25;
+	case SOUND_RADIUS_EVERYWHERE:
+		return ATTN_NONE;
+	default:
+		return ATTN_NORM;
+	}
+}
 
 static void PlatSpawnInsideTrigger(entvars_t* pevPlatform);
 
@@ -47,6 +68,12 @@ public:
 	BYTE m_bMoveSnd;			// sound a plat makes while moving
 	BYTE m_bStopSnd;			// sound a plat makes when it stops
 	float m_volume;			// Sound volume
+	short m_soundRadius;
+
+	float SoundAttenuation() const
+	{
+		return ::SoundAttenuation(m_soundRadius);
+	}
 };
 
 TYPEDESCRIPTION	CBasePlatTrain::m_SaveData[] =
@@ -54,6 +81,7 @@ TYPEDESCRIPTION	CBasePlatTrain::m_SaveData[] =
 	DEFINE_FIELD( CBasePlatTrain, m_bMoveSnd, FIELD_CHARACTER ),
 	DEFINE_FIELD( CBasePlatTrain, m_bStopSnd, FIELD_CHARACTER ),
 	DEFINE_FIELD( CBasePlatTrain, m_volume, FIELD_FLOAT ),
+	DEFINE_FIELD( CBasePlatTrain, m_soundRadius, FIELD_SHORT ),
 };
 
 IMPLEMENT_SAVERESTORE( CBasePlatTrain, CBaseToggle )
@@ -93,6 +121,11 @@ void CBasePlatTrain::KeyValue( KeyValueData *pkvd )
 	else if( FStrEq( pkvd->szKeyName, "volume" ) )
 	{
 		m_volume = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "soundradius" ) )
+	{
+		m_soundRadius = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -416,7 +449,7 @@ void CFuncPlat::PlatUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 void CFuncPlat::GoDown( void )
 {
 	if( pev->noiseMovement )
-		EMIT_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noiseMovement ), m_volume, ATTN_NORM );
+		EMIT_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noiseMovement ), m_volume, SoundAttenuation() );
 
 	ASSERT( m_toggle_state == TS_AT_TOP || m_toggle_state == TS_GOING_UP );
 	m_toggle_state = TS_GOING_DOWN;
@@ -433,7 +466,7 @@ void CFuncPlat::HitBottom( void )
 		STOP_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noiseMovement ) );
 
 	if( pev->noiseStopMoving )
-		EMIT_SOUND( ENT( pev ), CHAN_WEAPON, STRING( pev->noiseStopMoving ), m_volume, ATTN_NORM );
+		EMIT_SOUND( ENT( pev ), CHAN_WEAPON, STRING( pev->noiseStopMoving ), m_volume, SoundAttenuation() );
 
 	ASSERT( m_toggle_state == TS_GOING_DOWN );
 	m_toggle_state = TS_AT_BOTTOM;
@@ -445,7 +478,7 @@ void CFuncPlat::HitBottom( void )
 void CFuncPlat::GoUp( void )
 {
 	if( pev->noiseMovement )
-		EMIT_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noiseMovement ), m_volume, ATTN_NORM );
+		EMIT_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noiseMovement ), m_volume, SoundAttenuation() );
 
 	ASSERT( m_toggle_state == TS_AT_BOTTOM || m_toggle_state == TS_GOING_DOWN );
 	m_toggle_state = TS_GOING_UP;
@@ -462,7 +495,7 @@ void CFuncPlat::HitTop( void )
 		STOP_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noiseMovement ) );
 
 	if( pev->noiseStopMoving )
-		EMIT_SOUND( ENT( pev ), CHAN_WEAPON, STRING( pev->noiseStopMoving ), m_volume, ATTN_NORM );
+		EMIT_SOUND( ENT( pev ), CHAN_WEAPON, STRING( pev->noiseStopMoving ), m_volume, SoundAttenuation() );
 
 	ASSERT( m_toggle_state == TS_GOING_UP );
 	m_toggle_state = TS_AT_TOP;
@@ -610,11 +643,15 @@ public:
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void KeyValue( KeyValueData *pkvd );
 
-	void EXPORT Wait( void );
-	void EXPORT Next( void );
+	void EXPORT ThinkWait( void );
+	void EXPORT ThinkNext( void );
+	virtual void Wait( void );
+	virtual void Next( void );
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
+
+	virtual void TrainThink() {}
 
 	entvars_t *m_pevCurrentTarget;
 	int m_sounds;
@@ -670,8 +707,13 @@ void CFuncTrain::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 		pev->nextthink = 0;
 		pev->velocity = g_vecZero;
 		if( pev->noiseStopMoving )
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noiseStopMoving ), m_volume, ATTN_NORM );
+			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noiseStopMoving ), m_volume, SoundAttenuation() );
 	}
+}
+
+void CFuncTrain::ThinkWait()
+{
+	Wait();
 }
 
 void CFuncTrain::Wait( void )
@@ -693,7 +735,7 @@ void CFuncTrain::Wait( void )
 		if( pev->noiseMovement )
 			STOP_SOUND( edict(), CHAN_STATIC, STRING( pev->noiseMovement ) );
 		if( pev->noiseStopMoving )
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noiseStopMoving ), m_volume, ATTN_NORM );
+			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noiseStopMoving ), m_volume, SoundAttenuation() );
 		pev->nextthink = 0;
 		return;
 	}
@@ -706,7 +748,7 @@ void CFuncTrain::Wait( void )
 		if( pev->noiseMovement )
 			STOP_SOUND( edict(), CHAN_STATIC, STRING( pev->noiseMovement ) );
 		if( pev->noiseStopMoving )
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noiseStopMoving ), m_volume, ATTN_NORM );
+			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noiseStopMoving ), m_volume, SoundAttenuation() );
 		SetThink( &CFuncTrain::Next );
 	}
 	else
@@ -731,7 +773,7 @@ void CFuncTrain::Next( void )
 			STOP_SOUND( edict(), CHAN_STATIC, STRING( pev->noiseMovement ) );
 		// Play stop sound
 		if( pev->noiseStopMoving )
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noiseStopMoving ), m_volume, ATTN_NORM );
+			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noiseStopMoving ), m_volume, SoundAttenuation() );
 		return;
 	}
 
@@ -768,13 +810,18 @@ void CFuncTrain::Next( void )
 		if( pev->noiseMovement )
 		{
 			STOP_SOUND( edict(), CHAN_STATIC, STRING( pev->noiseMovement ) );
-			EMIT_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noiseMovement ), m_volume, ATTN_NORM );
+			EMIT_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noiseMovement ), m_volume, SoundAttenuation() );
 		}
 
 		ClearBits( pev->effects, EF_NOINTERP );
-		SetMoveDone( &CFuncTrain::Wait );
+		SetMoveDone( &CFuncTrain::ThinkWait );
 		LinearMove( pTarg->pev->origin - ( pev->mins + pev->maxs )* 0.5, pev->speed );
 	}
+}
+
+void CFuncTrain::ThinkNext()
+{
+	Next();
 }
 
 void CFuncTrain::Activate( void )
@@ -793,7 +840,7 @@ void CFuncTrain::Activate( void )
 		if( FStringNull( pev->targetname ) )
 		{	// not triggered, so start immediately
 			pev->nextthink = pev->ltime + 0.1;
-			SetThink( &CFuncTrain::Next );
+			SetThink( &CFuncTrain::ThinkNext );
 		}
 		else
 			pev->spawnflags |= SF_TRAIN_WAIT_RETRIGGER;
@@ -883,7 +930,7 @@ void CFuncTrain::OverrideReset( void )
 		}
 		else	// Keep moving for 0.1 secs, then find path_corner again and restart
 		{
-			SetThink( &CFuncTrain::Next );
+			SetThink( &CFuncTrain::ThinkNext );
 			pev->nextthink = pev->ltime + 0.1;
 		}
 	}
@@ -2223,13 +2270,46 @@ void CGunTarget::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 	}
 }
 
+class CTrainThinker : public CBaseEntity
+{
+	void Spawn()
+	{
+		pev->effects = EF_NODRAW;
+		pev->nextthink = gpGlobals->time;
+		if (pev->owner)
+			SetThink( &CTrainThinker::TrainThink );
+		else
+			SetThink( &CBaseEntity::SUB_Remove );
+	}
+	void EXPORT TrainThink()
+	{
+		if (pev->owner)
+		{
+			CBaseEntity* owner = CBaseEntity::Instance(pev->owner);
+			if (owner)
+			{
+				CFuncTrain* train = (CFuncTrain*)owner;
+				train->TrainThink();
+				pev->nextthink = gpGlobals->time + 0.1;
+			}
+			else
+				SetThink( &CBaseEntity::SUB_Remove );
+		}
+	}
+};
+
+LINK_ENTITY_TO_CLASS(trainthinker, CTrainThinker)
+
 class CSpriteTrain : public CFuncTrain
 {
 public:
 
 	void Spawn( void );
 	void Precache( void );
+	void Animate( float frames );
+	void TrainThink();
 	float m_maxFrame;
+	float m_lastTime;
 
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -2240,6 +2320,7 @@ public:
 TYPEDESCRIPTION	CSpriteTrain::m_SaveData[] =
 {
 	DEFINE_FIELD( CSpriteTrain, m_maxFrame, FIELD_FLOAT ),
+	DEFINE_FIELD( CSpriteTrain, m_lastTime, FIELD_TIME ),
 };
 
 IMPLEMENT_SAVERESTORE( CSpriteTrain, CFuncTrain )
@@ -2264,11 +2345,15 @@ void CSpriteTrain::Spawn(void)
 	if( pev->dmg == 0 )
 		pev->dmg = 2;
 
-	pev->rendermode = 5;
-	pev->renderamt = 255;
+	if (!pev->rendermode)
+		pev->rendermode = kRenderTransAdd;
+	if (!pev->renderamt)
+		pev->renderamt = 255;
 	m_maxFrame = (float) MODEL_FRAMES( pev->modelindex ) - 1;
-	if( m_maxFrame > 0 )
-		pev->frame = fmod( pev->frame, m_maxFrame );
+	m_lastTime = gpGlobals->time;
+	pev->frame = 0;
+
+	Create("trainthinker", pev->origin, pev->angles, edict());
 
 	UTIL_SetOrigin( pev, pev->origin );
 	m_activated = FALSE;
@@ -2278,4 +2363,114 @@ void CSpriteTrain::Spawn(void)
 void CSpriteTrain::Precache(void)
 {
 	PRECACHE_MODEL( STRING( pev->model ) );
+}
+
+void CSpriteTrain::Animate( float frames )
+{
+	if( m_maxFrame > 0 )
+		pev->frame = fmod( pev->frame + frames, m_maxFrame );
+}
+
+void CSpriteTrain::TrainThink()
+{
+	if( pev->framerate && m_maxFrame > 1.0 )
+	{
+		Animate( pev->framerate * ( gpGlobals->time - m_lastTime ) );
+		m_lastTime = gpGlobals->time;
+	}
+}
+
+class CModelTrain : public CFuncTrain
+{
+public:
+	void Spawn( void );
+	void Precache( void );
+	void AdvanceAnimation(void);
+	void Next( void );
+	void TrainThink();
+};
+
+LINK_ENTITY_TO_CLASS(env_modeltrain, CModelTrain)
+
+void CModelTrain::Spawn( void )
+{
+	Precache();
+	if( pev->speed == 0 )
+		pev->speed = 100;
+
+	if( FStringNull(pev->target) )
+		ALERT( at_console, "FuncTrain with no target" );
+
+	if( pev->dmg == 0 )
+		pev->dmg = 2;
+
+	pev->movetype = MOVETYPE_PUSH;
+
+	pev->solid = SOLID_BBOX;
+
+	if (FStringNull(pev->model))
+	{
+		ALERT(at_console, "Spawning env_modeltrain without model!\n");
+	}
+	else
+	{
+		SET_MODEL( ENT( pev ), STRING( pev->model ) );
+	}
+	UTIL_SetSize( pev, pev->mins, pev->maxs );
+	UTIL_SetOrigin( pev, pev->origin );
+
+	m_activated = FALSE;
+	if( m_volume == 0 )
+		m_volume = 0.85;
+	if (!pev->noiseMovement)
+		m_volume = 0;
+	pev->sequence = 0;
+	ResetSequenceInfo();
+
+	Create("trainthinker", pev->origin, pev->angles, edict());
+}
+
+void CModelTrain::Precache(void)
+{
+	if (!FStringNull(pev->model))
+		PRECACHE_MODEL( STRING( pev->model ) );
+	if (!FStringNull(pev->noiseMovement))
+		PRECACHE_SOUND( STRING(pev->noiseMovement) );
+}
+
+void CModelTrain::AdvanceAnimation(void)
+{
+	// Advance frames and dispatch events.
+	StudioFrameAdvance();
+	DispatchAnimEvents();
+
+	// Restart sequence
+	if (m_fSequenceFinished)
+	{
+		pev->frame = 0;
+		ResetSequenceInfo();
+
+		if (!m_fSequenceLoops)
+		{
+			m_fSequenceFinished = TRUE;
+			return;
+		}
+		else
+		{
+			pev->frame = 0;
+			ResetSequenceInfo();
+		}
+	}
+}
+
+void CModelTrain::Next( void )
+{
+	CFuncTrain::Next();
+	if (m_pevCurrentTarget)
+		pev->angles = UTIL_VecToAngles(m_pevCurrentTarget->origin - pev->origin);
+}
+
+void CModelTrain::TrainThink()
+{
+	AdvanceAnimation();
 }

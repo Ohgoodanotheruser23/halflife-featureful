@@ -21,6 +21,7 @@
 #include "player.h"
 #include "gamerules.h"
 #include "shake.h"
+#include "displacerball.h"
 
 #if FEATURE_DISPLACER
 
@@ -33,36 +34,6 @@ LINK_ENTITY_TO_CLASS(info_displacer_earth_target, CPointEntity)
 
 int iPortalSprite = 0;
 int iRingSprite = 0;
-//=========================================================
-// Displacement field
-//=========================================================
-class CDisplacerBall : public CBaseEntity
-{
-public:
-	void Spawn( void );
-
-	static void Shoot(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, Vector vecAngles);
-	static void SelfCreate(entvars_t *pevOwner, Vector vecStart);
-
-	void Touch(CBaseEntity *pOther);
-	void EXPORT ExplodeThink( void );
-	void EXPORT KillThink( void );
-	void Circle( void );
-
-	virtual int		Save(CSave &save);
-	virtual int		Restore(CRestore &restore);
-	static	TYPEDESCRIPTION m_SaveData[];
-
-	CBeam* m_pBeam[8];
-
-	void EXPORT FlyThink( void );
-	void ClearBeams( void );
-	void ArmBeam( int iSide );
-
-	int m_iBeams;
-
-	CBaseEntity *pRemoveEnt;
-};
 
 LINK_ENTITY_TO_CLASS(displacer_ball, CDisplacerBall)
 
@@ -172,9 +143,9 @@ void CDisplacerBall::Shoot(entvars_t *pevOwner, Vector vecStart, Vector vecVeloc
 void CDisplacerBall::SelfCreate(entvars_t *pevOwner,Vector vecStart)
 {
 	CDisplacerBall *pSelf = GetClassPtr((CDisplacerBall *)NULL);
+	UTIL_SetOrigin(pSelf->pev, vecStart);
 	pSelf->Spawn();
 	pSelf->ClearBeams();
-	UTIL_SetOrigin(pSelf->pev, vecStart);
 
 	pSelf->pev->owner = ENT(pevOwner);
 	pSelf->Circle();
@@ -291,7 +262,7 @@ void CDisplacerBall::ExplodeThink( void )
 
 	UTIL_Remove( this );
 
-	::RadiusDamage( pev->origin, pev, pevOwner, 250, 300, CLASS_NONE, DMG_ENERGYBEAM );
+	::RadiusDamage( pev->origin, pev, pevOwner, gSkillData.plrDmgDisplacer, gSkillData.plrDisplacerRadius, CLASS_NONE, DMG_ENERGYBEAM );
 }
 
 void CDisplacerBall::ClearBeams( void )
@@ -326,8 +297,13 @@ int CDisplacer::GetItemInfo(ItemInfo *p)
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iFlags = 0;
+#if FEATURE_OPFOR
+	p->iSlot = 5;
+	p->iPosition = 1;
+#else
 	p->iSlot = 1;
 	p->iPosition = 3;
+#endif
 	p->iId = m_iId = WEAPON_DISPLACER;
 	p->iWeight = DISPLACER_WEIGHT;
 

@@ -82,11 +82,13 @@ int CKnife::AddToPlayer( CBasePlayer *pPlayer )
 
 BOOL CKnife::Deploy()
 {
+	m_iSwingMode = 0;
 	return DefaultDeploy("models/v_knife.mdl", "models/p_knife.mdl", KNIFE_DRAW, "crowbar");
 }
 
 void CKnife::Holster(int skiplocal /* = 0 */)
 {
+	m_iSwingMode = 0;
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
 	SendWeaponAnim(KNIFE_HOLSTER);
 }
@@ -111,7 +113,7 @@ void CKnife::SecondaryAttack()
 	}
 	m_iSwingMode = 1;
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.3;
-	m_flNextSecondaryAttack = GetNextAttackDelay(0.1);
+	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.1;
 }
 
 void CKnife::Smack()
@@ -168,7 +170,7 @@ int CKnife::Swing(int fFirst)
 		{
 			// miss
 			m_flNextPrimaryAttack = GetNextAttackDelay(0.5);
-			m_flNextSecondaryAttack = GetNextAttackDelay(0.5);
+			m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5;
 			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 5.0;
 			// player "shoot" animation
 			m_pPlayer->SetAnimation(PLAYER_ATTACK1);
@@ -179,13 +181,13 @@ int CKnife::Swing(int fFirst)
 		switch (((m_iSwing++) % 2) + 1)
 		{
 		case 0:
-			SendWeaponAnim(KNIFE_ATTACK1); break;
+			SendWeaponAnim(KNIFE_ATTACK1);
 			break;
 		case 1:
-			SendWeaponAnim(KNIFE_ATTACK2HIT); break;
+			SendWeaponAnim(KNIFE_ATTACK2HIT);
 			break;
 		case 2:
-			SendWeaponAnim(KNIFE_ATTACK3HIT); break;
+			SendWeaponAnim(KNIFE_ATTACK3HIT);
 			break;
 		}
 
@@ -282,7 +284,7 @@ int CKnife::Swing(int fFirst)
 		pev->nextthink = UTIL_WeaponTimeBase() + 0.2;
 #endif
 		m_flNextPrimaryAttack = GetNextAttackDelay(0.25);
-		m_flNextSecondaryAttack = GetNextAttackDelay(0.25);
+		m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.25;
 	}
 
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 5.0;

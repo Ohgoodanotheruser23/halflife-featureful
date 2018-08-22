@@ -196,7 +196,11 @@ public:
 // the default amount of ammo that comes with each gun when it spawns
 #define GLOCK_DEFAULT_GIVE			17
 #define PYTHON_DEFAULT_GIVE			6
+#if FEATURE_OPFOR
+#define MP5_DEFAULT_GIVE			50
+#else
 #define MP5_DEFAULT_GIVE			25
+#endif
 #define MP5_DEFAULT_AMMO			25
 #define MP5_M203_DEFAULT_GIVE		0
 #define SHOTGUN_DEFAULT_GIVE		12
@@ -1309,7 +1313,13 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
-	int iItemSlot(void) { return 3; }
+	int iItemSlot(void) {
+#if FEATURE_OPFOR
+		return 6;
+#else
+		return 3;
+#endif
+	}
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 
@@ -1402,7 +1412,15 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void ) { return 2; }
+	int iItemSlot( void )
+	{
+#if FEATURE_OPFOR
+		return 6;
+#else
+		return 2;
+#endif
+	}
+
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );
 	void PrimaryAttack( void );
@@ -1446,7 +1464,15 @@ class CShockrifle : public CHgun
 public:
 	void Spawn(void);
 	void Precache(void);
-	int iItemSlot(void) { return 4; }
+	int iItemSlot(void)
+	{
+#if FEATURE_OPFOR
+		return 7;
+#else
+		return 4;
+#endif
+	}
+
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 
@@ -1547,7 +1573,15 @@ public:
 
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot() { return 2; }
+	int iItemSlot()
+	{
+#if FEATURE_OPFOR
+		return 7;
+#else
+		return 2;
+#endif
+	}
+
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );
 

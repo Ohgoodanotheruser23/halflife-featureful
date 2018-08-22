@@ -1022,15 +1022,14 @@ int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 
 			MakeIdealYaw( m_vecEnemyLKP );
 
-			// add pain to the conditions 
-			// !!!HACKHACK - fudged for now. Do we want to have a virtual function to determine what is light and 
-			// heavy damage per monster class?
+			// add pain to the conditions
 			if( flDamage > 0 )
 			{
 				SetConditions( bits_COND_LIGHT_DAMAGE );
 			}
 
-			if( flDamage >= 20 )
+			const float heavyDamageValue = Q_min(60, Q_max(20, pev->max_health/3));
+			if( flDamage >= heavyDamageValue )
 			{
 				SetConditions( bits_COND_HEAVY_DAMAGE );
 			}
@@ -1644,15 +1643,21 @@ Vector CBaseEntity::FireBulletsPlayer( ULONG cShots, Vector vecSrc, Vector vecDi
 			case BULLET_PLAYER_357:
 				pEntity->TraceAttack( pevAttacker, gSkillData.plrDmg357, vecDir, &tr, DMG_BULLET );
 				break;
+#if FEATURE_M249
 			case BULLET_PLAYER_556:
 				pEntity->TraceAttack( pevAttacker, gSkillData.plrDmg556, vecDir, &tr, DMG_BULLET );
 				break;
+#endif
+#if FEATURE_SNIPERRIFLE
 			case BULLET_PLAYER_762:
 				pEntity->TraceAttack( pevAttacker, gSkillData.plrDmg762, vecDir, &tr, DMG_BULLET );
 				break;
+#endif
+#if FEATURE_DESERT_EAGLE
 			case BULLET_PLAYER_EAGLE:
 				pEntity->TraceAttack( pevAttacker, gSkillData.plrDmgEagle, vecDir, &tr, DMG_BULLET );
 				break;
+#endif
 			case BULLET_NONE: // FIX
 				pEntity->TraceAttack( pevAttacker, 50, vecDir, &tr, DMG_CLUB );
 				TEXTURETYPE_PlaySound( &tr, vecSrc, vecEnd, iBulletType );

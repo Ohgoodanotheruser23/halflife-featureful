@@ -30,13 +30,14 @@ add_definitions(-DCLIENT_WEAPONS)
 if(NOT MSVC)
 	add_compile_options(-fno-exceptions) # GCC/Clang flag
 	add_compile_options(-Wno-invalid-offsetof) # GCC/Clang flag
+	add_compile_options(-fvisibility=hidden) # GCC/Clang flag
 	add_definitions(-D_LINUX) # It seems enough for all non-Win32 systems
 	add_definitions(-Dstricmp=strcasecmp -Dstrnicmp=strncasecmp -D_snprintf=snprintf -D_vsnprintf=vsnprintf )
 else()
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 endif()
 
-set (SVDLL_SOURCES 
+set (SVDLL_SOURCES
 	agrunt.cpp
 	airtank.cpp
 	aflock.cpp
@@ -59,6 +60,7 @@ set (SVDLL_SOURCES
 	defaultai.cpp
 	displacer.cpp
 	doors.cpp
+	drillsergeant.cpp
 	eagle.cpp
 	effects.cpp
 	egon.cpp
@@ -72,6 +74,7 @@ set (SVDLL_SOURCES
 	gargantua.cpp
 	gauss.cpp
 	genericmonster.cpp
+	geneworm.cpp
 	ggrenade.cpp
 	globals.cpp
 	glock.cpp
@@ -109,19 +112,23 @@ set (SVDLL_SOURCES
 	multiplay_gamerules.cpp
 	nihilanth.cpp
 	nodes.cpp
+	nuclearbomb.cpp
 	observer.cpp
 	op4mortar.cpp
 	osprey.cpp
 	pathcorner.cpp
 	pipewrench.cpp
 	pitdrone.cpp
+	pitworm.cpp
 	plane.cpp
 	plats.cpp
 	player.cpp
 	playermonster.cpp
 	python.cpp
 	rat.cpp
+	recruit.cpp
 	roach.cpp
+	ropes.cpp
 	rpg.cpp
 	satchel.cpp
 	schedule.cpp
@@ -161,7 +168,11 @@ set (SVDLL_SOURCES
 	../pm_shared/pm_shared.c
 	../game_shared/tex_materials.c
 )
-	
+
+if(NOT MSVC)
+	set_source_files_properties(ropes.cpp PROPERTIES COMPILE_FLAGS -O0)
+endif()
+
 include_directories (. wpn_shared ../common ../engine ../pm_shared ../game_shared ../public)
 
 if(USE_VOICEMGR)

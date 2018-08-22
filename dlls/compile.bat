@@ -30,6 +30,7 @@ set SOURCES=agrunt.cpp^
 	defaultai.cpp^
 	displacer.cpp^
 	doors.cpp^
+	drillsergeant.cpp^
 	eagle.cpp^
 	effects.cpp^
 	egon.cpp^
@@ -43,6 +44,7 @@ set SOURCES=agrunt.cpp^
 	gargantua.cpp^
 	gauss.cpp^
 	genericmonster.cpp^
+	geneworm.cpp^
 	ggrenade.cpp^
 	globals.cpp^
 	glock.cpp^
@@ -80,19 +82,23 @@ set SOURCES=agrunt.cpp^
 	multiplay_gamerules.cpp^
 	nihilanth.cpp^
 	nodes.cpp^
+	nuclearbomb.cpp^
 	observer.cpp^
 	op4mortar.cpp^
 	osprey.cpp^
 	pathcorner.cpp^
 	pipewrench.cpp^
 	pitdrone.cpp^
+	pitworm.cpp^
 	plane.cpp^
 	plats.cpp^
 	player.cpp^
 	playermonster.cpp^
 	python.cpp^
 	rat.cpp^
+	recruit.cpp^
 	roach.cpp^
+	ropes.cpp^
 	rpg.cpp^
 	satchel.cpp^
 	schedule.cpp^

@@ -194,6 +194,7 @@
 		256: "Pre-Disaster" 	: 0
 		512: "Fade Corpse"	: 0
 	]
+	scale(string) : "Scale (1.0 = normal size)"
 	health(string) : "Custom Health"
 	model(studio) : "Custom Model"
 	bloodcolor(choices) : "Blood Color" : : "Blood color of monster" =
@@ -220,6 +221,7 @@
 		13 : "Alien bioweapon"
 		14 : "Race X predator"
 		15 : "Race X shock"
+		16 : "Opfor ally"
 	]
 	gibmodel(studio) : "Custom gib model"
 ]
@@ -228,7 +230,7 @@
 [
 	UseSentence(String) : "Use Sentence"
 	UnUseSentence(String) : "Un-Use Sentence"
-	suspicious(choices) : "Suspicious" : 0 =
+	suspicious(choices) : "Suspicious" =
 	[
 		0 : "No"
 		1 : "Yes"
@@ -326,6 +328,23 @@
 		19: "Satchel Charge"
 		20: "Snark"
 		21: "Hornet Gun"
+		22: "Crowbar"
+		23: "Pipewrench"
+		24: "Sniperrifle"
+		25: "Sniperrifle ammo"
+		26: "Knife"
+		27: "M249 Squad Automatic Weapon"
+		28: "Penguin"
+		29: "556 Ammo Box"
+		30: "Sporelauncher"
+		31: "Displacer"
+		32: "9mm Box"
+		//33: "Uzi"
+		//34: "Uzi akimbo"
+		35: "Desert Eagle"
+		36: "Barnacle Grapple"
+		37: "Medkit (portable)"
+		38: "HEV Suit"
 	]
 	explodemagnitude(integer) : "Explode Magnitude (0=none)" : 0
 	spawnitem1(choices) : "Spawn On Break 1" : 0 =
@@ -580,6 +599,13 @@
 		7: "Gen. Containment"
 		8: "Maintenance area"
 	]
+	soundradius(choices) : "Sound radius" : 0 =
+	[
+		0: "Default"
+		1: "Huge"
+		2: "Enormous"
+		3: "Play Everywhere"
+	]
 	_minlight(string) : "Minimum light level"
 ]
 
@@ -659,6 +685,13 @@
 		8: "quick stop"
 	]
 	volume(string) : "Sound Volume 0.0 - 1.0" : "0.85"
+	soundradius(choices) : "Sound radius" : 0 =
+	[
+		0: "Default (large)"
+		1: "Huge"
+		2: "Enormous"
+		3: "Play Everywhere"
+	]
 ]
 
 @BaseClass base(Targetname, RenderFields, Global, PlatSounds) = Trackchange
@@ -698,6 +731,17 @@
 		2: "No Clients" : 0
 		4: "Pushables": 0
 	]
+]
+
+@BaseClass base(Targetname) = Recharger
+[
+	TriggerOnEmpty(target_destination) : "Trigger On Empty"
+	TriggerOnRecharged(target_destination) : "Trigger On Recharged"
+	TriggerOnFirstUse(target_destination) : "Trigger On First Use"
+	noise(sound) : "Charging sound"
+	noise1(sound) : "Deny sound"
+	noise2(sound) : "Start charging sound"
+	noise3(sound) : "Recharge sound"
 ]
 
 //
@@ -1014,6 +1058,25 @@
 	]
 ]
 
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_blowercannon : "Blower Cannon"
+[
+    delay(string) : "Delay" : "0"
+    zoffset(integer) : "Z Offset" : 0
+    target(string) : "Target" : ""
+    weaptype(choices) :"Weapon Type" : 1 =
+    [
+        1: "Spore (Rocket)"
+        2: "Spore (Grenade)"
+        3: "Shock Beam"
+        4: "Displacer Ball"
+    ]
+    firetype(choices) :"Fire Type" : 1 =
+    [
+        1: "Toggle On/Off"
+        2: "Fire When Triggered"
+    ]
+]
+
 @SolidClass base(Targetname) = env_bubbles : "Bubble Volume"
 [
 	density(integer) : "Bubble density" : 2
@@ -1140,6 +1203,36 @@
 	]
 ]
 
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_electrified_wire : "Electrified Wire"
+[
+  segments(integer) : "Segments" : 16
+  sparkfrequency(integer) : "Spark Frequency" : 3
+  bodysparkfrequency(integer) : "Body Spark Frequency" : 3
+  lightningfrequency(integer) : "Lightning Frequency" : 3
+  xforce(integer) : "X Force" : 80000
+  yforce(integer) : "Y Force" : 80000
+  zforce(integer) : "Z Force" : 80000
+  disable(choices) :"Disable Use" : 0 =
+  [
+    0: "Not Disabled"
+    1: "Disabled"
+  ]
+  endingmodel(studio) : "Ending Model" : "models/wire_copper16.mdl"
+  bodymodel(studio) : "Body Model" : "models/wire_black16.mdl"
+]
+
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_rope : "Rope"
+[
+  segments(integer) : "Segments" : 16
+  disable(choices) :"Disable Use" : 0 =
+  [
+    0: "Not Disabled"
+    1: "Disabled"
+  ]
+  endingmodel(studio) : "Ending Model" : "models/rope16.mdl"
+  bodymodel(studio) : "Body Model" : "models/rope16.mdl"
+]
+
 @PointClass base(Targetname) = env_shake : "Screen Shake"
 [
 	spawnflags(flags) =
@@ -1228,7 +1321,7 @@
 [
 	framerate(string) : "Framerate" : "10.0"
 	model(sprite) : "Sprite Name" : "sprites/glow01.spr"
-	scale(string) : "Scale" : ""
+	scale(string) : "Scale"
 	spawnflags(flags) =
 	[
 		1: "Start on" : 0
@@ -1236,32 +1329,53 @@
 	]
 ]
 
-@PointClass sprite() base(Targetname) size(-16 -16 -16, 16 16 16) color(0 128 255)= env_spritetrain : "Sprite Train"
+@PointClass studio() base(Targetname) size(-16 -16 -16, 16 16 16) color(0 128 255)= env_modeltrain : "Sprite Train"
 [
-  target(target_source) : "First stop target"
-  model(sprite) : "Sprite Name" : "sprites/glow01.spr"
-  speed(integer) : "Speed (units per second)" : 64
-  scale(string) : "Sprite Scale"
+	target(target_source) : "First stop target"
+	model(studio) : "Model"
+	speed(integer) : "Speed (units per second)" : 64
+	scale(string) : "Model Scale"
+	noise(sound) : "Move Sound"
+	volume(string) : "Sound Volume 0.0 - 1.0" : "0.85"
+	soundradius(choices) : "Sound radius" : 0 =
+	[
+		0: "Default (large)"
+		1: "Huge"
+		2: "Enormous"
+		3: "Play Everywhere"
+	]
+]
+
+@PointClass sprite() base(Targetname, RenderFields) size(-16 -16 -16, 16 16 16) color(0 128 255)= env_spritetrain : "Sprite Train"
+[
+	target(target_source) : "First stop target"
+	model(sprite) : "Sprite Name" : "sprites/glow01.spr"
+	speed(integer) : "Speed (units per second)" : 64
+	scale(string) : "Sprite Scale"
+	framerate(string) : "Framerate" : "10.0"
 ]
 
 @PointClass sprite() base(Targetname, RenderFields) size(-16 -16 -16, 16 16 16) = env_warpball : "Xen Warpball"
 [
 	model(sprite) : "Sprite Name" : "sprites/fexplo1.spr"
-	amplitude(string) : "Shake Amplitude 0-16" : ""
-	duration(string) : "Shake Duration (seconds)" : ""
-	frequency(string) : "Shake Frequency (0.1 = jerk, 255.0 = rumble)" : ""
+	amplitude(string) : "Shake Amplitude 0-16"
+	duration(string) : "Shake Duration (seconds)"
+	frequency(string) : "Shake Frequency (0.1 = jerk, 255.0 = rumble)"
 	radius(integer) : "Shake and Beam Radius" : 192
-	scale(string) : "Sprite Scale" : ""
-	warp_target(target_destination) : "Warp target" : ""
-	damage_delay(string) : "Damage delay" : ""
-	beamcolor(color255) : "Beam color" : ""
+	scale(string) : "Sprite Scale"
+	warp_target(target_destination) : "Warp target"
+	damage_delay(string) : "Damage delay"
+	beamcolor(color255) : "Beam color"
 	beamcount(integer) : "Max beam count" : 20
 	spawnflags(flags) =
 	[
 		1: "Remove on fire" : 0
 		2: "Kill center" : 0
 		4: "No screen shake" : 1
+		8: "Dynamic light" : 0
 	]
+	noise1(sound) : "Custom sound 1"
+	noise2(sound) : "Custom sound 2"
 ]
 
 @SolidClass base(Breakable, RenderFields, ZHLT) = func_breakable : "Breakable Object" 
@@ -1360,6 +1474,7 @@
 		8: "Maintenance area"
 	]
 	_minlight(string) : "Minimum light level"
+	target_on_locked(target_destination) : "Target on locked" : : "Trigger if used when locked"
 ]
 
 @SolidClass base(Global,RenderFields, Targetname, Angles, ZHLT) = func_conveyor : "Conveyor Belt"
@@ -1401,7 +1516,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Global, RenderFields, ZHLT) = func_healthcharger: "Wall health recharger"
+@SolidClass base(Global, Recharger, RenderFields, ZHLT) = func_healthcharger: "Wall health recharger"
 [
 	// dmdelay(integer) : "Deathmatch recharge delay" : 0
 	_minlight(string) : "Minimum light level"
@@ -1497,7 +1612,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Global,RenderFields, ZHLT) = func_recharge: "Battery recharger"
+@SolidClass base(Global, Recharger, RenderFields, ZHLT) = func_recharge: "Battery recharger"
 [
 	// dmdelay(integer) : "Deathmatch recharge delay" : 0
 	_minlight(string) : "Minimum light level"
@@ -1680,6 +1795,13 @@
 	dmg(integer) : "Damage on crush" : 0
 	skin(integer) : "Contents" : 0
 	volume(string) : "Sound Volume 0.0 - 1.0" : "0.85"
+	soundradius(choices) : "Sound radius" : 0 =
+	[
+		0: "Default (large)"
+		1: "Huge"
+		2: "Enormous"
+		3: "Play Everywhere"
+	]
 	spawnflags(flags) =
 	[
 		8 : "Not solid" : 0
@@ -2115,6 +2237,7 @@
 	sequencename(string) : "Sequence Name" : "idle"
 	skin(integer) : "Skin" : 0
 	body(integer) : "Body" : 0
+	scale(string) : "Scale (1.0 = normal size)"
 ]
 
 @PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/health_charger_body.mdl") = item_healthcharger : "Wall Health Kit" []
@@ -2126,6 +2249,12 @@
     locked_target(string) : "Locked target"
     unlockersname(string) : "Unlockers name"
     reset_delay(integer) : "Reset delay"
+]
+
+@PointClass base(Weapon, Targetx) size(-16 -16 0, 16 16 36) studio("models/nuke_case.mdl") = item_nuclearbomb : "Nuclear Bomb"
+[
+	initialstate(integer) : "Initial State" : 0
+	wait(integer) : "Wait" : 1
 ]
 
 //
@@ -2348,15 +2477,15 @@
 ]
 @PointClass base(DeadMonster) size(-16 -16 0, 16 16 72) studio("models/agrunt.mdl") = monster_alien_grunt_dead : "Dead Alien Grunt"
 [
-	sequence(Choices) : "Animation Sequence (editor)" : 24 =
+	sequence(Choices) : "Animation Sequence (editor)" : 25 =
 	[
-		24 : "dieforward"
-        26 : "diebackward"
+		25 : "diesimple"
+		26 : "diebackward"
 	]
 	pose(Choices) : "Pose" : 0 =
 	[
 		0 : "On Stomach"
-        1 : "On Back"
+		1 : "On Back"
 	]
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/islave.mdl") = monster_alien_slave : "Vortigaunt"
@@ -2434,6 +2563,7 @@
 		8 : "NoWreckage"	: 0
 		64 : "Start Inactive" : 0
 	]
+	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/baby_headcrab.mdl") = monster_babycrab : "Baby Headcrab"
 [
@@ -2544,6 +2674,12 @@
 		69 : "pepsipush"
 		70 : "buttonpush"
 	]
+    bodystate(Choices) : "Gun State" =
+	[
+		-1 : "Random"
+		0 : "Gun Holstered"
+		1 : "Gun Drawn"
+	]
 ]
 @PointClass base(DeadMonster) size(-16 -16 0, 16 16 72) studio("models/barney.mdl") = monster_barney_dead : "Dead Barney"
 [
@@ -2588,6 +2724,80 @@
 	netname(string) : "First node" : ""
 ]
 
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/massn.mdl") = monster_assassin_repel : "Male Assassin (Repel)"
+[
+	head(Choices) : "Heads" : 0 =
+	[
+		-1 : "Random"
+		0 : "Ski Mask White"
+		1 : "Ski Mask Black"
+		2 : "Night Goggles"
+	]
+	weapons(Choices) : "Weapons" : 1 =
+	[
+		1 : "9mmAR"
+		3 : "9mmAR + HG"
+		5 : "9mmAR + GL"
+		8 : "Sniper Rifle"
+	]
+	sequence(Choices) : "Animation Sequence (editor)" : 0 =
+	[
+		0 : "walk1"
+		1 : "run"
+		2 : "victorydance"
+		3 : "cower"
+		4 : "smflinch"
+		5 : "launchgrenade"
+		6 : "throwgrenade"
+		7 : "idle1"
+		8 : "idle2"
+		9 : "combatidle"
+		10 : "frontkick"
+		11 : "frontkick"
+		12 : "frontkick"
+		13 : "crouching_idle"
+		14 : "crouching_wait"
+		15 : "crouching_mp5"
+		16 : "standing_mp5"
+		17 : "reload_mp5"
+		18 : "crouching_shotgun"
+		19 : "standing_shotgun"
+		20 : "reload_shotgun"
+		21 : "crouching_m40a1"
+		22 : "standing_m40a1"
+		23 : "reload_m40a1"
+		24 : "advance_signal"
+		25 : "flank_signal"
+		26 : "retreat_signal"
+		27 : "drop_grenade"
+		28 : "limpingwalk"
+		29 : "limpingrun"
+		30 : "strafeleft"
+		31 : "straferight"
+		32 : "dieback1"
+		33 : "dieforward"
+		34 : "diesimple"
+		35 : "diebackwards"
+		36 : "dieheadshot"
+		37 : "diegutshot"
+		38 : "barnacled1"
+		39 : "barnacled2"
+		40 : "barnacled3"
+		41 : "barnacled4"
+		42 : "dead_on_stomach"
+		43 : "deadstomach"
+		44 : "deadside"
+		45 : "deadsitting"
+		46 : "repel_jump"
+		47 : "repel_repel"
+		48 : "repel_shoot"
+		49 : "repel_land"
+		50 : "repel_die"
+		51 : "working"
+		52 : "standing"
+	]
+]
+
 @PointClass base(Monster, Sequence) size(-360 -360 -172, 360 360 8) studio("models/blkop_apache.mdl") = monster_blkop_apache : "Black Ops Apache" 
 [
 	spawnflags(Flags) = 
@@ -2595,6 +2805,7 @@
 		8 : "NoWreckage"  : 0
 		64 : "Start Inactive" : 0
 	]
+	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
 ]
 
 @PointClass base(Monster, Sequence) size(-480 -480 -112, 480 480 24) studio("models/blkop_osprey.mdl") = monster_blkop_osprey : "Black Ops Osprey"
@@ -2603,6 +2814,7 @@
 	[
 		64 : "Start Inactive" : 0
 	]
+	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
 ]
 
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/floater.mdl") = monster_bloater : "Bloater"
@@ -2708,8 +2920,21 @@
 	]
 	model(studio) : "model"
 	body(integer) : "Body" : 0
-	skin(Integer) : "skin"
+	skin(integer) : "Skin"
 ]
+
+@PointClass base(DeadMonster, Sequence) size(-16 -16 -36, 16 16 36) studio() = monster_generic_dead : "Generic Script Monster"
+[
+	spawnflags(Flags) =
+	[
+		4 : "Not solid"	: 0
+	]
+	model(studio) : "model"
+	body(integer) : "Body"
+	skin(integer) : "Skin"
+	pose(string) : "Pose (string)"
+]
+
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/gman.mdl") = monster_gman : "G-Man"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
@@ -2732,7 +2957,15 @@
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt.mdl") = monster_grunt_repel : "Human Grunt (Repel)"
 [
-	sequence(Choices) : "Animation Sequence (editor)" : 47 =
+	weapons(Choices) : "Weapons" : 1 =
+	[
+		1 : "9mmAR"
+		3 : "9mmAR + HG"
+		5 : "9mmAR + GL"
+		8 : "Shotgun"
+		10 : "Shotgun + HG"
+	]
+	sequence(Choices) : "Animation Sequence (editor)" : 48 =
 	[
 		0 : "walk1"
 		1 : "run"
@@ -3165,6 +3398,7 @@
 
 	head(Choices) : "Heads" : -1 =
 	[
+		-2 : "Random"
 		-1 : "Default"
 		0 : "Gas Mask"
 		1 : "Beret"
@@ -3177,6 +3411,112 @@
 	]
 ]
 
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt_opfor.mdl") = monster_grunt_ally_repel : "Human Grunt Ally (Repel)"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 49 =
+	[
+		0 : "walk1"
+		1 : "run"
+		2 : "victorydance"
+		3 : "cower"
+		4 : "smflinch"
+		5 : "launchgrenade"
+		6 : "throwgrenade"
+		7 : "idle1"
+		8 : "idle2"
+		9 : "combatidle"
+		10 : "frontkick"
+		11 : "crouching_idle"
+		12 : "crouching_wait"
+		13 : "crouching_mp5"
+		14 : "standing_mp5"
+		15 : "reload_mp5"
+		16 : "crouching_shotgun"
+		17 : "standing_shotgun"
+		18 : "reload_shotgun"
+		19 : "crouching_saw"
+		20 : "standing_saw"
+		21 : "reload_saw"
+		22 : "advance_signal"
+		23 : "flank_signal"
+		24 : "retreat_signal"
+		25 : "drop_grenade"
+		26 : "limpingwalk"
+		27 : "limpingrun"
+		28 : "180L"
+		29 : "180R"
+		30 : "dieback1"
+		31 : "dieforward"
+		32 : "diesimple"
+		33 : "diebackwards"
+		34 : "dieheadshot"
+		35 : "diegutshot"
+		36 : "barnacled1"
+		37 : "barnacled2"
+		38 : "barnacled3"
+		39 : "barnacled4"
+		40 : "dead_on_stomach"
+		41 : "deadstomach"
+		42 : "deadside"
+		43 : "deadsitting"
+		44 : "dead_on_back"
+		45 : "dead_headcrabed"
+		46 : "hgrunt_dead_stomach"
+		47 : "dead_canyon"
+		48 : "repel_jump"
+		49 : "repel_repel"
+		50 : "repel_shoot"
+		51 : "repel_land"
+		52 : "repel_die"
+		53 : "sitting"
+		54 : "sitting2"
+		55 : "sitting3"
+		56 : "react"
+		57 : "holding_on"
+		58 : "open_floor_grate"
+		59 : "hgrunt_on_stretcher"
+		60 : "crawling"
+		61 : "of2a2_speech_idle"
+		62 : "of2a2_death_speech"
+		63 : "of1a6_get_on"
+		64 : "cpr"
+		65 : "mic_idle1"
+		66 : "mic_idle2"
+		67 : "mic_idle3"
+		68 : "mic_idle4"
+		69 : "mic_stand"
+		70 : "interogation"
+		71 : "interogation_idle"
+		72 : "shoot_shotgun"
+	]
+	spawnflags(Flags) =
+	[
+		32 : "SquadLeader" : 0
+	]
+	netname(string) : "Squad Name"
+	weapons(Choices) : "Weapons" : 3 =
+	[
+		1 : "9mmAR"
+		3 : "9mmAR + HG"
+		5 : "9mmAR + GL"
+		8 : "Shotgun"
+		10 : "Shotgun + HG"
+		16 : "Saw"
+	]
+	head(Choices) : "Heads" : -1 =
+	[
+		-2 : "Random"
+		-1 : "Default"
+		0 : "Gas Mask"
+		1 : "Beret"
+		2 : "Ops Mask"
+		3 : "Bandana White"
+		4 : "Bandana Black"
+		5 : "MP"
+		6 : "Major"
+		7 : "Beret (Black)"
+	]
+]
 
 @PointClass base(DeadMonster) size(-16 -16 0, 16 16 72) studio("models/hgrunt_opfor.mdl") = monster_human_grunt_ally_dead : "Dead Human Grunt Ally"
 [
@@ -3209,6 +3549,7 @@
 	]
 	head(Choices) : "Heads" : 0 =
 	[
+		-2 : "Random"
 		0 : "Gas Mask"
 		1 : "Beret"
 		2 : "Ops Mask"
@@ -3219,7 +3560,6 @@
 		7 : "Beret (Black)"
 	]
 ]
-
 
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt_medic.mdl") = monster_human_medic_ally : "Medic" 
 [
@@ -3289,7 +3629,76 @@
 
 	weapons(Choices) : "Weapons" : 2 =
 	[
-		0 : "None"
+		0 : "Default (Desert eagle)"
+		1 : "Desert Eagle"
+		2 : "9mm Handgun"
+		4 : "Hypodermic Needle"
+	]
+]
+
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt_medic.mdl") = monster_medic_ally_repel : "Medic (Repel)"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 41 =
+	[
+		0 : "walk1"
+		1 : "run"
+		2 : "victorydance"
+		3 : "cower"
+		4 : "smflinch"
+		5 : "throwgrenade"
+		6 : "idle1"
+		7 : "idle2"
+		8 : "combatidle"
+		9 : "frontkick"
+		10 : "crouching_idle"
+		11 : "crouching_wait"
+		12 : "crouching_mp5"
+		13 : "standing_mp5"
+		14 : "reload_mp5"
+		15 : "advance_signal"
+		16 : "flank_signal"
+		17 : "retreat_signal"
+		18 : "drop_grenade"
+		19 : "limpingwalk"
+		20 : "limpingrun"
+		21 : "180L"
+		22 : "180R"
+		23 : "pull_needle"
+		24 : "store_needle"
+		25 : "give_shot"
+		26 : "dieback1"
+		27 : "dieforward"
+		28 : "diesimple"
+		29 : "diebackwards"
+		30 : "dieheadshot"
+		31 : "diegutshot"
+		32 : "barnacled1"
+		33 : "barnacled2"
+		34 : "barnacled3"
+		35 : "barnacled4"
+		36 : "dead_on_stomach"
+		37 : "deadstomach"
+		38 : "deadside"
+		39 : "deadsitting"
+		40 : "repel_jump"
+		41 : "repel_repel"
+		42 : "repel_shoot"
+		43 : "repel_land"
+		44 : "repel_die"
+		45 : "open_floor_grate"
+		46 : "heal_crouch"
+	]
+
+	head(Choices) : "Heads" : -1 =
+	[
+		-1 : "Random"
+		0 : "White"
+		1 : "Black"
+	]
+
+	weapons(Choices) : "Weapons" : 2 =
+	[
+		0 : "Default (Desert eagle)"
 		1 : "Desert Eagle"
 		2 : "9mm Handgun"
 		4 : "Hypodermic Needle"
@@ -3386,6 +3795,70 @@
 	spawnflags(Flags) =
 	[
 		32 : "SquadLeader" : 0
+	]
+	weapons(Choices) : "Weapons" : 1 =
+	[
+		1 : "Desert Eagle"
+		2 : "Blow Torch"
+	]
+]
+
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt_torch.mdl") = monster_torch_ally_repel : "Torch"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 39 =
+	[
+		0 : "walk1"
+		1 : "run"
+		2 : "victorydance"
+		3 : "cower"
+		4 : "smflinch"
+		5 : "throwgrenade"
+		6 : "idle1"
+		7 : "idle2"
+		8 : "idle3"
+		9 : "combatidle"
+		10 : "frontkick"
+		11 : "crouching_idle"
+		12 : "crouching_wait"
+		13 : "crouching_mp5"
+		14 : "standing_mp5"
+		15 : "reload_mp5"
+		16 : "advance_signal"
+		17 : "flank_signal"
+		18 : "retreat_signal"
+		19 : "drop_grenade"
+		20 : "limpingwalk"
+		21 : "limpingrun"
+		22 : "180L"
+		23 : "180R"
+		24 : "dieback1"
+		25 : "dieforward"
+		26 : "diesimple"
+		27 : "diebackwards"
+		28 : "dieheadshot"
+		29 : "diegutshot"
+		30 : "barnacled1"
+		31 : "barnacled2"
+		32 : "barnacled3"
+		33 : "barnacled4"
+		34 : "dead_on_stomach"
+		35 : "deadstomach"
+		36 : "deadside"
+		37 : "deadsitting"
+		38 : "repel_jump"
+		39 : "repel_repel"
+		40 : "repel_shoot"
+		41 : "repel_land"
+		42 : "repel_die"
+		43 : "open_floor_grate"
+		44 : "cut_floor_grate"
+		45 : "wounded"
+		46 : "get_up"
+		47 : "pull_torch_wgun"
+		48 : "store_torch"
+		49 : "pull_torch_nogun"
+		50 : "cut_door_wgun"
+		51 : "cut_door_nogun"
 	]
 	weapons(Choices) : "Weapons" : 1 =
 	[
@@ -3615,6 +4088,28 @@
 		20 : "shoot"
 	]
 ]
+
+@PointClass base(Monster, Sequence) size(-16 -16 -36, 16 16 36) studio("models/loader.mdl") = monster_op4loader : "Loader machine"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 0 =
+	[
+		0 : "idle"
+		1 : "boxwalk"
+		2 : "45_left"
+		3 : "heroidle"
+		4 : "freeze"
+		5 : "park"
+		6 : "blocked"
+		7 : "freed"
+		8 : "dropbox"
+		9 : "pivotback"
+	]
+	spawnflags(Flags) =
+	[
+		4 : "Not solid" : 0
+	]
+]
+
 @PointClass base(Monster, Sequence) size(-480 -480 -112, 480 480 24) studio("models/osprey.mdl") = monster_osprey : "Osprey"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
@@ -3625,6 +4120,7 @@
 	[
 		64 : "Start Inactive" : 0
 	]
+	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
 ]
 
 @PointClass base(Monster,TalkMonster, Sequence) size(-16 -16 0, 16 16 72) studio("models/otis.mdl") = monster_otis : "Otis"
@@ -3755,6 +4251,55 @@
 	initammo(string) : "Initial Ammo" : "6"
 ]
 
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 32) studio("models/pit_worm_up.mdl") = monster_pitworm : "Pit Worm"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 0 =
+	[
+		0 : "idle"
+		1 : "idle2"
+		2 : "attack"
+		3 : "scream"
+		4 : "attacklow"
+		5 : "doorclaw1"
+		6 : "doorclaw2"
+		7 : "doorclaw3"
+		8 : "eyeblast"
+		9 : "platclaw1"
+		10 : "platclaw2"
+		11 : "flinch1"
+		12 : "flinch2"
+		13 : "death"
+	]
+]
+
+@PointClass base(Monster, Sequence) size(-95 -95 0, 95 95 190) studio("models/geneworm.mdl") = monster_geneworm : "Gene Worm"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 15 =
+	[
+		0 : "melee1"
+		1 : "melee2"
+		2 : "melee3"
+		3 : "dattack1"
+		4 : "dattack2"
+		5 : "dattack3"
+		6 : "eyepain1"
+		7 : "eyepain2"
+		8 : "bigpain1"
+		9 : "bigpain2"
+		10 : "bigpain3"
+		11 : "bigpain4"
+		12 : "mad"
+		13 : "scream1"
+		14 : "scream2"
+		15 : "idle"
+		16 : "idlepain"
+		17 : "idlepain2"
+		18 : "idlepain3"
+		19 : "death"
+		20 : "entry"
+	]
+]
+
 @PointClass base(DeadMonster) size(-16 -16 0, 16 16 72) studio("models/skeleton.mdl") = monster_skeleton_dead : "Dead Skeleton"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
@@ -3816,6 +4361,19 @@
 	spawnflags(Flags) =
 	[
 		32 : "SquadLeader" : 0
+	]
+]
+@PointClass base(DeadMonster) size(-16 -16 0, 16 16 72) studio("models/strooper.mdl") = monster_shocktrooper_dead : "Dead Shock Trooper"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 29 =
+	[
+		29 : "diesimple"
+		30 : "diebackwards"
+	]
+	pose(Choices) : "Pose" : 0 =
+	[
+		0 : "On Stomach"
+		1 : "On Back"
 	]
 ]
 
@@ -4466,7 +5024,7 @@
 
 @PointClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = monstermaker : "Monster Maker"
 [
-	target(string) : "Target On Release"
+	target(target_destination) : "Target On Release"
 	monstertype(string) : "Monster Type"
 	netname(string) : "Childrens' Name"
 	weapons(Choices) : "Weapons" : 0 =
@@ -4503,6 +5061,7 @@
 	spawnorigin(target_destination) : "Spawn origin entity" : "" : "Other entity to spawn at its origin with its angles. If there're many entities with this name, the random one will be chosen"
 	warpball(string) : "Warpball template" : : "env_warpball entity used as effect template for this monstermaker"
 	new_model(studio) : "Custom model"
+	scale(string) : "Scale (1.0 = normal size)"
 	health(integer) : "Custom health"
 	body(integer) : "Body"
 	skin(integer) : "Skin"
@@ -4531,6 +5090,7 @@
 		13 : "Alien bioweapon"
 		14 : "Race X predator"
 		15 : "Race X shock"
+		16 : "Opfor ally"
 	]
 	gibmodel(studio) : "Custom gib model"
 ]
@@ -4594,7 +5154,13 @@
 	loadtime(string) : "Reload delay" : "0"
 ]
 
-@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_weaponstrip : "Strips player's weapons" []
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_weaponstrip : "Strips player's weapons"
+[
+	spawnflags(Flags) =
+	[
+		1 : "Remove suit" : 0
+	]
+]
 
 @PointClass base(Targetname, Targetx) size(-16 -16 0, 16 16 72) color(255 0 255) = scripted_sentence : "Scripted Sentence"
 [
@@ -4871,6 +5437,19 @@
 	]
 ]
 
+@PointClass base(Targetname) = trigger_killmonster : "Trigger Kill Monster"
+[
+	spawnflags(flags) =
+	[
+		1: "Remove On fire" : 1
+		2: "Kill by target name" : 1
+		4: "Kill by class name" : 0
+		8: "Kill by squad name" : 0
+		16: "Always gib" : 0
+	]
+	target(string) : "Target" : : "Kill all monsters with such target, class or squad name"
+]
+
 @SolidClass base(Angles) = trigger_monsterjump : "Trigger monster jump"
 [
 	master(string) : "Master"
@@ -4901,6 +5480,20 @@
 	[
 		8 : "Force panic on first fire"
 	]
+]
+
+@SolidClass base(Targetname,Target) = trigger_geneworm_hit : "Trigger GeneWorm Hit"
+[
+	spawnflags(flags) =
+	[
+		1: "Target Once" : 0
+		2: "Start Off" : 0
+		8: "No clients" : 0
+		16:"FireClientOnly" : 0
+		32:"TouchClientOnly" : 0
+	]
+	master(string) : "Master"
+	delay(string) : "Delay before trigger" : "0"
 ]
 
 @PointClass base(Targetx, Targetname) = trigger_playerfreeze : "Trigger Player Freeze" []

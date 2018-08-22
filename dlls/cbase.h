@@ -341,6 +341,7 @@ public:
 	virtual	void UpdateOwner( void ) { return; };
 
 	static CBaseEntity *Create( const char *szName, const Vector &vecOrigin, const Vector &vecAngles, edict_t *pentOwner = NULL );
+	static CBaseEntity *CreateNoSpawn( const char *szName, const Vector &vecOrigin, const Vector &vecAngles, edict_t *pentOwner = NULL );
 
 	virtual BOOL FBecomeProne( void ) {return FALSE;};
 	edict_t *edict() { return ENT( pev ); };
@@ -699,6 +700,7 @@ public:
 	
 	enum BUTTON_CODE { BUTTON_NOTHING, BUTTON_ACTIVATE, BUTTON_RETURN };
 	BUTTON_CODE ButtonResponseToTouch( void );
+	void OnLocked();
 	
 	static	TYPEDESCRIPTION m_SaveData[];
 	// Buttons that don't take damage can be IMPULSE used
@@ -718,6 +720,8 @@ public:
 	BYTE m_bUnlockedSound;	
 	BYTE m_bUnlockedSentence;
 	int m_sounds;
+	string_t m_targetOnLocked;
+	float m_targetOnLockedTime;
 };
 
 //

@@ -23,6 +23,7 @@
 #include "decals.h"
 #include "func_break.h"
 #include "shake.h"
+#include "mod_features.h"
 
 #define	SF_GIBSHOOTER_REPEATABLE		1 // allows a gibshooter to be refired
 
@@ -2240,6 +2241,7 @@ void CItemSoda::CanTouch( CBaseEntity *pOther )
 #define SF_REMOVE_ON_FIRE	0x0001
 #define SF_KILL_CENTER		0x0002
 #define SF_WARPBALL_NOSHAKE	0x0004
+#define SF_WARPBALL_DYNLIGHT	0x0008
 
 #define WARPBALL_SPRITE "sprites/fexplo1.spr"
 #define WARPBALL_BEAM "sprites/lgtning.spr"
@@ -2306,11 +2308,14 @@ public:
 	inline void SetDamageDelay( float delay ) {
 		pev->frags = delay;
 	}
-	inline void SetScale( float scale ) {
-		pev->scale = scale;
-	}
 	inline void SetMaxBeamCount( int beamCount ) {
 		pev->team = beamCount;
+	}
+	inline const char* WarpballSound1() {
+		return pev->noise1 ? STRING(pev->noise1) : WARPBALL_SOUND1;
+	}
+	inline const char* WarpballSound2() {
+		return pev->noise2 ? STRING(pev->noise2) : WARPBALL_SOUND2;
 	}
 
 	Vector vecOrigin;
@@ -2351,11 +2356,6 @@ void CEnvWarpBall::KeyValue( KeyValueData *pkvd )
 		SetDamageDelay( atof( pkvd->szValue ) );
 		pkvd->fHandled = TRUE;
 	}
-	else if ( FStrEq( pkvd->szKeyName, "scale" ) ) 
-	{
-		SetScale( atof( pkvd->szValue ) );
-		pkvd->fHandled = TRUE;
-	}
 	else if ( FStrEq( pkvd->szKeyName, "beamcolor" ) ) 
 	{
 		float red, green, blue;
@@ -2376,13 +2376,19 @@ void CEnvWarpBall::KeyValue( KeyValueData *pkvd )
 void CEnvWarpBall::Precache( void )
 {
 	m_beamTexture = PRECACHE_MODEL( WARPBALL_BEAM );
-	if (pev->model) {
+	if (pev->model)
 		PRECACHE_MODEL( STRING(pev->model) );
-	} else {
+	else
 		PRECACHE_MODEL( WARPBALL_SPRITE );
-	}
-	PRECACHE_SOUND( WARPBALL_SOUND1 );
-	PRECACHE_SOUND( WARPBALL_SOUND2 );
+
+	if (pev->noise1)
+		PRECACHE_SOUND(STRING(pev->noise1));
+	else
+		PRECACHE_SOUND( WARPBALL_SOUND1 );
+	if (pev->noise2)
+		PRECACHE_SOUND(STRING(pev->noise2));
+	else
+		PRECACHE_SOUND( WARPBALL_SOUND2 );
 }
 
 void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -2405,14 +2411,15 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		vecOrigin = pev->origin;
 		pos = edict();
 	}
-	EMIT_SOUND( pos, CHAN_BODY, WARPBALL_SOUND1, 1, ATTN_NORM );
+	EMIT_SOUND( pos, CHAN_BODY, WarpballSound1(), 1, ATTN_NORM );
 	
 	if (!(pev->spawnflags & SF_WARPBALL_NOSHAKE)) {
 		UTIL_ScreenShake( vecOrigin, Amplitude(), Frequency(), Duration(), Radius() );
 	}
 
 	CSprite *pSpr = CSprite::SpriteCreate( SpriteModel(), vecOrigin, TRUE );
-	pSpr->AnimateAndDie( 18 );
+	const float frameRate = 18;
+	pSpr->AnimateAndDie( frameRate );
 
 	int red = pev->rendercolor.x;
 	int green = pev->rendercolor.y;
@@ -2426,7 +2433,24 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	pSpr->SetTransparency( RenderMode(),  red, green, blue, RenderAmount(), RenderFx() );
 	pSpr->SetScale(Scale());
 
-	EMIT_SOUND( pos, CHAN_ITEM, WARPBALL_SOUND2, 1, ATTN_NORM );
+	if (pev->spawnflags & SF_WARPBALL_DYNLIGHT)
+	{
+		const int lifeTime = (15*pSpr->Frames())/frameRate;
+		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecOrigin );
+			WRITE_BYTE( TE_DLIGHT );
+			WRITE_COORD( vecOrigin.x );	// X
+			WRITE_COORD( vecOrigin.y );	// Y
+			WRITE_COORD( vecOrigin.z );	// Z
+			WRITE_BYTE( 20 * Scale() );		// radius * 0.1
+			WRITE_BYTE( red );		// r
+			WRITE_BYTE( green );		// g
+			WRITE_BYTE( blue );		// b
+			WRITE_BYTE( lifeTime );		// time * 10
+			WRITE_BYTE( lifeTime/2 );		// decay * 0.1
+		MESSAGE_END();
+	}
+
+	EMIT_SOUND( pos, CHAN_ITEM, WarpballSound2(), 1, ATTN_NORM );
 
 	int beamRed = pev->punchangle.x;
 	int beamGreen = pev->punchangle.y;
@@ -2493,3 +2517,166 @@ void CEnvWarpBall::Think( void )
 	if( pev->spawnflags & SF_REMOVE_ON_FIRE )
 		UTIL_Remove( this );
 }
+
+#if FEATURE_DISPLACER || FEATURE_SHOCKBEAM || FEATURE_SPOREGRENADE
+
+#include "displacerball.h"
+#include "shockbeam.h"
+#include "spore.h"
+
+enum
+{
+	BLOWERCANNON_SPOREROCKET = 1,
+	BLOWERCANNON_SPOREGRENADE,
+	BLOWERCANNON_SHOCKBEAM,
+	BLOWERCANNON_DISPLACERBALL,
+};
+
+enum
+{
+	BLOWERCANNON_TOGGLE = 1,
+	BLOWERCANNON_FIRE,
+};
+
+class CBlowerCannon : public CBaseEntity
+{
+public:
+	void Spawn( void );
+	void Precache( void );
+	void KeyValue(KeyValueData* pkvd);
+	void EXPORT BlowerCannonThink( void );
+	void EXPORT BlowerCannonStart( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void EXPORT BlowerCannonStop( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+
+	virtual int Save(CSave &save);
+	virtual int Restore(CRestore &restore);
+
+	static TYPEDESCRIPTION m_SaveData[];
+
+	int m_iWeapType;
+	float m_flDelay;
+	int m_iFireType;
+	int m_iZOffSet;
+};
+
+LINK_ENTITY_TO_CLASS(env_blowercannon, CBlowerCannon)
+
+TYPEDESCRIPTION	CBlowerCannon::m_SaveData[] =
+{
+	DEFINE_FIELD(CBlowerCannon, m_iFireType, FIELD_INTEGER),
+	DEFINE_FIELD(CBlowerCannon, m_iWeapType, FIELD_INTEGER),
+	DEFINE_FIELD(CBlowerCannon, m_iZOffSet, FIELD_INTEGER),
+	DEFINE_FIELD(CBlowerCannon, m_flDelay, FIELD_FLOAT),
+};
+IMPLEMENT_SAVERESTORE( CBlowerCannon, CBaseEntity )
+
+
+void CBlowerCannon::KeyValue(KeyValueData *pkvd)
+{
+	if (FStrEq(pkvd->szKeyName, "firetype"))
+	{
+		m_iFireType = (int)atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "delay"))
+	{
+		m_flDelay = (float)atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "weaptype"))
+	{
+		m_iWeapType = (int)atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "zoffset"))
+	{
+		m_iZOffSet = (int)atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		pkvd->fHandled = FALSE;
+}
+
+void CBlowerCannon::Spawn(void)
+{
+	Precache();
+	UTIL_SetSize( pev, Vector(-16, -16, -16), Vector( 16, 16, 16 ) );
+	pev->solid = SOLID_TRIGGER;
+	if (m_flDelay <= 0.0f)
+		m_flDelay = 1.0f;
+	SetUse( &CBlowerCannon::BlowerCannonStart );
+}
+
+void CBlowerCannon::Precache( void )
+{
+#if FEATURE_SHOCKBEAM
+	UTIL_PrecacheOther( "shock_beam" );
+#endif
+#if FEATURE_DISPLACER
+	UTIL_PrecacheOther( "displacer_ball" );
+#endif
+#if FEATURE_SPOREGRENADE
+	UTIL_PrecacheOther( "spore" );
+#endif
+}
+
+void CBlowerCannon::BlowerCannonStart( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	SetUse( &CBlowerCannon::BlowerCannonStop );
+	SetThink( &CBlowerCannon::BlowerCannonThink );
+	pev->nextthink = gpGlobals->time + m_flDelay;
+}
+
+void CBlowerCannon::BlowerCannonStop( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	SetUse( &CBlowerCannon::BlowerCannonStart );
+	SetThink( NULL );
+}
+
+void CBlowerCannon::BlowerCannonThink( void )
+{
+	CBaseEntity *pTarget = GetNextTarget();
+
+	if( pTarget && pTarget->IsAlive() )
+	{
+		Vector direction = pTarget->pev->origin - pev->origin;
+		direction.z = m_iZOffSet + pTarget->pev->origin.z - pev->origin.z;
+
+		Vector angles = UTIL_VecToAngles( direction );
+		UTIL_MakeVectors( angles );
+
+		switch (m_iWeapType)
+		{
+#if FEATURE_SPOREGRENADE
+		case BLOWERCANNON_SPOREROCKET:
+			CSporeGrenade::ShootContact(pev, pev->origin, gpGlobals->v_forward * 1500);
+			break;
+		case BLOWERCANNON_SPOREGRENADE:
+			CSporeGrenade::ShootTimed(pev, pev->origin, gpGlobals->v_forward * 700, false);
+			break;
+#endif
+#if FEATURE_SHOCKBEAM
+		case BLOWERCANNON_SHOCKBEAM:
+			CShock::Shoot(pev, pev->angles, pev->origin, gpGlobals->v_forward * 2000);
+			break;
+#endif
+#if FEATURE_DISPLACER
+		case BLOWERCANNON_DISPLACERBALL:
+			CDisplacerBall::Shoot(pev, pev->origin, gpGlobals->v_forward * 500, angles);
+			break;
+#endif
+		default:
+			ALERT(at_console, "Unknown projectile type in blowercannon: %d\n", m_iWeapType);
+			break;
+		}
+	}
+	if( m_iFireType == BLOWERCANNON_FIRE )
+	{
+		SetUse( &CBlowerCannon::BlowerCannonStart );
+		SetThink( NULL );
+	}
+
+	pev->nextthink = gpGlobals->time + m_flDelay;
+}
+
+#endif

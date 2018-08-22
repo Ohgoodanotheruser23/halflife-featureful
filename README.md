@@ -4,11 +4,14 @@ Half-Life SDK for Xash3D & GoldSource with some fixes and features that can be u
 
 ## Features
 
+Most of the new features can be enabled or disabled. Go to game_shared/mod_features.h to select features you need.
+Note that some features may require additional files to be included in your mod distribution. These can be models, sounds, sprites, etc.
+
+In case you enable new monsters or weapons don't forget to add their skill values to skill.cfg. Talking monsters will also require changes in sentences.txt.
+
 ### New monsters
 
 #### Opposing Force monsters
-
-Most Opposing Force monsters are implemented (exceptions are geneworm and pitworm bosses).
 
 * monster_cleansuit_scientist
 * monster_otis
@@ -20,12 +23,17 @@ Most Opposing Force monsters are implemented (exceptions are geneworm and pitwor
 * monster_pitdrone
 * monster_shocktrooper
 * monster_shockroach
+* monster_pitworm (works a bit different from original)
+* monster_geneworm
 * monster_human_grunt_ally
 * monster_human_medic_ally (healing works a bit different from original)
 * monster_human_torch_ally
+* monster_drillsergeant
+* monster_recruit
 * monster_gonome
 * monster_zombie_barney
 * monster_zombie_soldier
+* monster_op4loader
 
 #### Other new monsters
 
@@ -47,6 +55,8 @@ Most Opposing Force monsters are implemented (exceptions are geneworm and pitwor
 * monster_human_medic_ally_dead (was not in Opposing Force)
 * monster_human_torch_ally_dead (was not in Opposing Force)
 * monster_alien_grunt_dead
+* monster_shocktrooper_dead (Opposing Force had monster_ShockTrooper_dead, but it was bugged)
+* monster_generic_dead - generic dead monster with custom model and settable pose
 
 ### Monster features
 
@@ -54,6 +64,16 @@ Most Opposing Force monsters are implemented (exceptions are geneworm and pitwor
 * monster_barnacle health can be configured via skill.cfg
 * Houndeye squad leader can play leaderlook animation.
 * Alien grunts, bullsquids, houndeyes, gonomes, pitdrones and voltigores restore health when they eat meat or enemy corpses.
+* Alien slave attack rate can be configured via skill.cfg (In Half-Life it's hardcoded as 1 for easy and normal, and 1.5 for hard difficulty)
+* Bullsquids can shoot alternative spit projectile that is slow poisonous ball.
+* Configurable sound volume for apache and osprey rotors.
+* Human grunts take into account allies that are not in their squad when checking for friendly fire.
+* Security guards now check for friendly fire too.
+* Security guards can be spawned with gun drawn.
+
+### Alien slave features
+
+Alien slaves (also known as vortigaunts) got many new abilities. Now they gain energy to heal themselves when attack enemies with lightning. They can use free energy to heal or revive ally vortigaunts and boost their claws damage. They also can use a coil attack and summon familiars (snarks or headcrabs). Their hands are glowing when they use their abilities. The available abilities can be configured in dlls/islave.cpp.
 
 ### New weapons
 
@@ -80,8 +100,12 @@ All Opposing Force weapons and corresponding ammo entities are implemented, but 
 
 #### Opposing Force entities
 
-* env_spritetrain
+* env_blowercannon
+* env_electrified_wire
+* env_rope
+* env_spritetrain (also supports animated sprites)
 * item_generic
+* item_nuclearbomb
 * monster_skeleton_dead
 * op4mortar
 * trigger_playerfreeze
@@ -94,7 +118,15 @@ All Opposing Force weapons and corresponding ammo entities are implemented, but 
 
 #### Others
 
+* env_modeltrain - like env_spritetrain, but with animated model and configurable movement sound.
 * env_warpball - easy way to create a teleportation effect for monster spawns. Also can be set as a template for monstermaker.
+* trigger_killmonster - kill monster (possibly gibbing), playing random death animation.
+
+### Wall chargers features
+
+* Wall health and armor chargers now play "no" sound when player use them having full health or armor.
+* Chargers sounds can be configured in level editor.
+* Chargers can be turned off and on by triggers.
 
 ### Other features
 
@@ -102,6 +134,12 @@ All Opposing Force weapons and corresponding ammo entities are implemented, but 
 * Added Explosive Only and Op4Mortar only flags for func_breakable. Breakables with these flags can be destroyed only with explosive weapons and op4mortar shells respectively.
 * monstermaker can have env_warpball template to automatically play teleportation effects on monster spawn.
 * monstermaker can set custom health, body, skin, blood color, relationship class, gibs and model for spawned monsters.
+* func_plat, func_train and func_door sound attenuation can be configured in level editor.
+* Monsters and models scale can be changed (like in Spirit of Half-Life)
+* Added use_through_walls cvar to prevent using things through walls (experimental).
+* func_tank can be configured to have a limited number of ammo.
+* func_breakable can contain new items (e.g. Opposing Force weapons and ammo).
+* Amount of health provided by soda may be configured via skill.cfg
 
 ## How to build
 

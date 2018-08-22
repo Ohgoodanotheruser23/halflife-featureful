@@ -114,17 +114,7 @@ enum
 {
 	TASK_GRUNT_FACE_TOSS_DIR = LAST_COMMON_TASK + 1,
 	TASK_GRUNT_SPEAK_SENTENCE,
-	TASK_GRUNT_CHECK_FIRE
 };
-
-//=========================================================
-// monster-specific conditions
-//=========================================================
-#define bits_COND_GRUNT_NOFIRE	( bits_COND_SPECIAL1 )
-
-
-	void DropMyItems(BOOL isGibbed);
-	void DropMyItem(const char *entityName, const Vector &vecGunPos, const Vector &vecGunAngles, BOOL isGibbed);
 
 LINK_ENTITY_TO_CLASS( monster_human_grunt, CHGrunt )
 
@@ -1037,13 +1027,6 @@ void CHGrunt::StartTask( Task_t *pTask )
 
 	switch( pTask->iTask )
 	{
-	case TASK_GRUNT_CHECK_FIRE:
-		if( !NoFriendlyFire() )
-		{
-			SetConditions( bits_COND_GRUNT_NOFIRE );
-		}
-		TaskComplete();
-		break;
 	case TASK_GRUNT_SPEAK_SENTENCE:
 		SpeakSentence();
 		TaskComplete();
@@ -1266,8 +1249,8 @@ Task_t tlGruntVictoryDance[] =
 {
 	{ TASK_STOP_MOVING, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_WAIT, (float)1.5 },
-	{ TASK_GET_PATH_TO_ENEMY_CORPSE, (float)0 },
+	{ TASK_WAIT, 1.5f },
+	{ TASK_GET_PATH_TO_ENEMY_CORPSE, 64.0f },
 	{ TASK_WALK_PATH, (float)0 },
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
@@ -1375,19 +1358,19 @@ Task_t tlGruntSignalSuppress[] =
 	{ TASK_FACE_IDEAL, (float)0 },
 	{ TASK_PLAY_SEQUENCE_FACE_ENEMY, (float)ACT_SIGNAL2 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0},
+	{ TASK_CHECK_FIRE, (float)0},
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 };
 
@@ -1400,7 +1383,7 @@ Schedule_t slGruntSignalSuppress[] =
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_HEAR_SOUND |
-		bits_COND_GRUNT_NOFIRE |
+		bits_COND_NOFIRE |
 		bits_COND_NO_AMMO_LOADED,
 		bits_SOUND_DANGER,
 		"SignalSuppress"
@@ -1411,19 +1394,19 @@ Task_t tlGruntSuppress[] =
 {
 	{ TASK_STOP_MOVING, 0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 };
 
@@ -1436,7 +1419,7 @@ Schedule_t slGruntSuppress[] =
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_HEAR_SOUND |
-		bits_COND_GRUNT_NOFIRE |
+		bits_COND_NOFIRE |
 		bits_COND_NO_AMMO_LOADED,
 		bits_SOUND_DANGER,
 		"Suppress"
@@ -1635,16 +1618,16 @@ Task_t tlGruntRangeAttack1A[] =
 {
 	{ TASK_STOP_MOVING, (float)0 },
 	{ TASK_PLAY_SEQUENCE_FACE_ENEMY, (float)ACT_CROUCH },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 };
 
@@ -1658,7 +1641,7 @@ Schedule_t slGruntRangeAttack1A[] =
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_ENEMY_OCCLUDED |
 		bits_COND_HEAR_SOUND |
-		bits_COND_GRUNT_NOFIRE |
+		bits_COND_NOFIRE |
 		bits_COND_NO_AMMO_LOADED,
 		bits_SOUND_DANGER,
 		"Range Attack1A"
@@ -1673,16 +1656,16 @@ Task_t tlGruntRangeAttack1B[] =
 {
 	{ TASK_STOP_MOVING, (float)0 },
 	{ TASK_PLAY_SEQUENCE_FACE_ENEMY, (float)ACT_IDLE_ANGRY },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_GRUNT_CHECK_FIRE, (float)0 },
+	{ TASK_CHECK_FIRE, (float)0 },
 	{ TASK_RANGE_ATTACK1, (float)0 },
 };
 
@@ -1696,7 +1679,7 @@ Schedule_t slGruntRangeAttack1B[] =
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_ENEMY_OCCLUDED |
 		bits_COND_NO_AMMO_LOADED |
-		bits_COND_GRUNT_NOFIRE |
+		bits_COND_NOFIRE |
 		bits_COND_HEAR_SOUND,
 		bits_SOUND_DANGER,
 		"Range Attack1B"
@@ -2036,16 +2019,19 @@ Schedule_t *CHGrunt::GetSchedule( void )
 						// before he starts pluggin away.
 						if( FOkToSpeak() )// && RANDOM_LONG( 0, 1 ) )
 						{
-							if( ( m_hEnemy != 0 ) && m_hEnemy->IsPlayer() )
-								// player
-								SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_ALERT), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-							else if( ( m_hEnemy != 0 ) &&
-									( m_hEnemy->Classify() != CLASS_PLAYER_ALLY ) &&
-									( m_hEnemy->Classify() != CLASS_HUMAN_PASSIVE ) &&
-									( m_hEnemy->Classify() != CLASS_MACHINE ) &&
-									( m_hEnemy->Classify() != CLASS_PLAYER_ALLY_MILITARY ))
-								// monster
-								SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_MONSTER), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+							if ( m_hEnemy != 0 )
+							{
+								int classify = m_hEnemy->Classify();
+								if( classify != CLASS_PLAYER_ALLY &&
+										classify != CLASS_HUMAN_PASSIVE &&
+										classify != CLASS_MACHINE &&
+										classify != CLASS_PLAYER_ALLY_MILITARY &&
+										classify != CLASS_HUMAN_MILITARY )
+									// monster
+									SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_MONSTER), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+								else
+									SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_ALERT), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+							}
 
 							JustSpoke();
 						}
@@ -2329,22 +2315,32 @@ void CHGruntRepel::Spawn( void )
 {
 	Precache();
 	pev->solid = SOLID_NOT;
+	pev->effects |= EF_NODRAW;
 
 	SetUse( &CHGruntRepel::RepelUse );
 }
 
+const char* CHGruntRepel::TrooperName()
+{
+	return "monster_human_grunt";
+}
+
 void CHGruntRepel::Precache( void )
 {
-	UTIL_PrecacheOther( "monster_human_grunt" );
+	UTIL_PrecacheOther( TrooperName() );
 	m_iSpriteTexture = PRECACHE_MODEL( "sprites/rope.spr" );
+	if (!FStringNull(pev->model))
+		PRECACHE_MODEL(STRING(pev->model));
+	if (!FStringNull(m_gibModel))
+		PRECACHE_MODEL(STRING(m_gibModel));
+}
+
+void CHGruntRepel::PrepareBeforeSpawn(CBaseEntity *pEntity)
+{
+
 }
 
 void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
-{
-	RepelUseHelper( "monster_human_grunt", pActivator, pCaller, useType, value );
-}
-
-void CHGruntRepel::RepelUseHelper( const char* monsterName, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	TraceResult tr;
 	UTIL_TraceLine( pev->origin, pev->origin + Vector( 0, 0, -4096.0 ), dont_ignore_monsters, ENT( pev ), &tr );
@@ -2353,8 +2349,24 @@ void CHGruntRepel::RepelUseHelper( const char* monsterName, CBaseEntity *pActiva
 		return NULL;
 	*/
 
-	CBaseEntity *pEntity = Create( monsterName, pev->origin, pev->angles );
+	CBaseEntity *pEntity = CreateNoSpawn( TrooperName(), pev->origin, pev->angles );
+	if (!pEntity) {
+		UTIL_Remove( this );
+		return;
+	}
 	CBaseMonster *pGrunt = pEntity->MyMonsterPointer();
+	if (!pGrunt) {
+		UTIL_Remove( this );
+		return;
+	}
+	pEntity->pev->weapons = pev->weapons;
+	pEntity->pev->health = pev->health;
+	pEntity->pev->model = pev->model;
+	pGrunt->m_iClass = m_iClass;
+	pGrunt->m_bloodColor = m_bloodColor;
+	pGrunt->m_gibModel = m_gibModel;
+	PrepareBeforeSpawn(pEntity);
+	DispatchSpawn(pEntity->edict());
 	pGrunt->pev->movetype = MOVETYPE_FLY;
 	pGrunt->pev->velocity = Vector( 0, 0, RANDOM_FLOAT( -196, -128 ) );
 	pGrunt->SetActivity( ACT_GLIDE );

@@ -41,6 +41,13 @@
 
 #define TLK_CFRIENDS		9
 
+enum
+{
+	TALK_FRIEND_UNKNOWN = 0,
+	TALK_FRIEND_PERSONNEL = 1,
+	TALK_FRIEND_SOLDIER = 2,
+};
+
 typedef enum
 {
 	TLK_ANSWER = 0,
@@ -133,6 +140,7 @@ public:
 	int				FOkToSpeak( void );
 	void			TrySmellTalk( void );
 	CBaseEntity		*EnumFriends( CBaseEntity *pentPrevious, int listNumber, BOOL bTrace );
+	CBaseEntity		*EnumFriends(CBaseEntity *pentPrevious, const char* pszFriend, BOOL bTrace );
 	void			AlertFriends( void );
 	void			ShutUpFriends( void );
 	BOOL			IsTalking( void );
@@ -145,19 +153,27 @@ public:
 	void			StartFollowing( CBaseEntity *pLeader );
 	virtual void	DeclineFollowing( void ) {}
 	void			LimitFollowers( CBaseEntity *pPlayer, int maxFollowers );
+	virtual int		MaxFollowers() { return 3; }
+	virtual int		TalkFriendCategory() { return TALK_FRIEND_PERSONNEL; }
 
 	void EXPORT		FollowerUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	
 	virtual void	SetAnswerQuestion( CTalkMonster *pSpeaker );
-	virtual int		FriendNumber( int arrayNumber )	{ return arrayNumber; }
 
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
 	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
+
+	struct TalkFriend
+	{
+		const char* name;
+		bool canFollow;
+		short category;
+	};
 	
-	static const char *m_szFriends[TLK_CFRIENDS];		// array of friend names
+	static TalkFriend m_szFriends[TLK_CFRIENDS];		// array of friend names
 	static float g_talkWaitTime;
 	
 	int			m_bitsSaid;						// set bits for sentences we don't want repeated

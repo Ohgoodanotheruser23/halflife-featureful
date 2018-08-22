@@ -452,7 +452,7 @@ BOOL CSquadMonster::NoFriendlyFire( void )
 	}
 	else
 	{
-		// if there's no enemy, pretend there's a friendly in the way, so the grunt won't shoot.
+		// if there's no enemy, pretend there's a friendly in the way, so the monster won't shoot.
 		return FALSE;
 	}
 
@@ -466,17 +466,19 @@ BOOL CSquadMonster::NoFriendlyFire( void )
 		UTIL_TraceLine(posVecs[j], enemyVec[j], dont_ignore_monsters, ENT(pev), &tr);
 		if (tr.flFraction != 1.0 && tr.pHit != 0)
 		{
-			CBaseEntity* ent = CBaseEntity::Instance(tr.pHit);
-			CBaseMonster* monster = ent->MyMonsterPointer();
-			if (monster != 0 && FBitSet(monster->pev->flags, FL_MONSTER) && monster->pev->deadflag != DEAD_DEAD && IRelationship(monster) == R_AL)
+			CBaseMonster* monster = GetMonsterPointer(tr.pHit);
+			if (monster != 0 && FBitSet(monster->pev->flags, FL_MONSTER|FL_CLIENT) && monster->pev->deadflag != DEAD_DEAD && IRelationship(monster) == R_AL)
 			{
-				ALERT(at_aiconsole, "Ally %s at fire line. Don't shoot!\n", STRING(ent->pev->classname));
+				ALERT(at_aiconsole, "Ally %s at fire line. Don't shoot!\n", STRING(monster->pev->classname));
 				return FALSE;
 			}
 		}
 	}
 
-	if( !InSquad() )
+	const bool inSquad = InSquad();
+	CBaseEntity* player = UTIL_PlayerByIndex(1);
+	const bool friendWithPlayer = player != 0 && IRelationship(player) == R_AL; // TODO: better check for player relationship
+	if( !inSquad && !friendWithPlayer )
 	{
 		return TRUE;
 	}
@@ -501,19 +503,34 @@ BOOL CSquadMonster::NoFriendlyFire( void )
 	ALERT( at_console, "RightPlane: %f %f %f : %f\n", rightPlane.m_vecNormal.x, rightPlane.m_vecNormal.y, rightPlane.m_vecNormal.z, rightPlane.m_flDist );
 	ALERT( at_console, "BackPlane: %f %f %f : %f\n", backPlane.m_vecNormal.x, backPlane.m_vecNormal.y, backPlane.m_vecNormal.z, backPlane.m_flDist );
 */
-	CSquadMonster *pSquadLeader = MySquadLeader();
-	for( int i = 0; i < MAX_SQUAD_MEMBERS; i++ )
+	if (inSquad)
 	{
-		CSquadMonster *pMember = pSquadLeader->MySquadMember( i );
-		if( pMember && pMember != this )
+		CSquadMonster *pSquadLeader = MySquadLeader();
+		for( int i = 0; i < MAX_SQUAD_MEMBERS; i++ )
 		{
-			if( backPlane.PointInFront( pMember->pev->origin ) &&
-				leftPlane.PointInFront( pMember->pev->origin ) &&
-				rightPlane.PointInFront( pMember->pev->origin ) )
+			CSquadMonster *pMember = pSquadLeader->MySquadMember( i );
+			if( pMember && pMember != this )
 			{
-				// this guy is in the check volume! Don't shoot!
-				return FALSE;
+				if( backPlane.PointInFront( pMember->pev->origin ) &&
+					leftPlane.PointInFront( pMember->pev->origin ) &&
+					rightPlane.PointInFront( pMember->pev->origin ) )
+				{
+					// this guy is in the check volume! Don't shoot!
+					return FALSE;
+				}
 			}
+		}
+	}
+	if (friendWithPlayer)
+	{
+		// TODO: check all ally players
+		if( backPlane.PointInFront( player->pev->origin ) &&
+			leftPlane.PointInFront( player->pev->origin ) &&
+			rightPlane.PointInFront( player->pev->origin ) )
+		{
+			ALERT(at_aiconsole, "Player at fire plane!\n");
+			// player is in the check volume! Don't shoot!
+			return FALSE;
 		}
 	}
 
@@ -622,5 +639,21 @@ Schedule_t *CSquadMonster::GetScheduleOfType( int iType )
 		}
 	default:
 		return CBaseMonster::GetScheduleOfType( iType );
+	}
+}
+
+void CSquadMonster::StartTask(Task_t *pTask)
+{
+	switch (pTask->iTask) {
+	case TASK_CHECK_FIRE:
+		if ( !NoFriendlyFire() )
+		{
+			SetConditions( bits_COND_NOFIRE );
+		}
+		TaskComplete();
+		break;
+	default:
+		CBaseMonster::StartTask( pTask );
+		break;
 	}
 }

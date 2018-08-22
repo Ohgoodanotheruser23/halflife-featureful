@@ -91,6 +91,8 @@ IMPLEMENT_SAVERESTORE( CSqueakGrenade, CGrenade )
 
 int CSqueakGrenade::Classify( void )
 {
+	if (m_iClass != 0)
+		return m_iClass; // if class is customized, return it
 	if( m_iMyClass != 0 )
 		return m_iMyClass; // protect against recursion
 
@@ -102,13 +104,15 @@ int CSqueakGrenade::Classify( void )
 			case CLASS_PLAYER:
 			case CLASS_HUMAN_PASSIVE:
 			case CLASS_HUMAN_MILITARY:
+			case CLASS_PLAYER_ALLY:
+			case CLASS_PLAYER_ALLY_MILITARY:
 				m_iMyClass = 0;
-				return m_iClass ? m_iClass : CLASS_ALIEN_MILITARY; // barney's get mad, grunts get mad at it
+				return CLASS_ALIEN_MILITARY; // barney's get mad, grunts get mad at it
 		}
 		m_iMyClass = 0;
 	}
 
-	return m_iClass ? m_iClass : CLASS_ALIEN_BIOWEAPON;
+	return CLASS_ALIEN_BIOWEAPON;
 }
 
 void CSqueakGrenade::Spawn()

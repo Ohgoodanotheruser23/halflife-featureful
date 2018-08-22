@@ -28,6 +28,9 @@
 #include	"game.h"
 #include	"bullsquid.h"
 
+// Slow big poisonous ball as alternative range attack for bullsquid
+#define FEATURE_BULLSQUID_BIGSPIT 1
+
 #define		SQUID_SPRINT_DIST	256 // how close the squid has to get before starting to sprint and refusing to swerve
 
 int iSquidSpitSprite;
@@ -330,7 +333,7 @@ public:
 	virtual void PainSound(void);
 	virtual void DeathSound(void);
 	virtual void AlertSound(void);
-	void AttackSound(bool bigSpit);
+	virtual void AttackSound(bool bigSpit);
 	virtual void StartTask(Task_t *pTask);
 	void RunTask(Task_t *pTask);
 	virtual BOOL CheckMeleeAttack1(float flDot, float flDist);
@@ -682,37 +685,35 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 	{
 		case BSQUID_AE_SPIT:
 			{
-				Vector vecSpitOffset;
-				Vector vecSpitDir;
-
 				UTIL_MakeVectors( pev->angles );
 
 				// !!!HACKHACK - the spot at which the spit originates (in front of the mouth) was measured in 3ds and hardcoded here.
 				// we should be able to read the position of bones at runtime for this info.
-				vecSpitOffset = ( gpGlobals->v_right * 8 + gpGlobals->v_forward * 37 + gpGlobals->v_up * 23 );
+				Vector vecSpitOffset = ( gpGlobals->v_right * 8 + gpGlobals->v_forward * 37 + gpGlobals->v_up * 23 );
 				vecSpitOffset = ( pev->origin + vecSpitOffset );
-				
-				Vector vecEnemyPosition( m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs/2 ); // divide by 2 so bullsquid will target body rather than head
-				Vector vecEnemyVelocity( m_hEnemy->pev->velocity.x / 1.2, m_hEnemy->pev->velocity.y /1.2, 0.0f );
-				
+				Vector vecEnemyPosition;
+				if (m_hEnemy != 0)
+					vecEnemyPosition = m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs / 2;
+				else
+					vecEnemyPosition = m_vecEnemyLKP;
+				Vector vecSpitDir = ( vecEnemyPosition - vecSpitOffset ).Normalize();
+
 				bool bigSpit = false;
-				if (RANDOM_LONG(0,1) && vecEnemyVelocity.Length() <= 200 && (vecEnemyPosition - vecSpitOffset).Length() < 256) {
-					bigSpit = true;
+#if FEATURE_BULLSQUID_BIGSPIT
+				if (RANDOM_LONG(0,1))
+				{
+					if ((vecEnemyPosition - vecSpitOffset).Length() < 400) {
+						bigSpit = true;
+					}
 				}
-				
-				const int spitVelocity = bigSpit ? 450 : 900;
-				
-				//vecSpitDir = ( vecEnemyPosition - vecSpitOffset ).Normalize();
-				
-				const float approxTime = (vecEnemyPosition - vecSpitOffset).Length()/spitVelocity;
-				vecSpitDir = (vecEnemyPosition + vecEnemyVelocity * approxTime - vecSpitOffset).Normalize();
-				
+#endif
+
 				vecSpitDir.x += RANDOM_FLOAT( -0.05, 0.05 );
 				vecSpitDir.y += RANDOM_FLOAT( -0.05, 0.05 );
 				vecSpitDir.z += RANDOM_FLOAT( -0.05, 0 );
 
 				// do stuff for this event.
-				AttackSound( bigSpit );
+				AttackSound(bigSpit);
 
 				// spew the spittle temporary ents.
 				MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpitOffset );
@@ -730,12 +731,12 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 				MESSAGE_END();
 
 				if (bigSpit) {
-					CBigSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * spitVelocity );
+					CBigSquidSpit::Shoot(pev, vecSpitOffset, vecSpitDir * 600);
 				} else {
 					const float spitAngle = 0.13;
-					CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * spitVelocity );
-					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, spitAngle) * spitVelocity );
-					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, -spitAngle) * spitVelocity );
+					CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * 900 );
+					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, spitAngle) * 900 );
+					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, -spitAngle) * 900 );
 				}
 			}
 			break;
@@ -860,7 +861,9 @@ void CBullsquid::Precache()
 	PrecacheMyModel( "models/bullsquid.mdl" );
 
 	PRECACHE_MODEL( "sprites/bigspit.spr" );// spit projectile.
+#if FEATURE_BULLSQUID_BIGSPIT
 	PRECACHE_MODEL( "sprites/cnt1.spr" ); // big spit projectile
+#endif
 
 	iSquidSpitSprite = PRECACHE_MODEL( "sprites/tinyspit.spr" );// client side spittle.
 
@@ -1120,7 +1123,6 @@ Task_t tlSquidSniffAndEat[] =
 	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
 	{ TASK_GET_HEALTH_FROM_FOOD, 0.5f },
 	{ TASK_EAT, (float)50 },
-	{ TASK_GET_HEALTH_FROM_FOOD, (float)0 },
 	{ TASK_GET_PATH_TO_LASTPOSITION, (float)0 },
 	{ TASK_WALK_PATH, (float)0 },
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
@@ -1180,9 +1182,9 @@ Task_t tlSquidVictoryDance[] =
 	{ TASK_STOP_MOVING, (float)0 },
 	{ TASK_EAT, (float)10 },
 	{ TASK_FACE_ENEMY, (float)0 },
-	{ TASK_WAIT, (float)0.2 },
+	{ TASK_WAIT, 0.2f },
 	{ TASK_STORE_LASTPOSITION, (float)0 },
-	{ TASK_GET_PATH_TO_ENEMY_CORPSE, (float)0 },
+	{ TASK_GET_PATH_TO_ENEMY_CORPSE, 50.0f },
 	{ TASK_WALK_PATH, (float)0 },
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
@@ -1385,20 +1387,6 @@ void CBullsquid::StartTask( Task_t *pTask )
 
 	switch( pTask->iTask )
 	{
-	case TASK_GET_PATH_TO_ENEMY_CORPSE:
-		{
-			UTIL_MakeVectors( pev->angles );
-			if( BuildRoute( m_vecEnemyLKP - gpGlobals->v_forward * 50, bits_MF_TO_LOCATION, NULL ) )
-			{
-				TaskComplete();
-			}
-			else
-			{
-				ALERT( at_console, "GetPathToEnemyCorpse failed!!\n" );
-				TaskFail();
-			}
-		}
-		break;
 	case TASK_MELEE_ATTACK2:
 		{
 			switch( RANDOM_LONG( 0, 2 ) )

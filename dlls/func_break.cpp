@@ -32,8 +32,6 @@ extern DLL_GLOBAL Vector	g_vecAttackDir;
 
 #define SF_BREAK_SUPPORTPLAYERS 4096
 
-// =================== FUNC_Breakable ==============================================
-
 void CBreakable::KeyValue( KeyValueData* pkvd )
 {
 	// UNDONE_WC: explicitly ignoring these fields, but they shouldn't be in the map file!

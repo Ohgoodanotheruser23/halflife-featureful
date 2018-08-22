@@ -31,6 +31,23 @@ SpawnItem gSpawnItems[] =
 	{"weapon_satchel",2.5},	// 19
 	{"weapon_snark",2.5},		// 20
 	{"weapon_hornetgun",4},	// 21
+	{"weapon_crowbar", 1.5},	// 22
+	{"weapon_pipewrench", 1.5},	// 23
+	{"weapon_sniperrifle", 4},	// 24
+	{"ammo_762", 2.5},		// 25
+	{"weapon_knife", 1.5},		// 26
+	{"weapon_m249",4},		// 27
+	{"weapon_penguin",3.5},	// 28
+	{"ammo_556", 3.5},		// 29
+	{"weapon_sporelauncher", 4},	// 30
+	{"weapon_displacer", 4},		// 31
+	{"ammo_9mmbox",3.5},	// 32
+	{0,0},		// 33
+	{0,0},		// 34
+	{"weapon_eagle",3},		// 35
+	{"weapon_grapple",3},		// 36
+	{"weapon_medkit",2},		// 37
+	{"item_suit",1},		// 38
 };
 
 int ChooseRandomSpawnItem(const int items[], int itemCount, const float* pointsLeft, const float* playerNeeds)

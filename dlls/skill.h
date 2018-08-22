@@ -123,6 +123,18 @@ struct skilldata_t
 	float pitdroneDmgSpit;
 #endif
 
+#if FEATURE_PITWORM
+	float pwormHealth;
+	float pwormDmgSwipe;
+	float pwormDmgBeam;
+#endif
+
+#if FEATURE_GENEWORM
+	float gwormHealth;
+	float gwormDmgSpit;
+	float gwormDmgHit;
+#endif
+
 #if FEATURE_OTIS
 	float otisHealth;
 #endif
@@ -195,18 +207,40 @@ struct skilldata_t
 	float plrDmgHandGrenade;
 	float plrDmgSatchel;
 	float plrDmgTripmine;
+#if FEATURE_DESERT_EAGLE
 	float plrDmgEagle;
+#endif
+#if FEATURE_PIPEWRENCH
 	float plrDmgPWrench;
+#endif
+#if FEATURE_KNIFE
 	float plrDmgKnife;
+#endif
+#if FEATURE_GRAPPLE
 	float plrDmgGrapple;
+#endif
+#if FEATURE_M249
 	float plrDmg556;
+#endif
+#if FEATURE_SNIPERRIFLE
 	float plrDmg762;
+#endif
+#if FEATURE_SHOCKBEAM
 	float plrDmgShockroach;
 	float plrDmgShockroachM;
+#endif
+#if FEATURE_SPOREGRENADE
 	float plrDmgSpore;
+#endif
+#if FEATURE_DISPLACER
+	float plrDisplacerRadius;
+	float plrDmgDisplacer;
+#endif
+#if FEATURE_MEDKIT
 	float plrDmgMedkit;
 	float plrMedkitTime;
-	
+#endif
+
 	// weapons shared by monsters
 	float monDmg9MM;
 	float monDmgMP5;
@@ -243,7 +277,7 @@ struct skilldata_t
 };
 
 extern	DLL_GLOBAL	skilldata_t	gSkillData;
-float GetSkillCvar( const char *pName );
+float GetSkillCvar( const char *pName, const char* fallback = 0, bool allowZero = false );
 
 extern DLL_GLOBAL int		g_iSkillLevel;
 
