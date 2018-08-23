@@ -178,6 +178,14 @@ public:
 	static void Shoot( entvars_t *pevOwner, Vector vecStart, Vector vecVelocity );
 	void Touch( CBaseEntity *pOther );
 	void EXPORT Animate( void );
+	CBaseMonster* GetBullsquid() {
+		if (pev->owner) {
+			CBaseEntity* owner = CBaseEntity::Instance(pev->owner);
+			if (owner)
+				return owner->MyMonsterPointer();
+		}
+		return NULL;
+	}
 
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -223,7 +231,10 @@ void CBigSquidSpit::Animate( void )
 	CBaseEntity* pEntity = NULL;
 	while ((pEntity = UTIL_FindEntityInSphere(pEntity, pev->origin, 32)) != NULL) {
 		if ( pEntity->MyMonsterPointer() && !FClassnameIs(pEntity->pev, "monster_bullchicken")) {
-			pEntity->TakeDamage(pev, pev, gSkillData.bullsquidDmgSpit/4, DMG_POISON);
+			CBaseMonster* bullsquid = GetBullsquid();
+			if (!bullsquid || bullsquid->IRelationship(pEntity) >= R_DL) {
+				pEntity->TakeDamage(pev, bullsquid ? bullsquid->pev : pev, gSkillData.bullsquidDmgSpit/4, DMG_POISON);
+			}
 		}
 	}
 	
@@ -299,8 +310,12 @@ void CBigSquidSpit::Touch( CBaseEntity *pOther )
 	} 
 	else
 	{
-		pOther->TakeDamage( pev, pev, gSkillData.bullsquidDmgSpit * 1.5, DMG_ACID );
-		pOther->TakeDamage( pev, pev, gSkillData.bullsquidDmgSpit/4, DMG_POISON);
+		CBaseMonster* bullsquid = GetBullsquid();
+		if (!bullsquid || bullsquid->IRelationship(pOther) >= R_DL) {
+			entvars_t* pevAttacker = bullsquid ? bullsquid->pev : pev;
+			pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit * 1.5, DMG_ACID );
+			pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit/4, DMG_POISON);
+		}
 	}
 
 	SetThink( &CBaseEntity::SUB_Remove );

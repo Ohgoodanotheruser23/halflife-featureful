@@ -951,19 +951,6 @@ void CISlave::Spawn()
 	m_afCapability		= bits_CAP_HEAR | bits_CAP_TURN_HEAD | bits_CAP_RANGE_ATTACK2 | bits_CAP_DOORS_GROUP | bits_CAP_SQUAD;
 
 	m_voicePitch		= RANDOM_LONG( 85, 110 );
-	
-	m_handGlow1 = CreateHandGlow(1);
-	m_handGlow2 = CreateHandGlow(2);
-	
-	HandsGlowOff();
-	
-	if (!pev->weapons) {
-		pev->weapons = ISLAVE_SNARKS;
-	}
-
-	// leader starts with some energy pool
-	if (pev->spawnflags & SF_SQUADMONSTER_LEADER)
-		m_freeEnergy = pev->max_health;
 
 #if FEATURE_ISLAVE_HANDGLOW
 	m_handGlow1 = CreateHandGlow(1);
@@ -1205,8 +1192,7 @@ Schedule_t *CISlave::GetSchedule( void )
 				{
 					return GetScheduleOfType( sched );
 				}
-				if( HasConditions( bits_COND_SEE_ENEMY ) && HasConditions( bits_COND_ENEMY_FACING_ME )
-						&& RANDOM_LONG(0,1) ) // give chance to use electro attack to restore health
+				if( HasConditions( bits_COND_SEE_ENEMY ) && HasConditions( bits_COND_ENEMY_FACING_ME ) )
 				{
 					return GetScheduleOfType( sched );
 				}

@@ -1115,10 +1115,6 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_islave_zap_rate2 );
 	CVAR_REGISTER( &sk_islave_zap_rate3 );
 
-	CVAR_REGISTER( &sk_islave_zap_rate1 );
-	CVAR_REGISTER( &sk_islave_zap_rate2 );
-	CVAR_REGISTER( &sk_islave_zap_rate3 );
-
 	// Icthyosaur
 	CVAR_REGISTER( &sk_ichthyosaur_health1 );// {"sk_ichthyosaur_health1","0"};
 	CVAR_REGISTER( &sk_ichthyosaur_health2 );// {"sk_ichthyosaur_health2","0"};

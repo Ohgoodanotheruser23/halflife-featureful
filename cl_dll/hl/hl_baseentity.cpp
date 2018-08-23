@@ -238,10 +238,6 @@ int CBaseMonster::TakeHealth(float flHealth, int bitsDamageType) { return 0; }
 int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType ) { return 0; }
 int CBaseMonster::Restore( class CRestore & ) { return 1; }
 int CBaseMonster::Save( class CSave & ) { return 1; }
-void SetMyHealth( const float health ) {}
-void SetMyModel( const char* model ) {}
-void PrecacheMyModel( const char* model ) {}
-void SetMyBloodColor( int bloodColor ) {}
 int CBaseMonster::DefaultClassify() { return 0; }
 int CBaseMonster::Classify() { return 0; }
 const char* CBaseMonster::DefaultGibModel() {return 0;}
