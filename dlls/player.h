@@ -271,6 +271,7 @@ public:
 	void UpdatePlayerSound ( void );
 	void DeathSound ( void );
 
+	int DefaultClassify();
 	int Classify ( void );
 	void SetAnimation( PLAYER_ANIM playerAnim );
 	void SetWeaponAnimType( const char *szExtention );
@@ -335,6 +336,8 @@ public:
 	void SetCustomDecalFrames( int nFrames );
 	int GetCustomDecalFrames( void );
 
+	void SetMovementMode();
+
 	Vector m_vecLastViewAngles;
 
 	float m_flStartCharge;
@@ -386,8 +389,9 @@ public:
 	int m_lastSeenArmor;
 
 	float m_flNextChatTime;
-
+#if FEATURE_DISPLACER
 	BOOL	m_fInXen;
+#endif
 #if FEATURE_NIGHTVISION
 	BOOL	m_fNVGisON;
 #endif
@@ -417,6 +421,9 @@ private:
 	
 	void DropPlayerItemImpl(CBasePlayerWeapon* pWeapon, int dropType = DropAmmoFair, float speed = 400);
 
+#if FEATURE_MOVE_MODE
+	short m_movementState; // no need to save
+#endif
 	bool m_bSentBhopcap; // If false, the player just joined and needs a bhopcap message.
 
 #if FEATURE_ROPE

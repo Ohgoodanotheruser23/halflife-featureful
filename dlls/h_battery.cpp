@@ -29,6 +29,7 @@
 #include "effects.h"
 #include "customentity.h"
 #include "wallcharger.h"
+#include "weapons.h"
 
 class CRecharge : public CWallCharger
 {
@@ -42,12 +43,12 @@ public:
 	float SoundVolume() { return 0.85f; }
 	bool GiveCharge(CBaseEntity* pActivator)
 	{
-		if (pActivator->pev->armorvalue < 100)
+		if (pActivator->pev->armorvalue < MAX_NORMAL_BATTERY)
 		{
 			pActivator->pev->armorvalue += 1;
 
-			if( pActivator->pev->armorvalue > 100 )
-				pActivator->pev->armorvalue = 100;
+			if( pActivator->pev->armorvalue > MAX_NORMAL_BATTERY )
+				pActivator->pev->armorvalue = MAX_NORMAL_BATTERY;
 
 			return true;
 		}
@@ -58,7 +59,7 @@ public:
 LINK_ENTITY_TO_CLASS( func_recharge, CRecharge )
 
 //-------------------------------------------------------------
-// Wall mounted health kit (PS2 && Decay)
+// Wall mounted suit charger (PS2 && Decay)
 //-------------------------------------------------------------
 
 class CRechargeGlassDecay : public CBaseAnimating
@@ -136,6 +137,7 @@ IMPLEMENT_SAVERESTORE( CRechargeDecay, CBaseAnimating )
 
 void CRechargeDecay::Spawn()
 {
+	m_iJuice = gSkillData.suitchargerCapacity;
 	Precache();
 
 	pev->solid = SOLID_SLIDEBOX;
@@ -144,7 +146,6 @@ void CRechargeDecay::Spawn()
 	SET_MODEL(ENT(pev), "models/hev.mdl");
 	UTIL_SetSize(pev, Vector(-12, -16, 0), Vector(12, 16, 48));
 	UTIL_SetOrigin(pev, pev->origin);
-	m_iJuice = gSkillData.suitchargerCapacity;
 	pev->skin = 0;
 
 	InitBoneControllers();
@@ -296,7 +297,7 @@ void CRechargeDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	}
 
 	// charge the player
-	if( pActivator->pev->armorvalue < 100 )
+	if( pActivator->pev->armorvalue < MAX_NORMAL_BATTERY )
 	{
 		m_iJuice--;
 		pActivator->pev->armorvalue += 1;
@@ -304,8 +305,8 @@ void CRechargeDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 		SetBoneController(1, 360 - boneControllerValue);
 		SetBoneController(2,  boneControllerValue);
 
-		if( pActivator->pev->armorvalue > 100 )
-			pActivator->pev->armorvalue = 100;
+		if( pActivator->pev->armorvalue > MAX_NORMAL_BATTERY )
+			pActivator->pev->armorvalue = MAX_NORMAL_BATTERY;
 	}
 
 	// govern the rate of charge

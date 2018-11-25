@@ -1495,7 +1495,7 @@ BOOL CHFGrunt :: CheckRangeAttack1 ( float flDot, float flDist )
 //=========================================================
 BOOL CHFGrunt :: CheckRangeAttack2 ( float flDot, float flDist )
 {
-	if (! FBitSet(pev->weapons, (FGRUNT_HANDGRENADE | FGRUNT_GRENADELAUNCHER)) || FBitSet(pev->weapons, ( FGRUNT_M249 )) )
+	if (! FBitSet(pev->weapons, (FGRUNT_HANDGRENADE | FGRUNT_GRENADELAUNCHER)) )
 	{
 		return FALSE;
 	}
@@ -1551,16 +1551,13 @@ BOOL CHFGrunt :: CheckRangeAttack2 ( float flDot, float flDist )
 			vecTarget = vecTarget + ((vecTarget - pev->origin).Length() / gSkillData.fgruntGrenadeSpeed) * m_hEnemy->pev->velocity;
 	}
 
-	// are any of my squad members near the intended grenade impact area?
-	if ( InSquad() )
+	// are any of my allies near the intended grenade impact area?
+	if (AllyMonsterInRange( vecTarget, 256 ))
 	{
-		if (SquadMemberInRange( vecTarget, 256 ))
-		{
-			// crap, I might blow my own guy up. Don't throw a grenade and don't check again for a while.
-			m_flNextGrenadeCheck = gpGlobals->time + 1; // one full second.
-			m_fThrowGrenade = FALSE;
-			return m_fThrowGrenade;	//AJH need this or it is overridden later.
-		}
+		// crap, I might blow my own guy up. Don't throw a grenade and don't check again for a while.
+		m_flNextGrenadeCheck = gpGlobals->time + 1; // one full second.
+		m_fThrowGrenade = FALSE;
+		return m_fThrowGrenade;	//AJH need this or it is overridden later.
 	}
 
 	if ( ( vecTarget - pev->origin ).Length2D() <= 256 )
@@ -2613,13 +2610,7 @@ Schedule_t *CHFGrunt :: GetSchedule ( void )
 
 							if (m_hEnemy != 0)
 							{
-								int classify = m_hEnemy->Classify();
-								if (classify != CLASS_PLAYER_ALLY &&
-										classify != CLASS_HUMAN_MILITARY &&
-										classify != CLASS_HUMAN_PASSIVE &&
-										classify != CLASS_MACHINE &&
-										classify != CLASS_PLAYER_ALLY_MILITARY)
-									// monster
+								if (m_hEnemy->IsAlienMonster())
 									SENTENCEG_PlayRndSz( ENT(pev), SentenceByNumber(FGRUNT_SENT_MONSTER), FGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 								else
 									SENTENCEG_PlayRndSz( ENT(pev), SentenceByNumber(FGRUNT_SENT_ALERT), FGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);

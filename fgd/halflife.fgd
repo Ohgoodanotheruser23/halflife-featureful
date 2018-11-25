@@ -102,6 +102,10 @@
 	target(target_destination) : "Target" : : "When an entity is activated, it triggers the entity with the name specified by Target."
 ]
 @BaseClass size(-16 -16 0, 16 16 32) color(0 0 200) base(Targetname, Appearflags, Angles) = Weapon []
+@BaseClass size(-16 -16 0, 16 16 32) color(0 0 200) base(Targetname, Appearflags, Angles) = Item
+[
+	model(studio) : "Custom Model"
+]
 @BaseClass = Global
 [
 	globalname(string) : "Global Entity Name"
@@ -193,6 +197,7 @@
 		128: "WaitForScript" 	: 0
 		256: "Pre-Disaster" 	: 0
 		512: "Fade Corpse"	: 0
+		1024: "No yellow blobs" : 0
 	]
 	scale(string) : "Scale (1.0 = normal size)"
 	health(string) : "Custom Health"
@@ -692,6 +697,8 @@
 		2: "Enormous"
 		3: "Play Everywhere"
 	]
+	custommovesnd(sound) : "Custom move sound"
+	customstopsnd(sound) : "Custom stop sound"
 ]
 
 @BaseClass base(Targetname, RenderFields, Global, PlatSounds) = Trackchange
@@ -742,6 +749,10 @@
 	noise1(sound) : "Deny sound"
 	noise2(sound) : "Start charging sound"
 	noise3(sound) : "Recharge sound"
+	spawnflags(flags) =
+	[
+		1: "Start off" : 0
+	]
 ]
 
 //
@@ -1137,6 +1148,7 @@
 		1: "Fade From" : 0
 		2: "Modulate" : 0
 		4: "Activator Only" : 0
+		8: "Direct blind" : 0 : "Fade alpha depends on the angle between viewer camera and env_fade origin"
 	]
 	duration(string) : "Duration (seconds)" : "2"
 	holdtime(string) : "Hold Fade (seconds)" : "0"
@@ -1376,6 +1388,13 @@
 	]
 	noise1(sound) : "Custom sound 1"
 	noise2(sound) : "Custom sound 2"
+	soundradius(choices) : "Sound radius" : 0 =
+	[
+		0: "Default (large)"
+		1: "Huge"
+		2: "Enormous"
+		3: "Play Everywhere"
+	]
 ]
 
 @SolidClass base(Breakable, RenderFields, ZHLT) = func_breakable : "Breakable Object" 
@@ -1802,6 +1821,8 @@
 		2: "Enormous"
 		3: "Play Everywhere"
 	]
+	custommovesnd(sound) : "Custom move sound"
+	customstopsnd(sound) : "Custom stop sound"
 	spawnflags(flags) =
 	[
 		8 : "Not solid" : 0
@@ -2216,11 +2237,15 @@
 //
 
 @PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_oxygen.mdl") = item_airtank : "Oxygen tank" []
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_antidote.mdl") = item_antidote : "Poison antidote" []
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_battery.mdl") = item_battery : "HEV battery" []
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_medkit.mdl") = item_healthkit : "Small Health Kit" []
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_longjump.mdl") = item_longjump : "Longjump Module" []
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_security.mdl") = item_security : "Security card" []
+@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx) studio("models/w_antidote.mdl") = item_antidote : "Poison antidote" []
+@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx) studio("models/w_battery.mdl") = item_battery : "HEV battery" []
+@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx) studio("models/w_medkit.mdl") = item_healthkit : "Small Health Kit" []
+@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx) studio("models/w_longjump.mdl") = item_longjump : "Longjump Module" []
+@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx) studio("models/w_security.mdl") = item_security : "Security card"
+[
+	message(string) : "Message" : : "Message from titles.txt to show on pickup"
+	noise(sound) : "Pickup sound" : "items/gunpickup4.wav"
+]
 @PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_suit.mdl") = item_suit : "HEV Suit"
 [
 	spawnflags(Flags) =
@@ -2243,7 +2268,7 @@
 @PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/health_charger_body.mdl") = item_healthcharger : "Wall Health Kit" []
 @PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/hev.mdl") = item_recharge : "Wall Recharger" []
 
-@PointClass base(Targetname, Angles) size(-48 -48 0, 48 48 32 ) studio("models/EYE_SCANNER.mdl") = item_eyescanner : "Retinal Scanner"
+@PointClass base(Targetname, Angles) size(-12 -16 0, 12 16 48 ) studio("models/EYE_SCANNER.mdl") = item_eyescanner : "Retinal Scanner"
 [
     unlocked_target(string) : "Unlocked target"
     locked_target(string) : "Locked target"
@@ -3394,6 +3419,7 @@
 		8 : "Shotgun"
 		10 : "Shotgun + HG"
 		16 : "Saw"
+		18 : "Saw + HG"
 	]
 
 	head(Choices) : "Heads" : -1 =
@@ -4391,7 +4417,6 @@
 		7 : "die1"
 	]
 ]
-@PointClass base(Weapon,Targetx,RenderFields, Sequence) studio("models/w_satchel.mdl") = monster_satchelcharge : "Live Satchel Charge" []
 
 @PointClass base(Monster, TalkMonster, Sequence) size(-16 -16 0, 16 16 72) studio("models/cleansuit_scientist.mdl") = monster_cleansuit_scientist : "Cleansuit Scientist" 
 [

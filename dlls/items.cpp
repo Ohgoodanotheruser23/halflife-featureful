@@ -406,19 +406,37 @@ void CItem::Materialize( void )
 	SetThink( NULL );
 }
 
+void CItem::SetMyModel(const char *model)
+{
+	if (FStringNull(pev->model)) {
+		SET_MODEL( ENT( pev ), model );
+	} else {
+		SET_MODEL( ENT( pev ), STRING(pev->model) );
+	}
+}
+
+void CItem::PrecacheMyModel(const char *model)
+{
+	if (FStringNull(pev->model)) {
+		PRECACHE_MODEL( model );
+	} else {
+		PRECACHE_MODEL( STRING( pev->model ) );
+	}
+}
+
 #define SF_SUIT_SHORTLOGON		0x0001
 
 class CItemSuit : public CItem
 {
 	void Spawn( void )
-	{ 
+	{
 		Precache();
-		SET_MODEL( ENT( pev ), "models/w_suit.mdl" );
+		SetMyModel( "models/w_suit.mdl" );
 		CItem::Spawn();
 	}
 	void Precache( void )
 	{
-		PRECACHE_MODEL( "models/w_suit.mdl" );
+		PrecacheMyModel( "models/w_suit.mdl" );
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
@@ -440,14 +458,14 @@ LINK_ENTITY_TO_CLASS( item_suit, CItemSuit )
 class CItemBattery : public CItem
 {
 	void Spawn( void )
-	{ 
+	{
 		Precache();
-		SET_MODEL( ENT( pev ), "models/w_battery.mdl" );
+		SetMyModel( "models/w_battery.mdl" );
 		CItem::Spawn();
 	}
 	void Precache( void )
 	{
-		PRECACHE_MODEL( "models/w_battery.mdl" );
+		PrecacheMyModel( "models/w_battery.mdl" );
 		PRECACHE_SOUND( "items/gunpickup2.wav" );
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
@@ -494,17 +512,21 @@ LINK_ENTITY_TO_CLASS( item_battery, CItemBattery )
 class CItemAntidote : public CItem
 {
 	void Spawn( void )
-	{ 
+	{
 		Precache();
-		SET_MODEL( ENT( pev ), "models/w_antidote.mdl" );
+		SetMyModel( "models/w_antidote.mdl" );
 		CItem::Spawn();
 	}
 	void Precache( void )
 	{
-		PRECACHE_MODEL( "models/w_antidote.mdl" );
+		PrecacheMyModel( "models/w_antidote.mdl" );
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
+		if( pPlayer->pev->deadflag != DEAD_NO )
+		{
+			return FALSE;
+		}
 		pPlayer->SetSuitUpdate( "!HEV_DET4", FALSE, SUIT_NEXT_IN_1MIN );
 
 		pPlayer->m_rgItems[ITEM_ANTIDOTE] += 1;
@@ -517,18 +539,33 @@ LINK_ENTITY_TO_CLASS( item_antidote, CItemAntidote )
 class CItemSecurity : public CItem
 {
 	void Spawn( void )
-	{ 
+	{
 		Precache();
-		SET_MODEL( ENT( pev ), "models/w_security.mdl" );
+		SetMyModel( "models/w_security.mdl" );
 		CItem::Spawn();
 	}
 	void Precache( void )
 	{
-		PRECACHE_MODEL( "models/w_security.mdl" );
+		PrecacheMyModel( "models/w_security.mdl" );
+		if (!FStringNull(pev->noise))
+			PRECACHE_SOUND( STRING(pev->noise) );
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
+		if( pPlayer->pev->deadflag != DEAD_NO )
+		{
+			return FALSE;
+		}
 		pPlayer->m_rgItems[ITEM_SECURITY] += 1;
+
+		if (!FStringNull(pev->noise))
+			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, STRING(pev->noise), 1, ATTN_NORM );
+		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
+			WRITE_STRING( STRING( pev->classname ) );
+		MESSAGE_END();
+		if (!FStringNull(pev->message))
+			UTIL_ShowMessage( STRING( pev->message ), pPlayer );
+
 		return TRUE;
 	}
 };
@@ -540,12 +577,12 @@ class CItemLongJump : public CItem
 	void Spawn( void )
 	{ 
 		Precache();
-		SET_MODEL( ENT( pev ), "models/w_longjump.mdl" );
+		SetMyModel( "models/w_longjump.mdl" );
 		CItem::Spawn();
 	}
 	void Precache( void )
 	{
-		PRECACHE_MODEL( "models/w_longjump.mdl" );
+		PrecacheMyModel( "models/w_longjump.mdl" );
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
@@ -605,7 +642,14 @@ IMPLEMENT_SAVERESTORE(CItemGeneric, CBaseAnimating)
 void CItemGeneric::Spawn(void)
 {
 	Precache();
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	if (FStringNull(pev->model))
+	{
+		ALERT(at_console, "Spawning item_generic without model!\n");
+	}
+	else
+	{
+		SET_MODEL(ENT(pev), STRING(pev->model));
+	}
 
 	UTIL_SetOrigin(pev, pev->origin);
 	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 32));
@@ -621,7 +665,8 @@ void CItemGeneric::Spawn(void)
 
 void CItemGeneric::Precache(void)
 {
-	PRECACHE_MODEL(STRING(pev->model));
+	if (!FStringNull(pev->model))
+		PRECACHE_MODEL(STRING(pev->model));
 }
 
 void CItemGeneric::KeyValue(KeyValueData* pkvd)
@@ -751,7 +796,7 @@ void CEyeScanner::KeyValue(KeyValueData *pkvd)
 void CEyeScanner::Spawn()
 {
 	Precache();
-	pev->solid = SOLID_NOT;
+	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
 	pev->takedamage = DAMAGE_NO;
 	pev->health = 1;

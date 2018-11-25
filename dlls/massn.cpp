@@ -116,7 +116,7 @@ void CMassn::Sniperrifle(void)
 
 	Vector	vecShellVelocity = gpGlobals->v_right * RANDOM_FLOAT(40, 90) + gpGlobals->v_up * RANDOM_FLOAT(75, 200) + gpGlobals->v_forward * RANDOM_FLOAT(-40, 40);
 	EjectBrass(vecShootOrigin - vecShootDir * 24, vecShellVelocity, pev->angles.y, m_iBrassShell, TE_BOUNCE_SHELL);
-	FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_1DEGREES, 2048, BULLET_MONSTER_762, 0);
+	FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_1DEGREES, 2048, BULLET_MONSTER_762, 1);
 
 	pev->effects |= EF_MUZZLEFLASH;
 
@@ -227,6 +227,10 @@ void CMassn::HandleAnimEvent(MonsterEvent_t *pEvent)
 //=========================================================
 BOOL CMassn::CheckRangeAttack2( float flDot, float flDist )
 {
+	if( !FBitSet( pev->weapons, ( MASSN_HANDGRENADE | MASSN_GRENADELAUNCHER ) ) )
+	{
+		return FALSE;
+	}
 	return CheckRangeAttack2Impl(gSkillData.massnGrenadeSpeed, flDot, flDist);
 }
 

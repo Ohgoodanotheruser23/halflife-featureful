@@ -28,6 +28,7 @@ extern int gmsgItemPickup;
 
 class CHealthKit : public CItem
 {
+public:
 	void Spawn( void );
 	void Precache( void );
 	BOOL MyTouch( CBasePlayer *pPlayer );
@@ -52,14 +53,14 @@ IMPLEMENT_SAVERESTORE( CHealthKit, CItem )
 void CHealthKit::Spawn( void )
 {
 	Precache();
-	SET_MODEL( ENT( pev ), "models/w_medkit.mdl" );
+	SetMyModel( "models/w_medkit.mdl" );
 
 	CItem::Spawn();
 }
 
 void CHealthKit::Precache( void )
 {
-	PRECACHE_MODEL( "models/w_medkit.mdl" );
+	PrecacheMyModel( "models/w_medkit.mdl" );
 	PRECACHE_SOUND( "items/smallmedkit1.wav" );
 }
 
@@ -97,6 +98,8 @@ BOOL CHealthKit::MyTouch( CBasePlayer *pPlayer )
 // Base class for wall chargers
 //-------------------------------------------------------------
 
+#define SF_WALLCHARGER_STARTOFF 1
+
 void CWallCharger::Spawn()
 {
 	Precache();
@@ -107,8 +110,16 @@ void CWallCharger::Spawn()
 	UTIL_SetOrigin( pev, pev->origin );		// set size and link into world
 	UTIL_SetSize( pev, pev->mins, pev->maxs );
 	SET_MODEL( ENT( pev ), STRING( pev->model ) );
-	m_iJuice = ChargerCapacity();
-	pev->frame = 0;
+	if (FBitSet(pev->spawnflags, SF_WALLCHARGER_STARTOFF))
+	{
+		m_iJuice = 0;
+		pev->frame = 1;
+	}
+	else
+	{
+		m_iJuice = ChargerCapacity();
+		pev->frame = 0;
+	}
 }
 
 void CWallCharger::Precache()
@@ -429,6 +440,7 @@ IMPLEMENT_SAVERESTORE( CWallHealthDecay, CBaseAnimating )
 
 void CWallHealthDecay::Spawn()
 {
+	m_iJuice = gSkillData.healthchargerCapacity;
 	Precache();
 
 	pev->solid = SOLID_SLIDEBOX;
@@ -437,7 +449,6 @@ void CWallHealthDecay::Spawn()
 	SET_MODEL(ENT(pev), "models/health_charger_body.mdl");
 	UTIL_SetSize(pev, Vector(-12, -16, 0), Vector(12, 16, 48));
 	UTIL_SetOrigin(pev, pev->origin);
-	m_iJuice = gSkillData.healthchargerCapacity;
 	pev->skin = 0;
 
 	InitBoneControllers();

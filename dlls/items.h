@@ -26,9 +26,11 @@ public:
 	virtual BOOL MyTouch( CBasePlayer *pPlayer )
 	{
 		return FALSE;
-	};
+	}
 	int ObjectCaps();
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void TouchOrUse( CBaseEntity* pOther );
+	void SetMyModel( const char* model );
+	void PrecacheMyModel( const char* model );
 };
 #endif // ITEMS_H

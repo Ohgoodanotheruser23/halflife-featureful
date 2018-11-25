@@ -23,6 +23,7 @@
 #include "decals.h"
 #include "func_break.h"
 #include "shake.h"
+#include "soundradius.h"
 #include "mod_features.h"
 
 #define	SF_GIBSHOOTER_REPEATABLE		1 // allows a gibshooter to be refired
@@ -1909,6 +1910,7 @@ LINK_ENTITY_TO_CLASS( env_fade, CFade )
 #define SF_FADE_IN			0x0001		// Fade in, not out
 #define SF_FADE_MODULATE		0x0002		// Modulate, don't blend
 #define SF_FADE_ONLYONE			0x0004
+#define SF_FADE_BLINDDIRECT		0x0008
 
 void CFade::Spawn( void )
 {
@@ -1948,12 +1950,26 @@ void CFade::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType
 	{
 		if( pActivator->IsNetClient() )
 		{
-			UTIL_ScreenFade( pActivator, pev->rendercolor, Duration(), HoldTime(), (int)pev->renderamt, fadeFlags );
+			if (FBitSet(pev->spawnflags, SF_FADE_BLINDDIRECT))
+			{
+				UTIL_ScreenFade( pev->origin, pActivator, pev->rendercolor, Duration(), HoldTime(), (int)pev->renderamt, fadeFlags );
+			}
+			else
+			{
+				UTIL_ScreenFade( pActivator, pev->rendercolor, Duration(), HoldTime(), (int)pev->renderamt, fadeFlags );
+			}
 		}
 	}
 	else
 	{
-		UTIL_ScreenFadeAll( pev->rendercolor, Duration(), HoldTime(), (int)pev->renderamt, fadeFlags );
+		if (FBitSet(pev->spawnflags, SF_FADE_BLINDDIRECT))
+		{
+			UTIL_ScreenFadeAll( pev->origin, pev->rendercolor, Duration(), HoldTime(), (int)pev->renderamt, fadeFlags );
+		}
+		else
+		{
+			UTIL_ScreenFadeAll( pev->rendercolor, Duration(), HoldTime(), (int)pev->renderamt, fadeFlags );
+		}
 	}
 	SUB_UseTargets( this, USE_TOGGLE, 0 );
 }
@@ -2317,6 +2333,9 @@ public:
 	inline const char* WarpballSound2() {
 		return pev->noise2 ? STRING(pev->noise2) : WARPBALL_SOUND2;
 	}
+	inline float SoundAttenuation() {
+		return ::SoundAttenuation((short)pev->oldbuttons);
+	}
 
 	Vector vecOrigin;
 	int m_beamTexture;
@@ -2369,6 +2388,11 @@ void CEnvWarpBall::KeyValue( KeyValueData *pkvd )
 		SetMaxBeamCount( atoi(pkvd->szValue) );
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq( pkvd->szKeyName, "soundradius" ) )
+	{
+		pev->oldbuttons = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBaseEntity::KeyValue( pkvd );
 }
@@ -2411,7 +2435,7 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		vecOrigin = pev->origin;
 		pos = edict();
 	}
-	EMIT_SOUND( pos, CHAN_BODY, WarpballSound1(), 1, ATTN_NORM );
+	EMIT_SOUND( pos, CHAN_BODY, WarpballSound1(), 1, SoundAttenuation() );
 	
 	if (!(pev->spawnflags & SF_WARPBALL_NOSHAKE)) {
 		UTIL_ScreenShake( vecOrigin, Amplitude(), Frequency(), Duration(), Radius() );
@@ -2450,7 +2474,7 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		MESSAGE_END();
 	}
 
-	EMIT_SOUND( pos, CHAN_ITEM, WarpballSound2(), 1, ATTN_NORM );
+	EMIT_SOUND( pos, CHAN_ITEM, WarpballSound2(), 1, SoundAttenuation() );
 
 	int beamRed = pev->punchangle.x;
 	int beamGreen = pev->punchangle.y;

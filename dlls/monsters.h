@@ -51,6 +51,7 @@
 #define	SF_MONSTER_WAIT_FOR_SCRIPT		128 //spawnflag that makes monsters wait to check for attacking until the script is done or they've been attacked
 #define SF_MONSTER_PREDISASTER			256	//this is a predisaster scientist or barney. Influences how they speak.
 #define SF_MONSTER_FADECORPSE			512 // Fade out corpse after death
+#define SF_MONSTER_NO_YELLOW_BLOBS		1024
 #define SF_MONSTER_FALL_TO_GROUND		0x80000000
 
 // specialty spawnflags
@@ -156,6 +157,8 @@ public:
 	int m_cBloodDecals;
 	int m_material;
 	float m_lifeTime;
+	// start fading even if gib had not stopped moving at this time. This is to prevent gibs endlessly rotating on edges
+	float m_startFadeTime;
 };
 
 void AddScoreForDamage(entvars_t *pevAttacker, CBaseEntity* victim, const float damage);
