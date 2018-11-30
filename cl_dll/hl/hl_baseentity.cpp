@@ -307,7 +307,7 @@ BOOL CBasePlayer::HasPlayerItem( CBasePlayerWeapon *pCheckItem ) { return FALSE;
 BOOL CBasePlayer::SwitchWeapon( CBasePlayerWeapon *pWeapon )  { return FALSE; }
 Vector CBasePlayer::GetGunPosition( void ) { return g_vecZero; }
 const char *CBasePlayer::TeamID( void ) { return ""; }
-int CBasePlayer::GiveAmmo( int iCount, const char *szName, int iMax ) { return 0; }
+int CBasePlayer::GiveAmmo( int iCount, const char *szName ) { return 0; }
 void CBasePlayer::AddPoints( int score, BOOL bAllowNegativeScore ) { } 
 void CBasePlayer::AddFloatPoints(float score, BOOL bAllowNegativeScore) {}
 void CBasePlayer::AddPointsToTeam( int score, BOOL bAllowNegativeScore ) { } 
@@ -324,7 +324,6 @@ void SpawnBlood( Vector vecSpot, int bloodColor, float flDamage ) { }
 int DamageDecal( CBaseEntity *pEntity, int bitsDamageType ) { return 0; }
 void DecalGunshot( TraceResult *pTrace, int iBulletType ) { }
 void EjectBrass( const Vector &vecOrigin, const Vector &vecVelocity, float rotation, int model, int soundtype ) { }
-void AddAmmoNameToAmmoRegistry( const char *szAmmoname ) { }
 float CBasePlayerWeapon::GetNextAttackDelay( float flTime ) { return flTime; }
 void CBasePlayerWeapon::SetObjectCollisionBox( void ) { }
 void CBasePlayerWeapon::FallInit( void ) { }
@@ -344,22 +343,19 @@ int CBasePlayerWeapon::ObjectCaps() {return 0;}
 int CBasePlayerWeapon::AddDuplicate( CBasePlayerWeapon *pOriginal ) { return 0; }
 int CBasePlayerWeapon::AddToPlayerDefault( CBasePlayer *pPlayer ) { return FALSE; }
 int CBasePlayerWeapon::UpdateClientData( CBasePlayer *pPlayer ) { return 0; }
-BOOL CBasePlayerWeapon::AddPrimaryAmmo( int iCount, const char *szName, int iMaxClip, int iMaxCarry ) { return TRUE; }
-BOOL CBasePlayerWeapon::AddSecondaryAmmo( int iCount, const char *szName, int iMax ) { return TRUE; }
+BOOL CBasePlayerWeapon::AddPrimaryAmmo( int iCount ) { return TRUE; }
+BOOL CBasePlayerWeapon::AddSecondaryAmmo( int iCount ) { return TRUE; }
 BOOL CBasePlayerWeapon::IsUseable( void ) { return TRUE; }
 int CBasePlayerWeapon::PrimaryAmmoIndex( void ) { return -1; }
 int CBasePlayerWeapon::SecondaryAmmoIndex( void ) { return -1; }
 void CBasePlayerAmmo::Spawn( void ) { }
+void CBasePlayerAmmo::Precache( void ) { }
 CBaseEntity* CBasePlayerAmmo::Respawn( void ) { return this; }
 void CBasePlayerAmmo::Materialize( void ) { }
 void CBasePlayerAmmo::DefaultTouch( CBaseEntity *pOther ) { }
-int CBasePlayerAmmo::AmmoAmount() {return 0;}
-int CBasePlayerAmmo::MaxAmmo() {return 0;}
-const char* CBasePlayerAmmo::AmmoName() {return "";}
 void CBasePlayerAmmo::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value) {}
 BOOL CBasePlayerAmmo::AddAmmo(CBaseEntity *pOther) {return FALSE;}
 int CBasePlayerAmmo::ObjectCaps() {return 0;}
-void CBasePlayerAmmo::Precache() {}
 int CBasePlayerWeapon::ExtractAmmo( CBasePlayerWeapon *pWeapon ) { return 0; }
 int CBasePlayerWeapon::ExtractClipAmmo( CBasePlayerWeapon *pWeapon ) { return 0; }	
 void CBasePlayerWeapon::RetireWeapon( void ) { }

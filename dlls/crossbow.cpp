@@ -12,7 +12,6 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#if !defined( OEM_BUILD ) && !defined( HLDEMO_BUILD )
 
 #include "extdll.h"
 #include "util.h"
@@ -514,27 +513,15 @@ void CCrossbow::WeaponIdle( void )
 
 class CCrossbowAmmo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{ 
-		Precache();
-		SET_MODEL( ENT( pev ), "models/w_crossbow_clip.mdl" );
-		CBasePlayerAmmo::Spawn();
-	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_crossbow_clip.mdl" );
-	}
-
-	int AmmoAmount() {
-		return AMMO_CROSSBOWCLIP_GIVE;
+	const char* MyModel() {
+		return "models/w_crossbow_clip.mdl";
 	}
 	const char* AmmoName() {
 		return "bolts";
 	}
-	int MaxAmmo() {
-		return BOLT_MAX_CARRY;
+	int MyAmount() {
+		return AMMO_CROSSBOWCLIP_GIVE;
 	}
 };
 
 LINK_ENTITY_TO_CLASS( ammo_crossbow, CCrossbowAmmo )
-#endif

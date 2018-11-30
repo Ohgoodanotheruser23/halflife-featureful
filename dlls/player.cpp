@@ -4734,7 +4734,7 @@ void CBasePlayer::SelectItem( const char *pstr )
 			break;
 	}
 
-	if( !pItem )
+	if( !pItem || !pItem->CanDeploy() )
 		return;
 
 	if( pItem == m_pActiveItem )
@@ -4758,7 +4758,7 @@ void CBasePlayer::SelectItem( const char *pstr )
 
 void CBasePlayer::SelectLastItem( void )
 {
-	if( !m_pLastItem )
+	if( !m_pLastItem || !m_pLastItem->CanDeploy() )
 	{
 		return;
 	}
@@ -5174,7 +5174,6 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		GiveNamedItem( "ammo_ARgrenades" );
 		GiveNamedItem( "weapon_handgrenade" );
 		GiveNamedItem( "weapon_tripmine" );
-#ifndef OEM_BUILD
 		GiveNamedItem( "weapon_357" );
 		GiveNamedItem( "ammo_357" );
 		GiveNamedItem( "weapon_crossbow" );
@@ -5187,7 +5186,6 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		GiveNamedItem( "weapon_satchel" );
 		GiveNamedItem( "weapon_snark" );
 		GiveNamedItem( "weapon_hornetgun" );
-#endif
 #if FEATURE_MEDKIT
 		GiveNamedItem( "weapon_medkit" );
 #endif
@@ -5436,7 +5434,7 @@ BOOL CBasePlayer::RemovePlayerItem( CBasePlayerWeapon *pItem, bool bCallHolster 
 //
 // Returns the unique ID for the ammo, or -1 if error
 //
-int CBasePlayer::GiveAmmo( int iCount, const char *szName, int iMax )
+int CBasePlayer::GiveAmmo(int iCount, const char *szName)
 {
 	if( !szName )
 	{
@@ -5444,20 +5442,20 @@ int CBasePlayer::GiveAmmo( int iCount, const char *szName, int iMax )
 		return -1;
 	}
 
-	if( !g_pGameRules->CanHaveAmmo( this, szName, iMax ) )
+	const AmmoInfo& ammoInfo = CBasePlayerWeapon::GetAmmoInfo(szName);
+
+	if( !g_pGameRules->CanHaveAmmo( this, ammoInfo.pszName ) )
 	{
 		// game rules say I can't have any more of this ammo type.
 		return -1;
 	}
 
-	int i = 0;
-
-	i = GetAmmoIndex( szName );
+	int i = ammoInfo.iId;
 
 	if( i < 0 || i >= MAX_AMMO_SLOTS )
 		return -1;
 
-	int iAdd = Q_min( iCount, iMax - m_rgAmmo[i] );
+	int iAdd = Q_min( iCount, ammoInfo.iMaxAmmo - m_rgAmmo[i] );
 	if( iAdd < 1 )
 		return i;
 
@@ -5467,7 +5465,7 @@ int CBasePlayer::GiveAmmo( int iCount, const char *szName, int iMax )
 	{
 		// Send the message that ammo has been picked up
 		MESSAGE_BEGIN( MSG_ONE, gmsgAmmoPickup, NULL, pev );
-			WRITE_BYTE( GetAmmoIndex( szName ) );		// ammo ID
+			WRITE_BYTE( i );		// ammo ID
 			WRITE_BYTE( iAdd );		// amount
 		MESSAGE_END();
 	}

@@ -12,7 +12,6 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#if !defined( OEM_BUILD ) && !defined( HLDEMO_BUILD )
 
 #include "extdll.h"
 #include "util.h"
@@ -266,26 +265,15 @@ void CPython::WeaponIdle( void )
 
 class CPythonAmmo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{ 
-		Precache();
-		SET_MODEL( ENT(pev), "models/w_357ammobox.mdl" );
-		CBasePlayerAmmo::Spawn();
+	const char* MyModel() {
+		return "models/w_357ammobox.mdl";
 	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_357ammobox.mdl" );
-	}
-	int AmmoAmount() {
+	int MyAmount() {
 		return AMMO_357BOX_GIVE;
 	}
 	const char* AmmoName() {
 		return "357";
 	}
-	int MaxAmmo() {
-		return _357_MAX_CARRY;
-	}
 };
 
 LINK_ENTITY_TO_CLASS( ammo_357, CPythonAmmo )
-#endif

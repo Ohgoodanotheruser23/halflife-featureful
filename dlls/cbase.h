@@ -201,9 +201,9 @@ public:
 	virtual	int GetToggleState( void ) { return TS_AT_TOP; }
 	virtual void AddPoints( int score, BOOL bAllowNegativeScore ) { AddFloatPoints((float)score, bAllowNegativeScore); }
 	virtual void AddPointsToTeam( int score, BOOL bAllowNegativeScore ) {}
-	virtual int AddPlayerItem( CBasePlayerWeapon *pItem ) { return DID_NOT_GET_ITEM; }
+	virtual BOOL AddPlayerItem( CBasePlayerWeapon *pItem ) { return DID_NOT_GET_ITEM; }
 	virtual BOOL RemovePlayerItem( CBasePlayerWeapon *pItem ) { return 0; }
-	virtual int GiveAmmo( int iAmount, const char *szName, int iMax ) { return -1; }
+	virtual int GiveAmmo( int iAmount, const char *szName ) { return -1; }
 	virtual float GetDelay( void ) { return 0; }
 	virtual int IsMoving( void ) { return pev->velocity != g_vecZero; }
 	virtual void OverrideReset( void ) {}

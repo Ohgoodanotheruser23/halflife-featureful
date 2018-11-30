@@ -348,25 +348,14 @@ void CShotgun::WeaponIdle( void )
 
 class CShotgunAmmo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{ 
-		Precache();
-		SET_MODEL( ENT( pev ), "models/w_shotbox.mdl" );
-		CBasePlayerAmmo::Spawn();
-	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_shotbox.mdl" );
-	}
-	
-	int AmmoAmount() {
-		return AMMO_BUCKSHOTBOX_GIVE;
+	const char* MyModel() {
+		return "models/w_shotbox.mdl";
 	}
 	const char* AmmoName() {
 		return "buckshot";
 	}
-	int MaxAmmo() {
-		return BUCKSHOT_MAX_CARRY;
+	int MyAmount() {
+		return AMMO_BUCKSHOTBOX_GIVE;
 	}
 };
 

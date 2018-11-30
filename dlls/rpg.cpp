@@ -12,7 +12,6 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#if !defined( OEM_BUILD )
 
 #include "extdll.h"
 #include "util.h"
@@ -535,26 +534,15 @@ void CRpg::UpdateSpot( void )
 
 class CRpgAmmo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{
-		Precache();
-		SET_MODEL( ENT( pev ), "models/w_rpgammo.mdl" );
-		CBasePlayerAmmo::Spawn();
-	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_rpgammo.mdl" );
-	}
-	int AmmoAmount() {
-		return AMMO_RPGCLIP_GIVE;
+	const char* MyModel() {
+		return "models/w_rpgammo.mdl";
 	}
 	const char* AmmoName() {
 		return "rockets";
 	}
-	int MaxAmmo() {
-		return ROCKET_MAX_CARRY;
+	int MyAmount() {
+		return AMMO_RPGCLIP_GIVE;
 	}
 };
 
 LINK_ENTITY_TO_CLASS( ammo_rpgclip, CRpgAmmo )
-#endif

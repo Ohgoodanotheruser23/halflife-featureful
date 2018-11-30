@@ -12,7 +12,6 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#if !defined( OEM_BUILD ) && !defined( HLDEMO_BUILD )
 
 #include "extdll.h"
 #include "util.h"
@@ -606,27 +605,15 @@ void CGauss::WeaponIdle( void )
 
 class CGaussAmmo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{ 
-		Precache();
-		SET_MODEL( ENT( pev ), "models/w_gaussammo.mdl" );
-		CBasePlayerAmmo::Spawn();
+	const char* MyModel() {
+		return "models/w_gaussammo.mdl";
 	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_gaussammo.mdl" );
-	}
-
-	int AmmoAmount() {
+	int MyAmount() {
 		return AMMO_URANIUMBOX_GIVE;
 	}
 	const char* AmmoName() {
 		return "uranium";
 	}
-	int MaxAmmo() {
-		return URANIUM_MAX_CARRY;
-	}
 };
 
 LINK_ENTITY_TO_CLASS( ammo_gaussclip, CGaussAmmo )
-#endif

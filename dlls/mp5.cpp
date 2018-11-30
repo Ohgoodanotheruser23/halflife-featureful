@@ -261,18 +261,10 @@ BOOL CMP5::IsUseable()
 
 class CMP5AmmoClip : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{
-		Precache();
-		SET_MODEL( ENT( pev ), "models/w_9mmARclip.mdl" );
-		CBasePlayerAmmo::Spawn();
+	const char* MyModel() {
+		return "models/w_9mmARclip.mdl";
 	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_9mmARclip.mdl" );
-	}
-	
-	int AmmoAmount() {
+	int MyAmount() {
 		return AMMO_MP5CLIP_GIVE;
 	}
 	const char* AmmoName() {
@@ -288,25 +280,14 @@ LINK_ENTITY_TO_CLASS( ammo_9mmAR, CMP5AmmoClip )
 
 class CMP5Chainammo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{ 
-		Precache();
-		SET_MODEL( ENT( pev ), "models/w_chainammo.mdl" );
-		CBasePlayerAmmo::Spawn();
+	const char* MyModel() {
+		return "models/w_chainammo.mdl";
 	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_chainammo.mdl" );
-	}
-
-	int AmmoAmount() {
+	int MyAmount() {
 		return AMMO_CHAINBOX_GIVE;
 	}
 	const char* AmmoName() {
 		return "9mm";
-	}
-	int MaxAmmo() {
-		return _9MM_MAX_CARRY;
 	}
 };
 
@@ -314,24 +295,14 @@ LINK_ENTITY_TO_CLASS( ammo_9mmbox, CMP5Chainammo )
 
 class CMP5AmmoGrenade : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{
-		Precache();
-		SET_MODEL( ENT( pev ), "models/w_ARgrenade.mdl" );
-		CBasePlayerAmmo::Spawn();
+	const char* MyModel() {
+		return "models/w_ARgrenade.mdl";
 	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_ARgrenade.mdl" );
-	}
-	int AmmoAmount() {
+	int MyAmount() {
 		return AMMO_M203BOX_GIVE;
 	}
 	const char* AmmoName() {
 		return "ARgrenades";
-	}
-	int MaxAmmo() {
-		return M203_GRENADE_MAX_CARRY;
 	}
 };
 

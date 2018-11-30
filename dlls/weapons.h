@@ -257,6 +257,8 @@ enum {
 
 #define WEAPON_IS_ONTARGET 0x40
 
+#define AMMO_PICKUP_SOUND "items/9mmclip1.wav"
+
 typedef struct
 {
 	int		iSlot;
@@ -278,6 +280,7 @@ typedef struct
 {
 	const char *pszName;
 	int iId;
+	int iMaxAmmo;
 } AmmoInfo;
 
 // inventory items that
@@ -317,6 +320,8 @@ public:
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void TouchOrUse( CBaseEntity* other );
 
+	static const AmmoInfo& GetAmmoInfo( const char* name );
+
 	static ItemInfo ItemInfoArray[ MAX_WEAPONS ];
 	static AmmoInfo AmmoInfoArray[ MAX_AMMO_SLOTS ];
 
@@ -347,8 +352,8 @@ public:
 	virtual int AddWeapon( void ) { ExtractAmmo( this ); return TRUE; }	// Return TRUE if you want to add yourself to the player
 
 	// generic "shared" ammo handlers
-	BOOL AddPrimaryAmmo(int iCount, const char *szName, int iMaxClip, int iMaxCarry );
-	BOOL AddSecondaryAmmo( int iCount, const char *szName, int iMaxCarry );
+	BOOL AddPrimaryAmmo(int iCount);
+	BOOL AddSecondaryAmmo(int iCount);
 
 	virtual void UpdateItemInfo( void ) {}	// updates HUD state
 
@@ -425,10 +430,10 @@ public:
 
 	CBaseEntity* Respawn( void );
 	void EXPORT Materialize( void );
-	
-	virtual int AmmoAmount();
-	virtual int MaxAmmo();
-	virtual const char *AmmoName();
+
+	virtual const char* MyModel() = 0;
+	virtual int MyAmount() = 0;
+	virtual const char* AmmoName() = 0;
 };
 
 extern DLL_GLOBAL	short	g_sModelIndexLaser;// holds the index for the laser beam
@@ -499,7 +504,6 @@ public:
 	void Touch( CBaseEntity *pOther );
 	void KeyValue( KeyValueData *pkvd );
 	BOOL IsEmpty( void );
-	int  GiveAmmo( int iCount, const char *szName, int iMax, int *pIndex = NULL );
 	void SetObjectCollisionBox( void );
 	
 	int ObjectCaps();

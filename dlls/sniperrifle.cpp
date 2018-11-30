@@ -239,25 +239,14 @@ void CSniperrifle::WeaponIdle( void )
 
 class CSniperrifleAmmo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{
-		Precache( );
-		SET_MODEL(ENT(pev), "models/w_m40a1clip.mdl");
-		CBasePlayerAmmo::Spawn( );
+	const char* MyModel() {
+		return "models/w_m40a1clip.mdl";
 	}
-	void Precache( void )
-	{
-		PRECACHE_MODEL ("models/w_m40a1clip.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
-	}
-	int AmmoAmount() {
+	int MyAmount() {
 		return AMMO_762BOX_GIVE;
 	}
 	const char* AmmoName() {
 		return "762";
-	}
-	int MaxAmmo() {
-		return _762_MAX_CARRY;
 	}
 };
 LINK_ENTITY_TO_CLASS( ammo_762, CSniperrifleAmmo )

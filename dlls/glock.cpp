@@ -214,26 +214,14 @@ void CGlock::WeaponIdle( void )
 
 class CGlockAmmo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{ 
-		Precache();
-		SET_MODEL( ENT( pev ), "models/w_9mmclip.mdl" );
-		CBasePlayerAmmo::Spawn();
+	const char* MyModel() {
+		return "models/w_9mmclip.mdl";
 	}
-
-	void Precache( void )
-	{
-		PRECACHE_MODEL( "models/w_9mmclip.mdl" );
-	}
-	
-	int AmmoAmount() {
+	int MyAmount() {
 		return AMMO_GLOCKCLIP_GIVE;
 	}
 	const char* AmmoName() {
 		return "9mm";
-	}
-	int MaxAmmo() {
-		return _9MM_MAX_CARRY;
 	}
 };
 
