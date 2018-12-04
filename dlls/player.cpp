@@ -1016,6 +1016,7 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 #if FEATURE_ROPE
 	DEFINE_FIELD(CBasePlayer, m_pRope, FIELD_CLASSPTR),
 #endif
+	DEFINE_FIELD(CBasePlayer, m_settingsLoaded, FIELD_BOOLEAN),
 
 	//DEFINE_FIELD( CBasePlayer, m_fDeadTime, FIELD_FLOAT ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_fGameHUDInitialized, FIELD_INTEGER ), // only used in multiplayer games
@@ -3256,7 +3257,7 @@ enum
 void CBasePlayer::SetMovementMode()
 {
 #if FEATURE_MOVE_MODE
-	if (!m_fGameHUDInitialized)
+	if (m_fInitHUD)
 		return;
 	short currentMovementState;
 	if (!FBitSet( pev->flags, FL_ONGROUND ))
@@ -4907,7 +4908,7 @@ void CBloodSplat::Spray( void )
 }
 
 //==============================================
-void CBasePlayer::GiveNamedItem( const char *pszName )
+void CBasePlayer::GiveNamedItem(const char *pszName , int spawnFlags)
 {
 	edict_t	*pent;
 
@@ -4921,6 +4922,7 @@ void CBasePlayer::GiveNamedItem( const char *pszName )
 	}
 	VARS( pent )->origin = pev->origin;
 	pent->v.spawnflags |= SF_NORESPAWN;
+	pent->v.spawnflags |= spawnFlags;
 
 	DispatchSpawn( pent );
 
@@ -5459,15 +5461,49 @@ int CBasePlayer::GiveAmmo(int iCount, const char *szName)
 	if( iAdd < 1 )
 		return i;
 
-	m_rgAmmo[i] += iAdd;
-
-	if( gmsgAmmoPickup )  // make sure the ammo messages have been linked first
+	// horrific HACK to give player an exhaustible weapon as a real weapon, not just ammo
+	bool addedAsWeapon = false;
+	if (ammoInfo.isExhaustible)
 	{
-		// Send the message that ammo has been picked up
-		MESSAGE_BEGIN( MSG_ONE, gmsgAmmoPickup, NULL, pev );
-			WRITE_BYTE( i );		// ammo ID
-			WRITE_BYTE( iAdd );		// amount
-		MESSAGE_END();
+		for (int j=0; j<MAX_WEAPONS; ++j) {
+			const ItemInfo& II = CBasePlayerWeapon::ItemInfoArray[j];
+			if ((II.iFlags & ITEM_FLAG_EXHAUSTIBLE) && II.pszAmmo1 && FStrEq(szName, II.pszAmmo1)) {
+				// we found a weapon that uses this ammo type
+
+				int weaponId = II.iId;
+				const char* weaponName = II.pszName;
+
+				if ((pev->weapons & (1 << weaponId)) == 0) {
+					// player does not have this weapon
+					CBasePlayerWeapon* weapon = (CBasePlayerWeapon*)Create(weaponName, pev->origin, pev->angles);
+					if (weapon) {
+						weapon->pev->spawnflags |= SF_NORESPAWN;
+						weapon->m_iDefaultAmmo = iAdd;
+						if (AddPlayerItem(weapon)) {
+							weapon->AttachToPlayer(this);
+							addedAsWeapon = true;
+						}
+						else
+							UTIL_Remove(weapon);
+					}
+				}
+
+				break;
+			}
+		}
+	}
+
+	if (!addedAsWeapon)
+	{
+		m_rgAmmo[i] += iAdd;
+		if( gmsgAmmoPickup )  // make sure the ammo messages have been linked first
+		{
+			// Send the message that ammo has been picked up
+			MESSAGE_BEGIN( MSG_ONE, gmsgAmmoPickup, NULL, pev );
+				WRITE_BYTE( i );		// ammo ID
+				WRITE_BYTE( iAdd );		// amount
+			MESSAGE_END();
+		}
 	}
 
 	return i;
@@ -6467,6 +6503,12 @@ void CDeadHEV :: Spawn( void )
 class CStripWeapons : public CPointEntity
 {
 public:
+	void Precache()
+	{
+		if (!FStringNull(pev->noise))
+			PRECACHE_SOUND( STRING(pev->noise) );
+	}
+
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 
 private:
@@ -6492,6 +6534,8 @@ void CStripWeapons::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 		pPlayer->RemoveAllItems( removeSuit );
 		if (removeSuit)
 			pPlayer->FlashlightTurnOff();
+		if (!FStringNull(pev->noise))
+			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, STRING(pev->noise), 1, ATTN_NORM );
 	}
 }
 

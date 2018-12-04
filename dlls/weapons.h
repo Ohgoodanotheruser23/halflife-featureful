@@ -281,6 +281,7 @@ typedef struct
 	const char *pszName;
 	int iId;
 	int iMaxAmmo;
+	bool isExhaustible;
 } AmmoInfo;
 
 // inventory items that

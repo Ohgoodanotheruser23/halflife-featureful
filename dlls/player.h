@@ -302,7 +302,7 @@ public:
 	void SelectItem(const char *pstr);
 	void ItemPreFrame( void );
 	void ItemPostFrame( void );
-	void GiveNamedItem( const char *szName );
+	void GiveNamedItem( const char *szName, int spawnFlags = 0 );
 	void EnableControl(BOOL fControl);
 
 	int  GiveAmmo( int iAmount, const char *szName );
@@ -421,6 +421,7 @@ private:
 	
 	void DropPlayerItemImpl(CBasePlayerWeapon* pWeapon, int dropType = DropAmmoFair, float speed = 400);
 
+public:
 #if FEATURE_MOVE_MODE
 	short m_movementState; // no need to save
 #endif
@@ -449,7 +450,7 @@ private:
 	}
 	CRope* GetRope() { return m_pRope; }
 #endif
-
+	BOOL m_settingsLoaded;
 	float m_flSemclipTime;
 };
 
