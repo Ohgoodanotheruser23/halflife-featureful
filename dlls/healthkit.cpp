@@ -231,6 +231,11 @@ void CWallCharger::KeyValue( KeyValueData *pkvd )
 		m_triggerOnFirstUse = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq( pkvd->szKeyName, "capacity" ) )
+	{
+		pev->health = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBaseToggle::KeyValue( pkvd );
 }
@@ -342,7 +347,7 @@ public:
 	const char* DefaultLoopingSound() { return "items/medcharge4.wav"; }
 	int RechargeTime() { return (int)g_pGameRules->FlHealthChargerRechargeTime(); }
 	const char* DefaultRechargeSound() { return "items/medshot4.wav"; }
-	int ChargerCapacity() { return (int)gSkillData.healthchargerCapacity; }
+	int ChargerCapacity() { return (int)(pev->health > 0 ? pev->health : gSkillData.healthchargerCapacity); }
 	const char* DefaultDenySound() { return "items/medshotno1.wav"; }
 	const char* DefaultChargeStartSound() { return "items/medshot4.wav"; }
 	float SoundVolume() { return 1.0f; }
@@ -380,13 +385,15 @@ LINK_ENTITY_TO_CLASS(item_healthcharger_jar, CWallHealthJarDecay)
 class CWallHealthDecay : public CBaseAnimating
 {
 public:
+	void KeyValue( KeyValueData *pkvd );
 	void Spawn();
 	void Precache(void);
-	void EXPORT SearchForPlayer();
-	void EXPORT Off( void );
+	void EXPORT AnimateAndWork();
+	void SearchForPlayer();
+	void Off( void );
 	void EXPORT Recharge( void );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
-	virtual int ObjectCaps( void ) { return ( CBaseAnimating::ObjectCaps() | FCAP_CONTINUOUS_USE ) & ~FCAP_ACROSS_TRANSITION; }
+	virtual int ObjectCaps( void ) { return ( CBaseAnimating::ObjectCaps() | FCAP_CONTINUOUS_USE ); }
 	void TurnNeedleToPlayer(const Vector &player);
 	void SetNeedleState(int state);
 	void SetNeedleController(float yaw);
@@ -395,10 +402,11 @@ public:
 	{
 		if (m_jar)
 		{
-			const float jarBoneControllerValue = (m_iJuice / gSkillData.healthchargerCapacity) * 11 - 11;
+			const float jarBoneControllerValue = (m_iJuice / (float)ChargerCapacity()) * 11 - 11;
 			m_jar->SetBoneController(0,  jarBoneControllerValue );
 		}
 	}
+	int ChargerCapacity() { return (int)(pev->health > 0 ? pev->health : gSkillData.healthchargerCapacity); }
 
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -420,8 +428,11 @@ public:
 	int m_iJuice;
 	int m_iState;
 	float m_flSoundTime;
+	float m_goToOffTime;
+	BOOL m_goingToOff;
 	CWallHealthJarDecay* m_jar;
 	BOOL m_playingChargeSound;
+	float m_lastYaw;
 
 protected:
 	void SetMySequence(const char* sequence);
@@ -433,14 +444,27 @@ TYPEDESCRIPTION CWallHealthDecay::m_SaveData[] =
 	DEFINE_FIELD( CWallHealthDecay, m_iJuice, FIELD_INTEGER ),
 	DEFINE_FIELD( CWallHealthDecay, m_iState, FIELD_INTEGER ),
 	DEFINE_FIELD( CWallHealthDecay, m_flSoundTime, FIELD_TIME ),
+	DEFINE_FIELD( CWallHealthDecay, m_goToOffTime, FIELD_TIME ),
+	DEFINE_FIELD( CWallHealthDecay, m_goingToOff, FIELD_BOOLEAN),
 	DEFINE_FIELD( CWallHealthDecay, m_playingChargeSound, FIELD_BOOLEAN),
 };
 
 IMPLEMENT_SAVERESTORE( CWallHealthDecay, CBaseAnimating )
 
+void CWallHealthDecay::KeyValue( KeyValueData *pkvd )
+{
+	if( FStrEq( pkvd->szKeyName, "capacity" ) )
+	{
+		pev->health = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CBaseAnimating::KeyValue( pkvd );
+}
+
 void CWallHealthDecay::Spawn()
 {
-	m_iJuice = gSkillData.healthchargerCapacity;
+	m_iJuice = ChargerCapacity();
 	Precache();
 
 	pev->solid = SOLID_SLIDEBOX;
@@ -456,7 +480,7 @@ void CWallHealthDecay::Spawn()
 	if (m_iJuice > 0)
 	{
 		m_iState = Still;
-		SetThink(&CWallHealthDecay::SearchForPlayer);
+		SetThink(&CWallHealthDecay::AnimateAndWork);
 		pev->nextthink = gpGlobals->time + 0.1;
 	}
 	else
@@ -485,13 +509,28 @@ void CWallHealthDecay::Precache(void)
 	}
 }
 
+void CWallHealthDecay::AnimateAndWork()
+{
+	StudioFrameAdvance();
+	pev->nextthink = gpGlobals->time + 0.1;
+
+	if (m_goingToOff)
+	{
+		if (m_goToOffTime <= gpGlobals->time)
+			Off();
+	}
+	else
+	{
+		SearchForPlayer();
+	}
+}
+
 void CWallHealthDecay::SearchForPlayer()
 {
 	CBaseEntity* pEntity = 0;
-	float delay = 0.05;
 	UTIL_MakeVectors( pev->angles );
 	while((pEntity = UTIL_FindEntityInSphere(pEntity, Center(), 64)) != 0) { // this must be in sync with PLAYER_SEARCH_RADIUS from player.cpp
-		if (pEntity->IsPlayer() && pEntity->IsAlive()) {
+		if (pEntity->IsPlayer() && pEntity->IsAlive() && FBitSet(pEntity->pev->weapons, 1 << WEAPON_SUIT)) {
 			if (DotProduct(pEntity->pev->origin - pev->origin, gpGlobals->v_forward) < 0) {
 				continue;
 			}
@@ -505,10 +544,12 @@ void CWallHealthDecay::SearchForPlayer()
 				break;
 			case Still:
 				SetNeedleState(Deploy);
-				delay = 0.1;
 				break;
 			case Deploy:
-				SetNeedleState(Idle);
+				if (m_fSequenceFinished)
+				{
+					SetNeedleState(Idle);
+				}
 				break;
 			case Idle:
 				break;
@@ -524,10 +565,17 @@ void CWallHealthDecay::SearchForPlayer()
 		case Idle:
 		case RetractShot:
 			SetNeedleState(RetractArm);
-			delay = 0.2;
 			break;
 		case RetractArm:
-			SetNeedleState(Still);
+			if (m_fSequenceFinished)
+			{
+				SetNeedleState(Still);
+				SetNeedleController(0);
+			}
+			else
+			{
+				SetNeedleController(m_lastYaw*0.75);
+			}
 			break;
 		case Still:
 			break;
@@ -535,7 +583,6 @@ void CWallHealthDecay::SearchForPlayer()
 			break;
 		}
 	}
-	pev->nextthink = gpGlobals->time + delay;
 }
 
 void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
@@ -546,17 +593,6 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	// if it's not a player, ignore
 	if( !pActivator->IsPlayer() )
 		return;
-
-	if (m_iState != Idle && m_iState != GiveShot && m_iState != Healing && m_iState != Inactive)
-		return;
-
-	// if there is no juice left, turn it off
-	if( (m_iState == Healing || m_iState == GiveShot) && m_iJuice <= 0 )
-	{
-		pev->skin = 1;
-		SetThink(&CWallHealthDecay::Off);
-		pev->nextthink = gpGlobals->time;
-	}
 
 	// if the player doesn't have the suit, or there is no juice left, make the deny noise
 	if( ( m_iJuice <= 0 ) || ( !( pActivator->pev->weapons & ( 1 << WEAPON_SUIT ) ) ) )
@@ -569,8 +605,20 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 		return;
 	}
 
-	SetThink(&CWallHealthDecay::Off);
-	pev->nextthink = gpGlobals->time + 0.25;
+	if (m_iState != Idle && m_iState != GiveShot && m_iState != Healing && m_iState != Inactive)
+		return;
+
+	m_goingToOff = TRUE;
+	// if there is no juice left, turn it off
+	if( (m_iState == Healing || m_iState == GiveShot) && m_iJuice <= 0 )
+	{
+		pev->skin = 1;
+		pev->nextthink = m_goToOffTime = gpGlobals->time;
+	}
+	else
+	{
+		m_goToOffTime = gpGlobals->time + 0.25;
+	}
 
 	// Time to recharge yet?
 	if( m_flNextCharge >= gpGlobals->time )
@@ -603,6 +651,8 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	if( pActivator->TakeHealth( 1, DMG_GENERIC ) )
 	{
 		m_iJuice--;
+		if (m_iJuice <= 0)
+			pev->skin = 1;
 		UpdateJar();
 
 		if (soundType == 1)
@@ -635,11 +685,11 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 void CWallHealthDecay::Recharge( void )
 {
 	EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/medshot4.wav", 1.0, ATTN_NORM );
-	m_iJuice = gSkillData.healthchargerCapacity;
+	m_iJuice = ChargerCapacity();
 	UpdateJar();
 	pev->skin = 0;
 	SetNeedleState(Still);
-	SetThink( &CWallHealthDecay::SearchForPlayer );
+	SetThink( &CWallHealthDecay::AnimateAndWork );
 	pev->nextthink = gpGlobals->time;
 }
 
@@ -653,28 +703,34 @@ void CWallHealthDecay::Off( void )
 			m_playingChargeSound = FALSE;
 		}
 		SetNeedleState(RetractShot);
-		pev->nextthink = gpGlobals->time + 0.1;
 		break;
 	case RetractShot:
 		if (m_iJuice > 0) {
 			SetNeedleState(Idle);
-			SetThink( &CWallHealthDecay::SearchForPlayer );
+			m_goingToOff = FALSE;
 			pev->nextthink = gpGlobals->time;
 		} else {
 			SetNeedleState(RetractArm);
-			pev->nextthink = gpGlobals->time + 0.2;
 		}
 		break;
 	case RetractArm:
 	{
-		if( ( m_iJuice <= 0 ) )
+		if( m_fSequenceFinished )
 		{
-			SetNeedleState(Inactive);
-			const float rechargeTime = g_pGameRules->FlHealthChargerRechargeTime();
-			if (rechargeTime > 0 ) {
-				pev->nextthink = gpGlobals->time + rechargeTime;
-				SetThink( &CWallHealthDecay::Recharge );
+			SetNeedleController(0);
+			if( ( m_iJuice <= 0 ) )
+			{
+				SetNeedleState(Inactive);
+				const float rechargeTime = g_pGameRules->FlHealthChargerRechargeTime();
+				if (rechargeTime > 0 ) {
+					pev->nextthink = gpGlobals->time + rechargeTime;
+					SetThink( &CWallHealthDecay::Recharge );
+				}
 			}
+		}
+		else
+		{
+			SetNeedleController(m_lastYaw*0.75);
 		}
 		break;
 	}
@@ -697,13 +753,12 @@ void CWallHealthDecay::SetMySequence(const char *sequence)
 void CWallHealthDecay::SetNeedleState(int state)
 {
 	m_iState = state;
-	if (state == RetractArm)
-		SetNeedleController(0);
 	switch (state) {
 	case Still:
 		SetMySequence("still");
 		break;
 	case Deploy:
+		EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/medshot4.wav", 1.0, ATTN_NORM );
 		SetMySequence("deploy");
 		break;
 	case Idle:
@@ -742,6 +797,7 @@ void CWallHealthDecay::TurnNeedleToPlayer(const Vector& player)
 
 void CWallHealthDecay::SetNeedleController(float yaw)
 {
+	m_lastYaw = yaw;
 	SetBoneController(0, yaw);
 }
 

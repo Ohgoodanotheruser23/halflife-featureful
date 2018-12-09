@@ -749,6 +749,7 @@
 	noise1(sound) : "Deny sound"
 	noise2(sound) : "Start charging sound"
 	noise3(sound) : "Recharge sound"
+	capacity(integer) : "Custom capacity"
 	spawnflags(flags) =
 	[
 		1: "Start off" : 0
@@ -1201,6 +1202,34 @@
 		1 : "Medium Radius"
 		2 : "Large  Radius"
 		3 : "Play Everywhere"
+	]
+]
+
+@PointClass base(Targetname, Angles, RenderFields) studio() = env_model : "New alternative to cyclers"
+[
+	model(studio) : "Model name"
+	skin(integer) : "Skin" : 0
+	body(integer) : "Body" : 0
+	scale(string) : "Scale (1.0 = normal size)"
+	m_iszSequence_On(string) : "Sequence when on"
+	m_iAction_On(choices) : "Behaviour when on" : 0 =
+	[
+		0: "Freeze when sequence ends"
+		1: "Loop"
+		2: "Change state when sequence ends"
+	]
+	m_iszSequence_Off(string) : "Sequence when off"
+	m_iAction_Off(choices) : "Behaviour when off" : 0 =
+	[
+		0: "Freeze when sequence ends"
+		1: "Loop"
+		2: "Change state when sequence ends"
+	]
+	spawnflags(flags) =
+	[
+		1: "Initially Off" : 0
+		2: "Drop to Floor" : 0
+		4: "Solid" : 0
 	]
 ]
 
@@ -2319,10 +2348,16 @@
 	scale(string) : "Scale (1.0 = normal size)"
 ]
 
-@PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/health_charger_body.mdl") = item_healthcharger : "Wall Health Kit" []
-@PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/hev.mdl") = item_recharge : "Wall Recharger" []
+@PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/health_charger_body.mdl") = item_healthcharger : "Wall Health Kit"
+[
+	capacity(integer) : "Custom capacity"
+]
+@PointClass size(-12 -16 0, 12 16 36) base(Angles) studio("models/hev.mdl") = item_recharge : "Wall Recharger"
+[
+	capacity(integer) : "Custom capacity"
+]
 
-@PointClass base(Targetname, Angles) size(-12 -16 0, 12 16 48 ) studio("models/EYE_SCANNER.mdl") = item_eyescanner : "Retinal Scanner"
+@PointClass base(Targetname, Angles) size(-16 -16 0, 16 16 48 ) studio("models/EYE_SCANNER.mdl") = item_eyescanner : "Retinal Scanner"
 [
     unlocked_target(string) : "Unlocked target"
     locked_target(string) : "Locked target"
@@ -5637,6 +5672,18 @@
 @PointClass base(Targetname, Target) = trigger_rescue : "Rescue point" []
 
 @PointClass base(Targetname) = trigger_survival : "Enable survival mode" []
+
+@PointClass base(Targetname, Target) = trigger_timer : "Trigger Timer" : "Continuously fire the same target over random delays. trigger_timer can be activated with On use. trigger_timer stops firing its target if it was triggered with Off use. Toggle use toggles trigger_timer's state."
+[
+	spawnflags(flags) =
+	[
+		1 : "Start on" : 0 : "Automatically activate trigger_timer on the first map load"
+		32 : "Don't delay first fire" : 0 : "Don't use random delay on the first target fire upon the activation"
+	]
+	min_delay(string) : "Minimum delay"
+	max_delay(string) : "Maximum delay"
+	trigger_number(integer) : "Trigger number limit" : 0 : "Stop after triggering this number of targets. 0 means no limit"
+]
 
 @SolidClass base(Trigger) = trigger_teleport : "Trigger teleport" []
 

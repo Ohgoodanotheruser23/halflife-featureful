@@ -37,7 +37,7 @@ public:
 	const char* DefaultLoopingSound() { return "items/suitcharge1.wav"; }
 	int RechargeTime() { return (int)g_pGameRules->FlHEVChargerRechargeTime(); }
 	const char* DefaultRechargeSound() { return NULL; }
-	int ChargerCapacity() { return (int)gSkillData.suitchargerCapacity; }
+	int ChargerCapacity() { return (int)(pev->health > 0 ? pev->health : gSkillData.suitchargerCapacity); }
 	const char* DefaultDenySound() { return "items/suitchargeno1.wav"; }
 	const char* DefaultChargeStartSound() { return "items/suitchargeok1.wav"; }
 	float SoundVolume() { return 0.85f; }
@@ -83,18 +83,31 @@ LINK_ENTITY_TO_CLASS(item_recharge_glass, CRechargeGlassDecay)
 class CRechargeDecay : public CBaseAnimating
 {
 public:
+	void KeyValue( KeyValueData *pkvd );
 	void Spawn();
 	void Precache(void);
-	void EXPORT SearchForPlayer();
-	void EXPORT Off( void );
+	void EXPORT AnimateAndWork();
+	void SearchForPlayer();
+	void Off( void );
 	void EXPORT Recharge( void );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
-	virtual int ObjectCaps( void ) { return ( CBaseAnimating::ObjectCaps() | FCAP_CONTINUOUS_USE ) & ~FCAP_ACROSS_TRANSITION; }
+	virtual int ObjectCaps( void ) { return ( CBaseAnimating::ObjectCaps() | FCAP_CONTINUOUS_USE ); }
 	void TurnChargeToPlayer(const Vector &player);
 	void SetChargeState(int state);
 	void SetChargeController(float yaw);
 	void UpdateOnRemove();
+	void TurnBeamOn()
+	{
+		if (m_beam)
+			ClearBits(m_beam->pev->effects, EF_NODRAW);
+	}
+	void TurnBeamOff()
+	{
+		if (m_beam)
+			SetBits(m_beam->pev->effects, EF_NODRAW);
+	}
 
+	int ChargerCapacity() { return (int)(pev->health > 0 ? pev->health : gSkillData.suitchargerCapacity); }
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 
@@ -115,9 +128,12 @@ public:
 	int m_iJuice;
 	int m_iState;
 	float m_flSoundTime;
+	float m_goToOffTime;
+	BOOL m_goingToOff;
 	CRechargeGlassDecay* m_glass;
 	BOOL m_playingChargeSound;
 	CBeam* m_beam;
+	float m_lastYaw;
 
 protected:
 	void SetMySequence(const char* sequence);
@@ -130,14 +146,27 @@ TYPEDESCRIPTION CRechargeDecay::m_SaveData[] =
 	DEFINE_FIELD( CRechargeDecay, m_iJuice, FIELD_INTEGER ),
 	DEFINE_FIELD( CRechargeDecay, m_iState, FIELD_INTEGER ),
 	DEFINE_FIELD( CRechargeDecay, m_flSoundTime, FIELD_TIME ),
+	DEFINE_FIELD( CRechargeDecay, m_goToOffTime, FIELD_TIME ),
+	DEFINE_FIELD( CRechargeDecay, m_goingToOff, FIELD_BOOLEAN),
 	DEFINE_FIELD( CRechargeDecay, m_playingChargeSound, FIELD_BOOLEAN),
 };
 
 IMPLEMENT_SAVERESTORE( CRechargeDecay, CBaseAnimating )
 
+void CRechargeDecay::KeyValue( KeyValueData *pkvd )
+{
+	if( FStrEq( pkvd->szKeyName, "capacity" ) )
+	{
+		pev->health = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CBaseAnimating::KeyValue( pkvd );
+}
+
 void CRechargeDecay::Spawn()
 {
-	m_iJuice = gSkillData.suitchargerCapacity;
+	m_iJuice = ChargerCapacity();
 	Precache();
 
 	pev->solid = SOLID_SLIDEBOX;
@@ -154,7 +183,7 @@ void CRechargeDecay::Spawn()
 	if (m_iJuice > 0)
 	{
 		m_iState = Still;
-		SetThink(&CRechargeDecay::SearchForPlayer);
+		SetThink(&CRechargeDecay::AnimateAndWork);
 		pev->nextthink = gpGlobals->time + 0.1;
 	}
 	else
@@ -175,19 +204,36 @@ void CRechargeDecay::Precache(void)
 	PRECACHE_MODEL( "sprites/lgtning.spr" );
 
 	CreateBeam();
+	if (m_iState != Idle)
+		TurnBeamOff();
 	m_glass = GetClassPtr( (CRechargeGlassDecay *)NULL );
 	m_glass->Spawn();
 	UTIL_SetOrigin( m_glass->pev, pev->origin );
 	m_glass->pev->angles = pev->angles;
 }
 
+void CRechargeDecay::AnimateAndWork()
+{
+	StudioFrameAdvance();
+	pev->nextthink = gpGlobals->time + 0.1;
+
+	if (m_goingToOff)
+	{
+		if (m_goToOffTime <= gpGlobals->time)
+			Off();
+	}
+	else
+	{
+		SearchForPlayer();
+	}
+}
+
 void CRechargeDecay::SearchForPlayer()
 {
 	CBaseEntity* pEntity = 0;
-	float delay = 0.05;
 	UTIL_MakeVectors( pev->angles );
 	while((pEntity = UTIL_FindEntityInSphere(pEntity, Center(), 64)) != 0) { // this must be in sync with PLAYER_SEARCH_RADIUS from player.cpp
-		if (pEntity->IsPlayer() && pEntity->IsAlive()) {
+		if (pEntity->IsPlayer() && pEntity->IsAlive() && FBitSet(pEntity->pev->weapons, 1 << WEAPON_SUIT)) {
 			if (DotProduct(pEntity->pev->origin - pev->origin, gpGlobals->v_forward) < 0) {
 				continue;
 			}
@@ -201,10 +247,13 @@ void CRechargeDecay::SearchForPlayer()
 				break;
 			case Still:
 				SetChargeState(Deploy);
-				delay = 0.1;
 				break;
 			case Deploy:
-				SetChargeState(Idle);
+				if (m_fSequenceFinished)
+				{
+					TurnBeamOn();
+					SetChargeState(Idle);
+				}
 				break;
 			case Idle:
 				break;
@@ -220,10 +269,17 @@ void CRechargeDecay::SearchForPlayer()
 		case Idle:
 		case RetractShot:
 			SetChargeState(RetractArm);
-			delay = 0.2;
 			break;
 		case RetractArm:
-			SetChargeState(Still);
+			if (m_fSequenceFinished)
+			{
+				SetChargeState(Still);
+				SetChargeController(0);
+			}
+			else
+			{
+				SetChargeController(m_lastYaw*0.75);
+			}
 			break;
 		case Still:
 			break;
@@ -231,7 +287,6 @@ void CRechargeDecay::SearchForPlayer()
 			break;
 		}
 	}
-	pev->nextthink = gpGlobals->time + delay;
 }
 
 void CRechargeDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
@@ -243,19 +298,8 @@ void CRechargeDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	if( !pActivator->IsPlayer() )
 		return;
 
-	if (m_iState != Idle && m_iState != GiveShot && m_iState != Healing && m_iState != Inactive)
-		return;
-
-	// if there is no juice left, turn it off
-	if( (m_iState == Healing || m_iState == GiveShot) && m_iJuice <= 0 )
-	{
-		pev->skin = 1;
-		SetThink(&CRechargeDecay::Off);
-		pev->nextthink = gpGlobals->time;
-	}
-
 	// if the player doesn't have the suit, or there is no juice left, make the deny noise
-	if( ( m_iJuice <= 0 ) || ( !( pActivator->pev->weapons & ( 1 << WEAPON_SUIT ) ) ) || pActivator->pev->armorvalue >= 100 )
+	if( ( m_iJuice <= 0 ) || ( !( pActivator->pev->weapons & ( 1 << WEAPON_SUIT ) ) ) || pActivator->pev->armorvalue >= MAX_NORMAL_BATTERY )
 	{
 		if( m_flSoundTime <= gpGlobals->time )
 		{
@@ -265,8 +309,20 @@ void CRechargeDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 		return;
 	}
 
-	SetThink(&CRechargeDecay::Off);
-	pev->nextthink = gpGlobals->time + 0.25;
+	if (m_iState != Idle && m_iState != GiveShot && m_iState != Healing && m_iState != Inactive)
+		return;
+
+	m_goingToOff = TRUE;
+	// if there is no juice left, turn it off
+	if( (m_iState == Healing || m_iState == GiveShot) && m_iJuice <= 0 )
+	{
+		pev->skin = 1;
+		pev->nextthink = m_goToOffTime = gpGlobals->time;
+	}
+	else
+	{
+		m_goToOffTime = gpGlobals->time + 0.25;
+	}
 
 	// Time to recharge yet?
 	if( m_flNextCharge >= gpGlobals->time )
@@ -300,8 +356,10 @@ void CRechargeDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	if( pActivator->pev->armorvalue < MAX_NORMAL_BATTERY )
 	{
 		m_iJuice--;
+		if (m_iJuice <= 0)
+			pev->skin = 1;
 		pActivator->pev->armorvalue += 1;
-		const float boneControllerValue = (m_iJuice / gSkillData.suitchargerCapacity) * 360;
+		const float boneControllerValue = (m_iJuice / (float)ChargerCapacity()) * 360;
 		SetBoneController(1, 360 - boneControllerValue);
 		SetBoneController(2,  boneControllerValue);
 
@@ -316,14 +374,12 @@ void CRechargeDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 void CRechargeDecay::Recharge( void )
 {
 //	/EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/suitcharge1.wav", 1.0, ATTN_NORM );
-	m_iJuice = gSkillData.healthchargerCapacity;
+	m_iJuice = ChargerCapacity();
 	SetBoneController(1, 360);
 	SetBoneController(2, 0);
-	if (m_beam)
-		m_beam->SetBrightness( 225 );
 	pev->skin = 0;
 	SetChargeState(Still);
-	SetThink( &CRechargeDecay::SearchForPlayer );
+	SetThink( &CRechargeDecay::AnimateAndWork );
 	pev->nextthink = gpGlobals->time;
 }
 
@@ -337,30 +393,34 @@ void CRechargeDecay::Off( void )
 			m_playingChargeSound = FALSE;
 		}
 		SetChargeState(RetractShot);
-		pev->nextthink = gpGlobals->time + 0.1;
 		break;
 	case RetractShot:
 		if (m_iJuice > 0) {
 			SetChargeState(Idle);
-			SetThink( &CRechargeDecay::SearchForPlayer );
+			m_goingToOff = FALSE;
 			pev->nextthink = gpGlobals->time;
 		} else {
 			SetChargeState(RetractArm);
-			pev->nextthink = gpGlobals->time + 0.2;
 		}
 		break;
 	case RetractArm:
 	{
-		if( ( m_iJuice <= 0 ) )
+		if( m_fSequenceFinished )
 		{
-			if (m_beam)
-				m_beam->SetBrightness(0);
-			SetChargeState(Inactive);
-			const float rechargeTime = g_pGameRules->FlHEVChargerRechargeTime();
-			if (rechargeTime > 0 ) {
-				pev->nextthink = gpGlobals->time + rechargeTime;
-				SetThink( &CRechargeDecay::Recharge );
+			SetChargeController(0);
+			if ( m_iJuice <= 0 )
+			{
+				SetChargeState(Inactive);
+				const float rechargeTime = g_pGameRules->FlHEVChargerRechargeTime();
+				if (rechargeTime > 0 ) {
+					pev->nextthink = gpGlobals->time + rechargeTime;
+					SetThink( &CRechargeDecay::Recharge );
+				}
 			}
+		}
+		else
+		{
+			SetChargeController(m_lastYaw*0.75);
 		}
 		break;
 	}
@@ -383,13 +443,12 @@ void CRechargeDecay::SetMySequence(const char *sequence)
 void CRechargeDecay::SetChargeState(int state)
 {
 	m_iState = state;
-	if (state == RetractArm)
-		SetChargeController(0);
 	switch (state) {
 	case Still:
 		SetMySequence("rest");
 		break;
 	case Deploy:
+		EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/suitchargeok1.wav", 1.0, ATTN_NORM );
 		SetMySequence("deploy");
 		break;
 	case Idle:
@@ -405,6 +464,7 @@ void CRechargeDecay::SetChargeState(int state)
 		SetMySequence("retract_charge");
 		break;
 	case RetractArm:
+		TurnBeamOff();
 		SetMySequence("retract_arm");
 		break;
 	case Inactive:
@@ -428,14 +488,18 @@ void CRechargeDecay::TurnChargeToPlayer(const Vector& player)
 
 void CRechargeDecay::SetChargeController(float yaw)
 {
+	m_lastYaw = yaw;
 	SetBoneController(3, yaw);
 }
 
 void CRechargeDecay::CreateBeam()
 {
-	CBeam* beam = CBeam::BeamCreate( "sprites/lgtning.spr", 5 );
+	CBeam *beam = GetClassPtr( (CBeam *)NULL );
 	if( !beam )
 		return;
+
+	beam->BeamInit( "sprites/lgtning.spr", 5 );
+
 	beam->SetType( BEAM_ENTS );
 	beam->SetStartEntity( entindex() );
 	beam->SetEndEntity( entindex() );
