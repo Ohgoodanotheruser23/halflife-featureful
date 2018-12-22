@@ -3263,6 +3263,16 @@ void CBasePlayer::SetMovementMode()
 	if (!FBitSet( pev->flags, FL_ONGROUND ))
 	{
 		currentMovementState = MovementJump;
+		if (IsOnLadder())
+		{
+			currentMovementState = MovementStand;
+		}
+#if FEATURE_ROPE
+		if (IsOnRope())
+		{
+			currentMovementState = MovementStand;
+		}
+#endif
 	}
 	else if (FBitSet( pev->flags, FL_DUCKING ))
 	{
@@ -4969,7 +4979,14 @@ void CBasePlayer::FlashlightTurnOn( void )
 		return;
 	}
 
-	if( (pev->weapons & ( 1 << WEAPON_SUIT ) ) )
+	bool hasFlashlight = false;
+#if FEATURE_FLASHLIGHT_ITEM
+	hasFlashlight = hasFlashlight || (pev->weapons & (1 << WEAPON_FLASHLIGHT));
+#endif
+#if FEATURE_SUIT_FLASHLIGHT
+	hasFlashlight = hasFlashlight || (pev->weapons & (1 << WEAPON_SUIT));
+#endif
+	if( hasFlashlight )
 	{
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_ON, 1.0, ATTN_NORM, 0, PITCH_NORM );
 #if FEATURE_NIGHTVISION
@@ -4996,9 +5013,10 @@ void CBasePlayer::FlashlightTurnOn( void )
 	}
 }
 
-void CBasePlayer::FlashlightTurnOff( void )
+void CBasePlayer::FlashlightTurnOff( bool playOffSound )
 {
-	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_OFF, 1.0, ATTN_NORM, 0, PITCH_NORM );
+	if (playOffSound)
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_OFF, 1.0, ATTN_NORM, 0, PITCH_NORM );
 #if FEATURE_NIGHTVISION
 	m_fNVGisON = FALSE;
 #if FEATURE_OPFOR_NIGHTVISION
@@ -5165,6 +5183,9 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 	case 101:
 		gEvilImpulse101 = TRUE;
 		GiveNamedItem( "item_suit" );
+#if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
+		GiveNamedItem( "item_flashlight" );
+#endif
 		GiveNamedItem( "item_battery" );
 		GiveNamedItem( "weapon_crowbar" );
 		GiveNamedItem( "weapon_9mmhandgun" );
@@ -6533,7 +6554,7 @@ void CStripWeapons::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 		const bool removeSuit = (pev->spawnflags & STRIP_SUIT) ? true : false;
 		pPlayer->RemoveAllItems( removeSuit );
 		if (removeSuit)
-			pPlayer->FlashlightTurnOff();
+			pPlayer->FlashlightTurnOff(false);
 		if (!FStringNull(pev->noise))
 			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, STRING(pev->noise), 1, ATTN_NORM );
 	}

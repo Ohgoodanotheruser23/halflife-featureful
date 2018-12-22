@@ -266,7 +266,7 @@ public:
 	BOOL			IsOnLadder( void );
 	BOOL			FlashlightIsOn( void );
 	void			FlashlightTurnOn( void );
-	void			FlashlightTurnOff( void );
+	void			FlashlightTurnOff( bool playOffSound = true );
 
 	void UpdatePlayerSound ( void );
 	void DeathSound ( void );

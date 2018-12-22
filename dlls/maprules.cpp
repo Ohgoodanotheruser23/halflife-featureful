@@ -979,6 +979,7 @@ void CGamePlayerTeam::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 #define SF_PLAYER_SETTINGS_SHOCKRIFLE (1 << 19)
 #define SF_PLAYER_SETTINGS_SPORELAUNCHER (1 << 20)
 #define SF_PLAYER_SETTINGS_MEDKIT (1 << 21)
+#define SF_PLAYER_SETTINGS_FLASHLIGHT (1 << 22)
 #define SF_PLAYER_SETTINGS_LONGJUMP (1 << 23)
 
 class CGamePlayerSettings : public CRulePointEntity
@@ -1076,6 +1077,11 @@ void CGamePlayerSettings::EquipPlayer(CBaseEntity *pPlayer)
 			player->GiveNamedItem("item_longjump");
 		}
 	}
+
+#if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
+	if (pev->spawnflags & SF_PLAYER_SETTINGS_FLASHLIGHT)
+		player->GiveNamedItem("item_flashlight");
+#endif
 
 	const int weaponFlags[] = {
 		SF_PLAYER_SETTINGS_CROWBAR,
