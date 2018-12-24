@@ -352,159 +352,7 @@
 		38: "HEV Suit"
 	]
 	explodemagnitude(integer) : "Explode Magnitude (0=none)" : 0
-	spawnitem1(choices) : "Spawn On Break 1" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	spawnitem2(choices) : "Spawn On Break 2" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	spawnitem3(choices) : "Spawn On Break 3" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	spawnitem4(choices) : "Spawn On Break 4" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	spawnitem5(choices) : "Spawn On Break 5" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	spawnitem6(choices) : "Spawn On Break 6" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	spawnitem7(choices) : "Spawn On Break 7" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	spawnitem8(choices) : "Spawn On Break 8" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	spawnitem9(choices) : "Spawn On Break 9" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
+	randomitem_template(string) : "info_item_random entity"
 ]
 
 @BaseClass base(Appearflags, Targetname, RenderFields, Global, Angles) = Door
@@ -1441,7 +1289,6 @@
 		256: "Instant Crowbar" : 1
 		512: "Explosives only": 0
 		1024: "Op4Mortar only" : 0
-		4096 : "Support players needs" : 0
 	]
 	_minlight(string) : "Minimum light level"
 ]
@@ -2104,161 +1951,42 @@
 	texture(decal)
 ]
 
-@BaseClass base(Target, Targetname, Appearflags) = RandomItem
+@BaseClass base(Targetname, Appearflags) = RandomItem
 [
-	item1(choices) : "Possible item 1" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	item2(choices) : "Possible item 2" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	item3(choices) : "Possible item 3" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	item4(choices) : "Possible item 4" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	item5(choices) : "Possible item 5" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	item6(choices) : "Possible item 6" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	item7(choices) : "Possible item 7" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	item8(choices) : "Possible item 8" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
-	item9(choices) : "Possible item 9" : 0 =
-	[
-		0: "Nothing"
-		1: "Battery"
-		2: "Healthkit"
-		4: "9mm Clip"
-		6: "Machine Gun Clip"
-		7: "Machine Gun Grenades"
-		9: "Shotgun Shells"
-		11: "Crossbow Bolts"
-		13: "357 clip"
-		15: "RPG Clip"
-		16: "Gauss clip"
-		17: "Hand grenade"
-		18: "Tripmine"
-		19: "Satchel Charge"
-	]
+	info_null(string) : "No item chance"
+	item_healthkit(string) : "Healthkit chance"
+	item_battery(string) : "Battery chance"
+	ammo_9mmclip(string) : "9mm clip chance"
+	ammo_9mmAR(string) : "9mmAR clip chance"
+	ammo_9mmbox(string) : "9mm Box chance"
+	ammo_ARgrenades(string) : "AR grenades chance"
+	ammo_buckshot(string) : "Shotgun shells chance"
+	ammo_crossbow(string) : "Crossbow bolts chance"
+	ammo_357(string) : "357 bullets chance"
+	ammo_556(string) : "556 bullets chance"
+	ammo_762(string) : "762 bullets chance"
+	ammo_rpgclip(string) : "RPG rocket chance"
+	ammo_gaussclip(string) : "Gauss clip chance"
+	weapon_handgrenade(string) : "Hand Grenades chance"
+	weapon_tripmine(string) : "Tripmine chance"
+	weapon_satchel(string) : "Satchel chance"
+	weapon_snark(string) : "Snarks chance"
+	weapon_crowbar(string) : "Crowbar chance"
+	weapon_9mmhandgun(string) : "Glock chance"
+	weapon_357(string) : "Python chance"
+	weapon_9mmAR(string) : "MP5 chance"
+	weapon_shotgun(string) : "Shotgun chance"
+	weapon_crossbow(string) : "Crossbow chance"
+	weapon_rpg(string) : "RPG chance"
+	weapon_hornetgun(string) : "Hornetgun chance"
+	weapon_pipewrench(string) : "Pipewrench chance"
+	weapon_knife(string) : "Knife chance"
+	weapon_grapple(string) : "Grapple chance"
+	weapon_medkit(string) : "Medkit chance"
+	weapon_eagle(string) : "Desert Eagle chance"
+	weapon_penguin(string) : "Penguins chance"
+	weapon_m249(string) : "M249 chance"
+	weapon_sniperrifle(string) : "Sniperrifle chance"
 ]
 
 @PointClass base(Targetname) size(-24 -24 0, 24 24 16) color(20 190 60) = info_bigmomma : "Big Mamma Node"
@@ -2289,15 +2017,7 @@
 
 @PointClass base(Target, Angles) size(-4 -4 -4, 4 4 4) color(0 255 0) = info_intermission : "Intermission Spot" []
 
-@PointClass base(RandomItem) = info_item_random
-[
-	maxpoints(string) : "Max points to spare" : "0"
-	spawnflags(Flags) =
-	[
-		1 : "Start spawned" : 0
-		4096 : "Support players needs" : 1
-	]
-]
+@PointClass base(RandomItem) = info_item_random : "Template for item_random_proxy" []
 
 @PointClass base(Targetname) = info_landmark : "Transition Landmark" []
 
@@ -2343,7 +2063,11 @@
 	]
 ]
 
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, RandomItem) = item_random : "Random item" []
+@PointClass size(-16 -16 0, 16 16 36) base(Weapon, RandomItem, Target) = item_random : "Random item" []
+@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Target) = item_random_proxy : "Random item proxy. Must be used with info_item_random."
+[
+	template(string) : "info_item_random entity"
+]
 
 @PointClass base(Weapon, Targetx) studio() = item_generic : "Generic scenery item"
 [

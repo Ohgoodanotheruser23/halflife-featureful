@@ -26,11 +26,56 @@
 #include "func_break.h"
 #include "decals.h"
 #include "explode.h"
-#include "spawnitems.h"
 
 extern DLL_GLOBAL Vector	g_vecAttackDir;
 
-#define SF_BREAK_SUPPORTPLAYERS 4096
+// =================== FUNC_Breakable ==============================================
+
+// Just add more items to the bottom of this array and they will automagically be supported
+// This is done instead of just a classname in the FGD so we can control which entities can
+// be spawned, and still remain fairly flexible
+const char *CBreakable::pSpawnObjects[] =
+{
+	NULL,			// 0
+	"item_battery",		// 1
+	"item_healthkit",	// 2
+	"weapon_9mmhandgun",	// 3
+	"ammo_9mmclip",		// 4
+	"weapon_9mmAR",		// 5
+	"ammo_9mmAR",		// 6
+	"ammo_ARgrenades",	// 7
+	"weapon_shotgun",	// 8
+	"ammo_buckshot",	// 9
+	"weapon_crossbow",	// 10
+	"ammo_crossbow",	// 11
+	"weapon_357",		// 12
+	"ammo_357",		// 13
+	"weapon_rpg",		// 14
+	"ammo_rpgclip",		// 15
+	"ammo_gaussclip",	// 16
+	"weapon_handgrenade",	// 17
+	"weapon_tripmine",	// 18
+	"weapon_satchel",	// 19
+	"weapon_snark",		// 20
+	"weapon_hornetgun",	// 21
+	"weapon_crowbar",	// 22
+	"weapon_pipewrench",	// 23
+	"weapon_sniperrifle",	// 24
+	"ammo_762",		// 25
+	"weapon_knife",		// 26
+	"weapon_m249",		// 27
+	"weapon_penguin",	// 28
+	"ammo_556",		// 29
+	"weapon_sporelauncher",	// 30
+	"weapon_displacer",		// 31
+	"ammo_9mmbox",	// 32
+	NULL,		// 33
+	NULL,		// 34
+	"weapon_eagle",		// 35
+	"weapon_grapple",		// 36
+	"weapon_medkit",		// 37
+	"item_suit",		// 38
+};
 
 void CBreakable::KeyValue( KeyValueData* pkvd )
 {
@@ -76,27 +121,14 @@ void CBreakable::KeyValue( KeyValueData* pkvd )
 	else if( FStrEq( pkvd->szKeyName, "spawnobject" ) )
 	{
 		int object = atoi( pkvd->szValue );
-		if( object > 0 && object < (int)ARRAYSIZE( gSpawnItems ) )
-			m_iszSpawnObject = MAKE_STRING( gSpawnItems[object].name );
+		if( object > 0 && object < (int)ARRAYSIZE( pSpawnObjects ) )
+			m_iszSpawnObject = MAKE_STRING( pSpawnObjects[object] );
 		pkvd->fHandled = TRUE;
 	}
-	else if ( (strncmp( pkvd->szKeyName, "spawnitem", 9) == 0) && isdigit(pkvd->szKeyName[9]) ) 
+	else if ( FStrEq( pkvd->szKeyName, "randomitem_template" ) )
 	{
-		pkvd->fHandled = FALSE;
-		int itemIndex = atoi(pkvd->szKeyName + 9);
-		if (itemIndex > 0 && itemIndex <= BREAKABLE_RANDOM_SPAWN_MAX_COUNT) {
-			int itemType = atoi(pkvd->szValue);
-			if (itemType >= ARRAYSIZE(gSpawnItems)) {
-				itemType = 0;
-			}
-			
-			m_spawnItems[itemIndex-1] = itemType;
-			pkvd->fHandled = TRUE;
-		}
-		if (pkvd->fHandled == FALSE) {
-			CBaseDelay::KeyValue( pkvd );
-			return;
-		}
+		pev->message = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
 	}
 	else if( FStrEq( pkvd->szKeyName, "explodemagnitude" ) )
 	{
@@ -125,18 +157,11 @@ TYPEDESCRIPTION CBreakable::m_SaveData[] =
 	DEFINE_FIELD( CBreakable, m_angle, FIELD_FLOAT ),
 	DEFINE_FIELD( CBreakable, m_iszGibModel, FIELD_STRING ),
 	DEFINE_FIELD( CBreakable, m_iszSpawnObject, FIELD_STRING ),
-	
-	DEFINE_ARRAY( CBreakable, m_spawnItems, FIELD_INTEGER, BREAKABLE_RANDOM_SPAWN_MAX_COUNT),
 
 	// Explosion magnitude is stored in pev->impulse
 };
 
 IMPLEMENT_SAVERESTORE( CBreakable, CBaseEntity )
-
-int CBreakable::ItemCount() const
-{
-	return CountSpawnItems(m_spawnItems, BREAKABLE_RANDOM_SPAWN_MAX_COUNT);
-}
 
 void CBreakable::Spawn( void )
 {
@@ -747,22 +772,21 @@ void CBreakable::Die( void )
 
 	SetThink( &CBaseEntity::SUB_Remove );
 	pev->nextthink = pev->ltime + 0.1;
-	if( !FStringNull(m_iszSpawnObject) ) {
-		CBaseEntity::Create( (char *)STRING( m_iszSpawnObject ), VecBModelOrigin( pev ), pev->angles, edict() );
-	} else if (ItemCount()) {
-		
-		float playerNeeds[ARRAYSIZE(gSpawnItems)];
-		float* pPlayerNeeds = NULL;
-		if (pev->spawnflags & SF_BREAK_SUPPORTPLAYERS) {
-			EvaluatePlayersNeeds(playerNeeds);
-			pPlayerNeeds = playerNeeds;
+	if (pev->message)
+	{
+		CBaseEntity* foundEntity = UTIL_FindEntityByTargetname(NULL, STRING(pev->message));
+		if ( foundEntity && FClassnameIs(foundEntity->pev, "info_item_random"))
+		{
+			foundEntity->Use(this, this, USE_SET, 0.0f);
 		}
-		
-		int itemType = ChooseRandomSpawnItem(m_spawnItems, ItemCount(), NULL, pPlayerNeeds);	
-		if (itemType && itemType < ARRAYSIZE(gSpawnItems)) {
-			UTIL_PrecacheOther(gSpawnItems[itemType].name);
-			CBaseEntity::Create( gSpawnItems[itemType].name, VecBModelOrigin( pev ), pev->angles, edict() );
+		else
+		{
+			ALERT(at_error, "Random item template %s for %s not found or not info_item_random\n", STRING(pev->message), STRING(pev->classname));
 		}
+	}
+	else if( !FStringNull(m_iszSpawnObject) )
+	{
+		CBaseEntity::Create( STRING( m_iszSpawnObject ), VecBModelOrigin( pev ), pev->angles, edict() );
 	}
 
 	if( Explodable() )

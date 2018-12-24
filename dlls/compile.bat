@@ -113,7 +113,6 @@ set SOURCES=agrunt.cpp^
 	sniperrifle.cpp^
 	sound.cpp^
 	soundent.cpp^
-	spawnitems.cpp^
 	spectator.cpp^
 	spore.cpp^
 	sporelauncher.cpp^

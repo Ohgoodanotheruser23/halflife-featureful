@@ -37,7 +37,6 @@ typedef enum
 } Materials;
 
 #define	NUM_SHARDS 6 // this many shards spawned when breakable objects break;
-#define BREAKABLE_RANDOM_SPAWN_MAX_COUNT 9
 
 class CBreakable : public CBaseDelay
 {
@@ -78,6 +77,7 @@ public:
 	static const char *pSoundsGlass[];
 	static const char *pSoundsMetal[];
 	static const char *pSoundsConcrete[];
+	static const char *pSpawnObjects[];
 
 	static TYPEDESCRIPTION m_SaveData[];
 
@@ -87,8 +87,5 @@ public:
 	float m_angle;
 	string_t m_iszGibModel;
 	string_t m_iszSpawnObject;
-	
-	int ItemCount() const;
-	int m_spawnItems[BREAKABLE_RANDOM_SPAWN_MAX_COUNT];
 };
 #endif	// FUNC_BREAK_H
