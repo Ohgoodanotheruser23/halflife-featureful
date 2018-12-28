@@ -765,6 +765,7 @@ void CBreakable::Die( void )
 	// Don't fire something that could fire myself
 	pev->targetname = 0;
 
+	const int originalSolidity = pev->solid;
 	pev->solid = SOLID_NOT;
 
 	// Fire targets on break
@@ -777,7 +778,9 @@ void CBreakable::Die( void )
 		CBaseEntity* foundEntity = UTIL_FindEntityByTargetname(NULL, STRING(pev->message));
 		if ( foundEntity && FClassnameIs(foundEntity->pev, "info_item_random"))
 		{
-			foundEntity->Use(this, this, USE_SET, 0.0f);
+			pev->solid = originalSolidity;
+			foundEntity->Use(this, this, USE_TOGGLE, 0.0f);
+			pev->solid = SOLID_NOT;
 		}
 		else
 		{

@@ -277,7 +277,7 @@ void CInfoItemRandom::Spawn()
 void CInfoItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	// Was called by SOLID_BSP entity, e.g. func_breakable
-	if (useType == USE_SET)
+	if (pActivator->IsBSPModel())
 	{
 		SpawnItem(VecBModelOrigin( pActivator->pev ), pActivator->pev->angles, iStringNull);
 	}
