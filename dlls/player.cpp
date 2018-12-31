@@ -5908,6 +5908,19 @@ void CBasePlayer::UpdateClientData( void )
 BOOL CBasePlayer::FBecomeProne( void )
 {
 	m_afPhysicsFlags |= PFLAG_ONBARNACLE;
+
+	if (mp_l4mcoop.value)
+	{
+		if( m_pActiveItem )
+		{
+			ResetAutoaim();
+			m_pLastItem = m_pActiveItem;
+			m_pActiveItem->m_fInReload = FALSE; // cancel any reload in progress.
+			pev->viewmodel = 0;
+			pev->weaponmodel = 0;
+			m_pActiveItem = NULL;
+		}
+	}
 	return TRUE;
 }
 
@@ -5928,6 +5941,15 @@ void CBasePlayer::BarnacleVictimBitten( entvars_t *pevBarnacle )
 void CBasePlayer::BarnacleVictimReleased( void )
 {
 	m_afPhysicsFlags &= ~PFLAG_ONBARNACLE;
+	if (mp_l4mcoop.value)
+	{
+		m_pActiveItem = m_pLastItem;
+		if (m_pActiveItem && m_pActiveItem->CanDeploy())
+		{
+			m_pActiveItem->Deploy();
+			m_pActiveItem->UpdateItemInfo();
+		}
+	}
 }
 
 //=========================================================
@@ -6285,6 +6307,8 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 	if (pWeapon->m_iId == WEAPON_MEDKIT) {
 		return;
 	}
+	if (mp_l4mcoop.value && (m_afPhysicsFlags & PFLAG_ONBARNACLE))
+		return;
 
 	g_pGameRules->GetNextBestWeapon( this, pWeapon );
 
@@ -6365,6 +6389,8 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 
 void CBasePlayer::DropAmmo()
 {
+	if (mp_l4mcoop.value && (m_afPhysicsFlags & PFLAG_ONBARNACLE))
+		return;
 	if( !g_pGameRules->IsMultiplayer() )
 	{
 		// no dropping in single player.

@@ -21,6 +21,7 @@
 #include "nodes.h"
 #include "player.h"
 #include "gamerules.h"
+#include "game.h"
 
 enum satchel_state
 {
@@ -276,6 +277,8 @@ BOOL CSatchel::IsUseable( void )
 
 BOOL CSatchel::CanDeploy( void )
 {
+	if (mp_l4mcoop.value && (m_pPlayer->m_afPhysicsFlags & PFLAG_ONBARNACLE))
+		return FALSE;
 	if( m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] > 0 ) 
 	{
 		// player is carrying some satchels
