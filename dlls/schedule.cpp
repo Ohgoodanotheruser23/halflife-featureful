@@ -88,11 +88,13 @@ void CBaseMonster::ChangeSchedule( Schedule_t *pNewSchedule )
 
 	if( m_pSchedule->iInterruptMask & bits_COND_HEAR_SOUND && !(m_pSchedule->iSoundMask) )
 	{
-		ALERT( at_aiconsole, "COND_HEAR_SOUND with no sound mask!\n" );
+		ALERT( at_aiconsole, "COND_HEAR_SOUND with no sound mask! (classname: %s; schedule: %s)\n",
+			   STRING(pev->classname), m_pSchedule->pName );
 	}
 	else if( m_pSchedule->iSoundMask && !(m_pSchedule->iInterruptMask & bits_COND_HEAR_SOUND) )
 	{
-		ALERT( at_aiconsole, "Sound mask without COND_HEAR_SOUND!\n" );
+		ALERT( at_aiconsole, "Sound mask without COND_HEAR_SOUND! (classname: %s; schedule: %s\n",
+			   STRING(pev->classname), m_pSchedule->pName);
 	}
 
 #if _DEBUG
@@ -876,7 +878,9 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_MOVE_TO_TARGET_RANGE:
 		{
-			if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < 1 )
+			if ( m_hTargetEnt == 0 )
+				TaskFail();
+			else if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < 1 )
 				TaskComplete();
 			else
 			{
@@ -891,7 +895,9 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		{
 			Activity newActivity;
 
-			if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < 1 )
+			if ( m_hTargetEnt == 0 )
+				TaskFail();
+			else if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < 1 )
 				TaskComplete();
 			else
 			{

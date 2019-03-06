@@ -288,6 +288,9 @@ void CInfoItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 }
 
 //=========
+
+extern int gEvilImpulse101;
+
 void CItem::Spawn( void )
 {
 	pev->movetype = MOVETYPE_TOSS;
@@ -296,15 +299,16 @@ void CItem::Spawn( void )
 	UTIL_SetSize( pev, Vector( -16, -16, 0 ), Vector( 16, 16, 16 ) );
 	SetTouch( &CItem::ItemTouch );
 
-	if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
+	if (!gEvilImpulse101)
 	{
-		ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), pev->origin.x, pev->origin.y, pev->origin.z);
-		UTIL_Remove( this );
-		return;
+		if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
+		{
+			ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), pev->origin.x, pev->origin.y, pev->origin.z);
+			UTIL_Remove( this );
+			return;
+		}
 	}
 }
-
-extern int gEvilImpulse101;
 
 void CItem::ItemTouch( CBaseEntity *pOther )
 {

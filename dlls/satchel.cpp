@@ -277,8 +277,10 @@ BOOL CSatchel::IsUseable( void )
 
 BOOL CSatchel::CanDeploy( void )
 {
+#ifndef CLIENT_DLL
 	if (mp_l4mcoop.value && (m_pPlayer->m_afPhysicsFlags & PFLAG_ONBARNACLE))
 		return FALSE;
+#endif
 	if( m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] > 0 ) 
 	{
 		// player is carrying some satchels

@@ -95,13 +95,11 @@ public:
 	int m_saved_effects;
 	//Vector m_vecOrigOrigin;
 	BOOL m_interruptable;
+	string_t m_iszFireOnAnimStart;
 };
 
 class CCineAI : public CCineMonster
 {
-	BOOL StartSequence( CBaseMonster *pTarget, int iszSeq, BOOL completeOnEmpty );
-	void PossessEntity( void );
 	BOOL FCanOverrideState ( void );
-	virtual void FixScriptMonsterSchedule( CBaseMonster *pMonster );
 };
 #endif //SCRIPTED_H

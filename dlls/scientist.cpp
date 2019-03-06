@@ -90,7 +90,7 @@ public:
 	void RunTask( Task_t *pTask );
 	void StartTask( Task_t *pTask );
 	int ObjectCaps( void ) { return CTalkMonster::ObjectCaps() | FCAP_IMPULSE_USE; }
-	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
+	int DefaultToleranceLevel() { return TOLERANCE_ZERO; }
 	void SetActivity( Activity newActivity );
 	Activity GetStoppedActivity( void );
 	int ISoundMask( void );
@@ -100,6 +100,8 @@ public:
 	BOOL DisregardEnemy( CBaseEntity *pEnemy ) { return !pEnemy->IsAlive() || ( gpGlobals->time - m_fearTime ) > 15; }
 
 	virtual BOOL	CanHeal( void );
+	void StartFollowingHealTarget(CBaseEntity* pTarget);
+	bool ReadyToHeal();
 	void Heal( void );
 	void Scream( void );
 
@@ -112,8 +114,6 @@ public:
 	void PainSound( void );
 
 	void TalkInit( void );
-
-	void Killed( entvars_t *pevAttacker, int iGib );
 
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -410,6 +410,22 @@ Schedule_t slFear[] =
 	},
 };
 
+Task_t	tlDisarmNeedle[] =
+{
+	{ TASK_PLAY_SEQUENCE,		(float)ACT_DISARM	},			// Put away the needle
+};
+
+Schedule_t	slDisarmNeedle[] =
+{
+	{
+		tlDisarmNeedle,
+		ARRAYSIZE ( tlDisarmNeedle ),
+		0,	// Don't interrupt or he'll end up running around with a needle all the time
+		0,
+		"DisarmNeedle"
+	},
+};
+
 DEFINE_CUSTOM_SCHEDULES( CScientist )
 {
 	slFollow,
@@ -424,6 +440,7 @@ DEFINE_CUSTOM_SCHEDULES( CScientist )
 	slSciPanic,
 	slFollowScared,
 	slFaceTargetScared,
+	slDisarmNeedle,
 };
 
 IMPLEMENT_CUSTOM_SCHEDULES( CScientist, CTalkMonster )
@@ -432,7 +449,7 @@ void CScientist::DeclineFollowing( void )
 {
 	Talk( 10 );
 	m_hTalkTarget = m_hEnemy;
-	PlaySentence( "SC_POK", 2, VOL_NORM, ATTN_NORM );
+	PlaySentence( m_szGrp[TLK_DECLINE], 2, VOL_NORM, ATTN_NORM );
 }
 
 void CScientist::Scream( void )
@@ -566,8 +583,11 @@ void CScientist::RunTask( Task_t *pTask )
 		{
 			if( TargetDistance() > 90 )
 				TaskComplete();
-			pev->ideal_yaw = UTIL_VecToYaw( m_hTargetEnt->pev->origin - pev->origin );
-			ChangeYaw( pev->yaw_speed );
+			if (m_hTargetEnt != 0)
+			{
+				pev->ideal_yaw = UTIL_VecToYaw( m_hTargetEnt->pev->origin - pev->origin );
+				ChangeYaw( pev->yaw_speed );
+			}
 		}
 		break;
 	default:
@@ -685,10 +705,7 @@ void CScientist::Spawn()
 {
 	Precache( );
 	SciSpawnHelper("models/scientist.mdl", gSkillData.scientistHealth);
-	MonsterInit();
-	if (IsFriendWithPlayerBeforeProvoked()) {
-		SetUse( &CTalkMonster::FollowerUse );
-	}
+	TalkMonsterInit();
 }
 
 //=========================================================
@@ -728,6 +745,7 @@ void CScientist::TalkInit()
 	m_szGrp[TLK_STARE] = "SC_STARE";
 	m_szGrp[TLK_USE] = "SC_OK";
 	m_szGrp[TLK_UNUSE] = "SC_WAIT";
+	m_szGrp[TLK_DECLINE] = "SC_POK";
 	m_szGrp[TLK_STOP] = "SC_STOP";
 	m_szGrp[TLK_NOSHOOT] = "SC_SCARED";
 	m_szGrp[TLK_HELLO] = "SC_HELLO";
@@ -743,6 +761,9 @@ void CScientist::TalkInit()
 
 	m_szGrp[TLK_WOUND] = "SC_WOUND";
 	m_szGrp[TLK_MORTAL] = "SC_MORTAL";
+
+	m_szGrp[TLK_SHOT] = NULL;
+	m_szGrp[TLK_MAD] = NULL;
 
 	// get voice for head
 	switch( pev->body % 3 )
@@ -763,18 +784,6 @@ void CScientist::TalkInit()
 		m_voicePitch = 100;
 		break;	//slick
 	}
-}
-
-int CScientist::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
-{
-	if( pevInflictor && pevInflictor->flags & FL_CLIENT && IsFriendWithPlayerBeforeProvoked() )
-	{
-		Remember( bits_MEMORY_PROVOKED );
-		StopFollowing( TRUE );
-	}
-
-	// make sure friends talk about it if player hurts scientist...
-	return CTalkMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
 }
 
 //=========================================================
@@ -826,12 +835,6 @@ void CScientist::PainSound( void )
 void CScientist::DeathSound( void )
 {
 	PainSound();
-}
-
-void CScientist::Killed( entvars_t *pevAttacker, int iGib )
-{
-	SetUse( NULL );	
-	CTalkMonster::Killed( pevAttacker, iGib );
 }
 
 void CScientist::SetActivity( Activity newActivity )
@@ -894,6 +897,9 @@ Schedule_t *CScientist::GetScheduleOfType( int Type )
 
 Schedule_t *CScientist::GetSchedule( void )
 {
+	if (pev->body >= NUM_SCIENTIST_BODIES)
+		return slDisarmNeedle;
+
 	// so we don't keep calling through the EHANDLE stuff
 	CBaseEntity *pEnemy = m_hEnemy;
 
@@ -928,6 +934,11 @@ Schedule_t *CScientist::GetSchedule( void )
 			return GetScheduleOfType( SCHED_SMALL_FLINCH );
 		}
 
+		if ( WantsToCallMedic() )
+		{
+			return GetScheduleOfType( SCHED_FIND_MEDIC );
+		}
+
 		// Cower when you hear something scary
 		if( HasConditions( bits_COND_HEAR_SOUND ) )
 		{
@@ -949,12 +960,12 @@ Schedule_t *CScientist::GetSchedule( void )
 		}
 
 		// Behavior for following the player
-		if( IsFollowing() )
+		if( m_hTargetEnt != 0 && FollowedPlayer() == m_hTargetEnt )
 		{
-			if( !m_hTargetEnt->IsAlive() )
+			if( !FollowedPlayer()->IsAlive() )
 			{
 				// UNDONE: Comment about the recently dead player here?
-				StopFollowing( FALSE );
+				StopFollowing( FALSE, false );
 				break;
 			}
 
@@ -983,6 +994,12 @@ Schedule_t *CScientist::GetSchedule( void )
 					return GetScheduleOfType( SCHED_FEAR );					// React to something scary
 				return GetScheduleOfType( SCHED_TARGET_FACE_SCARED );	// face and follow, but I'm scared!
 			}
+		}
+		// was called by other ally
+		else if (m_healTime <= gpGlobals->time && m_hTargetEnt != 0
+				 && m_hTargetEnt->IsAlive() && (m_hTargetEnt->pev->health < m_hTargetEnt->pev->max_health) )
+		{
+			return slHeal;
 		}
 
 		if( HasConditions( bits_COND_CLIENT_PUSH ) )	// Player wants me to move
@@ -1017,7 +1034,7 @@ MONSTERSTATE CScientist::GetIdealState( void )
 	case MONSTERSTATE_IDLE:
 		if( HasConditions( bits_COND_NEW_ENEMY ) )
 		{
-			if( IsFollowing() )
+			if( IsFollowingPlayer() )
 			{
 				int relationship = IRelationship( m_hEnemy );
 				if( relationship != R_FR || ( relationship != R_HT && !HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) ) )
@@ -1032,7 +1049,7 @@ MONSTERSTATE CScientist::GetIdealState( void )
 		else if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 		{
 			// Stop following if you take damage
-			if( IsFollowing() )
+			if( IsFollowingPlayer() )
 				StopFollowing( TRUE );
 		}
 		break;
@@ -1080,6 +1097,26 @@ BOOL CScientist::CanHeal( void )
 	return TRUE;
 }
 
+void CScientist::StartFollowingHealTarget(CBaseEntity *pTarget)
+{
+	if( m_pCine )
+		m_pCine->CancelScript();
+
+	if( m_hEnemy != 0 )
+		m_IdealMonsterState = MONSTERSTATE_ALERT;
+
+	m_hTargetEnt = pTarget;
+	ClearConditions( bits_COND_CLIENT_PUSH );
+	ClearSchedule();
+	ChangeSchedule(slHeal);
+	ALERT(at_aiconsole, "Scientist started to follow injured %s\n", STRING(pTarget->pev->classname));
+}
+
+bool CScientist::ReadyToHeal()
+{
+	return AbleToFollow() && ( m_healTime <= gpGlobals->time ) && m_pSchedule != slHeal;
+}
+
 void CScientist::Heal( void )
 {
 	if( !CanHeal() )
@@ -1091,7 +1128,7 @@ void CScientist::Heal( void )
 
 	m_hTargetEnt->TakeHealth( gSkillData.scientistHeal, DMG_GENERIC );
 	// Don't heal again for 1 minute
-	m_healTime = gpGlobals->time + 60;
+	m_healTime = gpGlobals->time + gSkillData.scientistHealTime;
 }
 
 //=========================================================
@@ -1417,6 +1454,7 @@ public:
 	void Spawn();
 	void Precache();
 	BOOL CanHeal();
+	bool ReadyToHeal() {return false;}
 };
 
 LINK_ENTITY_TO_CLASS( monster_cleansuit_scientist, CCleansuitScientist )
@@ -1425,8 +1463,7 @@ void CCleansuitScientist::Spawn()
 {
 	Precache( );
 	SciSpawnHelper("models/cleansuit_scientist.mdl", gSkillData.cleansuitScientistHealth);
-	MonsterInit();
-	SetUse( &CScientist::FollowerUse );
+	TalkMonsterInit();
 }
 
 void CCleansuitScientist::Precache()
@@ -1482,3 +1519,47 @@ void CSittingCleansuitScientist::Spawn()
 
 LINK_ENTITY_TO_CLASS( monster_sitting_cleansuit_scientist, CSittingCleansuitScientist )
 #endif
+
+//=========================================================
+// Dead Worker PROP
+//=========================================================
+class CDeadWorker : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_HUMAN_PASSIVE; }
+
+	const char* getPos(int pos) const;
+	static const char *m_szPoses[6];
+};
+const char *CDeadWorker::m_szPoses[] = { "lying_on_back", "lying_on_stomach", "dead_sitting", "dead_table1", "dead_table2", "dead_table3" };
+
+const char* CDeadWorker::getPos(int pos) const
+{
+	return m_szPoses[pos % ARRAYSIZE(m_szPoses)];
+}
+
+LINK_ENTITY_TO_CLASS( monster_worker_dead, CDeadWorker )
+
+void CDeadWorker :: Spawn( )
+{
+	SpawnHelper("models/worker.mdl");
+	MonsterInitDead();
+}
+
+class CDeadGus : public CDeadWorker
+{
+	void Spawn( void );
+};
+
+LINK_ENTITY_TO_CLASS( monster_gus_dead, CDeadGus )
+
+void CDeadGus :: Spawn( )
+{
+	SpawnHelper("models/gus.mdl");
+	if (pev->body == -1)
+	{
+		pev->body = RANDOM_LONG(0,1);
+	}
+	MonsterInitDead();
+}

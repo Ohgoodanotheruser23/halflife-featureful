@@ -102,7 +102,7 @@ public:
 	void SetTurretAnim( TURRET_ANIM anim );
 	int MoveTurret( void );
 	virtual void Shoot( Vector &vecSrc, Vector &vecDirToEnemy ) { };
-	
+
 	void SetEnemy(CBaseEntity* enemy);
 
 	float m_flMaxSpin;		// Max time to spin the barrel w/o a target
@@ -1026,11 +1026,11 @@ int CBaseTurret::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	if( pev->health <= 0 )
 	{
 		//HACK to trigger on death condition
-		int deadflag = pev->deadflag;
+		const int deadflag = pev->deadflag;
 		pev->deadflag = DEAD_DEAD;
 		FCheckAITrigger();
 		pev->deadflag = deadflag;
-		
+
 		pev->health = 0;
 		pev->takedamage = DAMAGE_NO;
 		pev->dmgtime = gpGlobals->time;
@@ -1271,7 +1271,7 @@ int CSentry::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 
 void CSentry::SentryTouch( CBaseEntity *pOther )
 {
-	if( pOther && ( pOther->IsPlayer() || ( pOther->pev->flags & FL_MONSTER ) ) && IDefaultRelationship(m_iClass, pOther->Classify()) >= R_DL )
+	if( pOther && ( pOther->IsPlayer() || ( pOther->pev->flags & FL_MONSTER ) ) && IDefaultRelationship(m_iClass ? m_iClass : DefaultClassify(), pOther->Classify()) >= R_DL )
 	{
 		TakeDamage( pOther->pev, pOther->pev, 0, 0 );
 	}

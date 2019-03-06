@@ -203,6 +203,7 @@ int CBaseMonster::FindHintNode( void ) { return NO_NODE; }
 void CBaseMonster::ReportAIState( void ) { }
 void CBaseMonster::KeyValue( KeyValueData *pkvd ) { }
 BOOL CBaseMonster::FCheckAITrigger( void ) { return FALSE; }
+BOOL CBaseMonster::FCheckAITrigger( short ) { return FALSE; }
 int CBaseMonster::CanPlaySequence( BOOL fDisregardMonsterState, int interruptLevel ) { return FALSE; }
 BOOL CBaseMonster::FindLateralCover( const Vector &vecThreat, const Vector &vecViewOffset ) { return FALSE; }
 Vector CBaseMonster::ShootAtEnemy( const Vector &shootOrigin ) { return g_vecZero; }
@@ -234,6 +235,7 @@ Schedule_t *CBaseMonster::ScheduleFromName( const char *pName ) { return NULL;}
 void CBaseMonster::BecomeDead( void ) {}
 void CBaseMonster::RunAI( void ) {}
 void CBaseMonster::Killed( entvars_t *pevAttacker, int iGib ) {}
+void CBaseMonster::OnDying() {}
 int CBaseMonster::TakeHealth(float flHealth, int bitsDamageType) { return 0; }
 int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType ) { return 0; }
 int CBaseMonster::Restore( class CRestore & ) { return 1; }

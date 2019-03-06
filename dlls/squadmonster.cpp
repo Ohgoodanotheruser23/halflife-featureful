@@ -117,10 +117,7 @@ void CSquadMonster::ScheduleChange ( void )
 	VacateSlot();
 }
 
-//=========================================================
-// Killed
-//=========================================================
-void CSquadMonster::Killed( entvars_t *pevAttacker, int iGib )
+void CSquadMonster::OnDying()
 {
 	VacateSlot();
 
@@ -128,8 +125,7 @@ void CSquadMonster::Killed( entvars_t *pevAttacker, int iGib )
 	{
 		MySquadLeader()->SquadRemove( this );
 	}
-
-	CBaseMonster::Killed( pevAttacker, iGib );
+	CBaseMonster::OnDying();
 }
 
 // These functions are still awaiting conversion to CSquadMonster 
@@ -256,7 +252,9 @@ void CSquadMonster::SquadMakeEnemy( CBaseEntity *pEnemy )
 		if( pMember )
 		{
 			// reset members who aren't activly engaged in fighting
-			if( pMember->m_hEnemy != pEnemy && !pMember->HasConditions( bits_COND_SEE_ENEMY ) )
+			if( pMember->m_hEnemy != pEnemy && !pMember->HasConditions( bits_COND_SEE_ENEMY )
+					// My enemy might be not an enemy for member of my squad, e.g. if I was provoked by player.
+					&& pMember->IRelationship(pEnemy) >= R_DL )
 			{
 				if( pMember->m_hEnemy != 0 )
 				{
@@ -426,7 +424,7 @@ void CSquadMonster::StartMonster( void )
 
 		if( iSquadSize )
 		{
-			ALERT( at_aiconsole, "Squad of %d %s formed\n", iSquadSize, STRING( pev->classname ) );
+			ALERT( at_aiconsole, "Squad of %d monsters formed. Leader is %s\n", iSquadSize, STRING( pev->classname ) );
 		}
 
 		if( IsLeader() && FClassnameIs( pev, "monster_human_grunt" ) )

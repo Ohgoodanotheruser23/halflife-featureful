@@ -188,6 +188,19 @@
 		10: "See Player Unconditional"
 		11: "See Player, Not In Combat"
 	]
+	TriggerAltCondition(Choices) : "Trigger Alternative Condition" : 0 : "Alternative condition to fire TriggerTarget (useful to make an important ally fire the same target both when either provoked or dead which is usually a load game condition)" =
+	[
+		0 : "No Trigger"
+		1 : "See Player, Mad at Player"
+		2 : "Take Damage"
+		3 : "50% Health Remaining"
+		4 : "Death"
+		7 : "Hear World"
+		8 : "Hear Player"
+		9 : "Hear Combat"
+		10: "See Player Unconditional"
+		11: "See Player, Not In Combat"
+	]
 	spawnflags(Flags) =
 	[
 		1 : "WaitTillSeen" 	: 0
@@ -235,6 +248,18 @@
 [
 	UseSentence(String) : "Use Sentence"
 	UnUseSentence(String) : "Un-Use Sentence"
+	RefusalSentence(String) : "Refusal Sentence"
+	master(string) : "Master" : : "Decline following if locked by master"
+	tolerance(choices) : "Tolerance level" : : "Tolerance to player's hits" =
+	[
+		0 : "Default" : "Monster-specific behavior"
+		1 : "Zero" : "Get provoked on any hit"
+		2 : "Low" : "Get provoked by direct hit or on second hit"
+		3 : "Average" : "Get provoked by some hits"
+		4 : "High" : "Get provoked by some hits, but tends to forgive after some time"
+		5 : "Absolute" : "Never get provoked"
+		6 : "Absolute, don't alert friends" : "Never get provoked, don't alert friends upon death"
+	]
 	suspicious(choices) : "Suspicious" =
 	[
 		0 : "No"
@@ -5077,6 +5102,7 @@
 	m_iszEntity(string) : "Target Monster"
 	m_iszPlay(string) : "Action Animation" : ""
 	m_iszIdle(string) : "Idle Animation" : ""
+	m_iszFireOnAnimStart : "Fire on Animation start" : : "Fire at the beginning of Action Animation"
 	m_flRadius(integer) : "Search Radius" : 512
 	m_flRepeat(integer) : "Repeat Rate ms" : 0
 	m_fMoveTo(choices) : "Move to Position" : 0 =
@@ -5086,6 +5112,11 @@
 		2 : "Run"
 		4 : "Instantaneous"
 		5 : "No - Turn to Face"
+	]
+	m_iFinishSchedule(Choices) : "AI Schedule when done" : 0 =
+	[
+		0 : "Default AI"
+		1 : "Ambush"
 	]
 	spawnflags(Flags) =
 	[
@@ -5389,6 +5420,8 @@
 	[
 		1: "Once Only" : 0
 		2: "Start Off" : 0
+		8: "No clients": 0
+		16: "No monsters": 0
 	]
 	speed(integer) : "Speed of push" : 40
 ]

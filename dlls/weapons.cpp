@@ -1730,7 +1730,7 @@ IMPLEMENT_SAVERESTORE( CEgon, CBasePlayerWeapon )
 
 TYPEDESCRIPTION CHgun::m_SaveData[] =
 {
-	DEFINE_FIELD( CHgun, m_flRechargeTime, FIELD_FLOAT ),
+	DEFINE_FIELD( CHgun, m_flRechargeTime, FIELD_TIME ),
 };
 
 IMPLEMENT_SAVERESTORE( CHgun, CBasePlayerWeapon )
@@ -1774,8 +1774,7 @@ IMPLEMENT_SAVERESTORE( CKnife, CBasePlayerWeapon )
 #if FEATURE_M249
 TYPEDESCRIPTION	CM249::m_SaveData[] =
 {
-	DEFINE_FIELD( CM249, m_iReloadState, FIELD_INTEGER ),
-	DEFINE_FIELD( CM249, m_flReloadStart, FIELD_TIME ),
+	DEFINE_FIELD( CM249, m_fReloadLaunched, FIELD_BOOLEAN ),
 };
 IMPLEMENT_SAVERESTORE( CM249, CBasePlayerWeapon )
 #endif

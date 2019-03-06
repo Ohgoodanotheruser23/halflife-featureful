@@ -1353,6 +1353,8 @@ void SENTENCEG_Init()
 	
 	ALERT(at_console, "%d sentence groups loaded\n", isentencegs);
 
+	//ALERT(at_console, "Number of sentence groups: %d\nNumber of sentences: %d\n", isentencegs, gcallsentences);
+
 	g_engfuncs.pfnFreeFile( pMemFile );
 
 	fSentencesInit = TRUE;

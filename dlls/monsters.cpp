@@ -100,7 +100,8 @@ TYPEDESCRIPTION	CBaseMonster::m_SaveData[] =
 	DEFINE_FIELD( CBaseMonster, m_flHungryTime, FIELD_TIME ),
 	DEFINE_FIELD( CBaseMonster, m_flDistTooFar, FIELD_FLOAT ),
 	DEFINE_FIELD( CBaseMonster, m_flDistLook, FIELD_FLOAT ),
-	DEFINE_FIELD( CBaseMonster, m_iTriggerCondition, FIELD_INTEGER ),
+	DEFINE_FIELD( CBaseMonster, m_iTriggerCondition, FIELD_SHORT ),
+	DEFINE_FIELD( CBaseMonster, m_iTriggerAltCondition, FIELD_SHORT ),
 	DEFINE_FIELD( CBaseMonster, m_iszTriggerTarget, FIELD_STRING ),
 
 	DEFINE_FIELD( CBaseMonster, m_HackedGunPos, FIELD_VECTOR ),
@@ -2894,6 +2895,7 @@ void CBaseMonster::ReportAIState( void )
 	static const char *pStateNames[] = { "None", "Idle", "Combat", "Alert", "Hunt", "Prone", "Scripted", "Dead" };
 
 	ALERT( level, "%s: ", STRING(pev->classname) );
+	ALERT( level, "Classify: %d, ", Classify() );
 	if( (int)m_MonsterState < ARRAYSIZE( pStateNames ) )
 		ALERT( level, "State: %s, ", pStateNames[m_MonsterState] );
 	int i = 0;
@@ -2944,21 +2946,24 @@ void CBaseMonster::ReportAIState( void )
 	{
 		if( !pSquadMonster->InSquad() )
 		{
-			ALERT( level, "not " );
+			ALERT( level, "not In Squad" );
 		}
-
-		ALERT( level, "In Squad, " );
-
-		if( !pSquadMonster->IsLeader() )
+		else
 		{
-			ALERT( level, "not " );
+			if( pSquadMonster->IsLeader() )
+			{
+				ALERT( level, "InSquad, Leader." );
+			}
+			else
+			{
+				CSquadMonster* myLeader = pSquadMonster->MySquadLeader();
+				ALERT( level, "In Squad, Leader: %s.", FStringNull(myLeader->pev->targetname) ? STRING(myLeader->pev->classname) : STRING(myLeader->pev->targetname) );
+			}
 		}
-
-		ALERT( level, "Leader." );
 	}
 
 	ALERT( level, "\n" );
-	ALERT( level, "Yaw speed:%3.1f,Health: %3.1f\n", pev->yaw_speed, pev->health );
+	ALERT( level, "Yaw speed:%3.1f, Health: %3.1f / %3.1f\n", pev->yaw_speed, pev->health, pev->max_health );
 	if( pev->spawnflags & SF_MONSTER_PRISONER )
 		ALERT( level, " PRISONER! " );
 	if( pev->spawnflags & SF_MONSTER_PREDISASTER )
@@ -2980,7 +2985,12 @@ void CBaseMonster::KeyValue( KeyValueData *pkvd )
 	}
 	else if( FStrEq( pkvd->szKeyName, "TriggerCondition" ) )
 	{
-		m_iTriggerCondition = atoi( pkvd->szValue );
+		m_iTriggerCondition = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "TriggerAltCondition" ) )
+	{
+		m_iTriggerAltCondition = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else if ( FStrEq( pkvd->szKeyName, "bloodcolor" ) )
@@ -3011,19 +3021,19 @@ void CBaseMonster::KeyValue( KeyValueData *pkvd )
 //
 // Returns TRUE if the target is fired.
 //=========================================================
-BOOL CBaseMonster::FCheckAITrigger( void )
+BOOL CBaseMonster::FCheckAITrigger( short condition )
 {
 	BOOL fFireTarget;
 
-	if( m_iTriggerCondition == AITRIGGER_NONE )
+	if( condition == AITRIGGER_NONE )
 	{
 		// no conditions, so this trigger is never fired.
-		return FALSE; 
+		return FALSE;
 	}
 
 	fFireTarget = FALSE;
 
-	switch( m_iTriggerCondition )
+	switch( condition )
 	{
 	case AITRIGGER_SEEPLAYER_ANGRY_AT_PLAYER:
 		if( m_hEnemy != 0 && m_hEnemy->IsPlayer() && HasConditions( bits_COND_SEE_ENEMY ) )
@@ -3038,9 +3048,9 @@ BOOL CBaseMonster::FCheckAITrigger( void )
 		}
 		break;
 	case AITRIGGER_SEEPLAYER_NOT_IN_COMBAT:
-		if( HasConditions( bits_COND_SEE_CLIENT ) && 
-			 m_MonsterState != MONSTERSTATE_COMBAT	&& 
-			 m_MonsterState != MONSTERSTATE_PRONE	&& 
+		if( HasConditions( bits_COND_SEE_CLIENT ) &&
+			 m_MonsterState != MONSTERSTATE_COMBAT	&&
+			 m_MonsterState != MONSTERSTATE_PRONE	&&
 			 m_MonsterState != MONSTERSTATE_SCRIPT)
 		{
 			fFireTarget = TRUE;
@@ -3066,7 +3076,7 @@ BOOL CBaseMonster::FCheckAITrigger( void )
 		break;
 /*
 
-  // !!!UNDONE - no persistant game state that allows us to track these two. 
+  // !!!UNDONE - no persistant game state that allows us to track these two.
 
 	case AITRIGGER_SQUADMEMBERDIE:
 		break;
@@ -3099,10 +3109,19 @@ BOOL CBaseMonster::FCheckAITrigger( void )
 		ALERT( at_aiconsole, "AI Trigger Fire Target\n" );
 		FireTargets( STRING( m_iszTriggerTarget ), this, this, USE_TOGGLE, 0 );
 		m_iTriggerCondition = AITRIGGER_NONE;
+		m_iTriggerAltCondition = AITRIGGER_NONE;
 		return TRUE;
 	}
 
 	return FALSE;
+}
+
+BOOL CBaseMonster::FCheckAITrigger( void )
+{
+	BOOL ret = FCheckAITrigger( m_iTriggerCondition );
+	if (!ret)
+		return FCheckAITrigger( m_iTriggerAltCondition );
+	return ret;
 }
 
 //=========================================================	

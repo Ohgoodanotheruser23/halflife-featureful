@@ -63,6 +63,7 @@ In case you enable new monsters or weapons don't forget to add their skill value
 * Health, relationship class, blood color, gibs and model can be customized in map editor.
 * monster_barnacle health can be configured via skill.cfg
 * Houndeye squad leader can play leaderlook animation.
+* Houndeye shut their eyes when sleeping.
 * Alien grunts, bullsquids, houndeyes, gonomes, pitdrones and voltigores restore health when they eat meat or enemy corpses.
 * Alien slave attack rate can be configured via skill.cfg (In Half-Life it's hardcoded as 1 for easy and normal, and 1.5 for hard difficulty)
 * Bullsquids can shoot alternative spit projectile that is slow poisonous ball.
@@ -70,6 +71,9 @@ In case you enable new monsters or weapons don't forget to add their skill value
 * Human grunts take into account allies that are not in their squad when checking for friendly fire.
 * Security guards now check for friendly fire too.
 * Security guards can be spawned with gun drawn.
+* Scientists can heal other allies beside the player (e.g. security guards and other scientists)
+* The delay before scientist can heal again can be configured via skill.cfg (1 minute by default)
+* Talk monsters can have a configurable tolerance level to player hits.
 
 ### Alien slave features
 
@@ -94,7 +98,7 @@ All Opposing Force weapons and corresponding ammo entities are implemented, but 
 
 #### Other new weapons
 
-* weapon_medkit - TFC-like medkit that allows to heal allies
+* weapon_medkit - TFC-like medkit that allows to heal allies (not enabled by default)
 
 ### Other new entities
 
@@ -125,6 +129,10 @@ All Opposing Force weapons and corresponding ammo entities are implemented, but 
 * env_modeltrain - like env_spritetrain, but with animated model and configurable movement sound.
 * env_warpball - easy way to create a teleportation effect for monster spawns. Also can be set as a template for monstermaker.
 * trigger_killmonster - kill monster (possibly gibbing), playing random death animation.
+* trigger_timer - continuously fire the same target over random delays.
+* game_player_settings - give starting weapons, configure starting armor and health in singleplayer.
+* multi_trigger - alternative to multi_manager for which J.A.C.K. can show connections to its targets.
+* item_flashlight can be enabled to give player flashlight without giving a suit.
 
 ### Wall chargers features
 
@@ -138,13 +146,16 @@ All Opposing Force weapons and corresponding ammo entities are implemented, but 
 * Added Explosive Only and Op4Mortar only flags for func_breakable. Breakables with these flags can be destroyed only with explosive weapons and op4mortar shells respectively.
 * monstermaker can have env_warpball template to automatically play teleportation effects on monster spawn.
 * monstermaker can set custom health, body, skin, blood color, relationship class, gibs and model for spawned monsters.
+* New flag for monstermaker - No ground check. The hack to remove the check for space under the monstermaker. Useful for spawning flying monsters or monsters that should fall.
 * func_plat, func_train and func_door sound attenuation can be configured in level editor.
 * Monsters and models scale can be changed (like in Spirit of Half-Life)
-* Added use_through_walls cvar to prevent using things through walls (experimental).
+* Added use_through_walls cvar to prevent using things through walls (experimental, will be made into compile-time feature).
 * func_tank can be configured to have a limited number of ammo.
 * func_breakable can contain new items (e.g. Opposing Force weapons and ammo).
 * Amount of health provided by soda may be configured via skill.cfg
 * item_security can show message and play sound on pickup. If item_security is featured in hud.txt the sprite will be shown upon item pickup.
+* trigger_push has No clients and No monsters flags (like in Sven Co-op).
+* 'Fire on Animation start' property for scripted sequence - allows to sync animation start and firing a trigger (useful for retina animations).
 
 ## How to build
 

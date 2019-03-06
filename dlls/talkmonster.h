@@ -56,6 +56,7 @@ typedef enum
 	TLK_STARE,
 	TLK_USE,
 	TLK_UNUSE,
+	TLK_DECLINE,
 	TLK_STOP,
 	TLK_NOSHOOT,
 	TLK_HELLO,
@@ -68,6 +69,8 @@ typedef enum
 	TLK_SMELL,
 	TLK_WOUND,
 	TLK_MORTAL,
+	TLK_SHOT,
+	TLK_MAD,
 
 	TLK_CGROUPS					// MUST be last entry
 } TALKGROUPNAMES;
@@ -78,6 +81,7 @@ enum
 	SCHED_MOVE_AWAY,		// Try to get out of the player's way
 	SCHED_MOVE_AWAY_FOLLOW,	// same, but follow afterward
 	SCHED_MOVE_AWAY_FAIL,	// Turn back toward player
+	SCHED_FIND_MEDIC,
 
 	LAST_TALKMONSTER_SCHEDULE		// MUST be last
 };
@@ -99,8 +103,20 @@ enum
 	TASK_TLK_EYECONTACT,	// maintain eyecontact with person who I'm talking to
 	TASK_TLK_IDEALYAW,		// set ideal yaw to face who I'm talking to
 	TASK_FACE_PLAYER,		// Face the player
+	TASK_FIND_MEDIC,		// Try to find and call someone who can heal me
 
 	LAST_TALKMONSTER_TASK			// MUST be last
+};
+
+enum
+{
+	TOLERANCE_DEFAULT,
+	TOLERANCE_ZERO,
+	TOLERANCE_LOW,
+	TOLERANCE_AVERAGE,
+	TOLERANCE_HIGH,
+	TOLERANCE_ABSOLUTE,
+	TOLERANCE_ABSOLUTE_NO_ALERTS,
 };
 
 class CTalkMonster : public CSquadMonster
@@ -113,9 +129,11 @@ public:
 	
 	// Base Monster functions
 	void			Precache( void );
-	int				TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	int 			TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
+	int 			TakeHealth(float flHealth, int bitsDamageType);
 	void			Touch(	CBaseEntity *pOther );
 	void			Killed( entvars_t *pevAttacker, int iGib );
+	void			OnDying();
 	int				IRelationship ( CBaseEntity *pTarget );
 	virtual int		CanPlaySentence( BOOL fDisregardState );
 	virtual void	PlaySentence( const char *pszSentence, float duration, float volume, float attenuation );
@@ -129,10 +147,15 @@ public:
 	void			RunTask( Task_t *pTask );
 	void			HandleAnimEvent( MonsterEvent_t *pEvent );
 	void			PrescheduleThink( void );
-	
+	void			ReactToPlayerHit(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType);
+	void			TalkMonsterInit();
+
 	// Conversations / communication
 	int				GetVoicePitch( void );
-	void			IdleRespond( void );
+	virtual void	IdleRespond( void );
+	virtual void	AskQuestion( void );
+	virtual void	MakeIdleStatement( void );
+	float			RandomSentenceDuraion( void );
 	int				FIdleSpeak( void );
 	int				FIdleStare( void );
 	int				FIdleHello( void );
@@ -148,15 +171,26 @@ public:
 
 	// For following
 	BOOL			CanFollow( void );
-	BOOL			IsFollowing( void ) { return m_hTargetEnt != 0 && m_hTargetEnt->IsPlayer(); }
-	void			StopFollowing( BOOL clearSchedule );
-	void			StartFollowing( CBaseEntity *pLeader );
+	BOOL			AbleToFollow();
+	BOOL	IsFollowingPlayer( CBaseEntity* pLeader );
+	BOOL	IsFollowingPlayer( void );
+	virtual	CBaseEntity* FollowedPlayer();
+	virtual void ClearFollowedPlayer();
+	virtual void	StopFollowing(BOOL clearSchedule, bool saySentence = true );
+	virtual void	StartFollowing( CBaseEntity *pLeader, bool saySentence = true );
 	virtual void	DeclineFollowing( void ) {}
 	void			LimitFollowers( CBaseEntity *pPlayer, int maxFollowers );
 	virtual int		MaxFollowers() { return 3; }
 	virtual int		TalkFriendCategory() { return TALK_FRIEND_PERSONNEL; }
 
 	void EXPORT		FollowerUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+
+	// Medic related
+	bool			WantsToCallMedic();
+	bool			TryCallForMedic(CBaseEntity* pOther);
+	virtual void	PlayCallForMedic();
+	bool			IsWounded();
+	bool			IsHeavilyWounded();
 	
 	virtual void	SetAnswerQuestion( CTalkMonster *pSpeaker );
 
@@ -165,11 +199,14 @@ public:
 	static	TYPEDESCRIPTION m_SaveData[];
 
 	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
+	virtual int DefaultToleranceLevel() { return TOLERANCE_LOW; }
+	int MyToleranceLevel() { return m_iTolerance ? m_iTolerance : DefaultToleranceLevel(); }
 
 	struct TalkFriend
 	{
 		const char* name;
 		bool canFollow;
+		bool canHeal;
 		short category;
 	};
 	
@@ -183,12 +220,18 @@ public:
 	float		m_useTime;						// Don't allow +USE until this time
 	string_t			m_iszUse;						// Custom +USE sentence group (follow)
 	string_t			m_iszUnUse;						// Custom +USE sentence group (stop following)
+	string_t			m_iszDecline;					// Custom +USE sentence group (decline following)
 
 	float		m_flLastSaidSmelled;// last time we talked about something that stinks
 	float		m_flStopTalkTime;// when in the future that I'll be done saying this sentence.
+	float		m_flMedicWaitTime;
 
 	EHANDLE		m_hTalkTarget;	// who to look at while talking
 	BOOL m_fStartSuspicious;
+	short m_iTolerance;
+	float m_flLastHitByPlayer;
+	int m_iPlayerHits;
+
 	CUSTOM_SCHEDULES
 };
 
