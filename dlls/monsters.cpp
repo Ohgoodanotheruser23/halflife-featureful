@@ -2072,7 +2072,7 @@ void CBaseMonster::StartMonster( void )
 		pev->origin.z += 1;
 		DROP_TO_FLOOR( ENT( pev ) );
 
-		if (!FBitSet(pev->spawnflags, SF_MONSTER_NO_YELLOW_BLOBS))
+		if (!FBitSet(pev->spawnflags, SF_MONSTER_NO_YELLOW_BLOBS|SF_MONSTER_NO_YELLOW_BLOBS_SPIRIT))
 		{
 			// Try to move the monster to make sure it's not stuck in a brush.
 			if( !WALK_MOVE( ENT( pev ), 0, 0, WALKMOVE_NORMAL ) )
@@ -2236,12 +2236,6 @@ int CBaseMonster::IDefaultRelationship(int classify1, int classify2)
 		return R_NO;
 	}
 	return iEnemy[classify1][classify2];
-}
-
-bool CBaseMonster::IsFriendWithPlayerBeforeProvoked()
-{
-	int relation = IDefaultRelationship(CLASS_PLAYER);
-	return relation < R_DL && relation != R_FR;
 }
 
 //=========================================================

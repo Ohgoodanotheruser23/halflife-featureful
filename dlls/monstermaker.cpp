@@ -28,6 +28,7 @@
 #define	SF_MONSTERMAKER_CYCLIC		4 // drop one monster every time fired.
 #define SF_MONSTERMAKER_MONSTERCLIP	8 // Children are blocked by monsterclip
 #define SF_MONSTERMAKER_ALIGN_TO_PLAYER 16 // Align to closest player on spawn
+#define SF_MONSTERMAKER_DONT_DROP_GUN 1024 // Spawn monster won't drop gun upon death
 #define SF_MONSTERMAKER_NO_GROUND_CHECK 2048 // don't check if something on ground prevents a monster to fall on spawn
 
 #define MONSTERMAKER_ORIGIN_MAX_COUNT 24
@@ -362,12 +363,14 @@ void CMonsterMaker::MakeMonster( void )
 		pevCreate->model = m_customModel;
 
 	// Children hit monsterclip brushes
-	if( pev->spawnflags & SF_MONSTERMAKER_MONSTERCLIP )
+	if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_MONSTERCLIP ))
 		SetBits( pevCreate->spawnflags, SF_MONSTER_HITMONSTERCLIP );
 
 	CBaseMonster* createdMonster = GetMonsterPointer(pent);
 	if (createdMonster)
 	{
+		if (FBitSet(pev->spawnflags, SF_MONSTERMAKER_DONT_DROP_GUN))
+			SetBits(pevCreate->spawnflags, SF_MONSTER_DONT_DROP_GRUN);
 		if (m_classify)
 			createdMonster->m_iClass = m_classify;
 		if (m_bloodColor)

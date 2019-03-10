@@ -622,7 +622,7 @@ void CBarney::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir
 
 void CBarney::OnDying()
 {
-	if( pev->body < BARNEY_BODY_GUNGONE && npc_dropweapons.value )
+	if( npc_dropweapons.value && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN) && pev->body < BARNEY_BODY_GUNGONE )
 	{
 		// drop the gun!
 		Vector vecGunPos;
@@ -975,7 +975,7 @@ void COtis::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 void COtis::OnDying()
 {
-	if ( GetBodygroup(1) != OTIS_BODY_GUNHOLSTERED && npc_dropweapons.value )
+	if ( npc_dropweapons.value && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN) && GetBodygroup(1) != OTIS_BODY_GUNHOLSTERED )
 	{
 		Vector vecGunPos;
 		Vector vecGunAngles;
