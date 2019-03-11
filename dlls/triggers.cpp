@@ -1667,9 +1667,9 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 
 	pev->dmgtime = gpGlobals->time;
 
-	CBaseEntity *pPlayer;
+	CBaseEntity *pPlayer = NULL;
 
-	if (g_pGameRules->IsMultiplayer())
+	if (g_pGameRules->IsMultiplayer() && pActivator->IsPlayer())
 	{
 		pPlayer = pActivator;
 	}
@@ -1696,7 +1696,7 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 			// Set target and delay
 			pFireAndDie->pev->target = m_changeTarget;
 			pFireAndDie->m_flDelay = m_changeTargetDelay;
-			pFireAndDie->pev->origin = pPlayer->pev->origin;
+			pFireAndDie->pev->origin = pPlayer ? pPlayer->pev->origin : pev->origin;
 
 			// Call spawn
 			DispatchSpawn( pFireAndDie->edict() );
