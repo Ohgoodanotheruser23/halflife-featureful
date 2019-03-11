@@ -1720,6 +1720,7 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 	}
 	//ALERT( at_console, "Level touches %d levels\n", ChangeList( levels, 16 ) );
 	ALERT( at_console, "CHANGE LEVEL: %s %s\n", st_szNextMap, st_szNextSpot );
+	g_pGameRules->BeforeChangeLevel(st_szNextMap);
 	if (g_pGameRules->IsMultiplayer())
 	{
 		if (mp_l4mcoop.value)

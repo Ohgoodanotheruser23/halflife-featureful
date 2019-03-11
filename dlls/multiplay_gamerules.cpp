@@ -236,6 +236,127 @@ void CTriggerSurvival::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	UTIL_Remove(this);
 }
 
+struct PlayerState
+{
+	float health;
+	float armor;
+	char weapons[MAX_WEAPONS][32];
+	short clips[MAX_WEAPONS];
+	int ammo[MAX_AMMO_SLOTS];
+	char currentWeapon[32];
+	char nickname[32];
+	char uid[33];
+};
+
+static PlayerState playerStates[32];
+
+const char *GetAuthID( CBaseEntity *pPlayer )
+{
+	static char uid[33];
+	const char *authid = GETPLAYERAUTHID( pPlayer->edict() );
+
+	if( !authid || strstr(authid, "PENDING") )
+	{
+		const char *ip = g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( pPlayer->edict() ), "ip" );
+		if( ip )
+		{
+			char *pUid;
+
+			snprintf( uid, 32, "IP_%s", ip );
+
+			for( pUid = uid; *pUid; pUid++ )
+				if( *pUid == '.' ) *pUid = '_';
+		}
+		else
+			return "UNKNOWN";
+	}
+	else strncpy( uid, authid, 32 );
+
+	return "UNKNOWN";
+}
+
+void SavePlayerStates()
+{
+	int j = 0;
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+		if (pPlayer && pPlayer->IsPlayer() && pPlayer->IsAlive())
+		{
+			PlayerState* state = &playerStates[j];
+			strncpy(state->uid, GetAuthID(pPlayer), sizeof(state->uid) - 1);
+			strncpy(state->nickname, STRING(pPlayer->pev->netname), sizeof(state->nickname) - 1);
+
+			state->health = pPlayer->pev->health;
+			state->armor = pPlayer->pev->armorvalue;
+			CBasePlayer* player = (CBasePlayer*)pPlayer;
+			if (player->m_pActiveItem != 0)
+			{
+				strncpy(state->currentWeapon, STRING(player->m_pActiveItem->pev->classname), sizeof(state->currentWeapon) - 1);
+			}
+			int k;
+			for( k = 0; k < MAX_WEAPONS; k++ )
+			{
+				CBasePlayerWeapon* pWeapon = player->m_rgpPlayerWeapons[k];
+				if (pWeapon)
+				{
+					strncpy( state->weapons[k], STRING(pWeapon->pev->classname), sizeof(state->weapons[k]) - 1);
+					state->clips[k] = pWeapon->m_iClip;
+				}
+			}
+			for( k = 0; k < MAX_AMMO_SLOTS; k++ )
+				state->ammo[k] = player->m_rgAmmo[k];
+			j++;
+		}
+	}
+}
+
+bool RestorePlayerState(CBasePlayer* player)
+{
+	const char* uid = GetAuthID(player);
+	const char* nickname = STRING(player->pev->netname);
+	for (int i=0; i<ARRAYSIZE(playerStates); ++i)
+	{
+		PlayerState* state = &playerStates[i];
+		if (strcmp(uid, state->uid) == 0 && strcmp(nickname, state->nickname) == 0)
+		{
+			player->pev->health = state->health;
+			player->pev->armorvalue = state->armor;
+
+			int k;
+			for( k = 0; k < MAX_WEAPONS; ++k)
+			{
+				if (*state->weapons[k])
+				{
+					CBasePlayerWeapon *pWeapon = (CBasePlayerWeapon*)CBaseEntity::Create(state->weapons[k], player->pev->origin, player->pev->angles );
+					if (pWeapon)
+					{
+						pWeapon->pev->spawnflags |= SF_NORESPAWN;
+						pWeapon->m_iDefaultAmmo = 0;
+						pWeapon->m_iClip = state->clips[k];
+						if (player->AddPlayerItem(pWeapon)) {
+							pWeapon->AttachToPlayer(player);
+						}
+					}
+				}
+			}
+			for( k = 0; k < MAX_AMMO_SLOTS; ++k )
+				player->m_rgAmmo[k] = state->ammo[k];
+			if (*state->currentWeapon)
+				player->SelectItem(state->currentWeapon);
+			return true;
+		}
+	}
+	return false;
+}
+
+void ClearPlayerStates()
+{
+	memset(playerStates, 0, sizeof(playerStates));
+}
+
+static char g_changelevelName[cchMapNameMost];
+
 //*********************************************************
 // Rules for the half-life multiplayer game.
 //*********************************************************
@@ -252,6 +373,15 @@ CHalfLifeMultiplay::CHalfLifeMultiplay()
 	m_survivalState = SurvivalWaitForPlayers;
 	m_restartTheSameMap = false;
 	m_hasTriggerSurvival = -1;
+
+	if (*g_changelevelName)
+	{
+		if (!FStrEq(STRING(gpGlobals->mapname), g_changelevelName))
+		{
+			g_changelevelName[0] = '\0';
+			ClearPlayerStates();
+		}
+	}
 	
 	// 11/8/98
 	// Modified by YWB:  Server .cfg file is now a cvar, so that 
@@ -522,6 +652,7 @@ void CHalfLifeMultiplay::Think( void )
 						m_flNextSurvivalStartTime = gpGlobals->time+1;
 					}
 				} else {
+					ClearPlayerStates();
 					EnableSurvival();
 				}
 			}
@@ -857,8 +988,10 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 		UTIL_BecomeSpectator(pPlayer);
 		return;
 	}
-
 	pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
+
+	if (RestorePlayerState(pPlayer))
+		return;
 
 	addDefault = TRUE;
 
@@ -1471,6 +1604,12 @@ void CHalfLifeMultiplay::DelayPanic(float delay)
 	toAdd *= gSkillData.panicDelayFactor;
 	ALERT(at_console, "Next panic delay: %f\n", toAdd);
 	m_panicTime = gpGlobals->time + toAdd;
+}
+
+void CHalfLifeMultiplay::BeforeChangeLevel(const char *nextMap)
+{
+	strncpy(g_changelevelName, nextMap, sizeof(g_changelevelName)-1);
+	SavePlayerStates();
 }
 
 //=========================================================

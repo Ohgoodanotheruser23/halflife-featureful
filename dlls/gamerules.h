@@ -165,6 +165,8 @@ public:
 	
 	virtual bool IsTimeForPanic() { return false; }
 	virtual void DelayPanic( float delay ) {}
+
+	virtual void BeforeChangeLevel(const char* nextMap) {}
 };
 
 extern CGameRules *InstallGameRules( void );
@@ -367,6 +369,8 @@ public:
 	
 	virtual bool IsTimeForPanic();
 	virtual void DelayPanic( float delay );
+
+	virtual void BeforeChangeLevel(const char* nextMap);
 
 	static BOOL IsAnyPlayerAlive( void );
 	static BOOL IsAnyPlayerConnected( void );
