@@ -248,9 +248,9 @@ const unsigned char colors[8][3] =
 {240, 180,  24}
 };
 
-int CHud::DrawHudString( int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b )
+int CHud::DrawHudString(int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b , int length)
 {
-	if( hud_textmode->value == 2 )
+	if( hud_textmode->value == 2 && length == -1 )
 	{
 		gEngfuncs.pfnDrawSetTextColor( r / 255.0, g / 255.0, b / 255.0 );
 		return gEngfuncs.pfnDrawConsoleString( xpos, ypos, szIt );
@@ -259,10 +259,12 @@ int CHud::DrawHudString( int xpos, int ypos, int iMaxX, const char *szIt, int r,
 	// xash3d: reset unicode state
 	TextMessageDrawChar( 0, 0, 0, 0, 0, 0 );
 
+	const char* start = szIt;
+
 	// draw the string until we hit the null character or a newline character
-	for( ; *szIt != 0 && *szIt != '\n'; szIt++ )
+	for( ; (length == -1 || szIt - start < length) && *szIt != 0 && *szIt != '\n'; szIt++ )
 	{
-		int w = gHUD.m_scrinfo.charWidths['M'];
+		int w = gHUD.m_scrinfo.charWidths[(unsigned char)*szIt];
 		if( xpos + w  > iMaxX )
 			return xpos;
 		if( ( *szIt == '^' ) && ( *( szIt + 1 ) >= '0') && ( *( szIt + 1 ) <= '7') )
@@ -282,15 +284,17 @@ int CHud::DrawHudString( int xpos, int ypos, int iMaxX, const char *szIt, int r,
 	return xpos;
 }
 
-int DrawUtfString( int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b )
+int DrawUtfString(int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b, int length)
 {
 	if (IsXashFWGS())
 	{
 		// xash3d: reset unicode state
 		gEngfuncs.pfnVGUI2DrawCharacterAdditive( 0, 0, 0, 0, 0, 0, 0 );
 
+		const char* start = szIt;
+
 		// draw the string until we hit the null character or a newline character
-		for( ; *szIt != 0 && *szIt != '\n'; szIt++ )
+		for( ; (length == -1 || szIt - start < length) && *szIt != 0 && *szIt != '\n'; szIt++ )
 		{
 			int w = gHUD.m_scrinfo.charWidths['M'];
 			if( xpos + w  > iMaxX )
@@ -311,7 +315,7 @@ int DrawUtfString( int xpos, int ypos, int iMaxX, const char *szIt, int r, int g
 	}
 	else
 	{
-		return gHUD.DrawHudString(xpos, ypos, iMaxX, szIt, r, g, b);
+		return gHUD.DrawHudString(xpos, ypos, iMaxX, szIt, r, g, b, length);
 	}
 }
 

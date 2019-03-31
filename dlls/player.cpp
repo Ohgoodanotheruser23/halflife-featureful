@@ -218,6 +218,8 @@ int gmsgMovementState = 0;
 
 int gmsgUseSound = 0;
 
+int gmsgCaption = 0;
+
 void LinkUserMessages( void )
 {
 	// Already taken care of?
@@ -285,6 +287,8 @@ void LinkUserMessages( void )
 	gmsgMovementState = REG_USER_MSG( "MoveMode", 2 );
 #endif
 	gmsgUseSound = REG_USER_MSG( "UseSound", 1 );
+
+	gmsgCaption = REG_USER_MSG("Caption", -1);
 }
 
 LINK_ENTITY_TO_CLASS( player, CBasePlayer )
