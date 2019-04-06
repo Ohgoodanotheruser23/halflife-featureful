@@ -65,6 +65,8 @@ public:
 	void Precache( void );
 	void SetYawSpeed ( void );
 	int DefaultClassify( void );
+	const char* DefaultDisplayName() { return "Female Assassin"; }
+	const char* ReverseRelationshipModel() { return "models/hassassinf.mdl"; }
 	int ISoundMask( void);
 	void Shoot( void );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );

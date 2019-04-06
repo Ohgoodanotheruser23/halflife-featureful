@@ -47,6 +47,7 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	void KeyValue(KeyValueData* pkvd);
+	const char* DefaultDisplayName() { return "Osprey"; }
 	int DefaultClassify( void ) { return CLASS_MACHINE; }
 	int BloodColor( void ) { return DONT_BLEED; }
 	void Killed( entvars_t *pevAttacker, int iGib );
@@ -60,6 +61,7 @@ public:
 	void EXPORT FindAllThink( void );
 	void EXPORT HoverThink( void );
 	CBaseMonster *MakeGrunt( Vector vecSrc );
+	virtual void PrepareGruntBeforeSpawn(CBaseEntity* pGrunt);
 	void EXPORT CrashTouch( CBaseEntity *pOther );
 	void EXPORT DyingThink( void );
 	void EXPORT CommandUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
@@ -170,7 +172,7 @@ void COsprey::SpawnImpl(const char* modelName)
 	UTIL_SetSize( pev, Vector( -400, -400, -100 ), Vector( 400, 400, 32 ) );
 	UTIL_SetOrigin( pev, pev->origin );
 
-	pev->flags |= FL_MONSTER;
+	pev->flags |= FL_MONSTER | FL_FLY;
 	pev->takedamage = DAMAGE_YES;
 	m_flRightHealth = 200;
 	m_flLeftHealth = 200;
@@ -204,7 +206,7 @@ void COsprey::Precache( void )
 
 void COsprey::PrecacheImpl(const char* modelName, const char* tailGibs, const char* bodyGibs, const char* engineGibs)
 {
-	UTIL_PrecacheOther( TrooperName() );
+	UTIL_PrecacheMonster( TrooperName(), m_reverseRelationship );
 
 	PrecacheMyModel( modelName );
 	PRECACHE_MODEL( "models/HVR.mdl" );
@@ -227,6 +229,11 @@ void COsprey::KeyValue(KeyValueData *pkvd)
 		pev->armorvalue = atof( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	if( FStrEq(pkvd->szKeyName, "grunttype" ) )
+	{
+		pev->oldbuttons = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBaseMonster::KeyValue( pkvd );
 }
@@ -243,7 +250,7 @@ void COsprey::FindAllThink( void )
 	m_iUnits = 0;
 	while( m_iUnits < MAX_CARRY && ( pEntity = UTIL_FindEntityByClassname( pEntity, TrooperName() ) ) != NULL )
 	{
-		if( pEntity->IsAlive() )
+		if( pEntity->IsAlive() && IRelationship(pEntity) < R_DL )
 		{
 			m_hGrunt[m_iUnits] = pEntity;
 			m_vecOrigin[m_iUnits] = pEntity->pev->origin;
@@ -310,7 +317,12 @@ BOOL COsprey::HasDead()
 
 const char* COsprey::TrooperName()
 {
-	return "monster_human_grunt";
+#if FEATURE_OPFOR_GRUNT
+	if (pev->oldbuttons == 1)
+		return "monster_human_grunt_ally";
+	else
+#endif
+		return "monster_human_grunt";
 }
 
 CBaseMonster *COsprey::MakeGrunt( Vector vecSrc )
@@ -331,9 +343,20 @@ CBaseMonster *COsprey::MakeGrunt( Vector vecSrc )
 			{
 				m_hGrunt[i]->SUB_StartFadeOut();
 			}
-			pEntity = Create( TrooperName(), vecSrc, pev->angles );
+			pEntity = CreateNoSpawn( TrooperName(), vecSrc, pev->angles );
 			pGrunt = pEntity->MyMonsterPointer();
+			// If player is my enemy and default relationship of my grunts with player is ally, reverse their relationship
+			if (IDefaultRelationship(CLASS_PLAYER) >= R_DL && IDefaultRelationship(pGrunt->DefaultClassify(), CLASS_PLAYER) < R_DL)
+			{
+				pGrunt->m_reverseRelationship = TRUE;
+			}
+			else if (IDefaultRelationship(CLASS_PLAYER) < R_DL && IDefaultRelationship(pGrunt->DefaultClassify(), CLASS_PLAYER) >= R_DL)
+			{
+				pGrunt->m_reverseRelationship = TRUE;
+			}
 			pGrunt->m_iClass = m_iClass;
+			PrepareGruntBeforeSpawn(pGrunt);
+			DispatchSpawn(pEntity->edict());
 			pGrunt->pev->movetype = MOVETYPE_FLY;
 			pGrunt->pev->velocity = Vector( 0, 0, RANDOM_FLOAT( -196, -128 ) );
 			pGrunt->SetActivity( ACT_GLIDE );
@@ -353,6 +376,19 @@ CBaseMonster *COsprey::MakeGrunt( Vector vecSrc )
 	}
 	// ALERT( at_console, "none dead\n");
 	return NULL;
+}
+
+void COsprey::PrepareGruntBeforeSpawn(CBaseEntity *pGrunt)
+{
+	if (pev->oldbuttons == 1)
+	{
+		KeyValueData kvd;
+		char buf[128] = {0};
+		sprintf(buf, "%d", -1);
+		kvd.szKeyName = "head";
+		kvd.szValue = buf;
+		pGrunt->KeyValue(&kvd);
+	}
 }
 
 void COsprey::HoverThink( void )
@@ -822,6 +858,7 @@ class CBlkopOsprey : public COsprey
 public:
 	void Spawn();
 	void Precache();
+	void PrepareGruntBeforeSpawn(CBaseEntity* pGrunt);
 protected:
 	const char* TrooperName();
 };
@@ -836,6 +873,16 @@ void CBlkopOsprey::Spawn()
 void CBlkopOsprey::Precache()
 {
 	PrecacheImpl("models/blkop_osprey.mdl", "models/blkop_tailgibs.mdl", "models/blkop_bodygibs.mdl", "models/blkop_enginegibs.mdl");
+}
+
+void CBlkopOsprey::PrepareGruntBeforeSpawn(CBaseEntity *pGrunt)
+{
+	KeyValueData kvd;
+	char buf[128] = {0};
+	sprintf(buf, "%d", -1);
+	kvd.szKeyName = "head";
+	kvd.szValue = buf;
+	pGrunt->KeyValue(&kvd);
 }
 
 const char* CBlkopOsprey::TrooperName()

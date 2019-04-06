@@ -1596,7 +1596,7 @@ void CChangeLevel::Spawn( void )
 
 void CChangeLevel::Precache()
 {
-	if (!( pev->spawnflags & SF_CHANGELEVEL_USEONLY ) && mp_l4mcoop.value)
+	if (!( pev->spawnflags & SF_CHANGELEVEL_USEONLY ) && g_pGameRules->IsCoOp())
 	{
 		if (*st_szPrevMap)
 		{
@@ -1658,7 +1658,7 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 	ASSERT( !FStrEq( m_szMapName, "" ) );
 
 	// Don't work in deathmatch
-	if( g_pGameRules->IsDeathmatch() && !mp_l4mcoop.value )
+	if( g_pGameRules->IsDeathmatch() && !g_pGameRules->IsCoOp() )
 		return;
 
 	// Some people are firing these multiple times in a frame, disable
@@ -1678,7 +1678,7 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 		pPlayer = CBaseEntity::Instance( g_engfuncs.pfnPEntityOfEntIndex( 1 ) );;
 	}
 
-	if (!mp_l4mcoop.value)
+	if (!g_pGameRules->IsCoOp())
 	{
 		if( !InTransitionVolume( pPlayer, m_szLandmarkName ) )
 		{
@@ -1723,7 +1723,7 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 	g_pGameRules->BeforeChangeLevel(st_szNextMap);
 	if (g_pGameRules->IsMultiplayer())
 	{
-		if (mp_l4mcoop.value)
+		if (g_pGameRules->IsCoOp())
 		{
 			SERVER_COMMAND( UTIL_VarArgs( "changelevel %s\n", st_szNextMap ) );
 		}
@@ -2700,23 +2700,22 @@ void CTriggerCamera::Move()
 #define SF_TRIGGER_RANDOM_TIMED 8
 #define SF_TRIGGER_RANDOM_UNIQUE 16
 
-
 class CTriggerRandom : public CBaseEntity
 {
 public:
 	void Spawn();
-	void KeyValue( KeyValueData *pkvd ); 
+	void KeyValue( KeyValueData *pkvd );
 	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
-	void Think();
-	
+	void EXPORT TimedThink();
+
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
-	
+
 	string_t ChooseTarget();
 	float GetRandomDelay();
 	int TargetCount();
-	
+
 	int m_targetCount;
 	string_t m_targets[TRIGGER_RANDOM_MAX_COUNT];
 	int m_uniqueTargetsLeft;
@@ -2728,6 +2727,10 @@ public:
 };
 
 LINK_ENTITY_TO_CLASS( trigger_random, CTriggerRandom )
+
+// Sven Co-op compatibility
+LINK_ENTITY_TO_CLASS( trigger_random_time, CTriggerRandom )
+LINK_ENTITY_TO_CLASS( trigger_random_unique, CTriggerRandom )
 
 TYPEDESCRIPTION	CTriggerRandom::m_SaveData[] =
 {
@@ -2763,7 +2766,7 @@ void CTriggerRandom::KeyValue( KeyValueData *pkvd )
 			m_triggerNumberLimit = 0;
 		}
 		pkvd->fHandled = TRUE;
-	} else if ( FStrEq( pkvd->szKeyName, "target_count" ) ) {
+	} else if ( FStrEq( pkvd->szKeyName, "target_count" ) ) { // Sven Co-op compatibility
 		m_targetCount = atoi( pkvd->szValue );
 		if (m_targetCount < 0) {
 			m_targetCount = 0;
@@ -2787,20 +2790,36 @@ void CTriggerRandom::KeyValue( KeyValueData *pkvd )
 		}
 	} else {
 		CBaseEntity::KeyValue( pkvd );
-	}	
+	}
 }
 
 void CTriggerRandom::Spawn()
 {
+	// Sven Co-op compatibility
+	if (FClassnameIs(pev, "trigger_random_time"))
+	{
+		SetBits(pev->spawnflags, SF_TRIGGER_RANDOM_TIMED);
+	}
+	if (FClassnameIs(pev, "trigger_random_unique"))
+	{
+		SetBits(pev->spawnflags, SF_TRIGGER_RANDOM_UNIQUE);
+		if (FBitSet(pev->spawnflags, 1))
+		{
+			SetBits(pev->spawnflags, SF_TRIGGER_RANDOM_REUSABLE);
+			ClearBits(pev->spawnflags, 1);
+		}
+	}
+
 	m_triggerCounter = 0;
-	if (pev->spawnflags & SF_TRIGGER_RANDOM_UNIQUE) {
+	if (FBitSet(pev->spawnflags, SF_TRIGGER_RANDOM_UNIQUE)) {
 		m_uniqueTargetsLeft = TargetCount();
 	}
 	m_active = FALSE;
-	if (pev->spawnflags & SF_TRIGGER_RANDOM_TIMED) {
-		
+	if (FBitSet(pev->spawnflags, SF_TRIGGER_RANDOM_TIMED)) {
+
 		if (pev->spawnflags & SF_TRIGGER_RANDOM_START_ON) {
 			m_active = TRUE;
+			SetThink(&CTriggerRandom::TimedThink);
 			pev->nextthink = gpGlobals->time + GetRandomDelay() + 0.1;
 		}
 	}
@@ -2811,19 +2830,21 @@ void CTriggerRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	if (pev->spawnflags & SF_TRIGGER_RANDOM_TIMED) {
 		m_active = !m_active;
 		if (m_active) {
+			SetThink(&CTriggerRandom::TimedThink);
 			pev->nextthink = gpGlobals->time + GetRandomDelay();
 		} else {
+			SetThink(NULL);
 			m_triggerCounter = 0;
 		}
 	} else {
-		int chosenTarget = ChooseTarget();
+		const int chosenTarget = ChooseTarget();
 		if (!FStringNull(chosenTarget)) {
 			FireTargets(STRING(chosenTarget), pActivator, pCaller, useType, value);
 		}
 	}
 }
 
-void CTriggerRandom::Think() 
+void CTriggerRandom::TimedThink()
 {
 	if (m_active) {
 		int chosenTarget = ChooseTarget();
@@ -2837,10 +2858,11 @@ void CTriggerRandom::Think()
 				}
 			}
 		}
-		
-		if (pev->spawnflags & SF_TRIGGER_RANDOM_ONCE) {
+
+		if (pev->spawnflags & SF_TRIGGER_RANDOM_ONCE)
 			m_active = FALSE;
-		} else {
+
+		if (m_active) {
 			pev->nextthink = gpGlobals->time + GetRandomDelay();
 		}
 	}
@@ -2855,7 +2877,7 @@ string_t CTriggerRandom::ChooseTarget()
 			m_targets[chosenTargetIndex] = m_targets[m_uniqueTargetsLeft-1];
 			m_targets[m_uniqueTargetsLeft-1] = chosenTarget;
 			m_uniqueTargetsLeft--;
-			
+
 			if (!m_uniqueTargetsLeft && (pev->spawnflags & SF_TRIGGER_RANDOM_REUSABLE) ) {
 				m_uniqueTargetsLeft = TargetCount();
 			}
@@ -2882,12 +2904,44 @@ int CTriggerRandom::TargetCount()
 	} else {
 		for (int i = ARRAYSIZE(m_targets) - 1; i>=0; --i ) {
 			if (!FStringNull(m_targets[i])) {
-				return i+1;
+				m_targetCount = i+1;
+				return m_targetCount;
 			}
 		}
 	}
 	return 0;
 }
+
+class CTriggerRespawn : public CBaseEntity
+{
+public:
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	int ObjectCaps( void ) { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
+};
+
+extern void respawn( entvars_t *pev, BOOL fCopyCorpse );
+
+void CTriggerRespawn::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	for( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBasePlayer* pPlayer = (CBasePlayer*)UTIL_PlayerByIndex( i );
+		if (pPlayer && pPlayer->IsPlayer())
+		{
+			if (pPlayer->IsAlive())
+			{
+				g_pGameRules->GetPlayerSpawnSpot(pPlayer);
+				pPlayer->pev->health = pPlayer->pev->max_health;
+			}
+			else
+			{
+				respawn( pPlayer->pev, !( pPlayer->m_afPhysicsFlags & PFLAG_OBSERVER ) );
+			}
+		}
+	}
+}
+
+LINK_ENTITY_TO_CLASS(trigger_respawn, CTriggerRespawn)
 
 #if FEATURE_DISPLACER
 class CTriggerXenReturn : public CTriggerTeleport

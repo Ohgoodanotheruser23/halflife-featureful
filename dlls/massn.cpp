@@ -1,19 +1,12 @@
 #include	"extdll.h"
-#include	"plane.h"
 #include	"util.h"
 #include	"cbase.h"
-#include	"schedule.h"
-#include	"animation.h"
 #include	"weapons.h"
 #include	"talkmonster.h"
 #include	"soundent.h"
-#include	"effects.h"
-#include	"customentity.h"
-#include	"decals.h"
-#include	"gamerules.h"
 #include	"hgrunt.h"
 #include	"mod_features.h"
-#include	"game.h"
+#include	"gamerules.h"
 
 #if FEATURE_MASSN
 
@@ -60,6 +53,8 @@ enum
 class CMassn : public CHGrunt
 {
 public:
+	const char* DefaultDisplayName() { return "Male Assassin"; }
+	const char* ReverseRelationshipModel() { return "models/massnf.mdl"; }
 	void KeyValue(KeyValueData* pkvd);
 	void HandleAnimEvent(MonsterEvent_t *pEvent);
 	BOOL CheckRangeAttack2(float flDot, float flDist);
@@ -131,7 +126,7 @@ void CMassn::Sniperrifle(void)
 //=========================================================
 void CMassn::GibMonster( void )
 {
-	if( npc_dropweapons.value && GetBodygroup( MASSN_GUN_GROUP ) != MASSN_GUN_NONE )
+	if( GetBodygroup( MASSN_GUN_GROUP ) != MASSN_GUN_NONE )
 	{
 		DropMyItems(TRUE);
 	}
@@ -141,7 +136,7 @@ void CMassn::GibMonster( void )
 
 void CMassn::DropMyItems(BOOL isGibbed)
 {
-	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
+	if (g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
 	{
 		Vector vecGunPos;
 		Vector vecGunAngles;

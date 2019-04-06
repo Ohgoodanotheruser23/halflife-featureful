@@ -61,6 +61,7 @@ set SOURCES=agrunt.cpp ^
 	headcrab.cpp ^
 	healthkit.cpp ^
 	hgrunt.cpp ^
+	hwgrunt.cpp ^
 	hornet.cpp ^
 	hornetgun.cpp ^
 	houndeye.cpp ^
@@ -96,6 +97,7 @@ set SOURCES=agrunt.cpp ^
 	playermonster.cpp ^
 	python.cpp ^
 	rat.cpp ^
+	rgrunt.cpp ^
 	recruit.cpp ^
 	roach.cpp ^
 	ropes.cpp ^

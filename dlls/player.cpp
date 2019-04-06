@@ -2905,50 +2905,58 @@ void CBasePlayer::PlayerUse( void )
 	Vector vecLOS;
 	float flMaxDot = VIEW_FIELD_NARROW;
 	float flDot;
+	TraceResult tr;
+	int caps;
 
 	UTIL_MakeVectors( pev->v_angle );// so we know which way we are facing
 
-	while( ( pObject = UTIL_FindEntityInSphere( pObject, pev->origin, PLAYER_SEARCH_RADIUS ) ) != NULL )
+	UTIL_TraceLine( pev->origin + pev->view_ofs,
+						pev->origin + pev->view_ofs + (gpGlobals->v_forward * PLAYER_SEARCH_RADIUS),
+						dont_ignore_monsters, ENT(pev), &tr );
+	if (tr.pHit)
 	{
-		if( pObject->ObjectCaps() & ( FCAP_IMPULSE_USE | FCAP_CONTINUOUS_USE | FCAP_ONOFF_USE ) )
+		pObject = CBaseEntity::Instance(tr.pHit);
+		if (!pObject || !(pObject->ObjectCaps() & (FCAP_IMPULSE_USE | FCAP_CONTINUOUS_USE | FCAP_ONOFF_USE)))
 		{
-			// !!!PERFORMANCE- should this check be done on a per case basis AFTER we've determined that
-			// this object is actually usable? This dot is being done for every object within PLAYER_SEARCH_RADIUS
-			// when player hits the use key. How many objects can be in that area, anyway? (sjb)
-			vecLOS = ( VecBModelOrigin( pObject->pev ) - ( pev->origin + pev->view_ofs ) );
-
-			// This essentially moves the origin of the target to the corner nearest the player to test to see 
-			// if it's "hull" is in the view cone
-			//vecLOS = UTIL_ClampVectorToBox( vecLOS, pObject->pev->size * 0.5 );
-			vecLOS = vecLOS.Normalize();
-
-			if (!use_through_walls.value)
-			{
-				TraceResult tr;
-				UTIL_TraceLine(pev->origin, pObject->Center(), dont_ignore_monsters, edict(), &tr);
-				if (tr.flFraction < 1.0f && tr.pHit != pObject->edict())
-				{
-					continue;
-				}
-			}
-
-			flDot = DotProduct( vecLOS , gpGlobals->v_forward );
-			if( flDot > flMaxDot )
-			{
-				// only if the item is in front of the user
-				pClosest = pObject;
-				flMaxDot = flDot;
-				//ALERT( at_console, "%s : %f\n", STRING( pObject->pev->classname ), flDot );
-			}
-			//ALERT( at_console, "%s : %f\n", STRING( pObject->pev->classname ), flDot );
+			pObject = NULL;
 		}
 	}
-	pObject = pClosest;
+
+	if (!pObject && use_through_walls.value)
+	{
+		while( ( pObject = UTIL_FindEntityInSphere( pObject, pev->origin, PLAYER_SEARCH_RADIUS ) ) != NULL )
+		{
+			caps = pObject->ObjectCaps();
+			if( caps & ( FCAP_IMPULSE_USE | FCAP_CONTINUOUS_USE | FCAP_ONOFF_USE ) &&
+					(!(caps & FCAP_ONLYDIRECT_USE) || pObject->pev->solid == SOLID_NOT ))
+			{
+				// !!!PERFORMANCE- should this check be done on a per case basis AFTER we've determined that
+				// this object is actually usable? This dot is being done for every object within PLAYER_SEARCH_RADIUS
+				// when player hits the use key. How many objects can be in that area, anyway? (sjb)
+				vecLOS = ( VecBModelOrigin( pObject->pev ) - ( pev->origin + pev->view_ofs ) );
+
+				// This essentially moves the origin of the target to the corner nearest the player to test to see
+				// if it's "hull" is in the view cone
+				vecLOS = UTIL_ClampVectorToBox( vecLOS, pObject->pev->size * 0.5 );
+
+				flDot = DotProduct( vecLOS , gpGlobals->v_forward );
+				if( flDot > flMaxDot )
+				{
+					// only if the item is in front of the user
+					pClosest = pObject;
+					flMaxDot = flDot;
+					//ALERT( at_console, "%s : %f\n", STRING( pObject->pev->classname ), flDot );
+				}
+				//ALERT( at_console, "%s : %f\n", STRING( pObject->pev->classname ), flDot );
+			}
+		}
+		pObject = pClosest;
+	}
 
 	// Found an object
 	if( pObject )
 	{
-		int caps = pObject->ObjectCaps();
+		caps = pObject->ObjectCaps();
 
 		if( m_afButtonPressed & IN_USE )
 			EMIT_SOUND( ENT(pev), CHAN_ITEM, "common/wpn_select.wav", 0.4, ATTN_NORM );
@@ -3130,6 +3138,8 @@ void CBasePlayer::InitStatusBar()
 
 static void ClearMonsterInfoChannel(CBasePlayer* player)
 {
+	if (player->m_lastSeenEntityIndex < 0)
+		return;
 	player->m_lastSeenEntityIndex = -1;
 	player->m_lastSeenHealth = -1;
 	player->m_lastSeenArmor = -1;
@@ -3156,87 +3166,173 @@ static void ClearMonsterInfoChannel(CBasePlayer* player)
 
 void CBasePlayer::UpdateStatusBar()
 {
+	int newSBarState[SBAR_END] = {0};
+	char sbuf0[SBAR_STRING_SIZE];
+	char sbuf1[ SBAR_STRING_SIZE ];
+
+	strcpy( sbuf0, m_SbarString0 );
+	strcpy( sbuf1, m_SbarString1 );
+
+	// Find an ID Target
 	TraceResult tr;
 	UTIL_MakeVectors( pev->v_angle + pev->punchangle );
 	Vector vecSrc = EyePosition();
 	Vector vecEnd = vecSrc + ( gpGlobals->v_forward * MAX_ID_RANGE );
 	UTIL_TraceLine( vecSrc, vecEnd, dont_ignore_monsters, edict(), &tr );
 
-	if( tr.flFraction != 1.0 && !FNullEnt( tr.pHit ))
+	CBaseEntity *pEntity = NULL;
+	if( tr.flFraction != 1.0 && !FNullEnt( tr.pHit ) )
 	{
-		CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
-		if (pEntity) {
-			CBaseMonster* pMonster = pEntity->MyMonsterPointer();
-			if (pMonster && pMonster->IsAlive() && pMonster->m_IdealMonsterState != MONSTERSTATE_DEAD) {
-				const int entityIndex = ENTINDEX( pEntity->edict() );
-				int health = (int)pEntity->pev->health;
-				if (health < 0) {
-					health = 0;
+		pEntity = CBaseEntity::Instance( tr.pHit );
+	}
+
+	bool showMonsterInfo = false;
+
+	if (pEntity)
+	{
+		CBaseMonster* pMonster = pEntity->MyMonsterPointer();
+		if (pMonster && pMonster->IsAlive() && pMonster->m_IdealMonsterState != MONSTERSTATE_DEAD && g_pGameRules->IsMultiplayer()) {
+			const int entityIndex = ENTINDEX( pEntity->edict() );
+			int health = (int)pEntity->pev->health;
+			if (health < 0) {
+				health = 0;
+			}
+			const int armor = (int)pEntity->pev->armorvalue;
+
+			const bool isFriendPlayer = pEntity->IsPlayer() && g_pGameRules->PlayerRelationship(this, pEntity) == GR_TEAMMATE;
+			const bool isFriendMonster = (pMonster->IDefaultRelationship(this) == R_AL);
+			showMonsterInfo = isFriendPlayer || (allowmonsterinfo.value == 1 && !pMonster->IsPlayer()) || (allowmonsterinfo.value == 2 && isFriendMonster);
+			if (showMonsterInfo && (m_lastSeenEntityIndex != entityIndex || m_lastSeenHealth != health || (m_lastSeenArmor != armor && isFriendPlayer))) {
+				m_lastSeenEntityIndex = entityIndex;
+				m_lastSeenHealth = health;
+				m_lastSeenArmor = armor;
+
+				hudtextparms_t  textParms;
+				textParms.channel = 3;
+				textParms.x = 0.1;
+				textParms.y = 0.6;
+				textParms.effect = 0;
+				if (isFriendMonster || isFriendPlayer) {
+					textParms.r1 = 0;
+					textParms.g1 = 255;
+					textParms.b1 = 0;
+				} else {
+					textParms.r1 = 255;
+					textParms.g1 = 0;
+					textParms.b1 = 0;
 				}
-				int armor = (int)pEntity->pev->armorvalue;
+				textParms.a1 = 0;
+				textParms.r2 = 100;
+				textParms.g2 = 100;
+				textParms.b2 = 100;
+				textParms.a2 = 0;
+				textParms.fadeinTime = 0.1;
+				textParms.fadeoutTime = 0;
+				textParms.holdTime = 1000.0;
+				textParms.fxTime = 0;
 
-				bool isFriendPlayer = pEntity->IsPlayer() && g_pGameRules->PlayerRelationship(this, pEntity) == GR_TEAMMATE;
-				bool isFriendMonster = (pMonster->Classify() == CLASS_HUMAN_PASSIVE || pMonster->Classify() == CLASS_PLAYER_ALLY);
-				bool canSee = isFriendPlayer || allowmonsterinfo.value == 1 || (allowmonsterinfo.value == 2 && isFriendMonster);
-				if (!canSee && m_lastSeenEntityIndex >= 0) {
-					ClearMonsterInfoChannel(this);
-				} else if (canSee && (m_lastSeenEntityIndex != entityIndex || m_lastSeenHealth != health || (m_lastSeenArmor != armor && isFriendPlayer))) {
-					m_lastSeenEntityIndex = entityIndex;
-					m_lastSeenHealth = health;
-					m_lastSeenArmor = armor;
-
-					hudtextparms_t  textParms;
-					textParms.channel = 3;
-					textParms.x = 0.1;
-					textParms.y = 0.6;
-					textParms.effect = 0;
-					if (isFriendMonster || isFriendPlayer) {
-						textParms.r1 = 0;
-						textParms.g1 = 255;
-						textParms.b1 = 0;
-					} else {
-						textParms.r1 = 255;
-						textParms.g1 = 0;
-						textParms.b1 = 0;
-					}
-					textParms.a1 = 0;
-					textParms.r2 = 100;
-					textParms.g2 = 100;
-					textParms.b2 = 100;
-					textParms.a2 = 0;
-					textParms.fadeinTime = 0.1;
-					textParms.fadeoutTime = 0;
-					textParms.holdTime = 1000.0;
-					textParms.fxTime = 0;
-
-					char buf[256];
-					if (isFriendPlayer) {
-						sprintf(buf, "%s\nHealth: %d\nArmor: %d", STRING(pEntity->pev->netname), health, armor);
-					} else {
-						const char* className = STRING(pEntity->pev->classname);
-						const char* displayName = className;
-						if (strncmp(className, "monster_", 8) == 0) {
+				char buf[512];
+				if (isFriendPlayer) {
+					sprintf(buf, "%s\nHealth: %d\nArmor: %d", STRING(pEntity->pev->netname), health, armor);
+				} else {
+					const char* displayName = pMonster->DisplayName();
+					const char* className = STRING(pEntity->pev->classname);
+					if (!displayName)
+					{
+						if (strncmp(className, "monster_", 8) == 0)
 							displayName = className + 8;
-						}
-						sprintf(buf, "%s\nHealth: %d/%d", displayName, health, (int)pEntity->pev->max_health);
-						if (displayName != className) {
-							buf[0] = toupper(buf[0]); //Capitalize monster name
+						else
+							displayName = className;
+					}
+
+					sprintf(buf, "%s\nHealth: %d/%d", displayName, health, (int)pEntity->pev->max_health);
+					if (displayName == className + 8) {
+						buf[0] = toupper(buf[0]); //Capitalize monster name
+						char* str = buf;
+						str++;
+						bool wasSpace = false;
+						while(*str != '\0' && *str != '\n')
+						{
+							if (*str == '_')
+							{
+								*str = ' ';
+								wasSpace = true;
+							}
+							else
+							{
+								if (wasSpace)
+									*str = toupper(*str);
+								wasSpace = false;
+							}
+							str++;
 						}
 					}
-					UTIL_HudMessage(this, textParms, buf);
 				}
-			} else if (m_lastSeenEntityIndex >= 0) {
-				ClearMonsterInfoChannel(this);
-			}
-		} else {
-			if (m_lastSeenEntityIndex >= 0) {
-				ClearMonsterInfoChannel(this);
+				UTIL_HudMessage(this, textParms, buf);
 			}
 		}
-	} else {
-		if (m_lastSeenEntityIndex >= 0) {
-			ClearMonsterInfoChannel(this);
+
+		if (!showMonsterInfo)
+		{
+			if( pEntity->IsPlayer() )
+			{
+				newSBarState[SBAR_ID_TARGETNAME] = ENTINDEX( pEntity->edict() );
+				strcpy( sbuf1, "1 %p1\n2 Health: %i2%%\n3 Armor: %i3%%" );
+
+				// allies and medics get to see the targets health
+				if( g_pGameRules->PlayerRelationship( this, pEntity ) == GR_TEAMMATE )
+				{
+					newSBarState[SBAR_ID_TARGETHEALTH] = (int)( 100 * ( pEntity->pev->health / pEntity->pev->max_health ) );
+					newSBarState[SBAR_ID_TARGETARMOR] = (int)pEntity->pev->armorvalue; //No need to get it % based since 100 it's the max.
+				}
+
+				m_flStatusBarDisappearDelay = gpGlobals->time + 1.0;
+			}
 		}
+	}
+	else
+	{
+		if (m_flStatusBarDisappearDelay > gpGlobals->time)
+		{
+			// hold the values for a short amount of time after viewing the object
+			newSBarState[SBAR_ID_TARGETNAME] = m_izSBarState[SBAR_ID_TARGETNAME];
+			newSBarState[SBAR_ID_TARGETHEALTH] = m_izSBarState[SBAR_ID_TARGETHEALTH];
+			newSBarState[SBAR_ID_TARGETARMOR] = m_izSBarState[SBAR_ID_TARGETARMOR];
+		}
+	}
+
+	if (showMonsterInfo)
+	{
+		return;
+	}
+	else
+	{
+		ClearMonsterInfoChannel(this);
+	}
+
+	BOOL bForceResend = FALSE;
+
+	if( strcmp( sbuf0, m_SbarString0 ) )
+	{
+		MESSAGE_BEGIN( MSG_ONE, gmsgStatusText, NULL, pev );
+			WRITE_BYTE( 0 );
+			WRITE_STRING( sbuf0 );
+		MESSAGE_END();
+
+		strcpy( m_SbarString0, sbuf0 );
+
+		// make sure everything's resent
+		bForceResend = TRUE;
+	}
+
+	if( strcmp( sbuf1, m_SbarString1 ) )
+	{
+		MESSAGE_BEGIN( MSG_ONE, gmsgStatusText, NULL, pev );
+			WRITE_BYTE( 1 );
+			WRITE_STRING( sbuf1 );
+		MESSAGE_END();
+
+		strcpy( m_SbarString1, sbuf1 );
 	}
 }
 
@@ -4351,17 +4447,19 @@ pt_end:
 #endif
 }
 
+#define SF_SPAWNPOINT_OFF 2
+
 // checks if the spot is clear of players
 BOOL IsSpawnPointValid( CBaseEntity *pPlayer, CBaseEntity *pSpot )
 {
 	CBaseEntity *ent = NULL;
 
-	if( !pSpot->IsTriggered( pPlayer ) )
+	if( FBitSet(pSpot->pev->spawnflags, SF_SPAWNPOINT_OFF) || !pSpot->IsTriggered( pPlayer ) )
 	{
 		return FALSE;
 	}
 
-	while( ( ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, mp_l4mcoop.value ? 24 : 128 ) ) != NULL )
+	while( ( ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, g_pGameRules->IsCoOp() ? 24 : 128 ) ) != NULL )
 	{
 		// if ent is a client, don't spawn on 'em
 		if( ent->IsPlayer() && ent != pPlayer )
@@ -4374,6 +4472,8 @@ BOOL IsSpawnPointValid( CBaseEntity *pPlayer, CBaseEntity *pSpot )
 DLL_GLOBAL CBaseEntity	*g_pLastSpawn;
 inline int FNullEnt( CBaseEntity *ent ) { return ( ent == NULL ) || FNullEnt( ent->edict() ); }
 
+inline bool SpawnPointIsOn( CBaseEntity* ent ) { return !FNullEnt(ent) && !FBitSet(ent->pev->spawnflags, SF_SPAWNPOINT_OFF); }
+
 /*
 ============
 EntSelectSpawnPoint
@@ -4383,74 +4483,78 @@ Returns the entity to spawn at
 USES AND SETS GLOBAL g_pLastSpawn
 ============
 */
+CBaseEntity* SelectRandomSpawnPoint( CBaseEntity* pPlayer, const char* spawnPointName )
+{
+	edict_t *player = pPlayer->edict();
+
+	CBaseEntity *pSpot = g_pLastSpawn;
+	// Randomize the start spot
+	for( int i = RANDOM_LONG( 1, 5 ); i > 0; i-- )
+		pSpot = UTIL_FindEntityByClassname( pSpot, spawnPointName );
+	if( !SpawnPointIsOn( pSpot ) )  // skip over the null point
+		pSpot = UTIL_FindEntityByClassname( pSpot, spawnPointName );
+
+	CBaseEntity *pFirstSpot = pSpot;
+
+	do
+	{
+		if( pSpot )
+		{
+			// check if pSpot is valid
+			if( IsSpawnPointValid( pPlayer, pSpot ) )
+			{
+				if( pSpot->pev->origin == Vector( 0, 0, 0 ) )
+				{
+					pSpot = UTIL_FindEntityByClassname( pSpot, spawnPointName );
+					continue;
+				}
+
+				// if so, go to pSpot
+				return pSpot;
+			}
+		}
+		// increment pSpot
+		pSpot = UTIL_FindEntityByClassname( pSpot, spawnPointName );
+	} while( pSpot != pFirstSpot ); // loop if we're not back to the start
+
+	// we haven't found a place to spawn yet,  so kill any guy at the first spawn point and spawn there
+	if( SpawnPointIsOn( pSpot ) )
+	{
+		CBaseEntity *ent = NULL;
+		while( ( ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, 128 ) ) != NULL )
+		{
+			// if ent is a client, kill em (unless they are ourselves)
+			if( ent->IsPlayer() && !(ent->edict() == player) )
+				ent->TakeDamage( VARS( INDEXENT( 0 ) ), VARS( INDEXENT( 0 ) ), 300, DMG_GENERIC );
+		}
+		return pSpot;
+	}
+	return NULL;
+}
+
 edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer )
 {
-	CBaseEntity *pSpot;
-	edict_t *player;
-
-	player = pPlayer->edict();
+	CBaseEntity *pSpot = NULL;
 
 	// choose a info_player_deathmatch point
 	if( g_pGameRules->IsCoOp() )
 	{
-		pSpot = UTIL_FindEntityByClassname( g_pLastSpawn, "info_player_coop" );
-		if( !FNullEnt( pSpot ) )
-			goto ReturnSpot;
-		pSpot = UTIL_FindEntityByClassname( g_pLastSpawn, "info_player_start" );
-		if( !FNullEnt(pSpot) ) 
+		pSpot = SelectRandomSpawnPoint(pPlayer, "info_player_coop");
+		if( pSpot )
 			goto ReturnSpot;
 	}
-	else if( g_pGameRules->IsDeathmatch() )
+	if( g_pGameRules->IsDeathmatch() )
 	{
-		pSpot = g_pLastSpawn;
-		// Randomize the start spot
-		for( int i = RANDOM_LONG( 1, 5 ); i > 0; i-- )
-			pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_deathmatch" );
-		if( FNullEnt( pSpot ) )  // skip over the null point
-			pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_deathmatch" );
-
-		CBaseEntity *pFirstSpot = pSpot;
-
-		do 
-		{
-			if( pSpot )
-			{
-				// check if pSpot is valid
-				if( IsSpawnPointValid( pPlayer, pSpot ) )
-				{
-					if( pSpot->pev->origin == Vector( 0, 0, 0 ) )
-					{
-						pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_deathmatch" );
-						continue;
-					}
-
-					// if so, go to pSpot
-					goto ReturnSpot;
-				}
-			}
-			// increment pSpot
-			pSpot = UTIL_FindEntityByClassname( pSpot, "info_player_deathmatch" );
-		} while( pSpot != pFirstSpot ); // loop if we're not back to the start
-
-		// we haven't found a place to spawn yet,  so kill any guy at the first spawn point and spawn there
-		if( !FNullEnt( pSpot ) )
-		{
-			CBaseEntity *ent = NULL;
-			while( ( ent = UTIL_FindEntityInSphere( ent, pSpot->pev->origin, 128 ) ) != NULL )
-			{
-				// if ent is a client, kill em (unless they are ourselves)
-				if( ent->IsPlayer() && !(ent->edict() == player) )
-					ent->TakeDamage( VARS( INDEXENT( 0 ) ), VARS( INDEXENT( 0 ) ), 300, DMG_GENERIC );
-			}
+		pSpot = SelectRandomSpawnPoint(pPlayer, "info_player_deathmatch");
+		if( pSpot )
 			goto ReturnSpot;
-		}
 	}
 
 	// If startspot is set, (re)spawn there.
 	if( FStringNull( gpGlobals->startspot ) || !strlen(STRING( gpGlobals->startspot ) ) )
 	{
 		pSpot = UTIL_FindEntityByClassname( NULL, "info_player_start" );
-		if( !FNullEnt( pSpot ) )
+		if( SpawnPointIsOn( pSpot ) )
 			goto ReturnSpot;
 	}
 	else

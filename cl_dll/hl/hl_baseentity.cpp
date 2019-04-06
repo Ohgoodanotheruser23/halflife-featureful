@@ -155,7 +155,7 @@ void CBaseMonster::AdvanceRoute( float distance ) { }
 int CBaseMonster::RouteClassify( int iMoveFlag ) { return 0; }
 BOOL CBaseMonster::BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget ) { return FALSE; }
 void CBaseMonster::InsertWaypoint( Vector vecLocation, int afMoveFlags ) { }
-BOOL CBaseMonster::FTriangulate( const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApex ) { return FALSE; }
+int CBaseMonster::FTriangulate(const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApexes, int n , int tries) { return FALSE; }
 void CBaseMonster::Move( float flInterval ) { }
 BOOL CBaseMonster::ShouldAdvanceRoute( float flWaypointDist ) { return FALSE; }
 void CBaseMonster::MoveExecute( CBaseEntity *pTargetEnt, const Vector &vecDir, float flInterval ) { }
@@ -247,6 +247,7 @@ const char* CBaseMonster::GibModel() {return 0;}
 int CBaseMonster::DefaultGibCount() {return 0;}
 int CBaseMonster::GibCount() {return 0;}
 bool CBaseMonster::IsAlienMonster() {return false;}
+const char* CBaseMonster::DisplayName() { return NULL; }
 
 int TrainSpeed( int iSpeed, int iMax ) { return 0; }
 void CBasePlayer::DeathSound( void ) { }

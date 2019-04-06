@@ -159,6 +159,7 @@ public:
 
 	// Monsters
 	virtual BOOL FAllowMonsters( void ) = 0;//are monsters allowed
+	virtual bool FMonsterCanDropWeapons( CBaseEntity* pMonster ) = 0;
 
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame( void ) {}
@@ -252,6 +253,7 @@ public:
 
 	// Monsters
 	virtual BOOL FAllowMonsters( void );
+	virtual bool FMonsterCanDropWeapons( CBaseEntity* pMonster );
 
 	// Teamplay stuff	
 	virtual const char *GetTeamID( CBaseEntity *pEntity ) {return "";};
@@ -363,6 +365,7 @@ public:
 
 	// Monsters
 	virtual BOOL FAllowMonsters( void );
+	virtual bool FMonsterCanDropWeapons( CBaseEntity* pMonster );
 
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame( void ) { GoToIntermission(); }

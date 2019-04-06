@@ -208,6 +208,7 @@ public:
 	void UpdateOnRemove();
 	void SetYawSpeed( void );
 	int DefaultClassify( void );
+	const char* DefaultDisplayName() { return "Gargantua"; }
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
@@ -457,10 +458,33 @@ Schedule_t slGargSwipe[] =
 	},
 };
 
+Task_t tlGargStomp[] =
+{
+	{ TASK_STOP_MOVING, 0 },
+	{ TASK_FACE_ENEMY, (float)0 },
+	{ TASK_RANGE_ATTACK1, (float)0 },
+};
+
+Schedule_t slGargStomp[] =
+{
+	{
+		tlGargStomp,
+		ARRAYSIZE( tlGargStomp ),
+		bits_COND_NEW_ENEMY |
+		bits_COND_ENEMY_DEAD |
+		bits_COND_HEAVY_DAMAGE |
+		bits_COND_ENEMY_OCCLUDED |
+		bits_COND_HEAR_SOUND,
+		bits_SOUND_DANGER,
+		"GargStomp"
+	},
+};
+
 DEFINE_CUSTOM_SCHEDULES( CGargantua )
 {
 	slGargFlame,
 	slGargSwipe,
+	slGargStomp,
 };
 
 IMPLEMENT_CUSTOM_SCHEDULES( CGargantua, CBaseMonster )
@@ -791,11 +815,13 @@ void CGargantua::Precache()
 {
 	PrecacheMyModel( DefaultModel() );
 	PRECACHE_MODEL( EyeSprite() );
+
 	PRECACHE_MODEL( GARG_BEAM_SPRITE_NAME );
 	PRECACHE_MODEL( GARG_BEAM_SPRITE2 );
 	gStompSprite = PRECACHE_MODEL( StompSprite() );
 	gGargGibModel = PRECACHE_MODEL( GARG_GIB_MODEL );
 	PRECACHE_SOUND( GARG_STOMP_BUZZ_SOUND );
+
 	PrecacheSounds();
 }
 
@@ -1051,7 +1077,10 @@ Schedule_t *CGargantua::GetScheduleOfType( int Type )
 			return slGargFlame;
 		case SCHED_MELEE_ATTACK1:
 			return slGargSwipe;
-		break;
+		case SCHED_RANGE_ATTACK1:
+			return slGargStomp;
+		default:
+			break;
 	}
 
 	return CBaseMonster::GetScheduleOfType( Type );
@@ -1434,6 +1463,8 @@ void SpawnExplosion( Vector center, float randomRange, float time, int magnitude
 class CBabyGargantua : public CGargantua
 {
 public:
+	const char* ReverseRelationshipModel() { return "models/babygargf.mdl"; }
+	const char* DefaultDisplayName() { return "Baby Gargantua"; }
 	void StartTask( Task_t *pTask );
 	void RunTask( Task_t *pTask );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );

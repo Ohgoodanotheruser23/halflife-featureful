@@ -27,9 +27,11 @@
 #define	SF_MONSTERMAKER_START_ON	1 // start active ( if has targetname )
 #define	SF_MONSTERMAKER_CYCLIC		4 // drop one monster every time fired.
 #define SF_MONSTERMAKER_MONSTERCLIP	8 // Children are blocked by monsterclip
-#define SF_MONSTERMAKER_ALIGN_TO_PLAYER 16 // Align to closest player on spawn
+#define SF_MONSTERMAKER_PRISONER	16
 #define SF_MONSTERMAKER_DONT_DROP_GUN 1024 // Spawn monster won't drop gun upon death
 #define SF_MONSTERMAKER_NO_GROUND_CHECK 2048 // don't check if something on ground prevents a monster to fall on spawn
+#define SF_MONSTERMAKER_ALIGN_TO_PLAYER 4096 // Align to closest player on spawn
+#define SF_MONSTERMAKER_ALIGN_TO_PLAYER_OLD 16
 
 #define MONSTERMAKER_ORIGIN_MAX_COUNT 24
 
@@ -74,6 +76,8 @@ public:
 	string_t m_customModel;
 	int m_classify;
 	int m_iPose;
+	BOOL m_notSolid;
+	BOOL m_gag;
 
 	int m_iMaxRandomAngleDeviation;
 	string_t m_originName;
@@ -82,6 +86,7 @@ public:
 };
 
 LINK_ENTITY_TO_CLASS( monstermaker, CMonsterMaker )
+LINK_ENTITY_TO_CLASS( squadmaker, CMonsterMaker )
 
 TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 {
@@ -95,6 +100,8 @@ TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 	DEFINE_FIELD( CMonsterMaker, m_customModel, FIELD_STRING ),
 	DEFINE_FIELD( CMonsterMaker, m_classify, FIELD_INTEGER ),
 	DEFINE_FIELD( CMonsterMaker, m_iPose, FIELD_INTEGER ),
+	DEFINE_FIELD( CMonsterMaker, m_notSolid, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CMonsterMaker, m_gag, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CMonsterMaker, m_iMaxRandomAngleDeviation, FIELD_INTEGER),
 	DEFINE_FIELD( CMonsterMaker, m_originName, FIELD_STRING),
 };
@@ -118,17 +125,7 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 		m_iszMonsterClassname = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
-	else if( FStrEq( pkvd->szKeyName, "yawdeviation" ) )
-	{
-		m_iMaxRandomAngleDeviation = atoi( pkvd->szValue );
-		pkvd->fHandled = TRUE;
-	}
-	else if ( FStrEq( pkvd->szKeyName, "spawnorigin" ) )
-	{
-		m_originName = ALLOC_STRING( pkvd->szValue );
-		pkvd->fHandled = TRUE;
-	}
-	else if ( FStrEq( pkvd->szKeyName, "warpball" ) )
+	else if ( FStrEq( pkvd->szKeyName, "warpball" ) || FStrEq( pkvd->szKeyName, "xenmaker" ) )
 	{
 		pev->message = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
@@ -146,6 +143,46 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 	else if( FStrEq( pkvd->szKeyName, "pose" ) )
 	{
 		m_iPose = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "notsolid" ) )
+	{
+		m_notSolid = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "gag" ) )
+	{
+		m_gag = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "trigger_target" ) )
+	{
+		m_iszTriggerTarget = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "trigger_condition" ) )
+	{
+		m_iTriggerCondition = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "trigger_alt_condition" ) )
+	{
+		m_iTriggerAltCondition = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "respawn_as_playerally" ) )
+	{
+		m_reverseRelationship = atoi( pkvd->szValue ) != 0;
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "yawdeviation" ) )
+	{
+		m_iMaxRandomAngleDeviation = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "spawnorigin" ) )
+	{
+		m_originName = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -210,7 +247,8 @@ void CMonsterMaker::Precache( void )
 		PRECACHE_MODEL(STRING(m_customModel));
 	if (!FStringNull(m_gibModel))
 		PRECACHE_MODEL(STRING(m_gibModel));
-	UTIL_PrecacheOther( STRING( m_iszMonsterClassname ) );
+
+	UTIL_PrecacheMonster( STRING(m_iszMonsterClassname), m_reverseRelationship );
 }
 
 //=========================================================
@@ -328,7 +366,7 @@ void CMonsterMaker::MakeMonster( void )
 	pevCreate = VARS( pent );
 	pevCreate->origin = chosenOriginEntity->pev->origin;
 	pevCreate->angles = chosenOriginEntity->pev->angles;
-	if (pev->spawnflags & SF_MONSTERMAKER_ALIGN_TO_PLAYER) {
+	if (FBitSet(pev->spawnflags, SF_MONSTERMAKER_ALIGN_TO_PLAYER|SF_MONSTERMAKER_ALIGN_TO_PLAYER_OLD)) {
 		float minDist = 10000.0f;
 		CBaseEntity* foundPlayer = NULL;
 		for (int i = 1; i <= gpGlobals->maxClients; ++i) {
@@ -353,7 +391,6 @@ void CMonsterMaker::MakeMonster( void )
 			pevCreate->angles.y -= deviation;
 		}
 	}
-	pevCreate->weapons = pev->weapons;
 	SetBits( pevCreate->spawnflags, SF_MONSTER_FALL_TO_GROUND );
 	pevCreate->body = pev->body;
 	pevCreate->skin = pev->skin;
@@ -362,21 +399,36 @@ void CMonsterMaker::MakeMonster( void )
 	if (!FStringNull(m_customModel))
 		pevCreate->model = m_customModel;
 
-	// Children hit monsterclip brushes
-	if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_MONSTERCLIP ))
-		SetBits( pevCreate->spawnflags, SF_MONSTER_HITMONSTERCLIP );
-
 	CBaseMonster* createdMonster = GetMonsterPointer(pent);
 	if (createdMonster)
 	{
+		// Children hit monsterclip brushes
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_MONSTERCLIP ))
+			SetBits( pevCreate->spawnflags, SF_MONSTER_HITMONSTERCLIP );
+
+//		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_PRISONER ))
+//			SetBits( pevCreate->spawnflags, SF_MONSTER_PRISONER );
 		if (FBitSet(pev->spawnflags, SF_MONSTERMAKER_DONT_DROP_GUN))
 			SetBits(pevCreate->spawnflags, SF_MONSTER_DONT_DROP_GRUN);
+		if (m_gag > 0)
+			SetBits(pevCreate->spawnflags, SF_MONSTER_GAG);
+		pevCreate->weapons = pev->weapons;
+
 		if (m_classify)
 			createdMonster->m_iClass = m_classify;
-		if (m_bloodColor)
-			createdMonster->m_bloodColor = m_bloodColor;
+		createdMonster->m_reverseRelationship = m_reverseRelationship;
+		createdMonster->m_displayName = m_displayName;
+		createdMonster->SetMyBloodColor(m_bloodColor);
 		if (!FStringNull(m_gibModel))
 			createdMonster->m_gibModel = m_gibModel;
+
+		if (!FStringNull(m_iszTriggerTarget))
+		{
+			createdMonster->m_iszTriggerTarget = m_iszTriggerTarget;
+			createdMonster->m_iTriggerCondition = m_iTriggerCondition;
+			createdMonster->m_iTriggerAltCondition = m_iTriggerAltCondition;
+		}
+
 		if (createdMonster->IsInitiallyDead())
 		{
 			CDeadMonster* deadMonster = (CDeadMonster*)createdMonster;
@@ -386,15 +438,20 @@ void CMonsterMaker::MakeMonster( void )
 
 	DispatchSpawn( ENT( pevCreate ) );
 	pevCreate->owner = edict();
+	if (m_notSolid > 0)
+	{
+		pevCreate->solid = SOLID_NOT;
+	}
 
 	if ( !FStringNull( pev->message ) && !FStringNull( pev->targetname ) )
 	{
 		CBaseEntity* foundEntity = UTIL_FindEntityByTargetname(NULL, STRING(pev->message));
-		if ( foundEntity && FClassnameIs(foundEntity->pev, "env_warpball"))
+		if ( foundEntity && (FClassnameIs(foundEntity->pev, "env_warpball")
+							 || FClassnameIs(foundEntity->pev, "env_xenmaker")))
 		{
 			foundEntity->pev->dmg_inflictor = chosenOriginEntity->edict();
 			foundEntity->Use(this, this, USE_TOGGLE, 0.0f);
-			foundEntity->pev->dmg_inflictor = 0;
+			foundEntity->pev->dmg_inflictor = NULL;
 		}
 	}
 

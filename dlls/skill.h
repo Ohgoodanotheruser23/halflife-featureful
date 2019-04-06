@@ -87,6 +87,10 @@ struct skilldata_t
 	float hgruntShotgunPellets;
 	float hgruntGrenadeSpeed;
 
+#if FEATURE_HWGRUNT
+	float hwgruntHealth;
+#endif
+
 	float houndeyeHealth;
 	float houndeyeDmgBlast;
 
@@ -137,6 +141,10 @@ struct skilldata_t
 
 #if FEATURE_OTIS
 	float otisHealth;
+#endif
+
+#if FEATURE_ROBOGRUNT
+	float rgruntExplode;
 #endif
 
 	float scientistHealth;

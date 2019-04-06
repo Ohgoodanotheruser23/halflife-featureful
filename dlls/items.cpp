@@ -298,15 +298,17 @@ void CItem::Spawn( void )
 	UTIL_SetOrigin( pev, pev->origin );
 	UTIL_SetSize( pev, Vector( -16, -16, 0 ), Vector( 16, 16, 16 ) );
 	SetTouch( &CItem::ItemTouch );
+	SetThink( &CItem::FallThink );
+	pev->nextthink = gpGlobals->time+0.1;
+}
 
-	if (!gEvilImpulse101)
+void CItem::FallThink()
+{
+	if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
 	{
-		if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
-		{
-			ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), pev->origin.x, pev->origin.y, pev->origin.z);
-			UTIL_Remove( this );
-			return;
-		}
+		ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), pev->origin.x, pev->origin.y, pev->origin.z);
+		UTIL_Remove( this );
+		return;
 	}
 }
 
@@ -778,7 +780,7 @@ public:
 	void PlayBeep();
 	void WaitForSequenceEnd();
 	void Think();
-	int ObjectCaps( void ) { return CBaseAnimating::ObjectCaps() | FCAP_IMPULSE_USE; }
+	int ObjectCaps( void ) { return CBaseAnimating::ObjectCaps() | FCAP_IMPULSE_USE | FCAP_ONLYDIRECT_USE; }
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	void SetActivity(Activity NewActivity);
@@ -868,7 +870,7 @@ void CEyeScanner::Spawn()
 {
 	Precache();
 	pev->solid = SOLID_NOT;
-	pev->movetype = MOVETYPE_FLY;
+	pev->movetype = MOVETYPE_NONE;
 	pev->takedamage = DAMAGE_NO;
 	pev->health = 1;
 	pev->weapons = 0;
@@ -876,7 +878,7 @@ void CEyeScanner::Spawn()
 
 	SET_MODEL(ENT(pev), "models/EYE_SCANNER.mdl");
 	UTIL_SetOrigin(pev, pev->origin);
-	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 48));
+	UTIL_SetSize(pev, Vector(-12, -12, 32), Vector(12, 12, 72));
 	SetActivity(ACT_CROUCHIDLE);
 	ResetSequenceInfo();
 	SetThink(NULL);

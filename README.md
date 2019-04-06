@@ -23,8 +23,8 @@ In case you enable new monsters or weapons don't forget to add their skill value
 * monster_pitdrone
 * monster_shocktrooper
 * monster_shockroach
-* monster_pitworm (works a bit different from original)
-* monster_geneworm
+* monster_pitworm (works a bit different from original, might be buggy)
+* monster_geneworm (buggy)
 * monster_human_grunt_ally
 * monster_human_medic_ally (healing works a bit different from original)
 * monster_human_torch_ally
@@ -35,9 +35,11 @@ In case you enable new monsters or weapons don't forget to add their skill value
 * monster_zombie_soldier
 * monster_op4loader
 
-#### Other new monsters
+#### Sven Co-op monsters
 
 * monster_babygarg - smaller version of Gargantua monster
+* monster_hwgrunt
+* monster_robogrunt
 
 #### Opposing Force dead monsters
 
@@ -55,7 +57,10 @@ In case you enable new monsters or weapons don't forget to add their skill value
 * monster_human_medic_ally_dead (was not in Opposing Force)
 * monster_human_torch_ally_dead (was not in Opposing Force)
 * monster_alien_grunt_dead
+* monster_pitdrone_dead
 * monster_shocktrooper_dead (Opposing Force had monster_ShockTrooper_dead, but it was bugged)
+* monster_zombie_dead
+* monster_zombie_barney_dead
 * monster_generic_dead - generic dead monster with custom model and settable pose
 
 ### Monster features
@@ -73,7 +78,8 @@ In case you enable new monsters or weapons don't forget to add their skill value
 * Security guards can be spawned with gun drawn.
 * Scientists can heal other allies beside the player (e.g. security guards and other scientists)
 * The delay before scientist can heal again can be configured via skill.cfg (1 minute by default)
-* Talk monsters can have a configurable tolerance level to player hits.
+* Ally monsters can have a configurable tolerance level to player hits.
+* Monsters can have an alternative trigger condition to fire their trigger target.
 
 ### Alien slave features
 
@@ -116,13 +122,23 @@ All Opposing Force weapons and corresponding ammo entities are implemented, but 
 
 #### Decay entities
 
-* item_eyescanner
+* item_eyescanner (works a bit different, may be not compatible with Decay PC maps)
 * item_healthcharger
 * item_recharge
 
 #### Spirit entities
 
 * env_model
+* env_state
+
+#### Sven Co-op entities
+
+* env_xenmaker
+* squadmaker (Actually just an alias to monstermaker since it has most of squadmaker features already, not all of them though)
+* trigger_random
+* trigger_random_time
+* trigger_random_unique
+* trigger_respawn
 
 #### Others
 
@@ -134,28 +150,61 @@ All Opposing Force weapons and corresponding ammo entities are implemented, but 
 * multi_trigger - alternative to multi_manager for which J.A.C.K. can show connections to its targets.
 * item_flashlight can be enabled to give player flashlight without giving a suit.
 
-### Wall chargers features
+### New flags and parameters compatible with existing addons and mods
 
-* Wall health and armor chargers now play "no" sound when player use them having full health or armor.
-* Chargers sounds can be configured in level editor.
-* Chargers can be turned off and on by triggers.
+#### Opposing Force
+
+Besides opfor entities (mentioned above) some opfor-specific parameters were added:
+
+* 'Suspicious' parameter for scientists and security guards that make them pre-provoked towards the player.
+
+#### Spirit
+
+Very limited set of spirit-compatible features is implemented. *Move-with* is **NOT** implemented.
+
+* func_train has 'Origin on paths' flag.
+* Custom move and stop sounds can be configured for func_train and func_plat
+* Monsters and models scale can be configured.
+* 'Direct use only' flag for buttons and 'Direct use only' parameter for doors.
+* 'Don't Drop Gun' flag for some monsters and monstermaker.
+* Ally monsters can be 'locked' by master, so they decline following even if they are not pre-disaster.
+* 'Decline following' sentence can be configured.
+
+Note that the full compatibility with Spirit maps is not a goal.
+
+#### Sven Co-op
+
+Besides some opfor and sven co-op entities mentioned above there're some features made for compatibility with Sven Co-op maps.
+
+* info_player_deathmatch can be turned on and off.
+* trigger_push has 'No clients' and 'No monsters' flags
+* 'Explosive Only' flag for breakables.
+* Some spawnobject values in breakables are compatible with Sven Co-op.
+* Wall chargers sounds and capacity can be configured in level editor.
+* 'Is Player Ally' parameter for monsters that inverts their relationship with player and sets a different model for some monsters.
+* 'Grunt Type' parameter for osprey.
+* 'In-game name' parameter and mp_allowmonsterinfo cvar to show monster's display names in multiplayer.
+* npc_dropweapons cvar to enable/disable weapon dropping by monsters in multiplayer.
+
+Note that the full compatibility with Sven Co-op maps is not a goal.
 
 ### Other features
 
+* Wall health and armor chargers now play "no" sound when player use them having full health or armor.
+* Wall chargers can be turned off and on by triggers.
 * Nightvision can be enabled instead of flashlight. Both Opposing Force and Counter Strike nightvision versions are implemented.
-* Added Explosive Only and Op4Mortar only flags for func_breakable. Breakables with these flags can be destroyed only with explosive weapons and op4mortar shells respectively.
+* 'Op4Mortar only' flag for breakables. Breakables with this flag can be destroyed only with op4mortar shells.
 * monstermaker can have env_warpball template to automatically play teleportation effects on monster spawn.
 * monstermaker can set custom health, body, skin, blood color, relationship class, gibs and model for spawned monsters.
 * New flag for monstermaker - No ground check. The hack to remove the check for space under the monstermaker. Useful for spawning flying monsters or monsters that should fall.
 * func_plat, func_train and func_door sound attenuation can be configured in level editor.
-* Monsters and models scale can be changed (like in Spirit of Half-Life)
 * Added use_through_walls cvar to prevent using things through walls (experimental, will be made into compile-time feature).
 * func_tank can be configured to have a limited number of ammo.
 * func_breakable can contain new items (e.g. Opposing Force weapons and ammo).
 * Amount of health provided by soda may be configured via skill.cfg
 * item_security can show message and play sound on pickup. If item_security is featured in hud.txt the sprite will be shown upon item pickup.
-* trigger_push has No clients and No monsters flags (like in Sven Co-op).
 * 'Fire on Animation start' property for scripted sequence - allows to sync animation start and firing a trigger (useful for retina animations).
+* Dropped weaponboxes have a model of dropped weapon.
 
 ## How to build
 

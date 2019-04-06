@@ -41,6 +41,7 @@ public:
 	void Precache( void );
 	void SetYawSpeed( void );
 	int DefaultClassify( void );
+	const char* DefaultDisplayName() { return "Zombie"; }
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	int IgnoreConditions( void );
 
@@ -323,11 +324,38 @@ int CZombie::IgnoreConditions( void )
 	return iIgnore;
 }
 
+class CDeadZombie : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_ALIEN_MONSTER; }
+
+	const char* getPos(int pos) const;
+	static const char *m_szPoses[2];
+};
+
+const char *CDeadZombie::m_szPoses[] = { "dieheadshot", "dieforward" };
+
+const char* CDeadZombie::getPos(int pos) const
+{
+	return m_szPoses[pos % ARRAYSIZE(m_szPoses)];
+}
+
+LINK_ENTITY_TO_CLASS( monster_zombie_dead, CDeadZombie )
+
+void CDeadZombie::Spawn( )
+{
+	SpawnHelper("models/zombie.mdl", BLOOD_COLOR_YELLOW);
+	MonsterInitDead();
+	pev->frame = 255;
+}
+
 #if FEATURE_ZOMBIE_BARNEY
 class CZombieBarney : public CZombie
 {
 	void Spawn( void );
 	void Precache( void );
+	const char* DefaultDisplayName() { return "Zombie Barney"; }
 	float OneSlashDamage() { return gSkillData.zombieBarneyDmgOneSlash; }
 	float BothSlashDamage() { return gSkillData.zombieBarneyDmgBothSlash; }
 };
@@ -345,6 +373,21 @@ void CZombieBarney::Precache()
 	PrecacheMyModel("models/zombie_barney.mdl");
 	PrecacheSounds();
 }
+
+class CDeadZombieBarney : public CDeadZombie
+{
+public:
+	void Spawn( void );
+};
+
+LINK_ENTITY_TO_CLASS( monster_zombie_barney_dead, CDeadZombieBarney )
+
+void CDeadZombieBarney::Spawn( )
+{
+	SpawnHelper("models/zombie_barney.mdl", BLOOD_COLOR_YELLOW);
+	MonsterInitDead();
+	pev->frame = 255;
+}
 #endif
 
 #if FEATURE_ZOMBIE_SOLDIER
@@ -352,6 +395,7 @@ class CZombieSoldier : public CZombie
 {
 	void Spawn( void );
 	void Precache( void );
+	const char* DefaultDisplayName() { return "Zombie Soldier"; }
 	float OneSlashDamage() { return gSkillData.zombieSoldierDmgOneSlash; }
 	float BothSlashDamage() { return gSkillData.zombieSoldierDmgBothSlash; }
 };

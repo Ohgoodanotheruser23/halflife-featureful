@@ -28,6 +28,8 @@
 #define FEATURE_GENEWORM (0 || FEATURE_OPFOR)
 #define FEATURE_DRILLSERGEANT (0 || FEATURE_OPFOR)
 #define FEATURE_RECRUIT (0 || FEATURE_OPFOR)
+#define FEATURE_ROBOGRUNT 1
+#define FEATURE_HWGRUNT 1
 
 #define FEATURE_ISLAVE_DEAD (1 || FEATURE_OPFOR)
 #define FEATURE_HOUNDEYE_DEAD (1 || FEATURE_OPFOR)
@@ -42,6 +44,9 @@
 
 // whether monsters get health from eating meat or enemy corpses
 #define FEATURE_EAT_FOR_HEALTH 1
+
+// enable reverse relationship models, like barnabus
+#define FEATURE_REVERSE_RELATIONSHIP_MODELS 0
 
 // New weapons
 #define FEATURE_PIPEWRENCH (1 || FEATURE_OPFOR)

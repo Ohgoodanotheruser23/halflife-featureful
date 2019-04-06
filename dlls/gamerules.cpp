@@ -197,6 +197,11 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.hgruntShotgunPellets = GetSkillCvar( "sk_hgrunt_pellets" );
 	gSkillData.hgruntGrenadeSpeed = GetSkillCvar( "sk_hgrunt_gspeed" );
 
+#if FEATURE_HWGRUNT
+	// HWgrunt
+	gSkillData.hwgruntHealth = GetSkillCvar( "sk_hwgrunt_health" );
+#endif
+
 	// Houndeye
 	gSkillData.houndeyeHealth = GetSkillCvar( "sk_houndeye_health" );
 	gSkillData.houndeyeDmgBlast = GetSkillCvar( "sk_houndeye_dmg_blast" );
@@ -253,6 +258,10 @@ void CGameRules::RefreshSkillData ( void )
 #if FEATURE_OTIS
 	// Otis
 	gSkillData.otisHealth = GetSkillCvar( "sk_otis_health");
+#endif
+#if FEATURE_ROBOGRUNT
+	// Robogrunt
+	gSkillData.rgruntExplode = GetSkillCvar( "sk_rgrunt_explode" );
 #endif
 	// Scientist
 	gSkillData.scientistHealth = GetSkillCvar( "sk_scientist_health" );
@@ -457,7 +466,7 @@ CGameRules *InstallGameRules( void )
 	SERVER_COMMAND( "exec game.cfg\n" );
 	SERVER_EXECUTE();
 
-	if( !gpGlobals->deathmatch )
+	if( !gpGlobals->deathmatch && !gpGlobals->coop )
 	{
 		// generic half-life
 		g_teamplay = 0;

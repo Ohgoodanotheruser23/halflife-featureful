@@ -99,6 +99,7 @@ BOOL CHealthKit::MyTouch( CBasePlayer *pPlayer )
 //-------------------------------------------------------------
 
 #define SF_WALLCHARGER_STARTOFF 1
+#define SF_WALLCHARGER_ONLYDIRECT 16
 
 void CWallCharger::Spawn()
 {
@@ -134,7 +135,9 @@ void CWallCharger::Precache()
 
 int CWallCharger::ObjectCaps( void )
 {
-	return ( CBaseToggle::ObjectCaps() | FCAP_CONTINUOUS_USE ) & ~FCAP_ACROSS_TRANSITION;
+	return ( CBaseToggle::ObjectCaps() | FCAP_CONTINUOUS_USE
+			| (FBitSet(pev->spawnflags, SF_WALLCHARGER_ONLYDIRECT)?FCAP_ONLYDIRECT_USE:0) )
+			& ~FCAP_ACROSS_TRANSITION;
 }
 
 void CWallCharger::Off()
@@ -231,9 +234,29 @@ void CWallCharger::KeyValue( KeyValueData *pkvd )
 		m_triggerOnFirstUse = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
-	else if( FStrEq( pkvd->szKeyName, "capacity" ) )
+	else if( FStrEq( pkvd->szKeyName, "capacity" ) || FStrEq( pkvd->szKeyName, "CustomJuice" ) )
 	{
 		pev->health = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "CustomLoopSound" ) )
+	{
+		pev->noise = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "CustomDeniedSound" ) )
+	{
+		pev->noise1 = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "CustomStartSound" ) )
+	{
+		pev->noise2 = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "CustomRechargeSound" ) )
+	{
+		pev->noise3 = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -393,7 +416,7 @@ public:
 	void Off( void );
 	void EXPORT Recharge( void );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
-	virtual int ObjectCaps( void ) { return ( CBaseAnimating::ObjectCaps() | FCAP_CONTINUOUS_USE ); }
+	virtual int ObjectCaps( void ) { return ( CBaseAnimating::ObjectCaps() | FCAP_CONTINUOUS_USE | FCAP_ONLYDIRECT_USE ); }
 	void TurnNeedleToPlayer(const Vector &player);
 	void SetNeedleState(int state);
 	void SetNeedleController(float yaw);

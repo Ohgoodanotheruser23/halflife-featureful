@@ -48,7 +48,8 @@ public:
 	void Precache( void );
 	void UpdateOnRemove();
 	void SetYawSpeed( void );
-	int Classify( void );
+	int DefaultClassify( void );
+	const char* DefaultDisplayName() { return "Alien Controller"; }
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 
 	void RunAI( void );
@@ -154,7 +155,7 @@ const char *CController::pDeathSounds[] =
 // Classify - indicates this monster's place in the 
 // relationship table.
 //=========================================================
-int CController::Classify( void )
+int CController::DefaultClassify( void )
 {
 	return	CLASS_ALIEN_MILITARY;
 }

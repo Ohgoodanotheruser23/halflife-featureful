@@ -110,6 +110,9 @@ public:
 	int m_iClass;
 	string_t m_gibModel;
 
+	BOOL m_reverseRelationship;
+	string_t m_displayName;
+
 	virtual int Save( CSave &save ); 
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
@@ -228,7 +231,7 @@ public:
 	BOOL FRouteClear( void );
 	void RouteSimplify( CBaseEntity *pTargetEnt );
 	void AdvanceRoute( float distance );
-	virtual BOOL FTriangulate( const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApex );
+	int FTriangulate(const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApexes, int n = 1, int tries = 8);
 	void MakeIdealYaw( Vector vecTarget );
 	virtual void SetYawSpeed( void ) { return; };// allows different yaw_speeds for each activity
 	BOOL BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget );
@@ -347,6 +350,7 @@ public:
 
 	int Classify();
 	virtual int DefaultClassify();
+	virtual const char* ReverseRelationshipModel() { return NULL; }
 
 	virtual BOOL IsInitiallyDead() {return FALSE;}
 
@@ -356,6 +360,9 @@ public:
 	int GibCount();
 
 	virtual bool IsAlienMonster();
+
+	virtual const char* DefaultDisplayName() { return NULL; }
+	const char* DisplayName();
 
 	//
 	// Glowshell effects

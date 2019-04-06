@@ -607,7 +607,7 @@ public:
 		return FALSE;
 #endif
 	}
-	
+
 	int WeaponCategory() { return WEAPON_CATEGORY_MELEE; }
 	const char* MyWModel() { return "models/w_crowbar.mdl"; }
 
@@ -1159,7 +1159,6 @@ public:
 #endif
 	}
 	int WeaponCategory() { return WEAPON_CATEGORY_LIGHTWEIGHT; }
-
 	const char* MyWModel() { return "models/w_desert_eagle.mdl"; }
 private:
 	int m_iShell;
@@ -1297,6 +1296,8 @@ public:
 		return FALSE;
 	}
 
+	const char* MyWModel() { return "models/w_bgrap.mdl"; }
+
 private:
 	CBarnacleGrappleTip* m_pTip;
 
@@ -1355,6 +1356,8 @@ public:
 #endif
 	}
 
+	const char* MyWModel() { return "models/w_saw.mdl"; }
+
 	void UpdateTape();
 
 	BOOL m_fReloadLaunched;
@@ -1388,8 +1391,6 @@ public:
 	//void ItemPostFrame(void);
 
 	BOOL ShouldWeaponIdle(void) { return TRUE; }
-	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
-	const char* MyWModel() { return "models/w_m40a1.mdl"; }
 
 	BOOL m_fInZoom;// don't save this.
 
@@ -1401,6 +1402,9 @@ public:
 		return FALSE;
 #endif
 	}
+
+	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
+	const char* MyWModel() { return "models/w_m40a1.mdl"; }
 
 	BOOL m_fNeedAjustBolt;
 	int	 m_iBoltState;
@@ -1450,6 +1454,8 @@ public:
 		return FALSE;
 #endif
 	}
+
+	const char* MyWModel() { return "models/w_displacer.mdl"; }
 
 	void UseAmmo(int count);
 	BOOL CanFireDisplacer( int count ) const;
@@ -1503,6 +1509,8 @@ public:
 		return FALSE;
 #endif
 	}
+
+	const char* MyWModel() { return "models/w_shock.mdl"; }
 private:
 	unsigned short m_usShockFire;
 	CBeam* m_pBeam[4];
@@ -1549,6 +1557,8 @@ public:
 		return FALSE;
 #endif
 	}
+
+	const char* MyWModel() { return "models/w_knife.mdl"; }
 private:
 	unsigned short m_usKnife;
 };
@@ -1609,6 +1619,9 @@ public:
 		return FALSE;
 #endif
 	}
+
+	const char* MyWModel() { return "models/w_spore_launcher.mdl"; }
+
 	int m_iSquidSpitSprite;
 private:
 	unsigned short m_usSporeFire;

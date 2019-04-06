@@ -91,6 +91,7 @@ set (SVDLL_SOURCES
 	headcrab.cpp
 	healthkit.cpp
 	hgrunt.cpp
+	hwgrunt.cpp
 	hornet.cpp
 	hornetgun.cpp
 	houndeye.cpp
@@ -126,6 +127,7 @@ set (SVDLL_SOURCES
 	playermonster.cpp
 	python.cpp
 	rat.cpp
+	rgrunt.cpp
 	recruit.cpp
 	roach.cpp
 	ropes.cpp

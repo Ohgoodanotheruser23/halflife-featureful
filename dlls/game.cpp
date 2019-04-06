@@ -41,32 +41,32 @@ cvar_t hevcharger_rechargetime = { "mp_hevcharger_rechargetime","0",FCVAR_SERVER
 
 cvar_t selfgauss	= { "mp_selfgauss", "1", FCVAR_SERVER };
 cvar_t satchelfix	= { "mp_satchelfix", "0", FCVAR_SERVER };
+cvar_t allowgaussjump = { "mp_allowgaussjump", "0", FCVAR_SERVER };
 
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
 cvar_t flashlight	= { "mp_flashlight","1", FCVAR_SERVER };
-cvar_t allowgaussjump = { "mp_allowgaussjump", "0", FCVAR_SERVER };
 cvar_t aimcrosshair	= { "mp_autocrosshair","1", FCVAR_SERVER };
 cvar_t decalfrequency	= { "decalfrequency","30", FCVAR_SERVER };
 cvar_t teamlist		= { "mp_teamlist","hgrunt;scientist", FCVAR_SERVER };
 cvar_t teamoverride	= { "mp_teamoverride","1" };
 cvar_t defaultteam	= { "mp_defaultteam","0" };
+cvar_t allowmonsters	= { "mp_allowmonsters","0", FCVAR_SERVER };
+cvar_t allowmonsterinfo = { "mp_allowmonsterinfo","0", FCVAR_SERVER };
+cvar_t npc_dropweapons = { "npc_dropweapons", "1", FCVAR_SERVER };
 
-cvar_t allowmonsters	= { "mp_allowmonsters","1", FCVAR_SERVER };
 cvar_t survival = { "mp_survival", "1", FCVAR_SERVER };
 cvar_t survival_restart_number = { "mp_survival_restart_number", "4", FCVAR_SERVER };
 cvar_t survival_warmup_time = { "mp_survival_warmup_time", "30", FCVAR_SERVER };
-
-cvar_t allowmonsterinfo = { "mp_allowmonsterinfo","1", FCVAR_SERVER };
 
 cvar_t bhopcap		= { "mp_bhopcap", "1", FCVAR_SERVER };
 
 cvar_t allow_spectators = { "allow_spectators", "0", FCVAR_SERVER };	// 0 prevents players from being spectators
 cvar_t use_through_walls = { "use_through_walls", "1", FCVAR_SERVER };
+cvar_t tridepth = { "tridepth", "1", FCVAR_SERVER };
 
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
 cvar_t mp_semclip = { "mp_semclip", "1", FCVAR_SERVER };
 
-cvar_t npc_dropweapons = { "npc_dropweapons", "1", FCVAR_SERVER };
 cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
 cvar_t char_phrases = { "char_phrases","1", FCVAR_SERVER };
 cvar_t minpanicdelay = { "mp_minpanicdelay", "10", FCVAR_SERVER };
@@ -266,6 +266,12 @@ cvar_t	sk_hgrunt_gspeed1 = {"sk_hgrunt_gspeed1","0"};
 cvar_t	sk_hgrunt_gspeed2 = {"sk_hgrunt_gspeed2","0"};
 cvar_t	sk_hgrunt_gspeed3 = {"sk_hgrunt_gspeed3","0"};
 
+#if FEATURE_HWGRUNT
+cvar_t	sk_hwgrunt_health1 = {"sk_hwgrunt_health1","0"};
+cvar_t	sk_hwgrunt_health2 = {"sk_hwgrunt_health2","0"};
+cvar_t	sk_hwgrunt_health3 = {"sk_hwgrunt_health3","0"};
+#endif
+
 // Houndeye
 cvar_t	sk_houndeye_health1 = {"sk_houndeye_health1","0"};
 cvar_t	sk_houndeye_health2 = {"sk_houndeye_health2","0"};
@@ -417,6 +423,12 @@ cvar_t	sk_geneworm_dmg_hit3 = { "sk_geneworm_dmg_hit3", "0" };
 cvar_t	sk_scientist_health1 = {"sk_scientist_health1","0"};
 cvar_t	sk_scientist_health2 = {"sk_scientist_health2","0"};
 cvar_t	sk_scientist_health3 = {"sk_scientist_health3","0"};
+
+#if FEATURE_ROBOGRUNT
+cvar_t	sk_rgrunt_explode1 = {"sk_rgrunt_explode1","0"};
+cvar_t	sk_rgrunt_explode2 = {"sk_rgrunt_explode2","0"};
+cvar_t	sk_rgrunt_explode3 = {"sk_rgrunt_explode3","0"};
+#endif
 
 #if FEATURE_SHOCKTROOPER
 // Shock Roach
@@ -857,6 +869,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &displaysoundlist );
 	CVAR_REGISTER( &allow_spectators );
 	CVAR_REGISTER( &use_through_walls );
+	CVAR_REGISTER( &tridepth );
 
 	CVAR_REGISTER( &teamplay );
 	CVAR_REGISTER( &fraglimit );
@@ -878,6 +891,7 @@ void GameDLLInit( void )
 
 	CVAR_REGISTER( &selfgauss );
 	CVAR_REGISTER( &satchelfix );
+	CVAR_REGISTER( &allowgaussjump );
 
 	CVAR_REGISTER( &forcerespawn );
 	CVAR_REGISTER( &flashlight );
@@ -887,19 +901,19 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &teamoverride );
 	CVAR_REGISTER( &defaultteam );
 	CVAR_REGISTER( &allowmonsters );
+	CVAR_REGISTER( &allowmonsterinfo );
+	CVAR_REGISTER( &npc_dropweapons );
 
 	CVAR_REGISTER( &survival );
 	CVAR_REGISTER( &survival_warmup_time );
 	CVAR_REGISTER( &survival_restart_number );
-	CVAR_REGISTER( &allowmonsterinfo );
-	CVAR_REGISTER( &allowgaussjump );
+
 	CVAR_REGISTER( &bhopcap );
 
 	CVAR_REGISTER( &mp_chattime );
 	
 	CVAR_REGISTER( &use_to_take );
 	CVAR_REGISTER( &char_phrases );
-	CVAR_REGISTER( &npc_dropweapons );
 	CVAR_REGISTER( &minpanicdelay );
 	CVAR_REGISTER( &defaultpanicdelay);
 	CVAR_REGISTER( &dmgperscore );
@@ -1089,6 +1103,13 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_hgrunt_gspeed2 );
 	CVAR_REGISTER( &sk_hgrunt_gspeed3 );
 
+#if FEATURE_HWGRUNT
+	// HWgrunt
+	CVAR_REGISTER( &sk_hwgrunt_health1 );
+	CVAR_REGISTER( &sk_hwgrunt_health2 );
+	CVAR_REGISTER( &sk_hwgrunt_health3 );
+#endif
+
 	// Houndeye
 	CVAR_REGISTER( &sk_houndeye_health1 );// {"sk_houndeye_health1","0"};
 	CVAR_REGISTER( &sk_houndeye_health2 );// {"sk_houndeye_health2","0"};
@@ -1232,6 +1253,13 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_geneworm_dmg_hit2 );// { "sk_geneworm_dmg_hit2", "0" };
 	CVAR_REGISTER( &sk_geneworm_dmg_hit3 );// { "sk_geneworm_dmg_hit3", "0" };
 #endif
+
+#if FEATURE_ROBOGRUNT
+	CVAR_REGISTER( &sk_rgrunt_explode1 );
+	CVAR_REGISTER( &sk_rgrunt_explode2 );
+	CVAR_REGISTER( &sk_rgrunt_explode3 );
+#endif
+
 
 #if FEATURE_SHOCKTROOPER
 	// ShockTrooper

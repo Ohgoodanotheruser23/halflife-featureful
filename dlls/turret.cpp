@@ -176,6 +176,7 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	// Think functions
+	const char* DefaultDisplayName() { return "Turret"; }
 	void SpinUpCall( void );
 	void SpinDownCall( void );
 
@@ -204,6 +205,7 @@ public:
 	void Spawn();
 	void Precache( void );
 	// other functions
+	const char* DefaultDisplayName() { return "Miniturret"; }
 	void Shoot( Vector &vecSrc, Vector &vecDirToEnemy );
 };
 
@@ -1177,6 +1179,7 @@ public:
 	void Spawn();
 	void Precache( void );
 	// other functions
+	const char* DefaultDisplayName() { return "Sentry Turret"; }
 	void Shoot( Vector &vecSrc, Vector &vecDirToEnemy );
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	void EXPORT SentryTouch( CBaseEntity *pOther );

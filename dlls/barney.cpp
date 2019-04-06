@@ -28,7 +28,7 @@
 #include	"weapons.h"
 #include	"soundent.h"
 #include	"mod_features.h"
-#include	"game.h"
+#include	"gamerules.h"
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -52,12 +52,14 @@ public:
 	int ISoundMask( void );
 	void BarneyFirePistol( const char* shotSound, Bullet bullet );
 	void AlertSound( void );
+	const char* DefaultDisplayName() { return "Barney"; }
 	int DefaultClassify( void );
+	const char* ReverseRelationshipModel() { return "models/barnabus.mdl"; }
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 
 	void RunTask( Task_t *pTask );
 	void StartTask( Task_t *pTask );
-	virtual int ObjectCaps( void ) { return CTalkMonster :: ObjectCaps() | FCAP_IMPULSE_USE; }
+	virtual int ObjectCaps( void ) { return CTalkMonster :: ObjectCaps() | FCAP_IMPULSE_USE | FCAP_ONLYDIRECT_USE; }
 	int DefaultToleranceLevel() { return TOLERANCE_LOW; }
 	BOOL CheckRangeAttack1( float flDot, float flDist );
 
@@ -110,26 +112,6 @@ IMPLEMENT_SAVERESTORE( CBarney, CTalkMonster )
 //=========================================================
 // AI Schedules Specific to this monster
 //=========================================================
-Task_t tlBaFollow[] =
-{
-	{ TASK_MOVE_TO_TARGET_RANGE, (float)128 },	// Move within 128 of target ent (client)
-	{ TASK_SET_SCHEDULE, (float)SCHED_TARGET_FACE },
-};
-
-Schedule_t slBaFollow[] =
-{
-	{
-		tlBaFollow,
-		ARRAYSIZE( tlBaFollow ),
-		bits_COND_NEW_ENEMY |
-		bits_COND_LIGHT_DAMAGE |
-		bits_COND_HEAVY_DAMAGE |
-		bits_COND_HEAR_SOUND |
-		bits_COND_PROVOKED,
-		bits_SOUND_DANGER,
-		"Follow"
-	},
-};
 
 //=========================================================
 // BarneyDraw - much better looking draw schedule for when
@@ -235,7 +217,6 @@ Schedule_t slBaRangeAttack1[] =
 
 DEFINE_CUSTOM_SCHEDULES( CBarney )
 {
-	slBaFollow,
 	slBarneyEnemyDraw,
 	slBaFaceTarget,
 	slIdleBaStand,
@@ -622,7 +603,7 @@ void CBarney::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir
 
 void CBarney::OnDying()
 {
-	if( npc_dropweapons.value && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN) && pev->body < BARNEY_BODY_GUNGONE )
+	if( g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN) && pev->body < BARNEY_BODY_GUNGONE )
 	{
 		// drop the gun!
 		Vector vecGunPos;
@@ -664,7 +645,7 @@ Schedule_t *CBarney::GetScheduleOfType( int Type )
 		else
 			return psched;
 	case SCHED_TARGET_CHASE:
-		return slBaFollow;
+		return CTalkMonster::GetScheduleOfType(SCHED_FOLLOW);
 	case SCHED_IDLE_STAND:
 		// call base class default so that scientist will talk
 		// when standing during idle
@@ -839,7 +820,8 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	void TalkInit( void );
-	
+	const char* DefaultDisplayName() { return "Otis"; }
+	const char* ReverseRelationshipModel() { return "models/otisf.mdl"; }
 	void AlertSound( void );
 	
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
@@ -975,7 +957,7 @@ void COtis::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 void COtis::OnDying()
 {
-	if ( npc_dropweapons.value && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN) && GetBodygroup(1) != OTIS_BODY_GUNHOLSTERED )
+	if ( g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN) && GetBodygroup(1) != OTIS_BODY_GUNHOLSTERED )
 	{
 		Vector vecGunPos;
 		Vector vecGunAngles;

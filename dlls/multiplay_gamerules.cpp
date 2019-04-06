@@ -22,6 +22,7 @@
 #include	"player.h"
 #include	"weapons.h"
 #include	"gamerules.h"
+#include	"mod_features.h"
  
 #include	"skill.h"
 #include	"game.h"
@@ -461,7 +462,8 @@ void CHalfLifeMultiplay::RefreshSkillData( void )
 {
 	// load all default values
 	CGameRules::RefreshSkillData();
-	if (mp_l4mcoop.value)
+
+	if (IsCoOp())
 		return;
 
 	// override some values for multiplay.
@@ -702,7 +704,7 @@ BOOL CHalfLifeMultiplay::IsDeathmatch( void )
 //=========================================================
 BOOL CHalfLifeMultiplay::IsCoOp( void )
 {
-	return gpGlobals->coop ? TRUE : FALSE;
+	return (mp_l4mcoop.value || gpGlobals->coop) ? TRUE : FALSE;
 }
 
 //=========================================================
@@ -1003,9 +1005,12 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 
 	if( addDefault )
 	{
-		if (mp_l4mcoop.value) {
+#if FEATURE_MEDKIT
+		if (IsCoOp())
+		{
 			pPlayer->GiveNamedItem( "weapon_medkit" );
 		}
+#endif
 		pPlayer->GiveNamedItem( "weapon_crowbar" );
 		pPlayer->GiveNamedItem( "weapon_9mmhandgun" );
 		pPlayer->GiveAmmo( 68, "9mm" );// 4 full reloads
@@ -1556,9 +1561,8 @@ edict_t *CHalfLifeMultiplay::GetPlayerSpawnSpot( CBasePlayer *pPlayer )
 //=========================================================
 int CHalfLifeMultiplay::PlayerRelationship( CBaseEntity *pPlayer, CBaseEntity *pTarget )
 {
-	if (mp_l4mcoop.value && pTarget->IsPlayer()) {
+	if (IsCoOp() && pTarget->IsPlayer())
 		return GR_TEAMMATE;
-	}
 	// half life deathmatch has only enemies
 	return GR_NOTTEAMMATE;
 }
@@ -1583,7 +1587,12 @@ BOOL CHalfLifeMultiplay::FAllowFlashlight( void )
 //=========================================================
 BOOL CHalfLifeMultiplay::FAllowMonsters( void )
 {
-	return ( allowmonsters.value != 0 );
+	return IsCoOp() || ( allowmonsters.value != 0 );
+}
+
+bool CHalfLifeMultiplay::FMonsterCanDropWeapons(CBaseEntity *pMonster)
+{
+	return npc_dropweapons.value != 0;
 }
 
 bool CHalfLifeMultiplay::IsTimeForPanic()

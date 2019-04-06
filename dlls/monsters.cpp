@@ -110,6 +110,8 @@ TYPEDESCRIPTION	CBaseMonster::m_SaveData[] =
 	DEFINE_FIELD( CBaseMonster, m_pCine, FIELD_CLASSPTR ),
 	DEFINE_FIELD( CBaseMonster, m_iClass, FIELD_INTEGER ),
 	DEFINE_FIELD( CBaseMonster, m_gibModel, FIELD_STRING ),
+	DEFINE_FIELD( CBaseMonster, m_reverseRelationship, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CBaseMonster, m_displayName, FIELD_STRING ),
 
 	DEFINE_FIELD( CBaseMonster, m_glowShellTime, FIELD_TIME ),
 
@@ -1526,8 +1528,14 @@ int CBaseMonster::RouteClassify( int iMoveFlag )
 BOOL CBaseMonster::BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget )
 {
 	float flDist;
-	Vector vecApex;
+	Vector vecApexes[3];
 	int iLocalMove;
+
+	int tridepth = (int)CVAR_GET_FLOAT("tridepth");
+	if (tridepth < 1)
+		tridepth = 1;
+	if (tridepth > ARRAYSIZE(vecApexes))
+		tridepth = ARRAYSIZE(vecApexes);
 
 	RouteNew();
 	m_movementGoal = RouteClassify( iMoveFlag );
@@ -1546,26 +1554,24 @@ BOOL CBaseMonster::BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity
 	}
 
 	// try to triangulate around any obstacles.
-	else if( iLocalMove != LOCALMOVE_INVALID_DONT_TRIANGULATE && FTriangulate( pev->origin, vecGoal, flDist, pTarget, &vecApex ) )
+	else if( iLocalMove != LOCALMOVE_INVALID_DONT_TRIANGULATE )
 	{
-		// there is a slightly more complicated path that allows the monster to reach vecGoal
-		m_Route[0].vecLocation = vecApex;
-		m_Route[0].iType = (iMoveFlag | bits_MF_TO_DETOUR);
+		int result = FTriangulate( pev->origin, vecGoal, flDist, pTarget, vecApexes, tridepth );
+		if (result)
+		{
+			//ALERT(at_aiconsole, "Triangulated %d times\n", result);
+			// there is a slightly more complicated path that allows the monster to reach vecGoal
+			for (int i=0; i<result; ++i)
+			{
+				m_Route[i].vecLocation = vecApexes[i];
+				m_Route[i].iType = (iMoveFlag | bits_MF_TO_DETOUR);
+			}
+			m_Route[result].vecLocation = vecGoal;
+			m_Route[result].iType = iMoveFlag | bits_MF_IS_GOAL;
 
-		m_Route[1].vecLocation = vecGoal;
-		m_Route[1].iType = iMoveFlag | bits_MF_IS_GOAL;
-			/*
-			WRITE_BYTE( MSG_BROADCAST, SVC_TEMPENTITY );
-			WRITE_BYTE( MSG_BROADCAST, TE_SHOWLINE );
-			WRITE_COORD( MSG_BROADCAST, vecApex.x );
-			WRITE_COORD( MSG_BROADCAST, vecApex.y );
-			WRITE_COORD( MSG_BROADCAST, vecApex.z );
-			WRITE_COORD( MSG_BROADCAST, vecApex.x );
-			WRITE_COORD( MSG_BROADCAST, vecApex.y );
-			WRITE_COORD( MSG_BROADCAST, vecApex.z + 128 );
-			*/
-		RouteSimplify( pTarget );
-		return TRUE;
+			RouteSimplify( pTarget );
+			return TRUE;
+		}
 	}
 
 	// last ditch, try nodes
@@ -1611,7 +1617,7 @@ void CBaseMonster::InsertWaypoint( Vector vecLocation, int afMoveFlags )
 // iApexDist is how far the obstruction that we are trying
 // to triangulate around is from the monster.
 //=========================================================
-BOOL CBaseMonster::FTriangulate( const Vector &vecStart, const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApex )
+int CBaseMonster::FTriangulate( const Vector &vecStart, const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApexes, int n, int tries )
 {
 	Vector		vecDir;
 	Vector		vecForward;
@@ -1645,8 +1651,8 @@ BOOL CBaseMonster::FTriangulate( const Vector &vecStart, const Vector &vecEnd, f
 	// an apex point that insures that the monster is sufficiently past the obstacle before trying to turn back
 	// onto its original course.
 
-	vecLeft = pev->origin + ( vecForward * ( flDist + sizeX ) ) - vecDir * ( sizeX * 3 );
-	vecRight = pev->origin + ( vecForward * ( flDist + sizeX ) ) + vecDir * ( sizeX * 3 );
+	vecLeft = pev->origin + ( vecForward * ( flDist + sizeX ) ) - vecDir * ( sizeX );
+	vecRight = pev->origin + ( vecForward * ( flDist + sizeX ) ) + vecDir * ( sizeX );
 	if( pev->movetype == MOVETYPE_FLY )
 	{
 		vecTop = pev->origin + ( vecForward * flDist ) + ( vecDirUp * sizeZ * 3 );
@@ -1659,7 +1665,7 @@ BOOL CBaseMonster::FTriangulate( const Vector &vecStart, const Vector &vecEnd, f
 	if( pev->movetype == MOVETYPE_FLY )
 		vecDirUp = vecDirUp * sizeZ * 2;
 
-	for( i = 0; i < 8; i++ )
+	for( i = 0; i < tries; i++ )
 	{
 // Debug, Draw the triangulation
 #if 0
@@ -1707,28 +1713,72 @@ BOOL CBaseMonster::FTriangulate( const Vector &vecStart, const Vector &vecEnd, f
 			MESSAGE_END();
 		}
 #endif
-		if( CheckLocalMove( pev->origin, vecRight, pTargetEnt, NULL ) == LOCALMOVE_VALID )
+		int result = 0;
+		float localMoveDist;
+		if( CheckLocalMove( vecStart, vecRight, pTargetEnt, &localMoveDist ) == LOCALMOVE_VALID )
 		{
-			if( CheckLocalMove( vecRight, vecFarSide, pTargetEnt, NULL ) == LOCALMOVE_VALID )
+			if( CheckLocalMove( vecRight, vecFarSide, pTargetEnt, &localMoveDist ) == LOCALMOVE_VALID )
 			{
-				if( pApex )
+				if( pApexes )
 				{
-					*pApex = vecRight;
+					*pApexes = vecRight;
 				}
 
-				return TRUE;
+				return 1;
+			}
+			else if (n>1 && pApexes)
+			{
+				result = FTriangulate(vecRight, vecFarSide, localMoveDist, pTargetEnt, pApexes+1, n-1, tries - 2);
+				if (result)
+				{
+					*pApexes = vecRight;
+					return result+1;
+				}
 			}
 		}
-		if( CheckLocalMove( pev->origin, vecLeft, pTargetEnt, NULL ) == LOCALMOVE_VALID )
+		else if (n>1 && pApexes)
 		{
-			if( CheckLocalMove( vecLeft, vecFarSide, pTargetEnt, NULL ) == LOCALMOVE_VALID )
+			result = FTriangulate(vecStart, vecRight, localMoveDist, pTargetEnt, pApexes, n-1, tries - 2);
+			if (result)
 			{
-				if( pApex )
+				if( CheckLocalMove( vecRight, vecFarSide, pTargetEnt, &localMoveDist ) == LOCALMOVE_VALID )
 				{
-					*pApex = vecLeft;
+					pApexes[n-1] = vecRight;
+					return result+1;
+				}
+			}
+		}
+		if( CheckLocalMove( vecStart, vecLeft, pTargetEnt, &localMoveDist ) == LOCALMOVE_VALID )
+		{
+			if( CheckLocalMove( vecLeft, vecFarSide, pTargetEnt, &localMoveDist ) == LOCALMOVE_VALID )
+			{
+				if( pApexes )
+				{
+					*pApexes = vecLeft;
 				}
 
-				return TRUE;
+				return 1;
+			}
+			else if (n>1 && pApexes)
+			{
+				result = FTriangulate(vecLeft, vecFarSide, localMoveDist, pTargetEnt, pApexes+1, n-1, tries - 2);
+				if (result)
+				{
+					*pApexes = vecLeft;
+					return result+1;
+				}
+			}
+		}
+		else if (n>1 && pApexes)
+		{
+			result = FTriangulate(vecStart, vecLeft, localMoveDist, pTargetEnt, pApexes, n-1, tries - 2);
+			if (result)
+			{
+				if( CheckLocalMove( vecLeft, vecFarSide, pTargetEnt, &localMoveDist ) == LOCALMOVE_VALID )
+				{
+					pApexes[n-1] = vecLeft;
+					return result+1;
+				}
 			}
 		}
 
@@ -1738,13 +1788,13 @@ BOOL CBaseMonster::FTriangulate( const Vector &vecStart, const Vector &vecEnd, f
 			{
 				if( CheckLocalMove ( vecTop, vecFarSide, pTargetEnt, NULL ) == LOCALMOVE_VALID )
 				{
-					if( pApex )
+					if( pApexes )
 					{
-						*pApex = vecTop;
+						*pApexes = vecTop;
 						//ALERT(at_aiconsole, "triangulate over\n");
 					}
 
-					return TRUE;
+					return 1;
 				}
 			}
 #if 1
@@ -1752,13 +1802,13 @@ BOOL CBaseMonster::FTriangulate( const Vector &vecStart, const Vector &vecEnd, f
 			{
 				if( CheckLocalMove( vecBottom, vecFarSide, pTargetEnt, NULL ) == LOCALMOVE_VALID )
 				{
-					if( pApex )
+					if( pApexes )
 					{
-						*pApex = vecBottom;
+						*pApexes = vecBottom;
 						//ALERT(at_aiconsole, "triangulate under\n");
 					}
 
-					return TRUE;
+					return 1;
 				}
 			}
 #endif
@@ -1773,7 +1823,7 @@ BOOL CBaseMonster::FTriangulate( const Vector &vecStart, const Vector &vecEnd, f
 		}
 	}
 
-	return FALSE;
+	return 0;
 }
 
 //=========================================================
@@ -2990,6 +3040,11 @@ void CBaseMonster::KeyValue( KeyValueData *pkvd )
 	else if ( FStrEq( pkvd->szKeyName, "bloodcolor" ) )
 	{
 		m_bloodColor = atoi( pkvd->szValue );
+		// Check for values 1 and 2 for Sven Co-op compatibility
+		if (m_bloodColor == 1)
+			m_bloodColor = BLOOD_COLOR_RED;
+		else if (m_bloodColor == 2)
+			m_bloodColor = BLOOD_COLOR_YELLOW;
 		pkvd->fHandled = TRUE;
 	}
 	else if ( FStrEq( pkvd->szKeyName, "classify" ) )
@@ -3000,6 +3055,16 @@ void CBaseMonster::KeyValue( KeyValueData *pkvd )
 	else if ( FStrEq( pkvd->szKeyName , "gibmodel" ) )
 	{
 		m_gibModel = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "is_player_ally" ) )
+	{
+		m_reverseRelationship = atoi( pkvd->szValue ) != 0;
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "displayname" ) )
+	{
+		m_displayName = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -3474,7 +3539,15 @@ void CBaseMonster::SetMyHealth(const float health)
 void CBaseMonster::SetMyModel(const char *model)
 {
 	if (FStringNull(pev->model)) {
-		SET_MODEL( ENT( pev ), model );
+		const char* reverseModel = NULL;
+#if FEATURE_REVERSE_RELATIONSHIP_MODELS
+		if (m_reverseRelationship)
+			reverseModel = ReverseRelationshipModel();
+#endif
+		if (reverseModel)
+			SET_MODEL( ENT( pev ), reverseModel );
+		else
+			SET_MODEL( ENT( pev ), model );
 	} else {
 		SET_MODEL( ENT( pev ), STRING(pev->model) );
 	}
@@ -3483,7 +3556,15 @@ void CBaseMonster::SetMyModel(const char *model)
 void CBaseMonster::PrecacheMyModel(const char *model)
 {
 	if (FStringNull(pev->model)) {
-		PRECACHE_MODEL( model );
+		const char* reverseModel = NULL;
+#if FEATURE_REVERSE_RELATIONSHIP_MODELS
+		if (m_reverseRelationship)
+			reverseModel = ReverseRelationshipModel();
+#endif
+		if (reverseModel)
+			PRECACHE_MODEL(reverseModel);
+		else
+			PRECACHE_MODEL( model );
 	} else {
 		PRECACHE_MODEL( STRING( pev->model ) );
 	}
@@ -3501,12 +3582,34 @@ void CBaseMonster::SetMyBloodColor(int bloodColor)
 
 int CBaseMonster::Classify()
 {
-	return m_iClass ? m_iClass : DefaultClassify();
+	if (m_iClass)
+		return m_iClass;
+	const int defaultClassify = DefaultClassify();
+	if (m_reverseRelationship)
+	{
+		switch(defaultClassify)
+		{
+		case CLASS_HUMAN_PASSIVE:
+		case CLASS_PLAYER_ALLY:
+		case CLASS_PLAYER_ALLY_MILITARY:
+			return CLASS_HUMAN_MILITARY;
+		case CLASS_NONE:
+			return CLASS_NONE;
+		default:
+			return CLASS_PLAYER_ALLY;
+		}
+	}
+	return defaultClassify;
 }
 
 int CBaseMonster::DefaultClassify()
 {
 	return CLASS_NONE;
+}
+
+const char* CBaseMonster::DisplayName()
+{
+	return FStringNull(m_displayName) ? DefaultDisplayName() : STRING(m_displayName);
 }
 
 void CBaseMonster::GlowShellOn( Vector color, float flDuration )

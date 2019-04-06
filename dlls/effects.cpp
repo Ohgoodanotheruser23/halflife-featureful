@@ -2467,6 +2467,54 @@ void CItemSoda::CanTouch( CBaseEntity *pOther )
 	pev->nextthink = gpGlobals->time;
 }
 
+struct BeamParams
+{
+	int texture;
+	int lifeMin;
+	int lifeMax;
+	int width;
+	int noise;
+	int red, green, blue, alpha;
+};
+
+void DrawChaoticBeams(Vector vecOrigin, edict_t* pentIgnore, int radius, const BeamParams& params, int iBeams)
+{
+	int iTimes = 0;
+	int iDrawn = 0;
+	while( iDrawn < iBeams && iTimes < ( iBeams * 3 ) )
+	{
+		TraceResult tr;
+		Vector vecDest = radius * ( Vector( RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ) ).Normalize() );
+		UTIL_TraceLine( vecOrigin, vecOrigin + vecDest, ignore_monsters, pentIgnore, &tr );
+		if( tr.flFraction != 1.0 )
+		{
+			// we hit something.
+			iDrawn++;
+			MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
+				WRITE_BYTE( TE_BEAMPOINTS );
+				WRITE_COORD( vecOrigin.x );
+				WRITE_COORD( vecOrigin.y );
+				WRITE_COORD( vecOrigin.z );
+				WRITE_COORD( tr.vecEndPos.x );
+				WRITE_COORD( tr.vecEndPos.y );
+				WRITE_COORD( tr.vecEndPos.z );
+				WRITE_SHORT( params.texture );
+				WRITE_BYTE( 0 ); // framestart
+				WRITE_BYTE( 10 ); // framerate
+				WRITE_BYTE( RANDOM_LONG(params.lifeMin, params.lifeMax) ); // life
+				WRITE_BYTE( params.width );  // width
+				WRITE_BYTE( params.noise );   // noise
+				WRITE_BYTE( params.red );   // r, g, b
+				WRITE_BYTE( params.green );   // r, g, b
+				WRITE_BYTE( params.blue );   // r, g, b
+				WRITE_BYTE( params.alpha );	// brightness
+				WRITE_BYTE( 35 );		// speed
+			MESSAGE_END();
+		}
+		iTimes++;
+	}
+}
+
 //=========================================================
 // env_warpball
 //=========================================================
@@ -2474,6 +2522,7 @@ void CItemSoda::CanTouch( CBaseEntity *pOther )
 #define SF_KILL_CENTER		0x0002
 #define SF_WARPBALL_NOSHAKE	0x0004
 #define SF_WARPBALL_DYNLIGHT	0x0008
+#define SF_WARPBALL_NOSOUND	0x0010
 
 #define WARPBALL_SPRITE "sprites/fexplo1.spr"
 #define WARPBALL_BEAM "sprites/lgtning.spr"
@@ -2551,6 +2600,9 @@ public:
 	}
 	inline float SoundAttenuation() {
 		return ::SoundAttenuation((short)pev->oldbuttons);
+	}
+	inline int SpriteFramerate() {
+		return pev->framerate ? pev->framerate : 12;
 	}
 
 	Vector vecOrigin;
@@ -2651,15 +2703,15 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		vecOrigin = pev->origin;
 		pos = edict();
 	}
-	EMIT_SOUND( pos, CHAN_BODY, WarpballSound1(), 1, SoundAttenuation() );
+	if (!FBitSet(pev->spawnflags, SF_WARPBALL_NOSOUND))
+		EMIT_SOUND( pos, CHAN_BODY, WarpballSound1(), 1, SoundAttenuation() );
 	
 	if (!(pev->spawnflags & SF_WARPBALL_NOSHAKE)) {
 		UTIL_ScreenShake( vecOrigin, Amplitude(), Frequency(), Duration(), Radius() );
 	}
 
 	CSprite *pSpr = CSprite::SpriteCreate( SpriteModel(), vecOrigin, TRUE );
-	const float frameRate = 18;
-	pSpr->AnimateAndDie( frameRate );
+	pSpr->AnimateAndDie( SpriteFramerate() );
 
 	int red = pev->rendercolor.x;
 	int green = pev->rendercolor.y;
@@ -2675,7 +2727,7 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 
 	if (pev->spawnflags & SF_WARPBALL_DYNLIGHT)
 	{
-		const int lifeTime = (15*pSpr->Frames())/frameRate;
+		const int lifeTime = 15;
 		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecOrigin );
 			WRITE_BYTE( TE_DLIGHT );
 			WRITE_COORD( vecOrigin.x );	// X
@@ -2690,7 +2742,8 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		MESSAGE_END();
 	}
 
-	EMIT_SOUND( pos, CHAN_ITEM, WarpballSound2(), 1, SoundAttenuation() );
+	if (!FBitSet(pev->spawnflags, SF_WARPBALL_NOSOUND))
+		EMIT_SOUND( pos, CHAN_ITEM, WarpballSound2(), 1, SoundAttenuation() );
 
 	int beamRed = pev->punchangle.x;
 	int beamGreen = pev->punchangle.y;
@@ -2701,42 +2754,20 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		beamGreen = 243;
 		beamBlue = 20;
 	}
-	
-	int iTimes = 0;
-	int iDrawn = 0;
+
 	const int iBeams = RANDOM_LONG( MaxBeamCount()/2, MaxBeamCount() );
-	while( iDrawn < iBeams && iTimes < ( iBeams * 3 ) )
-	{
-		TraceResult tr;
-		Vector vecDest = Radius() * ( Vector( RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ) ).Normalize() );
-		UTIL_TraceLine( vecOrigin, vecOrigin + vecDest, ignore_monsters, ENT( pev ), &tr );
-		if( tr.flFraction != 1.0 )
-		{
-			// we hit something.
-			iDrawn++;
-			MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
-				WRITE_BYTE( TE_BEAMPOINTS );
-				WRITE_COORD( vecOrigin.x );
-				WRITE_COORD( vecOrigin.y );
-				WRITE_COORD( vecOrigin.z );
-				WRITE_COORD( tr.vecEndPos.x );
-				WRITE_COORD( tr.vecEndPos.y );
-				WRITE_COORD( tr.vecEndPos.z );
-				WRITE_SHORT( m_beamTexture );
-				WRITE_BYTE( 0 ); // framestart
-				WRITE_BYTE( 10 ); // framerate
-				WRITE_BYTE( (int)(10*RANDOM_FLOAT( 0.5, 1.6 )) ); // life
-				WRITE_BYTE( 30 );  // width
-				WRITE_BYTE( 65 );   // noise
-				WRITE_BYTE( beamRed );   // r, g, b
-				WRITE_BYTE( beamGreen );   // r, g, b
-				WRITE_BYTE( beamBlue );   // r, g, b
-				WRITE_BYTE( 220 );	// brightness
-				WRITE_BYTE( 35 );		// speed
-			MESSAGE_END();
-		}
-		iTimes++;
-	}
+	BeamParams beamParams;
+	beamParams.texture = m_beamTexture;
+	beamParams.lifeMin = 5;
+	beamParams.lifeMax = 16;
+	beamParams.width = 30;
+	beamParams.noise = 65;
+	beamParams.red = beamRed;
+	beamParams.green = beamGreen;
+	beamParams.blue = beamBlue;
+	beamParams.alpha = 220;
+	DrawChaoticBeams(vecOrigin, ENT(pev), Radius(), beamParams, iBeams);
+
 	pev->nextthink = gpGlobals->time + DamageDelay();
 }
 
@@ -2756,6 +2787,320 @@ void CEnvWarpBall::Think( void )
 	}
 	if( pev->spawnflags & SF_REMOVE_ON_FIRE )
 		UTIL_Remove( this );
+}
+
+//=========================================================
+// env_xenmaker
+//=========================================================
+
+#define SF_XENMAKER_TRYONCE 1
+#define SF_XENMAKER_NOSPAWN 2
+
+#define XENMAKER_SPRITE1 "sprites/fexplo1.spr"
+#define XENMAKER_SPRITE2 "sprites/xflare1.spr"
+#define XENMAKER_BEAM "sprites/lgtning.spr"
+#define XENMAKER_SOUND1 "debris/beamstart7.wav"
+#define XENMAKER_SOUND2 "debris/beamstart2.wav"
+
+class CEnvXenMaker : public CBaseEntity
+{
+public:
+	void Precache( void );
+	void Spawn( void ) { Precache(); }
+
+	void KeyValue( KeyValueData *pkvd );
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	virtual int ObjectCaps( void ) { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
+
+	void EXPORT TrySpawn();
+	void EXPORT PlaySecondSound();
+
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
+	static TYPEDESCRIPTION m_SaveData[];
+
+	string_t m_iszMonsterClassname;
+
+	int m_flBeamRadius;
+	int m_iBeamAlpha;
+	int m_iBeamCount;
+	Vector m_vBeamColor;
+
+	int m_flLightRadius;
+	Vector m_vLightColor;
+
+	int m_flStartSpriteFramerate;
+	float m_flStartSpriteScale;
+	int m_iStartSpriteAlpha;
+	Vector m_vStartSpriteColor;
+
+	int m_flEndSpriteFramerate;
+	float m_flEndSpriteScale;
+	int m_iEndSpriteAlpha;
+	Vector m_vEndSpriteColor;
+
+	float m_flGround;
+	EOFFSET m_posEntOffset;
+
+	int m_beamTexture;
+};
+
+LINK_ENTITY_TO_CLASS(env_xenmaker, CEnvXenMaker)
+
+TYPEDESCRIPTION	CEnvXenMaker::m_SaveData[] =
+{
+	DEFINE_FIELD(CEnvXenMaker, m_iszMonsterClassname, FIELD_STRING),
+	DEFINE_FIELD(CEnvXenMaker, m_flBeamRadius, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvXenMaker, m_iBeamAlpha, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvXenMaker, m_iBeamCount, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvXenMaker, m_vBeamColor, FIELD_VECTOR),
+	DEFINE_FIELD(CEnvXenMaker, m_flLightRadius, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvXenMaker, m_vLightColor, FIELD_VECTOR),
+	DEFINE_FIELD(CEnvXenMaker, m_flStartSpriteFramerate, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvXenMaker, m_flStartSpriteScale, FIELD_FLOAT),
+	DEFINE_FIELD(CEnvXenMaker, m_iStartSpriteAlpha, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvXenMaker, m_vStartSpriteColor, FIELD_VECTOR),
+	DEFINE_FIELD(CEnvXenMaker, m_flEndSpriteFramerate, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvXenMaker, m_flEndSpriteScale, FIELD_FLOAT),
+	DEFINE_FIELD(CEnvXenMaker, m_iEndSpriteAlpha, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvXenMaker, m_vEndSpriteColor, FIELD_VECTOR),
+	DEFINE_FIELD(CEnvXenMaker, m_flGround, FIELD_FLOAT ),
+};
+IMPLEMENT_SAVERESTORE( CEnvXenMaker, CBaseEntity )
+
+void CEnvXenMaker::Precache()
+{
+	m_beamTexture = PRECACHE_MODEL(XENMAKER_BEAM);
+	if (!FBitSet(pev->spawnflags, SF_XENMAKER_NOSPAWN) && !FStringNull(m_iszMonsterClassname))
+	{
+		UTIL_PrecacheOther(STRING(m_iszMonsterClassname));
+	}
+	PRECACHE_SOUND(XENMAKER_SOUND1);
+	PRECACHE_SOUND(XENMAKER_SOUND2);
+	PRECACHE_MODEL(XENMAKER_SPRITE1);
+	PRECACHE_MODEL(XENMAKER_SPRITE2);
+}
+
+void CEnvXenMaker::KeyValue(KeyValueData *pkvd)
+{
+	if (FStrEq(pkvd->szKeyName, "monstertype"))
+	{
+		m_iszMonsterClassname = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_flBeamRadius"))
+	{
+		m_flBeamRadius = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iBeamAlpha"))
+	{
+		m_iBeamAlpha = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iBeamCount"))
+	{
+		m_iBeamCount = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_vBeamColor"))
+	{
+		UTIL_StringToVector(m_vBeamColor, pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_flLightRadius"))
+	{
+		m_flLightRadius = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_vLightColor"))
+	{
+		UTIL_StringToVector(m_vLightColor, pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_flStartSpriteFramerate"))
+	{
+		m_flStartSpriteFramerate = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_flStartSpriteScale"))
+	{
+		m_flStartSpriteScale = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iStartSpriteAlpha"))
+	{
+		m_iStartSpriteAlpha = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_vStartSpriteColor"))
+	{
+		UTIL_StringToVector(m_vStartSpriteColor, pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_flEndSpriteFramerate"))
+	{
+		m_flEndSpriteFramerate = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_flEndSpriteScale"))
+	{
+		m_flEndSpriteScale = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iEndSpriteAlpha"))
+	{
+		m_iEndSpriteAlpha = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_vEndSpriteColor"))
+	{
+		UTIL_StringToVector(m_vEndSpriteColor, pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CBaseEntity::KeyValue(pkvd);
+}
+
+void CEnvXenMaker::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if (pev->dmg_inflictor)
+	{
+		CBaseEntity* pEntity = CBaseEntity::Instance(pev->dmg_inflictor);
+		if (pEntity)
+		{
+			TrySpawn();
+		}
+	}
+	else
+	{
+		TrySpawn();
+	}
+}
+
+void CEnvXenMaker::TrySpawn()
+{
+	//use myself as center
+	CBaseEntity *pEntity = this;
+	edict_t *posEnt;
+	Vector vecOrigin;
+
+	if (pev->dmg_inflictor)
+	{
+		// used as template
+		pEntity = CBaseEntity::Instance(pev->dmg_inflictor);
+	}
+	if (!pEntity)
+		return;
+
+	vecOrigin = pEntity->pev->origin;
+	posEnt = pEntity->edict();
+	m_posEntOffset = pEntity->eoffset();
+
+	if (!FBitSet(pev->spawnflags, SF_XENMAKER_NOSPAWN)
+			&& !pev->dmg_inflictor) // never spawn if xenmaker is used as a template for monstermaker
+	{
+		if( !m_flGround )
+		{
+			// set altitude. Now that I'm activated, any breakables, etc should be out from under me.
+			TraceResult tr;
+
+			UTIL_TraceLine( pev->origin, pev->origin - Vector( 0, 0, 2048 ), ignore_monsters, ENT( pev ), &tr );
+			m_flGround = tr.vecEndPos.z;
+		}
+		Vector mins = pev->origin - Vector( 34, 34, 0 );
+		Vector maxs = pev->origin + Vector( 34, 34, 0 );
+		maxs.z = pev->origin.z;
+		mins.z = m_flGround;
+
+		CBaseEntity *pList[2];
+		int count = UTIL_EntitiesInBox( pList, 2, mins, maxs, FL_CLIENT | FL_MONSTER );
+		if( count )
+		{
+			// don't build a stack of monsters!
+			if (!FBitSet(pev->spawnflags, SF_XENMAKER_TRYONCE))
+			{
+				SetThink(&CEnvXenMaker::TrySpawn);
+				pev->nextthink = gpGlobals->time + 0.3;
+			}
+			return;
+		}
+
+		edict_t	*pent = CREATE_NAMED_ENTITY( m_iszMonsterClassname );
+
+		if( FNullEnt( pent ) )
+		{
+			ALERT ( at_console, "NULL Ent in env_xenmaker!\n" );
+			return;
+		}
+
+		entvars_t *pevCreate = VARS( pent );
+		pevCreate->origin = pev->origin;
+		pevCreate->angles = pev->angles;
+		SetBits( pevCreate->spawnflags, SF_MONSTER_FALL_TO_GROUND );
+
+		DispatchSpawn( ENT( pevCreate ) );
+	}
+
+	CSprite *pSpr = CSprite::SpriteCreate( XENMAKER_SPRITE1, vecOrigin, TRUE );
+	pSpr->SetTransparency( kRenderGlow, m_vStartSpriteColor.x, m_vStartSpriteColor.y, m_vStartSpriteColor.z, m_iStartSpriteAlpha, kRenderFxNoDissipation );
+	pSpr->SetScale(m_flStartSpriteScale);
+	pSpr->AnimateAndDie( m_flStartSpriteFramerate );
+
+	CSprite *pSpr2 = CSprite::SpriteCreate( XENMAKER_SPRITE2, vecOrigin, TRUE );
+	pSpr2->SetTransparency( kRenderGlow, m_vEndSpriteColor.x, m_vEndSpriteColor.y, m_vEndSpriteColor.z, m_iEndSpriteAlpha, kRenderFxNoDissipation );
+	pSpr2->SetScale(m_flEndSpriteScale);
+	pSpr2->AnimateAndDie( m_flEndSpriteFramerate );
+
+	BeamParams beamParams;
+	beamParams.texture = m_beamTexture;
+	beamParams.lifeMin = 5;
+	beamParams.lifeMax = 16;
+	beamParams.width = 25;
+	beamParams.noise = 50;
+	beamParams.red = m_vBeamColor.x;
+	beamParams.green = m_vBeamColor.y;
+	beamParams.blue = m_vBeamColor.z;
+	beamParams.alpha = m_iBeamAlpha;
+
+	DrawChaoticBeams(vecOrigin, ENT(pev), m_flBeamRadius, beamParams, m_iBeamCount);
+
+	int red = m_vLightColor.x;
+	int green = m_vLightColor.y;
+	int blue = m_vLightColor.z;
+
+	const int lifeTime = 15;
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecOrigin );
+		WRITE_BYTE( TE_DLIGHT );
+		WRITE_COORD( vecOrigin.x );	// X
+		WRITE_COORD( vecOrigin.y );	// Y
+		WRITE_COORD( vecOrigin.z );	// Z
+		WRITE_BYTE( m_flLightRadius * 0.1 );		// radius * 0.1
+		WRITE_BYTE( red );		// r
+		WRITE_BYTE( green );		// g
+		WRITE_BYTE( blue );		// b
+		WRITE_BYTE( lifeTime );		// time * 10
+		WRITE_BYTE( lifeTime/2 );		// decay * 0.1
+	MESSAGE_END();
+
+	EMIT_SOUND( posEnt, CHAN_ITEM, XENMAKER_SOUND1, 1, ATTN_NORM );
+
+	if (pev->dmg_inflictor)
+	{
+		PlaySecondSound();
+	}
+	else
+	{
+		SetThink(&CEnvXenMaker::PlaySecondSound);
+		pev->nextthink = gpGlobals->time + 0.8;
+	}
+}
+
+void CEnvXenMaker::PlaySecondSound()
+{
+	edict_t* posEnt = ENT(m_posEntOffset);
+	if (posEnt)
+		EMIT_SOUND( posEnt, CHAN_BODY, XENMAKER_SOUND2, 1, ATTN_NORM );
 }
 
 #if FEATURE_DISPLACER || FEATURE_SHOCKBEAM || FEATURE_SPOREGRENADE

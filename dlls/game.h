@@ -46,12 +46,13 @@ extern cvar_t teamlist;
 extern cvar_t teamoverride;
 extern cvar_t defaultteam;
 extern cvar_t allowmonsters;
+extern cvar_t allowmonsterinfo;
+extern cvar_t npc_dropweapons;
 
 extern cvar_t survival;
 extern cvar_t survival_warmup_time;
 extern cvar_t survival_restart_number;
-extern cvar_t npc_dropweapons;
-extern cvar_t allowmonsterinfo;
+
 extern cvar_t allowgaussjump;
 
 extern cvar_t use_to_take;

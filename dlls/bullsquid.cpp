@@ -237,7 +237,7 @@ void CBigSquidSpit::Animate( void )
 			}
 		}
 	}
-	
+
 	pev->nextthink = gpGlobals->time + 0.1;
 
 	if( pev->frame++ )
@@ -303,11 +303,11 @@ void CBigSquidSpit::Touch( CBaseEntity *pOther )
 			WRITE_BYTE( 100 );			// noise ( client will divide by 100 )
 		MESSAGE_END();
 	}
-	else if (pev->owner == pOther->edict()) 
+	else if (pev->owner == pOther->edict())
 	{
 		ALERT(at_aiconsole, "Bullsquid caught himself in big spit\n");
 		return;
-	} 
+	}
 	else
 	{
 		CBaseMonster* bullsquid = GetBullsquid();
@@ -343,6 +343,7 @@ public:
 	void SetYawSpeed(void);
 	int  ISoundMask(void);
 	virtual int  DefaultClassify(void);
+	const char* DefaultDisplayName() { return "Bullsquid"; }
 	virtual void HandleAnimEvent(MonsterEvent_t *pEvent);
 	virtual void IdleSound(void);
 	virtual void PainSound(void);

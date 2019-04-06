@@ -24,6 +24,7 @@
 #include	"decals.h"
 #include	"hgrunt.h"
 #include	"mod_features.h"
+#include	"gamerules.h"
 
 #if FEATURE_OPFOR_GRUNT
 //=========================================================
@@ -127,13 +128,14 @@ public:
 	void SetYawSpeed( void );
 	int  ISoundMask( void );
 	int  DefaultClassify ( void );
+	const char* DefaultDisplayName() { return "Human Grunt"; }
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	void CheckAmmo ( void );
 	void SetActivity ( Activity NewActivity );
 	void RunTask( Task_t *pTask );
 	void StartTask( Task_t *pTask );
 	void KeyValue( KeyValueData *pkvd );
-	virtual int	ObjectCaps( void ) { return CTalkMonster :: ObjectCaps() | FCAP_IMPULSE_USE; }
+	virtual int	ObjectCaps( void ) { return CTalkMonster :: ObjectCaps() | FCAP_IMPULSE_USE | FCAP_ONLYDIRECT_USE; }
 	BOOL FCanCheckAttacks ( void );
 	BOOL CheckRangeAttack1 ( float flDot, float flDist );
 	BOOL CheckRangeAttack2 ( float flDot, float flDist );
@@ -224,6 +226,7 @@ class CMedic : public CHFGrunt
 public:
 	void Spawn( void );
 	void Precache( void );
+	const char* DefaultDisplayName() { return "Human Medic"; }
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	BOOL CheckRangeAttack1 ( float flDot, float flDist );
 	BOOL CheckRangeAttack2 ( float flDot, float flDist );
@@ -372,26 +375,7 @@ int CHFGrunt::IRelationship ( CBaseEntity *pTarget )
 //=========================================================
 // AI Schedules Specific to this monster
 //=========================================================
-Task_t	tlFGruntFollow[] =
-{
-	{ TASK_MOVE_TO_TARGET_RANGE,(float)128		},	// Move within 128 of target ent (client)
-	{ TASK_SET_SCHEDULE,		(float)SCHED_TARGET_FACE },
-};
 
-Schedule_t	slFGruntFollow[] =
-{
-	{
-		tlFGruntFollow,
-		ARRAYSIZE ( tlFGruntFollow ),
-		bits_COND_NEW_ENEMY		|
-		bits_COND_LIGHT_DAMAGE	|
-		bits_COND_HEAVY_DAMAGE	|
-		bits_COND_HEAR_SOUND |
-		bits_COND_PROVOKED,
-		bits_SOUND_DANGER,
-		"Follow"
-	},
-};
 Task_t	tlFGruntFaceTarget[] =
 {
 	{ TASK_SET_ACTIVITY,		(float)ACT_IDLE },
@@ -1062,7 +1046,6 @@ Schedule_t	slFGruntRepelLand[] =
 
 DEFINE_CUSTOM_SCHEDULES( CHFGrunt )
 {
-	slFGruntFollow,
 	slFGruntFaceTarget,
 	slFGruntIdleStand,
 	slFGruntFail,
@@ -1182,7 +1165,7 @@ void CHFGrunt::DropMyItem(const char* entityName, const Vector& vecGunPos, const
 
 void CHFGrunt::DropMyItems(BOOL isGibbed)
 {
-	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
+	if (g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
 	{
 		Vector vecGunPos;
 		Vector vecGunAngles;
@@ -2157,7 +2140,7 @@ Schedule_t* CHFGrunt :: GetScheduleOfType ( int Type )
 		break;
 	case SCHED_TARGET_CHASE:
 		{
-			return slFGruntFollow;
+			return CTalkMonster::GetScheduleOfType(SCHED_FOLLOW);
 		}
 		break;
 	case SCHED_IDLE_STAND:
@@ -2889,6 +2872,7 @@ class CTorch : public CHFGrunt
 public:
 	void Spawn( void );
 	void Precache( void );
+	const char* DefaultDisplayName() { return "Human Torch"; }
 	void HandleAnimEvent( MonsterEvent_t* pEvent );
 	BOOL CheckRangeAttack1(float flDot, float flDist);
 	BOOL CheckRangeAttack2(float flDot, float flDist);
@@ -3048,7 +3032,7 @@ void CTorch::GibMonster()
 
 void CTorch::DropMyItems(BOOL isGibbed)
 {
-	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
+	if (g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
 	{
 		if (!isGibbed) {
 			pev->body = TORCH_GUN_NONE;
@@ -3621,7 +3605,7 @@ void CMedic::GibMonster()
 
 void CMedic::DropMyItems(BOOL isGibbed)
 {
-	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
+	if (g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
 	{
 		if (!isGibbed) {
 			SetBodygroup( MEDIC_GUN_GROUP, MEDIC_GUN_NONE );

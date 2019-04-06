@@ -38,13 +38,11 @@
 #include	"soundent.h"
 #include	"effects.h"
 #include	"customentity.h"
-#include    "game.h"
 #include	"decals.h"
 #include	"gamerules.h"
 #include	"hgrunt.h"
 #include	"mod_features.h"
-
-int g_fGruntQuestion;				// true if an idle grunt asked a question. Cleared when someone answers.
+#include	"gamerules.h"
 
 extern DLL_GLOBAL int		g_iSkillLevel;
 
@@ -89,33 +87,6 @@ extern DLL_GLOBAL int		g_iSkillLevel;
 #define		HGRUNT_AE_CAUGHT_ENEMY		( 10 ) // grunt established sight with an enemy (player only) that had previously eluded the squad.
 #define		HGRUNT_AE_DROP_GUN		( 11 ) // grunt (probably dead) is dropping his mp5.
 
-//=========================================================
-// monster-specific schedule types
-//=========================================================
-enum
-{
-	SCHED_GRUNT_SUPPRESS = LAST_COMMON_SCHEDULE + 1,
-	SCHED_GRUNT_ESTABLISH_LINE_OF_FIRE,// move to a location to set up an attack against the enemy. (usually when a friendly is in the way).
-	SCHED_GRUNT_COVER_AND_RELOAD,
-	SCHED_GRUNT_SWEEP,
-	SCHED_GRUNT_FOUND_ENEMY,
-	SCHED_GRUNT_REPEL,
-	SCHED_GRUNT_REPEL_ATTACK,
-	SCHED_GRUNT_REPEL_LAND,
-	SCHED_GRUNT_WAIT_FACE_ENEMY,
-	SCHED_GRUNT_TAKECOVER_FAILED,// special schedule type that forces analysis of conditions and picks the best possible schedule to recover from this type of failure.
-	SCHED_GRUNT_ELOF_FAIL
-};
-
-//=========================================================
-// monster-specific tasks
-//=========================================================
-enum 
-{
-	TASK_GRUNT_FACE_TOSS_DIR = LAST_COMMON_TASK + 1,
-	TASK_GRUNT_SPEAK_SENTENCE,
-};
-
 LINK_ENTITY_TO_CLASS( monster_human_grunt, CHGrunt )
 
 TYPEDESCRIPTION	CHGrunt::m_SaveData[] =
@@ -152,23 +123,6 @@ const char *CHGrunt::pGruntSentences[] =
 	"HG_ANSWER",
 };
 
-typedef enum
-{
-	HGRUNT_SENT_NONE = -1,
-	HGRUNT_SENT_GREN = 0,
-	HGRUNT_SENT_ALERT,
-	HGRUNT_SENT_MONSTER,
-	HGRUNT_SENT_COVER,
-	HGRUNT_SENT_THROW,
-	HGRUNT_SENT_CHARGE,
-	HGRUNT_SENT_TAUNT,
-	HGRUNT_SENT_CHECK,
-	HGRUNT_SENT_QUEST,
-	HGRUNT_SENT_IDLE,
-	HGRUNT_SENT_CLEAR,
-	HGRUNT_SENT_ANSWER,
-} HGRUNT_SENTENCE_TYPES;
-
 //=========================================================
 // Speak Sentence - say your cued up sentence.
 //
@@ -191,7 +145,7 @@ void CHGrunt::SpeakSentence( void )
 
 	if( FOkToSpeak() )
 	{
-		SENTENCEG_PlayRndSz( ENT( pev ), pGruntSentences[m_iSentence], HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch );
+		SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(m_iSentence), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
 		JustSpoke();
 	}
 }
@@ -215,7 +169,7 @@ int CHGrunt::IRelationship( CBaseEntity *pTarget )
 //=========================================================
 void CHGrunt::GibMonster( void )
 {
-	if( npc_dropweapons.value )
+	if( GetBodygroup( GUN_GROUP ) != GUN_NONE )
 	{
 		DropMyItems(TRUE);
 	}
@@ -234,7 +188,7 @@ void CHGrunt::DropMyItem(const char* entityName, const Vector& vecGunPos, const 
 
 void CHGrunt::DropMyItems(BOOL isGibbed)
 {
-	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
+	if (g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
 	{
 		Vector vecGunPos;
 		Vector vecGunAngles;
@@ -541,6 +495,53 @@ BOOL CHGrunt::CheckRangeAttack2Impl( float grenadeSpeed, float flDot, float flDi
 	return m_fThrowGrenade;
 }
 
+int CHGrunt::GetRangeAttack1Sequence()
+{
+	// grunt is either shooting standing or shooting crouched
+	if( FBitSet( pev->weapons, HGRUNT_9MMAR ) )
+	{
+		if( m_fStanding )
+		{
+			// get aimable sequence
+			return LookupSequence( "standing_mp5" );
+		}
+		else
+		{
+			// get crouching shoot
+			return LookupSequence( "crouching_mp5" );
+		}
+	}
+	else
+	{
+		if( m_fStanding )
+		{
+			// get aimable sequence
+			return LookupSequence( "standing_shotgun" );
+		}
+		else
+		{
+			// get crouching shoot
+			return LookupSequence( "crouching_shotgun" );
+		}
+	}
+}
+
+int CHGrunt::GetRangeAttack2Sequence()
+{
+	// grunt is going to a secondary long range attack. This may be a thrown
+	// grenade or fired grenade, we must determine which and pick proper sequence
+	if( pev->weapons & HGRUNT_HANDGRENADE )
+	{
+		// get toss anim
+		return LookupSequence( "throwgrenade" );
+	}
+	else
+	{
+		// get launch anim
+		return LookupSequence( "launchgrenade" );
+	}
+}
+
 //=========================================================
 // TraceAttack - make sure we're not taking it in the helmet
 //=========================================================
@@ -627,9 +628,9 @@ void CHGrunt::SetYawSpeed( void )
 
 void CHGrunt::IdleSound( void )
 {
-	if( FOkToSpeak() && ( g_fGruntQuestion || RANDOM_LONG( 0, 1 ) ) )
+	if( FOkToSpeak() && ( *GruntQuestionVar() || RANDOM_LONG( 0, 1 ) ) )
 	{
-		if( !g_fGruntQuestion )
+		if( !*GruntQuestionVar() )
 		{
 			// ask question or make statement
 			switch( RANDOM_LONG( 0, 2 ) )
@@ -637,12 +638,12 @@ void CHGrunt::IdleSound( void )
 			case 0:
 				// check in
 				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_CHECK), SentenceVolume(), ATTN_NORM, 0, m_voicePitch );
-				g_fGruntQuestion = 1;
+				*GruntQuestionVar() = 1;
 				break;
 			case 1:
 				// question
 				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_QUEST), SentenceVolume(), ATTN_NORM, 0, m_voicePitch );
-				g_fGruntQuestion = 2;
+				*GruntQuestionVar() = 2;
 				break;
 			case 2:
 				// statement
@@ -652,7 +653,7 @@ void CHGrunt::IdleSound( void )
 		}
 		else
 		{
-			switch( g_fGruntQuestion )
+			switch( *GruntQuestionVar() )
 			{
 			case 1:
 				// check in
@@ -663,7 +664,7 @@ void CHGrunt::IdleSound( void )
 				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_ANSWER), SentenceVolume(), ATTN_NORM, 0, m_voicePitch );
 				break;
 			}
-			g_fGruntQuestion = 0;
+			*GruntQuestionVar() = 0;
 		}
 		JustSpoke();
 	}
@@ -688,6 +689,11 @@ void CHGrunt::CheckAmmo( void )
 int CHGrunt::DefaultClassify( void )
 {
 	return CLASS_HUMAN_MILITARY;
+}
+
+const char* CHGrunt::ReverseRelationshipModel()
+{
+	return "models/hgruntf.mdl";
 }
 
 //=========================================================
@@ -824,9 +830,7 @@ void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 	{
 		case HGRUNT_AE_DROP_GUN:
 		{
-			if (npc_dropweapons.value) {
-				DropMyItems(FALSE);
-			}
+			DropMyItems(FALSE);
 		}
 			break;
 		case HGRUNT_AE_RELOAD:
@@ -892,7 +896,7 @@ void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 		{
 			if( FOkToSpeak() )
 			{
-				SENTENCEG_PlayRndSz( ENT( pev ), "HG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch );
+				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_ALERT), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
 				JustSpoke();
 			}
 
@@ -1158,6 +1162,12 @@ const char* CHGrunt::SentenceByNumber(int sentence)
 	return pGruntSentences[sentence];
 }
 
+int* CHGrunt::GruntQuestionVar()
+{
+	static int g_fGruntQuestion = 0; // true if an idle grunt asked a question. Cleared when someone answers.
+	return &g_fGruntQuestion;
+}
+
 Schedule_t* CHGrunt::ScheduleOnRangeAttack1()
 {
 	if( InSquad() )
@@ -1187,6 +1197,11 @@ Schedule_t* CHGrunt::ScheduleOnRangeAttack1()
 		// hide!
 		return GetScheduleOfType( SCHED_TAKE_COVER_FROM_ENEMY );
 	}
+}
+
+float CHGrunt::LimpHealth()
+{
+	return HGRUNT_LIMP_HEALTH;
 }
 
 //=========================================================
@@ -1825,50 +1840,13 @@ void CHGrunt::SetActivity( Activity NewActivity )
 	switch( NewActivity )
 	{
 	case ACT_RANGE_ATTACK1:
-		// grunt is either shooting standing or shooting crouched
-		if( FBitSet( pev->weapons, HGRUNT_9MMAR ) )
-		{
-			if( m_fStanding )
-			{
-				// get aimable sequence
-				iSequence = LookupSequence( "standing_mp5" );
-			}
-			else
-			{
-				// get crouching shoot
-				iSequence = LookupSequence( "crouching_mp5" );
-			}
-		}
-		else
-		{
-			if( m_fStanding )
-			{
-				// get aimable sequence
-				iSequence = LookupSequence( "standing_shotgun" );
-			}
-			else
-			{
-				// get crouching shoot
-				iSequence = LookupSequence( "crouching_shotgun" );
-			}
-		}
+		iSequence = GetRangeAttack1Sequence();
 		break;
 	case ACT_RANGE_ATTACK2:
-		// grunt is going to a secondary long range attack. This may be a thrown 
-		// grenade or fired grenade, we must determine which and pick proper sequence
-		if( pev->weapons & HGRUNT_HANDGRENADE )
-		{
-			// get toss anim
-			iSequence = LookupSequence( "throwgrenade" );
-		}
-		else
-		{
-			// get launch anim
-			iSequence = LookupSequence( "launchgrenade" );
-		}
+		iSequence = GetRangeAttack2Sequence();
 		break;
 	case ACT_RUN:
-		if( pev->health <= HGRUNT_LIMP_HEALTH )
+		if( pev->health <= LimpHealth() )
 		{
 			// limp!
 			iSequence = LookupActivity( ACT_RUN_HURT );
@@ -1879,7 +1857,7 @@ void CHGrunt::SetActivity( Activity NewActivity )
 		}
 		break;
 	case ACT_WALK:
-		if( pev->health <= HGRUNT_LIMP_HEALTH )
+		if( pev->health <= LimpHealth() )
 		{
 			// limp!
 			iSequence = LookupActivity( ACT_WALK_HURT );
@@ -2360,7 +2338,7 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	pEntity->pev->health = pev->health;
 	pEntity->pev->model = pev->model;
 	pGrunt->m_iClass = m_iClass;
-	pGrunt->m_bloodColor = m_bloodColor;
+	pGrunt->SetMyBloodColor(m_bloodColor);
 	pGrunt->m_gibModel = m_gibModel;
 	PrepareBeforeSpawn(pEntity);
 	DispatchSpawn(pEntity->edict());
