@@ -4,7 +4,7 @@
 HG_GREN0 hgrunt/clik(p120) grenade! clik
 HG_GREN1 hgrunt/(t30) clik take!(e75) cover!(s5) clik
 HG_GREN2 hgrunt/clik clik oh! shit! clik
-HG_GREN3 hgrunt/(p110 t40) clik(p120) get!(e78) down!(t30) clik 
+HG_GREN3 hgrunt/(p110 t40) clik(p120) get!(e78) down!(t30) clik
 HG_GREN4 hgrunt/clik(p110) (t40) of!(e75) god! clik(p110)
 HG_GREN5 hgrunt/clik no! clik
 HG_GREN6 hgrunt/clik move! clik(p120)
@@ -38,7 +38,7 @@ HG_THROW0 hgrunt/clik(p120) (t40) fire!(e90) in!(e90) the!(e60) hole!(e100) clik
 HG_THROW1 hgrunt/clik (t30) take!(e75) this!(e100 t0) clik
 HG_THROW2 hgrunt/clik (t35) fire in the(e50) hole clik(p120)
 HG_THROW3 hgrunt/clik(p110) (t35 e80) squad, stay down clik
- 
+
 // Taunt
 HG_TAUNT0 hgrunt/clik (t30 e75) uhh, we got heavy fire here clik
 HG_TAUNT1 hgrunt/clik(p120) (t40) roger, hold position clik
@@ -59,7 +59,7 @@ HG_IDLE1 hgrunt/gr_idle2
 HG_IDLE2 hgrunt/gr_idle3
 
 HG_QUEST0 hgrunt/clik (t25) stay(e80) alert people clik(p120)
-HG_QUEST1 hgrunt/clik (t30) radio(e75) check, over clik(p120) 
+HG_QUEST1 hgrunt/clik (t30) radio(e75) check, over clik(p120)
 HG_QUEST2 hgrunt/clik (t20) maintain lookout clik(p120)
 HG_QUEST3 hgrunt/clik(p110) (t30) squad, quiet(e75) down clik(p120)
 HG_QUEST4 hgrunt/clik(p120) (t30) hold position, clik
@@ -173,7 +173,7 @@ C1A2_7 deeoo deeoo security officer reports men down in sector d, medical help r
 C1A2_8 bizwarn bizwarn bizwarn extreme danger, all turret defense systems activated, sector d
 C1A2_9 deeoo (e95) turret repair personnel, to(e70) high security materials storage area(e100)
 C1A2_10 deeoo deeoo attention. electric shock hazard detected in administration center
-C1A2_11 buzwarn buzwarn. security officer reports medical emergency, administration center 
+C1A2_11 buzwarn buzwarn. security officer reports medical emergency, administration center
 
 // C1A3 intercom high security materials storage area sector d
 C1A3_0 (p130) buzwarn buzwarn (p98 e95) attention. all science personnel report topside for immediate questioning
@@ -225,7 +225,7 @@ C2A2_2 (p130) buzwarn buzwarn (p98 e95) medical team to sector e, echo team has 
 C2A2_3 (p130) buzwarn buzwarn (p98 e95) alert, military personnel authorized to prosecute gordon freeman with extreme force
 C2A2_3 (p130) buzwarn buzwarn (p98 e95) alert, military personnel, you are authorized to shoot the renegade on sight
 C2A2_4 (p130) buzwarn buzwarn (p98 e95) alert, squad in silo e, freeman may be operating inside your perimeter
-C2A2_5 deeoo deeoo launch control train activity detected 
+C2A2_5 deeoo deeoo launch control train activity detected
 C2A2_6 (p130) buzwarn buzwarn (p98 e95) medical team to sector e, echo team squad failed to reach checkpoint
 C2A2_7 deeoo deeoo satellite rocket loading bay reports status green
 
@@ -257,7 +257,7 @@ C2A4_ster bizwarn bizwarn sterilization system activated
 // C3A1 intercom central command and communications
 C3A1_0 buzwarn buzwarn warning primary antenna failure detected
 C3A1_1 (p130) buzwarn buzwarn (p98 e95) clear topside motorpool for emergency medical helicopter
-C3A1_2 (p130) buzwarn buzwarn (p98 e95) warning, topside armory security bypass detected 
+C3A1_2 (p130) buzwarn buzwarn (p98 e95) warning, topside armory security bypass detected
 C3A1_3 bizwarn bizwarn warning, radiation leak detected in primary antenna area
 C3A1_4 (p130) buzwarn buzwarn (p98 e95) search and destroy force kilo, central command reports hostile alien force inside perimeter
 C3A1_5 (p130) buzwarn buzwarn (p98 e95) message for gordon freeman, you will not escape this time
@@ -270,7 +270,7 @@ C3A1_9 bizwarn bizwarn fire control team to topside armory, checkpoint delta, to
 C3A2_0 bizwarn bizwarn warning, cross dimensional power field activity detected
 C3A2_1 bizwarn bizwarn warning, unauthorized biological force detected in cross dimensional power field
 C3A2_2 (p130) buzwarn buzwarn (p98 e95) all personnel evacuate lambda complex, extreme dimensional malfunction detected
-C3A2_3 bizwarn bizwarn bizwarn, unauthorized activity detected in main reactor core 
+C3A2_3 bizwarn bizwarn bizwarn, unauthorized activity detected in main reactor core
 C3A2_4 bizwarn bizwarn, danger, high energy exchange detected in radioactive materials handling bay
 C3A2_5 bizwarn bizwarn, biological force detected in primary coolant system
 C3A2_6 (p120) bizwarn bizwarn, (p100) lambda complex reports dimensional contamination
@@ -285,13 +285,13 @@ C3A2_core bizwarn bizwarn bizwarn, attention lambda complex personnel, primary c
 
 CTR0 zero
 CTR1 one second
-CTR2 two 
+CTR2 two
 CTR3 three seconds
-CTR4 four 
+CTR4 four
 CTR5 five seconds remaining
 CTR6 six
 CTR7 seven
-CTR8 eight 
+CTR8 eight
 CTR9 nine
 CTR10 ten seconds remaining
 CTR11 eleven
@@ -299,7 +299,7 @@ CTR12 twelve
 CTR13 thirteen
 CTR14 fourteen
 CTR15 fifteen seconds remaining
-CTR16 sixteen 
+CTR16 sixteen
 CTR17 seventeen
 CTR18 eighteen
 CTR19 nineteen
@@ -523,7 +523,7 @@ HEV_EGONPOWER fvox/blip get_egonpower acquired
 HEV_D00 fvox/fuzz fuzz(p130), power_restored
 HEV_D01 fvox/fuzz fuzz(p80), hev_shutdown
 
-HEV_0P fvox/fuzz fuzz, power_below five percent 
+HEV_0P fvox/fuzz fuzz, power_below five percent
 HEV_1P fvox/fuzz fuzz, power_restored(e30), ten percent
 HEV_2P fvox/fuzz fuzz, power_restored(e30), fifteen percent
 HEV_3P fvox/fuzz fuzz, power_restored(e30), twenty percent
@@ -570,7 +570,7 @@ HEV_E5 fvox/buzz, powermove_overload
 // detections
 
 HEV_DET0 fvox/blip blip blip, biohazard_detected
-HEV_DET1 fvox/blip blip blip, chemical_detected 
+HEV_DET1 fvox/blip blip blip, chemical_detected
 HEV_DET2 fvox/blip blip blip, radiation_detected
 HEV_DET3 fvox/blip blip blip, bio_reading
 HEV_DET4 fvox/blip blip blip, antitoxin_shot(e50), onehundred percent
@@ -1329,6 +1329,166 @@ GM_WISE gman/gman_wise
 GM_REGRET gman/gman_noreg
 GM_WONTWORK gman/gman_nowork
 
+// OTIS
+
+//When player asks Otis to follow:
+OT_OK0 otis/reputation
+OT_OK1 otis/live
+OT_OK2 otis/together
+OT_OK3 otis/letsgo
+OT_OK4 otis/diealone
+OT_OK5 otis/joinyou
+OT_OK6 otis/teamup
+
+OT_WAIT0 otis/help
+OT_WAIT1 otis/go_on
+OT_WAIT2 otis/slowingyoudown
+OT_WAIT3 otis/illwait
+OT_WAIT4 otis/seeya
+OT_WAIT5 otis/standguard
+OT_WAIT6 otis/notalone
+
+OT_HELLO0 otis/hiya
+OT_HELLO1 otis/hey
+
+OT_QUESTION0 otis/beer
+OT_QUESTION1 otis/rightdirection
+OT_QUESTION2 otis/getanyworse
+OT_QUESTION3 otis/gladof
+OT_QUESTION4 otis/somethingmoves
+OT_QUESTION5 otis/noise
+
+OT_ANSWER0 otis/yes
+OT_ANSWER1 otis/yessir
+OT_ANSWER2 otis/youbet
+OT_ANSWER3 otis/alright
+OT_ANSWER4 otis/yup
+OT_ANSWER5 otis/yeah
+OT_ANSWER6 otis/noway
+OT_ANSWER7 otis/doubt
+OT_ANSWER8 otis/breath
+OT_ANSWER9 otis/no
+OT_ANSWER10 otis/dontguess
+OT_ANSWER11 otis/dejavu
+OT_ANSWER12 otis/nope
+OT_ANSWER13 otis/nosir
+OT_ANSWER14 otis/dontask
+OT_ANSWER15 otis/suppose
+OT_ANSWER16 otis/hell
+OT_ANSWER17 otis/cantfigure
+OT_ANSWER18 otis/maybe
+OT_ANSWER19 otis/talkmuch
+
+OT_KILL0 otis/gotone
+OT_KILL1 otis/another
+OT_KILL2 otis/buttugly
+OT_KILL3 otis/seethat
+OT_KILL4 otis/close
+OT_KILL5 otis/firepl
+OT_KILL6 otis/bring
+
+OT_MAD0 otis/bully
+OT_MAD1 otis/somuch
+OT_MAD2 otis/dontmake
+OT_MAD3 otis/tomb
+
+OT_SHOT0 otis/friends
+OT_SHOT1 otis/chump
+OT_SHOT2 otis/watchit
+OT_SHOT3 otis/damn
+OT_SHOT4 otis/quitit
+OT_SHOT5 otis/onry
+
+OT_IDLE0 otis/mom
+OT_IDLE1 otis/aliens
+OT_IDLE2 otis/wuss
+OT_IDLE3 otis/bridge
+OT_IDLE4 otis/closet
+OT_IDLE5 otis/cousin
+OT_IDLE6 otis/mall
+
+OT_ATTACK0 otis/behind
+OT_ATTACK1 otis/leftovers
+OT_ATTACK2 otis/yourback
+OT_ATTACK3 otis/die
+
+OT_HEAR0 otis/hearsomething
+OT_HEAR1 otis/soundsbad
+
+OT_SMELL0 otis/ass
+OT_SMELL1 otis/chili
+OT_SMELL2 otis/janitor
+
+OT_CUREA otis/scar
+OT_CUREB otis/scar
+OT_CUREC otis/medic
+
+OT_SCARED0 otis/donthurtem
+OT_SCARED1 otis/leavealone
+
+OT_WOUND0 otis/imhit
+OT_WOUND1 otis/virgin
+
+OT_MORTAL0 otis/imdead
+OT_MORTAL1 otis/hitbad
+
+OT_MISC0 otis/stupidmachines
+OT_MISC1 otis/quarter
+
+OT_POK0 otis/janitor
+OT_POK1 otis/beer
+OT_POK2 otis/talkmuch
+OT_POK3 otis/dontask
+
+// SHOCK TROOPER
+ST_GREN0 shocktrooper/kss kyur kiml
+ST_ALERT0 shocktrooper/dit dit
+ST_ALERT1 shocktrooper/dit kss kss
+ST_ALERT2 shocktrooper/kss dit dit kss
+ST_MONST0 shocktrooper/pur thirv pur kss kss
+ST_COVER0 shocktrooper/ka ga blis blis ka
+ST_THROW0 shocktrooper/kss wirt ras
+ST_TAUNT0 shocktrooper/kiml kiml
+ST_CHARGE0 shocktrooper/mub puh mub dit dit
+ST_IDLE0 shocktrooper/ku kur ku
+ST_QUEST0 shocktrooper/puh pur hyu ka
+ST_ANSWER0 shocktrooper/dup dup
+ST_CLEAR0 shocktrooper/dup blis dup
+ST_CHECK0 shocktrooper/kss kss
+
+// ROBOT GRUNTS
+RB_GREN0 vox/danger bizwarn
+RB_GREN1 vox/dadeda emergency evacuate
+
+RB_ALERT0 vox/target acquired
+RB_ALERT1 vox/alert, unauthorized personnel
+
+RB_MONST0 vox/alert
+RB_MONST1 vox/target acquired
+
+RB_COVER0 vox/dadeda
+RB_COVER1 vox/bizwarn
+
+RB_THROW0 vox/buzzwarn grenade activated
+
+RB_TAUNT0 vox/die dirt bag
+RB_TAUNT1 vox/mister, i will kit your ass
+
+RB_CHARGE0 vox/accelerating
+RB_CHARGE1 vox/engage
+
+RB_QUEST0 vox/status
+RB_QUEST1 vox/question, status
+
+RB_ANSWER0 vox/green
+RB_ANSWER1 vox/status is green
+
+RB_CLEAR0 vox/search ing for hostile force
+RB_CLEAR1 vox/search ing sector
+
+RB_CHECK0 vox/status report
+RB_CHECK1 vox/check ing communication relay
+
 //Player's phrases
 
 // Player Barney
@@ -1376,7 +1536,7 @@ PBA_TEAMUP2 barney/ba_stare3
 
 PBA_WAIT0 barney/c3a2_ba_stay
 PBA_WAIT1 barney/stophere
-PBA_WAIT1 barney/ba_generic0
+PBA_WAIT2 barney/ba_generic0
 
 PBA_HELPME0 barney/ba_needhelp0
 PBA_HELPME1 barney/ba_needhelp1
@@ -1508,7 +1668,7 @@ PSC_WAIT0 scientist/letyouin(e42)
 PSC_WAIT1 scientist/waithere
 PSC_WAIT2 scientist/delayagain(e49)
 
-PSC_HELPME0 scientist/sc_hello3(e45)
+PSC_HELPME0 scientist/sc_hello3(e43)
 
 PSC_NICEJOB0 scientist/fascinating
 PSC_NICEJOB1 scientist/c1a4_sci_pwr(e18)
@@ -1704,10 +1864,9 @@ PGI_ENEMY1 gina/gina_attack2
 PGI_LETSGO gina/gina_use2
 
 PGI_LEADON0 gina/gina_use1
-PGI_LEADON1 gina/gina_use1
-PGI_LEADON2 gina/gina_use3
-PGI_LEADON3 gina/gina_use4
-PGI_LEADON4 gina/gina_use5
+PGI_LEADON1 gina/gina_use3
+PGI_LEADON2 gina/gina_use4
+PGI_LEADON3 gina/gina_use5
 
 PGI_WAIT0 gina/gina_stop0
 PGI_WAIT1 gina/gina_unuse2(s26)
