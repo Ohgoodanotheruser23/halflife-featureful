@@ -6362,8 +6362,6 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 		// item we want to drop and hit a BREAK;  pWeapon is the item.
 		if( pWeapon && ((pszItemName && !strcmp( pszItemName, STRING( pWeapon->pev->classname ) )) || pWeapon == m_pActiveItem) )
 		{
-			if( !g_pGameRules->GetNextBestWeapon( this, pWeapon ) )
-				return; // can't drop the item they asked for, may be our last item or something we can't holster
 			DropPlayerItemImpl(pWeapon);
 			return;// we're done, so stop searching with the FOR loop.
 		}
@@ -6414,7 +6412,8 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 	if (mp_l4mcoop.value && (m_afPhysicsFlags & PFLAG_ONBARNACLE))
 		return;
 
-	g_pGameRules->GetNextBestWeapon( this, pWeapon );
+	if (!g_pGameRules->GetNextBestWeapon( this, pWeapon ))
+		return;
 
 	UTIL_MakeVectors( pev->angles ); 
 

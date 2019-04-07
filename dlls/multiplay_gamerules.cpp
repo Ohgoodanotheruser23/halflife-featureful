@@ -747,7 +747,7 @@ BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWea
 	int iBestWeight;
 	int i;
 
-	iBestWeight = -1;// no weapon lower than -1 can be autoswitched to
+	iBestWeight = -100;
 	pBest = NULL;
 
 	if( !pCurrentWeapon->CanHolster() )
@@ -762,7 +762,7 @@ BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWea
 
 		if ( pCheck )
 		{
-			if( pCheck->iWeight() > -1 && pCheck->iWeight() == pCurrentWeapon->iWeight() && pCheck != pCurrentWeapon )
+			if( pCheck->iWeight() == pCurrentWeapon->iWeight() && pCheck != pCurrentWeapon )
 			{
 				// this weapon is from the same category. 
 				if ( pCheck->CanDeploy() )
