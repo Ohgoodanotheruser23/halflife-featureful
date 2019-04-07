@@ -3500,9 +3500,6 @@ BOOL CBaseMonster::GetEnemy( void )
 //=========================================================
 CBaseEntity *CBaseMonster::DropItem( const char *pszItemName, const Vector &vecPos, const Vector &vecAng )
 {
-	if (!npc_dropweapons.value) {
-		return NULL;
-	}
 	CBaseEntity *pItem = CBaseEntity::Create( pszItemName, vecPos, vecAng, edict() );
 
 	if( pItem )

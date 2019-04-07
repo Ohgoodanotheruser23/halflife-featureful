@@ -5605,7 +5605,6 @@ int CBasePlayer::GiveAmmo(int iCount, const char *szName)
 						weapon->pev->spawnflags |= SF_NORESPAWN;
 						weapon->m_iDefaultAmmo = iAdd;
 						if (AddPlayerItem(weapon)) {
-							weapon->AttachToPlayer(this);
 							addedAsWeapon = true;
 						}
 						else
