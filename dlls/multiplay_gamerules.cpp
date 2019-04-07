@@ -247,6 +247,8 @@ struct PlayerState
 	char currentWeapon[32];
 	char nickname[32];
 	char uid[33];
+	bool hasSuit;
+	bool hasLongjump;
 };
 
 static PlayerState playerStates[32];
@@ -288,9 +290,12 @@ void SavePlayerStates()
 			strncpy(state->uid, GetAuthID(pPlayer), sizeof(state->uid) - 1);
 			strncpy(state->nickname, STRING(pPlayer->pev->netname), sizeof(state->nickname) - 1);
 
+			state->hasSuit = (pPlayer->pev->weapons & ( 1 << WEAPON_SUIT )) != 0;
 			state->health = pPlayer->pev->health;
 			state->armor = pPlayer->pev->armorvalue;
 			CBasePlayer* player = (CBasePlayer*)pPlayer;
+			state->hasLongjump = player->m_fLongJump;
+
 			if (player->m_pActiveItem != 0)
 			{
 				strncpy(state->currentWeapon, STRING(player->m_pActiveItem->pev->classname), sizeof(state->currentWeapon) - 1);
@@ -323,6 +328,13 @@ bool RestorePlayerState(CBasePlayer* player)
 		{
 			player->pev->health = state->health;
 			player->pev->armorvalue = state->armor;
+			if (state->hasSuit)
+				player->pev->weapons |= ( 1 << WEAPON_SUIT );
+			if (state->hasLongjump)
+			{
+				player->m_fLongJump = TRUE;
+				g_engfuncs.pfnSetPhysicsKeyValue( player->edict(), "slj", "1" );
+			}
 
 			int k;
 			for( k = 0; k < MAX_WEAPONS; ++k)
@@ -335,9 +347,7 @@ bool RestorePlayerState(CBasePlayer* player)
 						pWeapon->pev->spawnflags |= SF_NORESPAWN;
 						pWeapon->m_iDefaultAmmo = 0;
 						pWeapon->m_iClip = state->clips[k];
-						if (player->AddPlayerItem(pWeapon)) {
-							pWeapon->AttachToPlayer(player);
-						}
+						player->AddPlayerItem(pWeapon);
 					}
 				}
 			}
@@ -990,10 +1000,11 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 		UTIL_BecomeSpectator(pPlayer);
 		return;
 	}
-	pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
 
 	if (RestorePlayerState(pPlayer))
 		return;
+
+	pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
 
 	addDefault = TRUE;
 
