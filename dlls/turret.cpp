@@ -30,7 +30,6 @@
 #include "monsters.h"
 #include "weapons.h"
 #include "effects.h"
-#include "game.h"
 
 extern Vector VecBModelOrigin( entvars_t* pevBModel );
 
@@ -1023,7 +1022,7 @@ int CBaseTurret::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 		flDamage /= 10.0;
 
 	AddScoreForDamage(pevAttacker, this, flDamage);
-	
+
 	pev->health -= flDamage;
 	if( pev->health <= 0 )
 	{
@@ -1245,12 +1244,12 @@ int CSentry::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 		SetUse( NULL );
 		pev->nextthink = gpGlobals->time + 0.1;
 	}
-	
+
 	AddScoreForDamage(pevAttacker, this, flDamage);
 
 	pev->health -= flDamage;
 	if( pev->health <= 0 )
-	{	
+	{
 		pev->health = 0;
 		pev->takedamage = DAMAGE_NO;
 		pev->dmgtime = gpGlobals->time;

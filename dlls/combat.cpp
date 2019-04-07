@@ -894,24 +894,27 @@ int CBaseMonster::TakeHealth( float flHealth, int bitsDamageType )
 
 void AddScoreForDamage(entvars_t *pevAttacker, CBaseEntity* victim, const float damage)
 {
-	if (!mp_l4mcoop.value) {
+	if (!g_pGameRules->IsCoOp() || !dmgperscore.value) {
 		return;
 	}
 	CBaseEntity *attacker = CBaseEntity::Instance( pevAttacker );
 	if (attacker && attacker->IsPlayer()) {
 		const float dmg = damage > victim->pev->health ? victim->pev->health : damage;
-		const float score = dmg / dmgperscore.value; 
+		const float score = dmg / dmgperscore.value;
 
 		if (victim->IsPlayer()) {
 			if (victim != attacker && g_pGameRules->PlayerRelationship(attacker, victim) == GR_TEAMMATE) {
 				attacker->AddFloatPoints(-score * allydmgpenalty.value, true);
 			}
 		} else {
-			const int monsterClass = victim->Classify();
-			if (monsterClass == CLASS_HUMAN_PASSIVE || monsterClass == CLASS_PLAYER_ALLY) {
-				attacker->AddFloatPoints(-score * allydmgpenalty.value, true);
-			} else {
-				attacker->AddFloatPoints(score, true);
+			CBaseMonster* monster = victim->MyMonsterPointer();
+			if (monster)
+			{
+				if (monster->IDefaultRelationship(CLASS_PLAYER) == R_AL) {
+					attacker->AddFloatPoints(-score * allydmgpenalty.value, true);
+				} else {
+					attacker->AddFloatPoints(score, true);
+				}
 			}
 		}
 	}

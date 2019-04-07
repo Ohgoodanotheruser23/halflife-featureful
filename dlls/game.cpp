@@ -50,9 +50,12 @@ cvar_t decalfrequency	= { "decalfrequency","30", FCVAR_SERVER };
 cvar_t teamlist		= { "mp_teamlist","hgrunt;scientist", FCVAR_SERVER };
 cvar_t teamoverride	= { "mp_teamoverride","1" };
 cvar_t defaultteam	= { "mp_defaultteam","0" };
+
 cvar_t allowmonsters	= { "mp_allowmonsters","0", FCVAR_SERVER };
 cvar_t allowmonsterinfo = { "mp_allowmonsterinfo","0", FCVAR_SERVER };
 cvar_t npc_dropweapons = { "npc_dropweapons", "1", FCVAR_SERVER };
+cvar_t dmgperscore = { "mp_dmgperscore", "50", FCVAR_SERVER };
+cvar_t allydmgpenalty = { "mp_allydmgpenalty", "2", FCVAR_SERVER };
 
 cvar_t survival = { "mp_survival", "1", FCVAR_SERVER };
 cvar_t survival_restart_number = { "mp_survival_restart_number", "4", FCVAR_SERVER };
@@ -72,9 +75,9 @@ cvar_t char_phrases = { "char_phrases","1", FCVAR_SERVER };
 cvar_t minpanicdelay = { "mp_minpanicdelay", "10", FCVAR_SERVER };
 cvar_t defaultpanicdelay = { "mp_defaultpanicdelay", "30", FCVAR_SERVER };
 
-cvar_t dmgperscore = { "mp_dmgperscore", "50", FCVAR_SERVER };
-cvar_t allydmgpenalty = { "mp_allydmgpenalty", "2", FCVAR_SERVER };
 cvar_t mp_l4mcoop = { "mp_l4mcoop", "1", FCVAR_SERVER };
+
+cvar_t keepinventory	= { "mp_keepinventory","1", FCVAR_SERVER }; // keep inventory across level transitions in multiplayer coop
 
 // Engine Cvars
 cvar_t *g_psv_gravity = NULL;
@@ -900,9 +903,12 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &teamlist );
 	CVAR_REGISTER( &teamoverride );
 	CVAR_REGISTER( &defaultteam );
+
 	CVAR_REGISTER( &allowmonsters );
 	CVAR_REGISTER( &allowmonsterinfo );
 	CVAR_REGISTER( &npc_dropweapons );
+	CVAR_REGISTER( &dmgperscore );
+	CVAR_REGISTER( &allydmgpenalty );
 
 	CVAR_REGISTER( &survival );
 	CVAR_REGISTER( &survival_warmup_time );
@@ -916,11 +922,11 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &char_phrases );
 	CVAR_REGISTER( &minpanicdelay );
 	CVAR_REGISTER( &defaultpanicdelay);
-	CVAR_REGISTER( &dmgperscore );
-	CVAR_REGISTER( &allydmgpenalty );
 	CVAR_REGISTER( &mp_l4mcoop );
 
 	CVAR_REGISTER( &mp_semclip );
+
+	CVAR_REGISTER( &keepinventory );
 
 // REGISTER CVARS FOR SKILL LEVEL STUFF
 	// Agrunt

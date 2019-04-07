@@ -163,7 +163,7 @@ public:
 
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame( void ) {}
-	
+
 	virtual bool IsTimeForPanic() { return false; }
 	virtual void DelayPanic( float delay ) {}
 

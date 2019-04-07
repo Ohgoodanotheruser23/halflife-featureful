@@ -251,7 +251,7 @@ struct PlayerState
 	bool hasLongjump;
 };
 
-static PlayerState playerStates[32];
+static PlayerState g_playerStates[32];
 
 const char *GetAuthID( CBaseEntity *pPlayer )
 {
@@ -286,7 +286,7 @@ void SavePlayerStates()
 		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
 		if (pPlayer && pPlayer->IsPlayer() && pPlayer->IsAlive())
 		{
-			PlayerState* state = &playerStates[j];
+			PlayerState* state = &g_playerStates[j];
 			strncpy(state->uid, GetAuthID(pPlayer), sizeof(state->uid) - 1);
 			strncpy(state->nickname, STRING(pPlayer->pev->netname), sizeof(state->nickname) - 1);
 
@@ -321,9 +321,9 @@ bool RestorePlayerState(CBasePlayer* player)
 {
 	const char* uid = GetAuthID(player);
 	const char* nickname = STRING(player->pev->netname);
-	for (int i=0; i<ARRAYSIZE(playerStates); ++i)
+	for (int i=0; i<ARRAYSIZE(g_playerStates); ++i)
 	{
-		PlayerState* state = &playerStates[i];
+		PlayerState* state = &g_playerStates[i];
 		if (strcmp(uid, state->uid) == 0 && strcmp(nickname, state->nickname) == 0)
 		{
 			player->pev->health = state->health;
@@ -363,7 +363,7 @@ bool RestorePlayerState(CBasePlayer* player)
 
 void ClearPlayerStates()
 {
-	memset(playerStates, 0, sizeof(playerStates));
+	memset(g_playerStates, 0, sizeof(g_playerStates));
 }
 
 static char g_changelevelName[cchMapNameMost];
@@ -389,7 +389,7 @@ CHalfLifeMultiplay::CHalfLifeMultiplay()
 	{
 		if (!FStrEq(STRING(gpGlobals->mapname), g_changelevelName))
 		{
-			g_changelevelName[0] = '\0';
+			memset(g_changelevelName,0,sizeof(g_changelevelName));
 			ClearPlayerStates();
 		}
 	}
@@ -1001,7 +1001,7 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 		return;
 	}
 
-	if (RestorePlayerState(pPlayer))
+	if (IsCoOp() && keepinventory.value && RestorePlayerState(pPlayer))
 		return;
 
 	pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
@@ -1628,8 +1628,11 @@ void CHalfLifeMultiplay::DelayPanic(float delay)
 
 void CHalfLifeMultiplay::BeforeChangeLevel(const char *nextMap)
 {
-	strncpy(g_changelevelName, nextMap, sizeof(g_changelevelName)-1);
-	SavePlayerStates();
+	if (IsCoOp() && keepinventory.value)
+	{
+		strncpy(g_changelevelName, nextMap, sizeof(g_changelevelName)-1);
+		SavePlayerStates();
+	}
 }
 
 //=========================================================

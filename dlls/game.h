@@ -37,6 +37,7 @@ extern cvar_t hevcharger_rechargetime;
 
 extern cvar_t selfgauss;
 extern cvar_t satchelfix;
+extern cvar_t allowgaussjump;
 
 extern cvar_t forcerespawn;
 extern cvar_t flashlight;
@@ -45,15 +46,18 @@ extern cvar_t decalfrequency;
 extern cvar_t teamlist;
 extern cvar_t teamoverride;
 extern cvar_t defaultteam;
+
 extern cvar_t allowmonsters;
 extern cvar_t allowmonsterinfo;
 extern cvar_t npc_dropweapons;
+extern cvar_t dmgperscore;
+extern cvar_t allydmgpenalty;
+
+extern cvar_t keepinventory;
 
 extern cvar_t survival;
 extern cvar_t survival_warmup_time;
 extern cvar_t survival_restart_number;
-
-extern cvar_t allowgaussjump;
 
 extern cvar_t use_to_take;
 extern cvar_t char_phrases;
@@ -61,8 +65,6 @@ extern cvar_t char_phrases;
 extern cvar_t minpanicdelay;
 extern cvar_t defaultpanicdelay;
 
-extern cvar_t dmgperscore;
-extern cvar_t allydmgpenalty;
 extern cvar_t mp_l4mcoop;
 
 extern cvar_t mp_semclip;
