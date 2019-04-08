@@ -44,6 +44,8 @@ extern int g_teamplay;
 #define ITEM_RESPAWN_TIME	30
 #define WEAPON_RESPAWN_TIME	20
 #define AMMO_RESPAWN_TIME	20
+#define HEVCHARGER_RESPAWN_TIME 30
+#define HEALTHCHARGER_RESPAWN_TIME 30
 
 float g_flIntermissionStartTime = 0;
 
@@ -341,13 +343,22 @@ bool RestorePlayerState(CBasePlayer* player)
 			{
 				if (*state->weapons[k])
 				{
-					CBasePlayerWeapon *pWeapon = (CBasePlayerWeapon*)CBaseEntity::Create(state->weapons[k], player->pev->origin, player->pev->angles );
-					if (pWeapon)
+					CBaseEntity *pCreated = CBaseEntity::Create(state->weapons[k], player->pev->origin, player->pev->angles );
+					if (pCreated)
 					{
-						pWeapon->pev->spawnflags |= SF_NORESPAWN;
-						pWeapon->m_iDefaultAmmo = 0;
-						pWeapon->m_iClip = state->clips[k];
-						player->AddPlayerItem(pWeapon);
+						CBasePlayerWeapon* pWeapon = pCreated->MyWeaponPointer();
+						if (pWeapon)
+						{
+							pWeapon->pev->spawnflags |= SF_NORESPAWN;
+							pWeapon->m_iDefaultAmmo = 0;
+							pWeapon->m_iClip = state->clips[k];
+							player->AddPlayerItem(pWeapon);
+						}
+						else
+						{
+							ALERT(at_console, "RestorePlayerState: expected weapon, but created entity is not a weapon\n");
+							UTIL_Remove(pCreated);
+						}
 					}
 				}
 			}
@@ -367,6 +378,128 @@ void ClearPlayerStates()
 }
 
 static char g_changelevelName[cchMapNameMost];
+
+struct AmmoEnt
+{
+	char entName[32];
+	short count;
+};
+
+struct OverrideCvar
+{
+	char name[32];
+	char value[32];
+};
+
+struct MapConfig
+{
+	char weapons[MAX_WEAPONS][32];
+	AmmoEnt ammo[MAX_AMMO_SLOTS];
+	OverrideCvar overrideCvars[32];
+	int cvarCount;
+
+	int weaponsCount;
+	int ammoCount;
+
+	int starthealth;
+	int startarmor;
+
+	bool nomedkit;
+	bool nosuit;
+	bool longjump;
+
+	bool valid;
+};
+
+MapConfig g_mapConfig;
+
+bool ReadMapConfig(const char* mapName)
+{
+	memset(&g_mapConfig, 0, sizeof(g_mapConfig));
+	char fileName[cchMapNameMost + 8];
+	sprintf(fileName, "maps/%s.cfg", mapName);
+	int filePos = 0, fileSize;
+	byte *pMemFile = g_engfuncs.pfnLoadFileForMe( fileName, &fileSize );
+	if( !pMemFile )
+		return false;
+	char buffer[512];
+	memset( buffer, 0, sizeof(buffer) );
+	while( memfgets( pMemFile, fileSize, filePos, buffer, sizeof(buffer) ) != NULL )
+	{
+		int i = 0;
+		while( buffer[i] && buffer[i] == ' ' )
+			i++;
+		if( !buffer[i] || buffer[i] == '\n' )
+			continue;
+		if( buffer[i] == '/' || !isalpha( buffer[i] ) )
+			continue;
+		int j = i;
+		while( buffer[j] && buffer[j] != ' ' && buffer[j] != '\n' )
+			j++;
+		char* key = buffer+i;
+		char* value = buffer+j;
+		if (buffer[j] && buffer[j] != '\n')
+		{
+			value = buffer+j+1;
+			while(*value && *value == ' ')
+				value++;
+			int k = 0;
+			while( value[k] && value[k] != ' ' && value[k] != '\n' )
+				k++;
+			value[k] = '\0';
+		}
+
+		key[j-i] = '\0';
+		if (strncmp(key, "weapon_", 7) == 0)
+		{
+			if (g_mapConfig.weaponsCount < MAX_WEAPONS)
+				strncpy(g_mapConfig.weapons[g_mapConfig.weaponsCount++], key, 31);
+		}
+		else if (strncmp(key, "ammo_", 5) == 0)
+		{
+			if (g_mapConfig.ammoCount < MAX_AMMO_SLOTS)
+			{
+				strncpy(g_mapConfig.ammo[g_mapConfig.ammoCount].entName, key, 31);
+				g_mapConfig.ammo[g_mapConfig.ammoCount].count = atoi(value);
+				if (!g_mapConfig.ammo[g_mapConfig.ammoCount].count)
+					g_mapConfig.ammo[g_mapConfig.ammoCount].count = 1;
+				g_mapConfig.ammoCount++;
+			}
+		}
+		else if (strncmp(key, "nomedkit", 8) == 0)
+		{
+			g_mapConfig.nomedkit = true;
+		}
+		else if (strncmp(key, "nosuit", 6) == 0)
+		{
+			g_mapConfig.nosuit = true;
+		}
+		else if (strncmp(key, "item_longjump", 6) == 0)
+		{
+			g_mapConfig.longjump = true;
+		}
+		else if (strncmp(key, "startarmor", 10) == 0)
+		{
+			g_mapConfig.startarmor = atoi(value);
+		}
+		else if (strncmp(key, "starthealth", 11) == 0)
+		{
+			g_mapConfig.starthealth = atoi(value);
+		}
+		else if (strncmp(key, "sv_", 3) == 0 || strncmp(key, "mp_", 3) == 0)
+		{
+			if (g_mapConfig.cvarCount < 32)
+			{
+				strncpy(g_mapConfig.overrideCvars[g_mapConfig.cvarCount].name, key, 31);
+				strncpy(g_mapConfig.overrideCvars[g_mapConfig.cvarCount].value, value, 31);
+				g_mapConfig.cvarCount++;
+			}
+		}
+	}
+	g_engfuncs.pfnFreeFile( pMemFile );
+	g_mapConfig.valid = true;
+	return true;
+}
 
 //*********************************************************
 // Rules for the half-life multiplayer game.
@@ -431,6 +564,17 @@ CHalfLifeMultiplay::CHalfLifeMultiplay()
 			ALERT( at_console, "Executing listen server config file\n" );
 			sprintf( szCommand, "exec %s\n", lservercfgfile );
 			SERVER_COMMAND( szCommand );
+		}
+	}
+
+	if (IsCoOp() && ReadMapConfig(STRING(gpGlobals->mapname)))
+	{
+		for (int k=0; k<g_mapConfig.cvarCount; ++k)
+		{
+			const char* name  = g_mapConfig.overrideCvars[k].name;
+			const char* value = g_mapConfig.overrideCvars[k].value;
+			ALERT(at_aiconsole, "Setting %s to %s\n", name, value);
+			CVAR_SET_STRING(name, value);
 		}
 	}
 }
@@ -774,7 +918,7 @@ BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWea
 		{
 			if( pCheck->iWeight() == pCurrentWeapon->iWeight() && pCheck != pCurrentWeapon )
 			{
-				// this weapon is from the same category. 
+				// this weapon is from the same category.
 				if ( pCheck->CanDeploy() )
 				{
 					if ( pPlayer->SwitchWeapon( pCheck ) )
@@ -787,8 +931,8 @@ BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWea
 			{
 				//ALERT ( at_console, "Considering %s\n", STRING( pCheck->pev->classname ) );
 				// we keep updating the 'best' weapon just in case we can't find a weapon of the same weight
-				// that the player was using. This will end up leaving the player with his heaviest-weighted 
-				// weapon. 
+				// that the player was using. This will end up leaving the player with his heaviest-weighted
+				// weapon.
 				if( pCheck->CanDeploy() )
 				{
 					// if this weapon is useable, flag it as the best
@@ -799,10 +943,10 @@ BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWea
 		}
 	}
 
-	// if we make it here, we've checked all the weapons and found no useable 
-	// weapon in the same catagory as the current weapon. 
-	
-	// if pBest is null, we didn't find ANYTHING. Shouldn't be possible- should always 
+	// if we make it here, we've checked all the weapons and found no useable
+	// weapon in the same catagory as the current weapon.
+
+	// if pBest is null, we didn't find ANYTHING. Shouldn't be possible- should always
 	// at least get the crowbar, but ya never know.
 	if( !pBest )
 	{
@@ -993,7 +1137,8 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 {
 	pPlayer->m_flKilledTime = gpGlobals->time;
 
-	BOOL		addDefault;
+	BOOL		addDefault = TRUE;
+	bool giveSuit = true;
 	CBaseEntity	*pWeaponEntity = NULL;
 
 	if (survival.value && m_survivalState == SurvivalEnabled && !pPlayer->m_bShouldBeRescued) {
@@ -1004,9 +1149,48 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 	if (IsCoOp() && keepinventory.value && RestorePlayerState(pPlayer))
 		return;
 
-	pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
+	if (IsCoOp() && g_mapConfig.valid)
+	{
+		int i;
+		for (i=0; i<g_mapConfig.weaponsCount; ++i)
+		{
+			pPlayer->GiveNamedItem(g_mapConfig.weapons[i]);
+		}
+		for (i=0; i<g_mapConfig.ammoCount; ++i)
+		{
+			int j;
+			for (j=0; j<g_mapConfig.ammo[i].count; ++j)
+			{
+				pPlayer->GiveNamedItem(g_mapConfig.ammo[i].entName);
+			}
+		}
+		if (g_mapConfig.nosuit)
+			giveSuit = false;
 
-	addDefault = TRUE;
+#if FEATURE_MEDKIT
+		if (!pPlayer->WeaponById(WEAPON_MEDKIT) && !g_mapConfig.nomedkit)
+		{
+			pPlayer->GiveNamedItem("weapon_medkit");
+		}
+#endif
+		if (g_mapConfig.startarmor > 0)
+			pPlayer->pev->armorvalue = Q_min(g_mapConfig.startarmor, MAX_NORMAL_BATTERY);
+		if (g_mapConfig.starthealth > 0 && g_mapConfig.starthealth < pPlayer->pev->max_health)
+			pPlayer->pev->health = g_mapConfig.starthealth;
+
+		if (g_mapConfig.longjump)
+		{
+			pPlayer->m_fLongJump = TRUE;
+			g_engfuncs.pfnSetPhysicsKeyValue( pPlayer->edict(), "slj", "1" );
+		}
+
+		g_pGameRules->GetNextBestWeapon(pPlayer, pPlayer->m_pActiveItem);
+
+		addDefault = FALSE;
+	}
+
+	if (giveSuit)
+		pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
 
 	while( ( pWeaponEntity = UTIL_FindEntityByClassname( pWeaponEntity, "game_player_equip" ) ) )
 	{
@@ -1521,12 +1705,12 @@ Vector CHalfLifeMultiplay::VecAmmoRespawnSpot( CBasePlayerAmmo *pAmmo )
 //=========================================================
 float CHalfLifeMultiplay::FlHealthChargerRechargeTime( void )
 {
-	return healthcharger_rechargetime.value < 0 ? 60 : healthcharger_rechargetime.value;
+	return healthcharger_rechargetime.value == -2 ? HEALTHCHARGER_RESPAWN_TIME : healthcharger_rechargetime.value;
 }
 
 float CHalfLifeMultiplay::FlHEVChargerRechargeTime( void )
 {
-	return hevcharger_rechargetime.value < 0 ? 30 : hevcharger_rechargetime.value;
+	return hevcharger_rechargetime.value == -2 ? HEVCHARGER_RESPAWN_TIME : hevcharger_rechargetime.value;
 }
 
 //=========================================================

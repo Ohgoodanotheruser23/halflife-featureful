@@ -291,7 +291,6 @@ typedef struct
 	bool isExhaustible;
 } AmmoInfo;
 
-// inventory items that
 class CBasePlayerWeapon : public CBaseAnimating
 {
 public:
@@ -513,7 +512,7 @@ public:
 	void KeyValue( KeyValueData *pkvd );
 	BOOL IsEmpty( void );
 	void SetObjectCollisionBox( void );
-	
+
 	int ObjectCaps();
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void TouchOrUse( CBaseEntity* other );
@@ -1033,7 +1032,7 @@ public:
 	int AddToPlayer( CBasePlayer *pPlayer );
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
-	int AddDuplicate( CBasePlayerWeapon *pOriginal );
+	int AddDuplicate(CBasePlayerWeapon *pOriginal );
 	BOOL CanDeploy( void );
 	BOOL Deploy( void );
 	BOOL IsUseable( void );
@@ -1278,7 +1277,6 @@ public:
 	void Spawn( void );
 	void EndAttack( void );
 
-	int iItemSlot( void ) { return 1; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer* pPlayer );
 	BOOL Deploy();
@@ -1327,13 +1325,6 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
-	int iItemSlot(void) {
-#if FEATURE_OPFOR
-		return 6;
-#else
-		return 3;
-#endif
-	}
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 
@@ -1380,6 +1371,7 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
+
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 	void PrimaryAttack(void);
@@ -1427,14 +1419,6 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot( void )
-	{
-#if FEATURE_OPFOR
-		return 6;
-#else
-		return 2;
-#endif
-	}
 
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );
@@ -1481,14 +1465,6 @@ class CShockrifle : public CHgun
 public:
 	void Spawn(void);
 	void Precache(void);
-	int iItemSlot(void)
-	{
-#if FEATURE_OPFOR
-		return 7;
-#else
-		return 4;
-#endif
-	}
 
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
@@ -1529,7 +1505,6 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
-	int iItemSlot(void) { return 1; }
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -1593,14 +1568,6 @@ public:
 
 	void Spawn( void );
 	void Precache( void );
-	int iItemSlot()
-	{
-#if FEATURE_OPFOR
-		return 7;
-#else
-		return 2;
-#endif
-	}
 
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );

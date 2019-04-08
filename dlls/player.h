@@ -288,7 +288,7 @@ public:
 	void AddPoints( int score, BOOL bAllowNegativeScore );
 	void AddPointsToTeam( int score, BOOL bAllowNegativeScore );
 	void AddFloatPoints( float score, BOOL bAllowNegativeScore );
-	int AddPlayerItem( CBasePlayerWeapon *pItem );
+	BOOL AddPlayerItem( CBasePlayerWeapon *pItem );
 	BOOL RemovePlayerItem( CBasePlayerWeapon *pItem, bool bCallHoster );
 	void DropPlayerItem ( char *pszItemName );
 	void DropPlayerItemById( int iId );
@@ -351,7 +351,7 @@ public:
 
 	void InsertWeaponById( CBasePlayerWeapon* pItem );
 	CBasePlayerWeapon* WeaponById( int id );
-	
+
 	bool CanSay();
 	bool CanSayByCommand();
 	bool SaySentence(const char* pszSentence);
@@ -376,7 +376,7 @@ public:
 	void ShowTalkMenu();
 	void ShowOrdersMenu();
 	void HandleMenuSelect(int selection);
-	
+
 	int m_izSBarState[SBAR_END];
 
 	float m_flNextSBarUpdateTime;
@@ -389,6 +389,7 @@ public:
 	int m_lastSeenArmor;
 
 	float m_flNextChatTime;
+	float m_flNextRespawnMessageTime;
 #if FEATURE_DISPLACER
 	BOOL	m_fInXen;
 #endif
@@ -411,14 +412,14 @@ public:
 	float m_flPainTime;
 	
 	int m_currentMenu;
-	
+
 private:
 	enum {
 		NoAmmoDrop,
 		DropAllAmmo,
 		DropAmmoFair
 	};
-	
+
 	void DropPlayerItemImpl(CBasePlayerWeapon* pWeapon, int dropType = DropAmmoFair, float speed = 400);
 
 public:

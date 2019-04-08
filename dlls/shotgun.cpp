@@ -351,11 +351,11 @@ class CShotgunAmmo : public CBasePlayerAmmo
 	const char* MyModel() {
 		return "models/w_shotbox.mdl";
 	}
-	const char* AmmoName() {
-		return "buckshot";
-	}
 	int MyAmount() {
 		return AMMO_BUCKSHOTBOX_GIVE;
+	}
+	const char* AmmoName() {
+		return "buckshot";
 	}
 };
 

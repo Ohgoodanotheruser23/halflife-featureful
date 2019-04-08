@@ -270,9 +270,6 @@ class CMP5AmmoClip : public CBasePlayerAmmo
 	const char* AmmoName() {
 		return "9mm";
 	}
-	int MaxAmmo() {
-		return _9MM_MAX_CARRY;
-	}
 };
 
 LINK_ENTITY_TO_CLASS( ammo_mp5clip, CMP5AmmoClip )

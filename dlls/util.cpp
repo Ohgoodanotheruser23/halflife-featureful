@@ -353,7 +353,7 @@ void DBG_AssertFunction( BOOL fExpr, const char* szExpr, const char* szFile, int
 }
 #endif	// DEBUG
 
-BOOL UTIL_GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pCurrentWeapon )
+BOOL UTIL_GetNextBestWeapon(CBasePlayer *pPlayer, CBasePlayerWeapon *pCurrentWeapon )
 {
 	return g_pGameRules->GetNextBestWeapon( pPlayer, pCurrentWeapon );
 }
@@ -2560,4 +2560,51 @@ void UTIL_CleanSpawnPoint( Vector origin, float dist )
 				UTIL_SetOrigin(ent->pev, tr.vecEndPos );
 		}
 	}
+}
+
+char *memfgets( byte *pMemFile, int fileSize, int &filePos, char *pBuffer, int bufferSize )
+{
+	// Bullet-proofing
+	if( !pMemFile || !pBuffer )
+		return NULL;
+
+	if( filePos >= fileSize )
+		return NULL;
+
+	int i = filePos;
+	int last = fileSize;
+
+	// fgets always NULL terminates, so only read bufferSize-1 characters
+	if( last - filePos > ( bufferSize - 1 ) )
+		last = filePos + ( bufferSize - 1 );
+
+	int stop = 0;
+
+	// Stop at the next newline (inclusive) or end of buffer
+	while( i < last && !stop )
+	{
+		if( pMemFile[i] == '\n' )
+			stop = 1;
+		i++;
+	}
+
+	// If we actually advanced the pointer, copy it over
+	if( i != filePos )
+	{
+		// We read in size bytes
+		int size = i - filePos;
+		// copy it out
+		memcpy( pBuffer, pMemFile + filePos, sizeof(byte) * size );
+
+		// If the buffer isn't full, terminate (this is always true)
+		if( size < bufferSize )
+			pBuffer[size] = 0;
+
+		// Update file pointer
+		filePos = i;
+		return pBuffer;
+	}
+
+	// No data read, bail
+	return NULL;
 }

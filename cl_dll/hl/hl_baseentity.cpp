@@ -306,6 +306,9 @@ void CBasePlayer::ResetAutoaim() { }
 void CBasePlayer::SetCustomDecalFrames( int nFrames ) { }
 int CBasePlayer::GetCustomDecalFrames( void ) { return -1; }
 void CBasePlayer::DropPlayerItem( char *pszItemName ) { }
+void CBasePlayer::DropPlayerItemById( int iId ) { }
+void CBasePlayer::DropConflictingWeapons(CBasePlayerWeapon* newWeapon ) { }
+void CBasePlayer::DropAmmo( ) { }
 BOOL CBasePlayer::HasPlayerItem( CBasePlayerWeapon *pCheckItem ) { return FALSE; }
 BOOL CBasePlayer::SwitchWeapon( CBasePlayerWeapon *pWeapon )  { return FALSE; }
 Vector CBasePlayer::GetGunPosition( void ) { return g_vecZero; }

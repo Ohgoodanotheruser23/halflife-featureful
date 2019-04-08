@@ -255,18 +255,26 @@ void UTIL_PrecacheOtherWeapon( const char *szClassname )
 	{
 		ItemInfo II = {0};
 		pEntity->Precache();
-		if( ( (CBasePlayerWeapon*)pEntity )->GetItemInfo( &II ) )
+		CBasePlayerWeapon* pWeapon = pEntity->MyWeaponPointer();
+		if( pWeapon != NULL )
 		{
-			CBasePlayerWeapon::ItemInfoArray[II.iId] = II;
-
-			if( II.pszAmmo1 && *II.pszAmmo1 )
+			if (pWeapon->GetItemInfo( &II ))
 			{
-				AddAmmoNameToAmmoRegistry( II.pszAmmo1, II.iMaxAmmo1, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+				CBasePlayerWeapon::ItemInfoArray[II.iId] = II;
+
+				if( II.pszAmmo1 && *II.pszAmmo1 )
+				{
+					AddAmmoNameToAmmoRegistry( II.pszAmmo1, II.iMaxAmmo1, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+				}
+
+				if( II.pszAmmo2 && *II.pszAmmo2 )
+				{
+					AddAmmoNameToAmmoRegistry( II.pszAmmo2, II.iMaxAmmo2, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+				}
 			}
-
-			if( II.pszAmmo2 && *II.pszAmmo2 )
+			else
 			{
-				AddAmmoNameToAmmoRegistry( II.pszAmmo2, II.iMaxAmmo2, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+				ALERT(at_console, "UTIL_PrecacheOtherWeapon: %s is not a weapon\n", szClassname);
 			}
 		}
 	}
@@ -1158,7 +1166,7 @@ void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 	{
 		return;
 	}
-	
+
 	CBasePlayer* pPlayer = (CBasePlayer*)pOther;
 
 	bool hasWeaponWithThisAmmo = false;

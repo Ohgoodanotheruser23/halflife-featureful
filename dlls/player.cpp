@@ -2710,6 +2710,28 @@ void CBasePlayer::PlayerDeathThink( void )
 	if( IsObserver() )	// player is in spectator mode
 		return;
 
+	if (g_pGameRules->IsMultiplayer() && respawndelay.value)
+	{
+		if (m_fDeadTime + respawndelay.value > gpGlobals->time)
+		{
+			if (m_flNextRespawnMessageTime <= gpGlobals->time)
+			{
+				const int secondsBeforeRespawn = (int)ceil(m_fDeadTime + respawndelay.value - gpGlobals->time);
+				ClientPrint( pev, HUD_PRINTCENTER, UTIL_VarArgs( "Respawn allowed in %d seconds", secondsBeforeRespawn ));
+				m_flNextRespawnMessageTime = gpGlobals->time + 1;
+			}
+			return;
+		}
+		else
+		{
+			if (m_flNextRespawnMessageTime <= gpGlobals->time)
+			{
+				ClientPrint( pev, HUD_PRINTCENTER, "You can respawn now!" );
+				m_flNextRespawnMessageTime = gpGlobals->time + 2;
+			}
+		}
+	}
+
 	// wait for any button down,  or mp_forcerespawn is set and the respawn time is up
 	if( !fAnyButtonDown && !( g_pGameRules->IsMultiplayer() && forcerespawn.value > 0 && ( gpGlobals->time > ( m_fDeadTime + FORCE_RESPAWN_DELAY ) ) ) )
 		return;
@@ -2719,6 +2741,10 @@ void CBasePlayer::PlayerDeathThink( void )
 
 	//ALERT( at_console, "Respawn\n" );
 
+	if (g_pGameRules->IsMultiplayer() && respawndelay.value)
+	{
+		ClientPrint( pev, HUD_PRINTCENTER, "" );
+	}
 	respawn( pev, !( m_afPhysicsFlags & PFLAG_OBSERVER ) );// don't copy a corpse if we're in deathcam.
 	//pev->nextthink = -1;
 }
@@ -5494,6 +5520,7 @@ int CBasePlayer::AddPlayerItem( CBasePlayerWeapon *pItem )
 
 				pItem->Kill();
 			}
+			pItem->Kill();
 		}
 		else if( gEvilImpulse101 )
 		{
@@ -5600,15 +5627,24 @@ int CBasePlayer::GiveAmmo(int iCount, const char *szName)
 
 				if ((pev->weapons & (1 << weaponId)) == 0) {
 					// player does not have this weapon
-					CBasePlayerWeapon* weapon = (CBasePlayerWeapon*)Create(weaponName, pev->origin, pev->angles);
-					if (weapon) {
-						weapon->pev->spawnflags |= SF_NORESPAWN;
-						weapon->m_iDefaultAmmo = iAdd;
-						if (AddPlayerItem(weapon)) {
-							addedAsWeapon = true;
+					CBaseEntity* pCreated = Create(weaponName, pev->origin, pev->angles);
+					if (pCreated)
+					{
+						CBasePlayerWeapon* weapon = pCreated->MyWeaponPointer();
+						if (weapon) {
+							weapon->pev->spawnflags |= SF_NORESPAWN;
+							weapon->m_iDefaultAmmo = iAdd;
+							if (AddPlayerItem(weapon)) {
+								addedAsWeapon = true;
+							}
+							else
+								UTIL_Remove(weapon);
 						}
-						else
-							UTIL_Remove(weapon);
+					}
+					else
+					{
+						ALERT(at_console, "GiveAmmo: expected weapon, but created entity is not a weapon\n");
+						UTIL_Remove(pCreated);
 					}
 				}
 
@@ -6352,12 +6388,12 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 		// assume player wants to drop the active item.
 		// make the string null to make future operations in this function easier
 		pszItemName = NULL;
-	} 
+	}
 
 	for( int i = 0; i < MAX_WEAPONS; i++ )
 	{
 		CBasePlayerWeapon *pWeapon = m_rgpPlayerWeapons[i];
-		// if we land here with a valid pWeapon pointer, that's because we found the 
+		// if we land here with a valid pWeapon pointer, that's because we found the
 		// item we want to drop and hit a BREAK;  pWeapon is the item.
 		if( pWeapon && ((pszItemName && !strcmp( pszItemName, STRING( pWeapon->pev->classname ) )) || pWeapon == m_pActiveItem) )
 		{
@@ -6414,7 +6450,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 	if (!g_pGameRules->GetNextBestWeapon( this, pWeapon ))
 		return;
 
-	UTIL_MakeVectors( pev->angles ); 
+	UTIL_MakeVectors( pev->angles );
 
 	pev->weapons &= ~( 1 << pWeapon->m_iId );// take item off hud
 
@@ -6434,7 +6470,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 		{
 			// pack up all the ammo, this weapon is its own ammo type
 			pWeaponBox->PackAmmo( MAKE_STRING( pWeapon->pszAmmo1() ), m_rgAmmo[iAmmoIndex] );
-			m_rgAmmo[iAmmoIndex] = 0; 
+			m_rgAmmo[iAmmoIndex] = 0;
 		}
 		else
 		{
@@ -6450,7 +6486,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 						}
 					}
 				}
-				
+
 				int toPack = m_rgAmmo[iAmmoIndex] / weaponCount;
 				pWeaponBox->PackAmmo( MAKE_STRING( pWeapon->pszAmmo1() ), toPack );
 				m_rgAmmo[iAmmoIndex] -= toPack;
@@ -6477,7 +6513,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 					}
 				}
 			}
-			
+
 			int toPack = m_rgAmmo[iAmmoIndex] / weaponCount;
 			pWeaponBox->PackAmmo( MAKE_STRING( pWeapon->pszAmmo2() ), toPack );
 			m_rgAmmo[iAmmoIndex] -= toPack;
@@ -6498,7 +6534,7 @@ void CBasePlayer::DropAmmo()
 		// no dropping in single player.
 		return;
 	}
-	
+
 	const char* pszItemName = "";
 
 	if( !*pszItemName )
@@ -6507,7 +6543,7 @@ void CBasePlayer::DropAmmo()
 		// assume player wants to drop the active item.
 		// make the string null to make future operations in this function easier
 		pszItemName = NULL;
-	} 
+	}
 
 	int i;
 
@@ -6581,7 +6617,7 @@ BOOL CBasePlayer::HasNamedPlayerItem( const char *pszItemName )
 //=========================================================
 // 
 //=========================================================
-BOOL CBasePlayer::SwitchWeapon( CBasePlayerWeapon *pWeapon )
+BOOL CBasePlayer::SwitchWeapon(CBasePlayerWeapon *pWeapon )
 {
 	if( !pWeapon->CanDeploy() )
 	{

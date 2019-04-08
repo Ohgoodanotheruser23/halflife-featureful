@@ -36,14 +36,15 @@ cvar_t weaponstay	= { "mp_weaponstay","0", FCVAR_SERVER };
 cvar_t weapon_respawndelay = { "mp_weapon_respawndelay","-1",FCVAR_SERVER };
 cvar_t ammo_respawndelay = { "mp_ammo_respawndelay","-1",FCVAR_SERVER };
 cvar_t item_respawndelay = { "mp_item_respawndelay","-1",FCVAR_SERVER };
-cvar_t healthcharger_rechargetime = { "mp_healthcharger_rechargetime","0",FCVAR_SERVER };
-cvar_t hevcharger_rechargetime = { "mp_hevcharger_rechargetime","0",FCVAR_SERVER };
+cvar_t healthcharger_rechargetime = { "mp_healthcharger_rechargetime","-1",FCVAR_SERVER };
+cvar_t hevcharger_rechargetime = { "mp_hevcharger_rechargetime","-1",FCVAR_SERVER };
 
 cvar_t selfgauss	= { "mp_selfgauss", "1", FCVAR_SERVER };
 cvar_t satchelfix	= { "mp_satchelfix", "0", FCVAR_SERVER };
 cvar_t allowgaussjump = { "mp_allowgaussjump", "0", FCVAR_SERVER };
 
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
+cvar_t respawndelay	= { "mp_respawndelay","5", FCVAR_SERVER };
 cvar_t flashlight	= { "mp_flashlight","1", FCVAR_SERVER };
 cvar_t aimcrosshair	= { "mp_autocrosshair","1", FCVAR_SERVER };
 cvar_t decalfrequency	= { "decalfrequency","30", FCVAR_SERVER };
@@ -56,6 +57,7 @@ cvar_t allowmonsterinfo = { "mp_allowmonsterinfo","0", FCVAR_SERVER };
 cvar_t npc_dropweapons = { "npc_dropweapons", "1", FCVAR_SERVER };
 cvar_t dmgperscore = { "mp_dmgperscore", "50", FCVAR_SERVER };
 cvar_t allydmgpenalty = { "mp_allydmgpenalty", "2", FCVAR_SERVER };
+cvar_t npckill = { "mp_npckill", "1", FCVAR_SERVER };
 
 cvar_t survival = { "mp_survival", "1", FCVAR_SERVER };
 cvar_t survival_restart_number = { "mp_survival_restart_number", "4", FCVAR_SERVER };
@@ -70,12 +72,13 @@ cvar_t tridepth = { "tridepth", "1", FCVAR_SERVER };
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
 cvar_t mp_semclip = { "mp_semclip", "1", FCVAR_SERVER };
 
-cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
 cvar_t char_phrases = { "char_phrases","1", FCVAR_SERVER };
 cvar_t minpanicdelay = { "mp_minpanicdelay", "10", FCVAR_SERVER };
 cvar_t defaultpanicdelay = { "mp_defaultpanicdelay", "30", FCVAR_SERVER };
 
 cvar_t mp_l4mcoop = { "mp_l4mcoop", "1", FCVAR_SERVER };
+
+cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
 
 cvar_t keepinventory	= { "mp_keepinventory","1", FCVAR_SERVER }; // keep inventory across level transitions in multiplayer coop
 
@@ -897,6 +900,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &allowgaussjump );
 
 	CVAR_REGISTER( &forcerespawn );
+	CVAR_REGISTER( &respawndelay );
 	CVAR_REGISTER( &flashlight );
 	CVAR_REGISTER( &aimcrosshair );
 	CVAR_REGISTER( &decalfrequency );
@@ -909,6 +913,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &npc_dropweapons );
 	CVAR_REGISTER( &dmgperscore );
 	CVAR_REGISTER( &allydmgpenalty );
+	CVAR_REGISTER( &npckill );
 
 	CVAR_REGISTER( &survival );
 	CVAR_REGISTER( &survival_warmup_time );
@@ -925,6 +930,8 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &mp_l4mcoop );
 
 	CVAR_REGISTER( &mp_semclip );
+
+	CVAR_REGISTER( &use_to_take );
 
 	CVAR_REGISTER( &keepinventory );
 

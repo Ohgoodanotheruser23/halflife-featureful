@@ -106,7 +106,7 @@ public:
 	virtual void DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, entvars_t *pInflictor )=  0;// Call this from within a GameRules class to report an obituary.
 
 	// Weapon retrieval
-	virtual BOOL CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon );// The player is touching an CBasePlayerItem, do I give it to him?
+	virtual BOOL CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon );// The player is touching an CBasePlayerWeapon, do I give it to him?
 	virtual void PlayerGotWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon ) = 0;// Called each time a player picks up a weapon from the ground
 
 	// Weapon spawn/respawn control
@@ -321,7 +321,7 @@ public:
 
 	// Weapon retrieval
 	virtual void PlayerGotWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon );
-	virtual BOOL CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon );// The player is touching an CBasePlayerItem, do I give it to him?
+	virtual BOOL CanHavePlayerItem( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon );// The player is touching an CBasePlayerWeapon, do I give it to him?
 
 	// Weapon spawn/respawn control
 	virtual int WeaponShouldRespawn( CBasePlayerWeapon *pWeapon );

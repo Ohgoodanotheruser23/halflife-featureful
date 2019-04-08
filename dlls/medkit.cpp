@@ -132,7 +132,7 @@ void CMedkit::PrimaryAttack(void)
 	Reload();
 
 	CBaseEntity* healTarget;
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= gSkillData.plrDmgMedkit && (healTarget = FindHealTarget()) ) {
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > 0 && (healTarget = FindHealTarget()) ) {
 		if (healTarget->IsPlayer()) {
 			m_pPlayer->TryToSayHealing();
 		}
