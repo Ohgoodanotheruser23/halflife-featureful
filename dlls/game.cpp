@@ -76,7 +76,9 @@ cvar_t char_phrases = { "char_phrases","1", FCVAR_SERVER };
 cvar_t minpanicdelay = { "mp_minpanicdelay", "10", FCVAR_SERVER };
 cvar_t defaultpanicdelay = { "mp_defaultpanicdelay", "30", FCVAR_SERVER };
 
-cvar_t mp_l4mcoop = { "mp_l4mcoop", "1", FCVAR_SERVER };
+cvar_t l4m_weapon_system = { "mp_l4m_weapon_system", "1", FCVAR_SERVER };
+cvar_t speed_degradation = { "mp_speed_degradation", "1", FCVAR_SERVER };
+cvar_t barnacle_paralyze  = { "mp_barnacle_paralyze", "1", FCVAR_SERVER };
 
 cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
 
@@ -926,7 +928,10 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &char_phrases );
 	CVAR_REGISTER( &minpanicdelay );
 	CVAR_REGISTER( &defaultpanicdelay);
-	CVAR_REGISTER( &mp_l4mcoop );
+
+	CVAR_REGISTER( &l4m_weapon_system );
+	CVAR_REGISTER( &speed_degradation );
+	CVAR_REGISTER( &barnacle_paralyze );
 
 	CVAR_REGISTER( &mp_semclip );
 

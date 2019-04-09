@@ -1678,7 +1678,7 @@ int TrainSpeed( int iSpeed, int iMax )
 
 static void RefreshMaxSpeed(CBasePlayer* player)
 {
-	if (mp_l4mcoop.value) {
+	if (g_pGameRules->IsMultiplayer() && speed_degradation.value) {
 		if (PlayerHeavilyDamaged(player)) {
 			player->pev->maxspeed = 150;
 		} else if (PlayerLightlyDamaged(player)) {
@@ -5504,7 +5504,7 @@ int CBasePlayer::AddPlayerItem( CBasePlayerWeapon *pItem )
 	CBasePlayerWeapon *pInsert = WeaponById(pItem->m_iId);
 	if( pInsert )
 	{
-		if (!mp_l4mcoop.value || ((pItem->pev->spawnflags & SF_NORESPAWN) // HACKHACK consider it dropped by monster
+		if (!l4m_weapon_system.value || ((pItem->pev->spawnflags & SF_NORESPAWN) // HACKHACK consider it dropped by monster
 								  || (pItem->iFlags() & ITEM_FLAG_LIMITINWORLD) ))
 
 		{
@@ -5537,7 +5537,7 @@ int CBasePlayer::AddPlayerItem( CBasePlayerWeapon *pItem )
 
 		InsertWeaponById(pItem);
 
-		if (mp_l4mcoop.value) {
+		if (l4m_weapon_system.value) {
 			DropConflictingWeapons(pItem);
 		}
 
@@ -6048,7 +6048,7 @@ BOOL CBasePlayer::FBecomeProne( void )
 {
 	m_afPhysicsFlags |= PFLAG_ONBARNACLE;
 
-	if (mp_l4mcoop.value)
+	if (g_pGameRules->IsCoOp() && barnacle_paralyze.value)
 	{
 		if( m_pActiveItem )
 		{
@@ -6080,7 +6080,7 @@ void CBasePlayer::BarnacleVictimBitten( entvars_t *pevBarnacle )
 void CBasePlayer::BarnacleVictimReleased( void )
 {
 	m_afPhysicsFlags &= ~PFLAG_ONBARNACLE;
-	if (mp_l4mcoop.value)
+	if (g_pGameRules->IsCoOp() && barnacle_paralyze.value)
 	{
 		m_pActiveItem = m_pLastItem;
 		if (m_pActiveItem && m_pActiveItem->CanDeploy())
@@ -6444,7 +6444,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 	if (pWeapon->m_iId == WEAPON_MEDKIT) {
 		return;
 	}
-	if (mp_l4mcoop.value && (m_afPhysicsFlags & PFLAG_ONBARNACLE))
+	if (g_pGameRules->IsCoOp() && barnacle_paralyze.value && (m_afPhysicsFlags & PFLAG_ONBARNACLE))
 		return;
 
 	if (!g_pGameRules->GetNextBestWeapon( this, pWeapon ))
@@ -6527,7 +6527,7 @@ void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, f
 
 void CBasePlayer::DropAmmo()
 {
-	if (mp_l4mcoop.value && (m_afPhysicsFlags & PFLAG_ONBARNACLE))
+	if (g_pGameRules->IsCoOp() && barnacle_paralyze.value && (m_afPhysicsFlags & PFLAG_ONBARNACLE))
 		return;
 	if( !g_pGameRules->IsMultiplayer() )
 	{

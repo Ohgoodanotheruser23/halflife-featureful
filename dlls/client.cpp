@@ -566,7 +566,7 @@ void ClientCommand( edict_t *pEntity )
 	{
 		GetClassPtr( (CBasePlayer *)pev )->SelectLastItem();
 	}
-	else if( !mp_l4mcoop.value && FStrEq( pcmd, "spectate" ) ) // clients wants to become a spectator
+	else if( !survival.value && FStrEq( pcmd, "spectate" ) ) // clients wants to become a spectator
 	{
 		CBasePlayer *pPlayer = GetClassPtr( (CBasePlayer *)pev );
 		if( !pPlayer->IsObserver() )

@@ -593,7 +593,7 @@ void CHalfLifeMultiplay::ClientUserInfoChanged(CBasePlayer *pPlayer, char *infob
 {
 	static const char* allowedModels[] = {"barney", "scientist", "helmet", "gordon", "gina", "robo"};
 
-	if (mp_l4mcoop.value) {
+	if (IsCoOp()) {
 		const char *playerModel = g_engfuncs.pfnInfoKeyValue( infobuffer, "model" );
 
 		bool isAllowed = false;
@@ -859,7 +859,7 @@ BOOL CHalfLifeMultiplay::IsDeathmatch( void )
 //=========================================================
 BOOL CHalfLifeMultiplay::IsCoOp( void )
 {
-	return (mp_l4mcoop.value || gpGlobals->coop) ? TRUE : FALSE;
+	return gpGlobals->coop ? TRUE : FALSE;
 }
 
 //=========================================================
@@ -884,7 +884,7 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerW
 		return FALSE;
 	}
 
-	if (mp_l4mcoop.value) {
+	if (l4m_weapon_system.value) {
 		return TRUE;
 	} else {
 		if( pWeapon->iWeight() > pPlayer->m_pActiveItem->iWeight() )

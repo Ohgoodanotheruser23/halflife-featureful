@@ -69,7 +69,9 @@ extern cvar_t char_phrases;
 extern cvar_t minpanicdelay;
 extern cvar_t defaultpanicdelay;
 
-extern cvar_t mp_l4mcoop;
+extern cvar_t l4m_weapon_system;
+extern cvar_t speed_degradation;
+extern cvar_t barnacle_paralyze;
 
 extern cvar_t mp_semclip;
 

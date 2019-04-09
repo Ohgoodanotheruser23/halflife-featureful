@@ -94,7 +94,7 @@ void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 		return;
 	}
 
-	if (mp_l4mcoop.value)
+	if (l4m_weapon_system.value)
 	{
 		CBasePlayer* pPlayer = (CBasePlayer*)pOther;
 		bool hasWeaponWithThisAmmo = false;

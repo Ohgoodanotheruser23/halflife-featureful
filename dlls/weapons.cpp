@@ -978,7 +978,7 @@ BOOL CBasePlayerWeapon::IsUseable( void )
 
 BOOL CBasePlayerWeapon::CanDeploy( void )
 {
-	if (mp_l4mcoop.value && (m_pPlayer->m_afPhysicsFlags & PFLAG_ONBARNACLE))
+	if (g_pGameRules->IsCoOp() && barnacle_paralyze.value && (m_pPlayer->m_afPhysicsFlags & PFLAG_ONBARNACLE))
 		return FALSE;
 	BOOL bHasAmmo = 0;
 
