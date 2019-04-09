@@ -60,6 +60,8 @@ public:
 	BOOL CheckRangeAttack2(float flDot, float flDist);
 	void Sniperrifle(void);
 	void GibMonster();
+	void PlayUseSentence();
+	void PlayUnUseSentence();
 
 	BOOL FOkToSpeak(void);
 
@@ -78,6 +80,18 @@ public:
 };
 
 LINK_ENTITY_TO_CLASS(monster_male_assassin, CMassn)
+
+void CMassn::PlayUseSentence()
+{
+	SENTENCEG_PlayRndSz( ENT( pev ), "BA_OK", SentenceVolume(), SentenceAttn(), 0, 85 );
+	JustSpoke();
+}
+
+void CMassn::PlayUnUseSentence()
+{
+	SENTENCEG_PlayRndSz( ENT( pev ), "BA_WAIT", SentenceVolume(), SentenceAttn(), 0, 85 );
+	JustSpoke();
+}
 
 //=========================================================
 // Purpose:
@@ -168,7 +182,7 @@ void CMassn::KeyValue(KeyValueData *pkvd)
 		pkvd->fHandled = TRUE;
 	}
 	else
-		CSquadMonster::KeyValue( pkvd );
+		CFollowingMonster::KeyValue( pkvd );
 }
 
 //=========================================================
@@ -260,7 +274,7 @@ void CMassn::Spawn()
 	}
 	SetBodygroup(MASSN_HEAD_GROUP, head);
 
-	MonsterInit();
+	FollowingMonsterInit();
 }
 
 //=========================================================
@@ -294,7 +308,7 @@ void CMassn::DeathSound(void)
 //=========================================================
 void CMassn::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
-	CSquadMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CFollowingMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 //=========================================================

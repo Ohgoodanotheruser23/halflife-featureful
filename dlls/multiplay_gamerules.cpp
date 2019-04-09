@@ -21,6 +21,7 @@
 #include	"cbase.h"
 #include	"player.h"
 #include	"weapons.h"
+#include	"ammunition.h"
 #include	"gamerules.h"
 #include	"mod_features.h"
  
@@ -486,7 +487,7 @@ bool ReadMapConfig(const char* mapName)
 		{
 			g_mapConfig.starthealth = atoi(value);
 		}
-		else if (strncmp(key, "sv_", 3) == 0 || strncmp(key, "mp_", 3) == 0)
+		else if (strncmp(key, "sv_", 3) == 0 || strncmp(key, "mp_", 3) == 0 || strncmp(key, "npc_", 4) == 0)
 		{
 			if (g_mapConfig.cvarCount < 32)
 			{

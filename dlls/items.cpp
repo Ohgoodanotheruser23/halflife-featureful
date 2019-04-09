@@ -356,12 +356,12 @@ void CItem::TouchOrUse(CBaseEntity *pOther)
 	{
 		SUB_UseTargets( pOther, USE_TOGGLE, 0 );
 		SetTouch( NULL );
-		
-		// player grabbed the item. 
+
+		// player grabbed the item.
 		g_pGameRules->PlayerGotItem( pPlayer, this );
 		if( g_pGameRules->ItemShouldRespawn( this ) == GR_ITEM_RESPAWN_YES )
 		{
-			Respawn(); 
+			Respawn();
 		}
 		else
 		{

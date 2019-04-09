@@ -510,18 +510,3 @@ void CCrossbow::WeaponIdle( void )
 		}
 	}
 }
-
-class CCrossbowAmmo : public CBasePlayerAmmo
-{
-	const char* MyModel() {
-		return "models/w_crossbow_clip.mdl";
-	}
-	const char* AmmoName() {
-		return "bolts";
-	}
-	int MyAmount() {
-		return AMMO_CROSSBOWCLIP_GIVE;
-	}
-};
-
-LINK_ENTITY_TO_CLASS( ammo_crossbow, CCrossbowAmmo )

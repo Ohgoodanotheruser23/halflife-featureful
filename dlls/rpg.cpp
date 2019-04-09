@@ -543,18 +543,3 @@ void CRpg::UpdateSpot( void )
 	}
 #endif
 }
-
-class CRpgAmmo : public CBasePlayerAmmo
-{
-	const char* MyModel() {
-		return "models/w_rpgammo.mdl";
-	}
-	const char* AmmoName() {
-		return "rockets";
-	}
-	int MyAmount() {
-		return AMMO_RPGCLIP_GIVE;
-	}
-};
-
-LINK_ENTITY_TO_CLASS( ammo_rpgclip, CRpgAmmo )

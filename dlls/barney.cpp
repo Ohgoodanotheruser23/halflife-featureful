@@ -59,7 +59,6 @@ public:
 
 	void RunTask( Task_t *pTask );
 	void StartTask( Task_t *pTask );
-	virtual int ObjectCaps( void ) { return CTalkMonster :: ObjectCaps() | FCAP_IMPULSE_USE | FCAP_ONLYDIRECT_USE; }
 	int DefaultToleranceLevel() { return TOLERANCE_LOW; }
 	BOOL CheckRangeAttack1( float flDot, float flDist );
 
@@ -135,60 +134,6 @@ Schedule_t slBarneyEnemyDraw[] =
 	}
 };
 
-Task_t tlBaFaceTarget[] =
-{
-	{ TASK_SET_ACTIVITY, (float)ACT_IDLE },
-	{ TASK_FACE_TARGET, (float)0 },
-	{ TASK_SET_ACTIVITY, (float)ACT_IDLE },
-	{ TASK_SET_SCHEDULE, (float)SCHED_TARGET_CHASE },
-};
-
-Schedule_t slBaFaceTarget[] =
-{
-	{
-		tlBaFaceTarget,
-		ARRAYSIZE( tlBaFaceTarget ),
-		bits_COND_CLIENT_PUSH |
-		bits_COND_NEW_ENEMY |
-		bits_COND_LIGHT_DAMAGE |
-		bits_COND_HEAVY_DAMAGE |
-		bits_COND_HEAR_SOUND |
-		bits_COND_PROVOKED,
-		bits_SOUND_DANGER,
-		"FaceTarget"
-	},
-};
-
-Task_t tlIdleBaStand[] =
-{
-	{ TASK_STOP_MOVING, 0 },
-	{ TASK_SET_ACTIVITY, (float)ACT_IDLE },
-	{ TASK_WAIT, (float)2 }, // repick IDLESTAND every two seconds.
-	{ TASK_TLK_HEADRESET, (float)0 }, // reset head position
-};
-
-Schedule_t slIdleBaStand[] =
-{
-	{
-		tlIdleBaStand,
-		ARRAYSIZE( tlIdleBaStand ),
-		bits_COND_NEW_ENEMY |
-		bits_COND_LIGHT_DAMAGE |
-		bits_COND_HEAVY_DAMAGE |
-		bits_COND_HEAR_SOUND |
-		bits_COND_SMELL |
-		bits_COND_PROVOKED,
-		bits_SOUND_COMBAT |// sound flags - change these, and you'll break the talking code.
-		//bits_SOUND_PLAYER |
-		//bits_SOUND_WORLD |
-		bits_SOUND_DANGER |
-		bits_SOUND_MEAT |// scents
-		bits_SOUND_CARCASS |
-		bits_SOUND_GARBAGE,
-		"IdleStand"
-	},
-};
-
 Task_t tlBaRangeAttack1[] =
 {
 	{ TASK_STOP_MOVING, 0 },
@@ -218,8 +163,6 @@ Schedule_t slBaRangeAttack1[] =
 DEFINE_CUSTOM_SCHEDULES( CBarney )
 {
 	slBarneyEnemyDraw,
-	slBaFaceTarget,
-	slIdleBaStand,
 	slBaRangeAttack1,
 };
 
@@ -623,8 +566,6 @@ void CBarney::OnDying()
 //=========================================================
 Schedule_t *CBarney::GetScheduleOfType( int Type )
 {
-	Schedule_t *psched;
-
 	switch( Type )
 	{
 	case SCHED_ARM_WEAPON:
@@ -635,29 +576,6 @@ Schedule_t *CBarney::GetScheduleOfType( int Type )
 		}
 		break;
 	// Hook these to make a looping schedule
-	case SCHED_TARGET_FACE:
-		// call base class default so that barney will talk
-		// when 'used' 
-		psched = CTalkMonster::GetScheduleOfType( Type );
-
-		if( psched == slIdleStand )
-			return slBaFaceTarget;	// override this for different target face behavior
-		else
-			return psched;
-	case SCHED_TARGET_CHASE:
-		return CTalkMonster::GetScheduleOfType(SCHED_FOLLOW);
-	case SCHED_IDLE_STAND:
-		// call base class default so that scientist will talk
-		// when standing during idle
-		psched = CTalkMonster::GetScheduleOfType( Type );
-
-		if( psched == slIdleStand )
-		{
-			// just look straight ahead.
-			return slIdleBaStand;
-		}
-		else
-			return psched;
 	case SCHED_RANGE_ATTACK1:
 		return slBaRangeAttack1;
 	}
@@ -723,33 +641,12 @@ Schedule_t *CBarney::GetScheduleImpl(const char *sentenceKill)
 			return GetScheduleOfType( SCHED_FIND_MEDIC );
 		}
 
-		if( m_hEnemy == 0 && IsFollowingPlayer() )
-		{
-			if( !FollowedPlayer()->IsAlive() )
-			{
-				// UNDONE: Comment about the recently dead player here?
-				StopFollowing( FALSE, false );
-				break;
-			}
-			else
-			{
-				if( HasConditions( bits_COND_CLIENT_PUSH ) )
-				{
-					return GetScheduleOfType( SCHED_MOVE_AWAY_FOLLOW );
-				}
-				return GetScheduleOfType( SCHED_TARGET_FACE );
-			}
-		}
-
-		if( HasConditions( bits_COND_CLIENT_PUSH ) )
-		{
-			return GetScheduleOfType( SCHED_MOVE_AWAY );
-		}
+		Schedule_t* followingSchedule = GetFollowingSchedule();
+		if (followingSchedule)
+			return followingSchedule;
 
 		// try to say something about smells
 		TrySmellTalk();
-		break;
-	default:
 		break;
 	}
 
