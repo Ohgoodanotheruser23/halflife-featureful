@@ -922,8 +922,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &bhopcap );
 
 	CVAR_REGISTER( &mp_chattime );
-	
-	CVAR_REGISTER( &use_to_take );
+
 	CVAR_REGISTER( &char_phrases );
 	CVAR_REGISTER( &minpanicdelay );
 	CVAR_REGISTER( &defaultpanicdelay);
