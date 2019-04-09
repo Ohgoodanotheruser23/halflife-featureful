@@ -1742,6 +1742,8 @@ PBA_PESSIM2 barney/luckwillturn
 PBA_PESSIM3 barney/guyresponsible
 PBA_PESSIM4 barney/crewdied
 
+PBA_HELLO0 barney/hellonicesuit
+
 PBA_FF0 barney/ba_whoathere
 PBA_FF1 barney/ba_dotoyou
 PBA_FF2 barney/ba_watchit
@@ -1860,6 +1862,10 @@ PSC_PESSIM5 scientist/getoutalive
 PSC_PESSIM6 scientist/luckwillchange
 PSC_PESSIM7 scientist/dinner
 
+PSC_HELLO0 scientist/hellothere
+PSC_HELLO1 scientist/greetings2
+PSC_HELLO2 scientist/hello
+
 PSC_FF0 scientist/youinsane
 PSC_FF1 scientist/whatyoudoing
 
@@ -1964,6 +1970,8 @@ PRO_PESSIM0 vox/this is bad
 PRO_PESSIM1 vox/we are in danger
 PRO_PESSIM2 vox/we are going to die
 
+PRO_HELLO0 vox/hello
+
 PRO_FF0 vox/quit it now
 PRO_FF1 vox/control your weapon
 PRO_FF2 vox/check your fire
@@ -2036,11 +2044,11 @@ PGI_WAIT0 gina/gina_stop0
 PGI_WAIT1 gina/gina_unuse2(s26)
 PGI_WAIT2 gina/gina_unuse4(s41)
 
-//PGI_HELLO0 holo/tr_holo_intro(e3)
-
 PGI_NICEJOB0 holo/tr_holo_fantastic
 PGI_NICEJOB1 holo/tr_holo_nicejob
 PGI_NICEJOB2 holo/tr_holo_greatwork(e23)
 
 PGI_NO holo/tr_holo_tryagain(e21)
 PGI_YES gina/gina_unuse4(e38)
+
+PGI_HELLO0 holo/tr_holo_intro(e3)

@@ -192,6 +192,9 @@ public:
 	virtual bool pessimistic(CBasePlayer* player) {
 		return false;
 	}
+	virtual bool sayHello(CBasePlayer* player) {
+		return false;
+	}
 	virtual bool killedEnemy(CBasePlayer* player) {
 		return false;
 	}
@@ -351,6 +354,9 @@ public:
 	}
 	bool pessimistic(CBasePlayer* player) {
 		return player->SaySentence("PBA_PESSIM");
+	}
+	virtual bool sayHello(CBasePlayer* player) {
+		return player->SaySentence("PBA_HELLO");
 	}
 	bool killedEnemy(CBasePlayer* player) {
 		return player->SaySentence("BA_KILL");
@@ -524,6 +530,9 @@ public:
 	bool pessimistic(CBasePlayer* player) {
 		return player->SaySentence("PSC_PESSIM");
 	}
+	virtual bool sayHello(CBasePlayer* player) {
+		return player->SaySentence("PSC_HELLO");
+	}
 	bool friendlyFire(CBasePlayer* player) {
 		return player->SaySentence("PSC_FF");
 	}
@@ -674,6 +683,9 @@ public:
 	bool pessimistic(CBasePlayer *player) {
 		return player->SaySentence("PRO_PESSIM");
 	}
+	virtual bool sayHello(CBasePlayer* player) {
+		return player->SaySentence("PRO_HELLO");
+	}
 	bool killedEnemy(CBasePlayer *player) {
 		return player->SaySentence("PRO_KILL");
 	}
@@ -798,6 +810,9 @@ class GinaPhrases : public CharacterPhrases
 	}
 	bool niceJob(CBasePlayer *player) {
 		return player->SaySentence("PGI_NICEJOB");
+	}
+	virtual bool sayHello(CBasePlayer* player) {
+		return player->SaySentence("PGI_HELLO");
 	}
 	bool killedEnemy(CBasePlayer *player) {
 		return player->SaySentence("PGI_KILL");
@@ -1504,6 +1519,8 @@ bool CBasePlayer::SayByCommand(const char *phrase)
 		return GetCharPhrases()->optimistic(this);
 	} else if (FStrEq(phrase, "pessim")) {
 		return GetCharPhrases()->pessimistic(this);
+	} else if (FStrEq(phrase, "hello")) {
+		return GetCharPhrases()->sayHello(this);
 	} else if (FStrEq(phrase, "look")) {
 		return GetCharPhrases()->look(this, LookForSomethingToSayAbout());
 	} else if (FStrEq(phrase, "letsgo")) {
@@ -1531,7 +1548,7 @@ enum
 
 void CBasePlayer::ShowTalkMenu()
 {
-	static const char* phrases[] = {"Yes", "No", "Sorry", "Nice job", "Optimistic", "Pessimistic"};
+	static const char* phrases[] = {"Yes", "No", "Sorry", "Nice job", "Optimistic", "Pessimistic", "Hello"};
 	ShowMenu(this, "Answers and emotions", ARRAYSIZE(phrases), phrases);
 	m_currentMenu = PLAYER_MENU_TALK;
 }
@@ -1564,6 +1581,9 @@ void CBasePlayer::HandleMenuSelect(int selection)
 			break;
 		case 6:
 			GetCharPhrases()->pessimistic(this);
+			break;
+		case 7:
+			GetCharPhrases()->sayHello(this);
 			break;
 		default:
 			break;
