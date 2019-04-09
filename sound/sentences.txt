@@ -436,16 +436,16 @@ TR_B deeoo(p110) (p102 t20) target system deactivated
 HEV_AAx fvox/bell, HEV_logon, powerarmor_on, atmospherics_on,vitalsigns_on, automedic_on, weaponselect_on, munitionview_on, communications_on, safe_day
 HEV_A0 fvox/bell, HEV_logon
 
-HEV_A1 fvox/blip blip(p130) powermove_on
-HEV_A2 fvox/blip blip powerarmor_on
-HEV_A3 fvox/blip blip(p130) atmospherics_on
-HEV_A4 fvox/blip blip vitalsigns_on boop, boop, boop
-HEV_A5 fvox/blip blip(p130) munitionview_on
-HEV_A6 fvox/blip blip communications_on
-HEV_A7 fvox/blip blip(p70) weaponselect_on
-HEV_A8 fvox/blip blip(p70) automedic_on
-HEV_A9 fvox/fuzz power_level_is onehundred percent
-HEV_A10 fvox/safe_day, bell
+//HEV_A1 fvox/blip blip(p130) powermove_on
+//HEV_A2 fvox/blip blip powerarmor_on
+//HEV_A3 fvox/blip blip(p130) atmospherics_on
+//HEV_A4 fvox/blip blip vitalsigns_on boop, boop, boop
+//HEV_A5 fvox/blip blip(p130) munitionview_on
+//HEV_A6 fvox/blip blip communications_on
+//HEV_A7 fvox/blip blip(p70) weaponselect_on
+//HEV_A8 fvox/blip blip(p70) automedic_on
+//HEV_A9 fvox/fuzz power_level_is onehundred percent
+//HEV_A10 fvox/safe_day, bell
 
 // medical
 HEV_DEAD0 fvox/beep beep, beep beep, beep, beep, flatline
@@ -491,27 +491,27 @@ HEV_AIM_OFF fvox/blip targetting_system deactivated
 HEV_BATTERY fvox/blip get_battery acquired
 HEV_MEDKIT fvox/blip get_medkit(v80)
 
-HEV_PISTOL fvox/blip get_pistol acquired
-HEV_SHOTGUN fvox/blip get_shotgun
-HEV_GRENADE fvox/blip get_grenade acquired
-HEV_ASSAULT fvox/blip get_assault acquired
-HEV_44PISTOL fvox/blip get_44pistol acquired
-HEV_RPG fvox/blip get_rpg acquired
-HEV_SATCHEL fvox/blip get_satchel acquired
-HEV_TRIPMINE fvox/blip get_tripmine acquired
-HEV_HORNET fvox/blip get_alien_wpn
-HEV_SQUEEK fvox/blip get_alien_wpn
-HEV_EGON fvox/blip get_egon acquired
-HEV_GAUSS fvox/blip get_gauss acquired
-HEV_XBOW fvox/blip get_crossbow acquired
+//HEV_PISTOL fvox/blip get_pistol acquired
+//HEV_SHOTGUN fvox/blip get_shotgun
+//HEV_GRENADE fvox/blip get_grenade acquired
+//HEV_ASSAULT fvox/blip get_assault acquired
+//HEV_44PISTOL fvox/blip get_44pistol acquired
+//HEV_RPG fvox/blip get_rpg acquired
+//HEV_SATCHEL fvox/blip get_satchel acquired
+//HEV_TRIPMINE fvox/blip get_tripmine acquired
+//HEV_HORNET fvox/blip get_alien_wpn
+//HEV_SQUEEK fvox/blip get_alien_wpn
+//HEV_EGON fvox/blip get_egon acquired
+//HEV_GAUSS fvox/blip get_gauss acquired
+//HEV_XBOW fvox/blip get_crossbow acquired
 
-HEV_9MM fvox/blip get_9mmclip acquired
-HEV_44AMMO fvox/blip get_44ammo acquired
-HEV_BUCKSHOT fvox/blip get_buckshot acquired
-HEV_BOLTS fvox/blip get_bolts acquired
-HEV_RPGAMMO fvox/blip get_rpgammo acquired
-HEV_AGRENADE fvox/blip get_assaultgren acquired
-HEV_EGONPOWER fvox/blip get_egonpower acquired
+//HEV_9MM fvox/blip get_9mmclip acquired
+//HEV_44AMMO fvox/blip get_44ammo acquired
+//HEV_BUCKSHOT fvox/blip get_buckshot acquired
+//HEV_BOLTS fvox/blip get_bolts acquired
+//HEV_RPGAMMO fvox/blip get_rpgammo acquired
+//HEV_AGRENADE fvox/blip get_assaultgren acquired
+//HEV_EGONPOWER fvox/blip get_egonpower acquired
 
 // time
 
@@ -1440,6 +1440,155 @@ OT_POK1 otis/beer
 OT_POK2 otis/talkmuch
 OT_POK3 otis/dontask
 
+//FRIENDLY GRUNT
+FG_QUESTION0 fgrunt/seensquad
+FG_QUESTION1 fgrunt/current
+FG_QUESTION2 fgrunt/coverup
+FG_QUESTION3 fgrunt/chicken
+FG_QUESTION4 fgrunt/charge
+FG_QUESTION5 fgrunt/bfeeling
+
+FG_ANSWER0 fgrunt/roger
+FG_ANSWER1 fgrunt/quiet
+
+FG_GREN0 fgrunt/incoming
+FG_GREN1 fgrunt/grenade
+
+FG_ALERT0 fgrunt/alert
+FG_ALERT1 fgrunt/down
+FG_ALERT2 fgrunt/bogies
+FG_ALERT3 fgrunt/hostiles
+
+FG_MONSTER0 fgrunt/alert
+FG_MONSTER1 fgrunt/alien
+
+FG_COVER0 fgrunt/clear
+FG_COVER1 fgrunt/cover
+FG_COVER2 fgrunt/staydown
+
+FG_CLEAR0 fgrunt/clear
+FG_CLEAR1 fgrunt/area
+
+FG_THROW0 fgrunt/fire
+FG_THROW1 fgrunt/grenade
+
+FG_CHARGE0 fgrunt/go
+FG_CHARGE1 fgrunt/getsome
+FG_CHARGE2 fgrunt/move
+
+FG_TAUNT0 fgrunt/mister
+FG_TAUNT1 fgrunt/nothing
+FG_TAUNT2 fgrunt/oneshot
+FG_TAUNT3 fgrunt/getsome
+FG_TAUNT4 fgrunt/corners
+FG_TAUNT5 fgrunt/backup
+
+FG_OK0 fgrunt/damage
+FG_OK1 fgrunt/six
+FG_OK2 fgrunt/moving
+FG_OK3 fgrunt/gotit
+FG_OK4 fgrunt/hellout
+FG_OK5 fgrunt/sir
+FG_OK6 fgrunt/right
+FG_OK7 fgrunt/command
+FG_OK8 fgrunt/notfail
+FG_OK9 fgrunt/yes
+
+FG_WAIT0 fgrunt/secure
+FG_WAIT1 fgrunt/orders
+FG_WAIT2 fgrunt/scout
+FG_WAIT3 fgrunt/guardduty
+
+FG_STOP0 fgrunt/sorry
+FG_STOP1 fgrunt/post
+FG_STOP2 fgrunt/stay
+FG_STOP3 fgrunt/leave
+
+FG_KILL0 fgrunt/oneshot
+FG_KILL1 fgrunt/killer
+FG_KILL2 fgrunt/sniper
+FG_KILL3 fgrunt/tag
+FG_KILL4 fgrunt/corporal
+FG_KILL5 fgrunt/talking
+FG_KILL6 fgrunt/take
+FG_KILL7 fgrunt/sniper
+FG_KILL8 fgrunt/checkin
+FG_KILL9 fgrunt/area
+
+FG_SHOT0 fgrunt/check
+FG_SHOT1 fgrunt/wantsome
+FG_SHOT2 fgrunt/zone
+FG_SHOT3 fgrunt/watchit
+FG_SHOT4 fgrunt/watchfire
+FG_SHOT5 fgrunt/friendly
+
+FG_CHECK0 fgrunt/check
+FG_CHECK1 fgrunt/zone
+
+FG_IDLE0 fgrunt/guard
+FG_IDLE1 fgrunt/mission
+FG_IDLE2 fgrunt/babysitting
+FG_IDLE3 fgrunt/coverup
+FG_IDLE4 fgrunt/now
+FG_IDLE5 fgrunt/seensquad
+FG_IDLE6 fgrunt/short
+FG_IDLE7 fgrunt/outof
+FG_IDLE8 fgrunt/lost
+FG_IDLE9 fgrunt/fubar
+FG_IDLE10 fgrunt/dogs
+FG_IDLE11 fgrunt/disney
+FG_IDLE12 fgrunt/checkrecon
+
+FG_ATTACK0 fgrunt/flank
+FG_ATTACK1 fgrunt/wantsome
+FG_ATTACK2 fgrunt/freaks
+FG_ATTACK3 fgrunt/recon
+FG_ATTACK4 fgrunt/rapidfire
+FG_ATTACK5 fgrunt/sweep
+FG_ATTACK6 fgrunt/suppressing
+FG_ATTACK7 fgrunt/marines
+FG_ATTACK8 fgrunt/moveup
+FG_ATTACK9 fgrunt/go
+FG_ATTACK10 fgrunt/covering
+FG_ATTACK11 fgrunt/ass
+
+FG_MAD0 fgrunt/ass
+
+FG_HELLO0 fgrunt/tosee
+FG_HELLO1 fgrunt/hellosir
+
+FG_WOUND0 fgrunt/imhit
+FG_WOUND1 fgrunt/fwound
+FG_WOUND2 fgrunt/makeit
+
+FG_MORTAL0 fgrunt/hitbad
+FG_MORTAL1 fgrunt/critical
+FG_MORTAL2 fgrunt/sdamage
+
+FG_CURE1 fgrunt/needmedic
+FG_CURE2 fgrunt/hurt
+FG_CURE3 fgrunt/hell
+FG_CURE4 fgrunt/feel
+
+FG_MAKEIT fgrunt/makeit
+
+// TORCH GRUNT
+TG_OPEN0 fgrunt/stand
+TG_OPEN1 fgrunt/through
+
+TG_NOTOPEN0 fgrunt/blocked
+TG_NOTOPEN1 fgrunt/thick
+TG_NOTOPEN2 fgrunt/cutting
+TG_NOTOPEN3 fgrunt/situations
+
+TG_CUTIT fgrunt/of5a3_fg01
+
+// MEDIC GRUNT
+MG_HEAL0 fgrunt/sting
+MG_HEAL1 fgrunt/onepiece
+
+MG_NOTHEAL0 fgrunt/nohealth
+
 // SHOCK TROOPER
 ST_GREN0 shocktrooper/kss kyur kiml
 ST_ALERT0 shocktrooper/dit dit
@@ -1488,6 +1637,21 @@ RB_CLEAR1 vox/search ing sector
 
 RB_CHECK0 vox/status report
 RB_CHECK1 vox/check ing communication relay
+
+//Female assassins
+
+HA_OK0 gina/gina_use0
+HA_OK1 gina/gina_use1
+HA_OK2 gina/gina_use2
+HA_OK3 gina/gina_use3
+HA_OK4 gina/gina_use4
+HA_OK5 gina/gina_use5
+
+HA_WAIT0 gina/gina_unuse0
+HA_WAIT1 gina/gina_unuse1
+HA_WAIT2 gina/gina_unuse2
+HA_WAIT3 gina/gina_unuse3
+HA_WAIT4 gina/gina_unuse4
 
 //Player's phrases
 
