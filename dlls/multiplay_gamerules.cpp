@@ -1853,7 +1853,7 @@ BOOL CHalfLifeMultiplay::IsAnyPlayerAlive()
 	for( int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
 		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
-		if (pPlayer && pPlayer->IsAlive() && !( pPlayer->pev->flags & FL_SPECTATOR )) {
+		if (pPlayer && pPlayer->IsAlive()) {
 			return TRUE;
 		}
 	}
