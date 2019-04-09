@@ -4654,7 +4654,7 @@ void CBasePlayer::Spawn( void )
 
 	g_pGameRules->SetDefaultPlayerTeam( this );
 
-	if (!(survival.value && m_bShouldBeRescued)) {
+	if (!(survival.value && m_iRespawnPoint == 1)) {
 		g_pGameRules->GetPlayerSpawnSpot( this );
 	}
 

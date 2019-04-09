@@ -88,7 +88,7 @@ void UTIL_RescuePlayer( CBasePlayer *pPlayer, entvars_t* where )
 	pPlayer->pev->effects &= ~EF_NODRAW;
 	pPlayer->pev->flags &= ~FL_SPECTATOR;
 
-	pPlayer->m_bShouldBeRescued = TRUE;
+	pPlayer->m_iRespawnPoint = 1;
 	pPlayer->StopObserver();
 
 	pPlayer->pev->origin = where->origin + Vector( 0, 0, 1 );
@@ -1147,7 +1147,7 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 	bool giveSuit = true;
 	CBaseEntity	*pWeaponEntity = NULL;
 
-	if (survival.value && m_survivalState == SurvivalEnabled && !pPlayer->m_bShouldBeRescued) {
+	if (survival.value && m_survivalState == SurvivalEnabled && !pPlayer->m_iRespawnPoint) {
 		UTIL_BecomeSpectator(pPlayer);
 		return;
 	}

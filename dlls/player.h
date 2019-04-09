@@ -400,7 +400,7 @@ public:
 	friend class CTriggerXenReturn;
 
 	float m_flKilledTime;
-	BOOL m_bShouldBeRescued;
+	BOOL m_iRespawnPoint;
 
 	static float g_sayConditionTime;
 	float m_flSayTime;

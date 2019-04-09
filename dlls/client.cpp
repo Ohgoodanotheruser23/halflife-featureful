@@ -204,7 +204,7 @@ void ClientPutInServer( edict_t *pEntity )
 	pPlayer->SetCustomDecalFrames( -1 ); // Assume none;
 
 	// Allocate a CBasePlayer for pev, and call spawn
-	pPlayer->m_bShouldBeRescued = FALSE;
+	pPlayer->m_iRespawnPoint = 0;
 	pPlayer->Spawn();
 
 	// Reset interpolation during first frame

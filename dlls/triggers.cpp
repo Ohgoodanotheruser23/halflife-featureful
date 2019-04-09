@@ -2927,9 +2927,9 @@ void CTriggerRespawn::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 	for( int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
 		CBasePlayer* pPlayer = (CBasePlayer*)UTIL_PlayerByIndex( i );
-		if (pPlayer && pPlayer->IsPlayer())
+		if (pPlayer)
 		{
-			if (pPlayer->IsAlive())
+			if (pPlayer->IsPlayer() && pPlayer->IsAlive())
 			{
 				if (!FBitSet(pev->spawnflags, SF_TRIGGERRESPAWN_DONT_MOVE_LIVING_PLAYERS))
 				{
@@ -2937,9 +2937,17 @@ void CTriggerRespawn::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 					pPlayer->pev->health = pPlayer->pev->max_health;
 				}
 			}
-			else
+			else if ((pPlayer->IsPlayer() && !IsAlive()) || (pPlayer->pev->flags & FL_SPECTATOR))
 			{
-				respawn( pPlayer->pev, !( pPlayer->m_afPhysicsFlags & PFLAG_OBSERVER ) );
+				pPlayer->m_iRespawnFrames = 0;
+				pPlayer->pev->effects &= ~EF_NODRAW;
+				pPlayer->pev->flags &= ~FL_SPECTATOR;
+
+				pPlayer->m_iRespawnPoint = 2;
+				if ( pPlayer->m_afPhysicsFlags & PFLAG_OBSERVER )
+					pPlayer->StopObserver();
+				else
+					respawn( pPlayer->pev, FALSE );
 			}
 		}
 	}
