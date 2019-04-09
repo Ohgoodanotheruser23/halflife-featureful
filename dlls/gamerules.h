@@ -380,6 +380,7 @@ public:
 	static BOOL IsAnyPlayerRescuable( void );
 	static CBasePlayer *FindRescuablePlayer( void );
 
+	bool IsSurvivalMode();
 	void EnableSurvival();
 protected:
 	virtual void ChangeLevel( void );

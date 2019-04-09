@@ -792,7 +792,7 @@ void CHalfLifeMultiplay::Think( void )
 		}
 	}
 
-	if (!m_hasTriggerSurvival && survival.value) {
+	if (!m_hasTriggerSurvival && IsSurvivalMode()) {
 		if (m_survivalState == SurvivalWaitForPlayers) {
 			if (IsAnyPlayerAlive()) {
 				m_survivalState = SurvivalCountdown;
@@ -832,6 +832,11 @@ void CHalfLifeMultiplay::Think( void )
 			}
 		}
 	}
+}
+
+bool CHalfLifeMultiplay::IsSurvivalMode()
+{
+	return IsCoOp() && survival.value;
 }
 
 void CHalfLifeMultiplay::EnableSurvival()
@@ -1595,6 +1600,9 @@ int CHalfLifeMultiplay::WeaponShouldRespawn( CBasePlayerWeapon *pWeapon )
 		return GR_WEAPON_RESPAWN_NO;
 	}
 
+	if (IsSurvivalMode())
+		return GR_WEAPON_RESPAWN_NO;
+
 	return GR_WEAPON_RESPAWN_YES;
 }
 
@@ -1639,6 +1647,9 @@ int CHalfLifeMultiplay::ItemShouldRespawn( CItem *pItem )
 	{
 		return GR_ITEM_RESPAWN_NO;
 	}
+
+	if (IsSurvivalMode())
+		return GR_ITEM_RESPAWN_NO;
 
 	return GR_ITEM_RESPAWN_YES;
 }
@@ -1685,6 +1696,9 @@ int CHalfLifeMultiplay::AmmoShouldRespawn( CBasePlayerAmmo *pAmmo )
 		return GR_AMMO_RESPAWN_NO;
 	}
 
+	if (IsSurvivalMode())
+		return GR_AMMO_RESPAWN_NO;
+
 	return GR_AMMO_RESPAWN_YES;
 }
 
@@ -1706,11 +1720,15 @@ Vector CHalfLifeMultiplay::VecAmmoRespawnSpot( CBasePlayerAmmo *pAmmo )
 //=========================================================
 float CHalfLifeMultiplay::FlHealthChargerRechargeTime( void )
 {
+	if (IsSurvivalMode())
+		return 0;
 	return healthcharger_rechargetime.value == -2 ? HEALTHCHARGER_RESPAWN_TIME : healthcharger_rechargetime.value;
 }
 
 float CHalfLifeMultiplay::FlHEVChargerRechargeTime( void )
 {
+	if (IsSurvivalMode())
+		return 0;
 	return hevcharger_rechargetime.value == -2 ? HEVCHARGER_RESPAWN_TIME : hevcharger_rechargetime.value;
 }
 
