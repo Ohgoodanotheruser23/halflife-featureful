@@ -427,13 +427,13 @@ public:
 			player->VoiceSound("scientist/sci_die1.wav");
 			break;
 		case 1:
-			player->VoiceSound("scientist/sci_die2.wav");
+			player->VoiceSound("scientist/sci_pain1.wav");
 			break;
 		case 2:
-			player->VoiceSound("scientist/sci_die3.wav");
+			player->VoiceSound("scientist/sci_pain4.wav");
 			break;
 		case 3:
-			player->VoiceSound("scientist/sci_die4.wav");
+			player->VoiceSound("scientist/sci_pain5.wav");
 			break;
 		}
 		return true;
@@ -741,7 +741,7 @@ public:
 class GinaPhrases : public CharacterPhrases
 {
 	bool painSound(CBasePlayer* player) {
-		switch( RANDOM_LONG( 0, 3 ) )
+		switch( RANDOM_LONG( 0, 2 ) )
 		{
 		case 0:
 			player->VoiceSound("gina/gina_pain0.wav");
@@ -751,9 +751,6 @@ class GinaPhrases : public CharacterPhrases
 			break;
 		case 2:
 			player->VoiceSound("gina/gina_pain2.wav");
-			break;
-		case 3:
-			player->VoiceSound("gina/gina_pain3.wav");
 			break;
 		}
 		return true;
@@ -1110,6 +1107,8 @@ int gmsgNightvision = 0;
 int gmsgMovementState = 0;
 #endif
 
+int gmsgUseSound = 0;
+
 void LinkUserMessages( void )
 {
 	// Already taken care of?
@@ -1162,6 +1161,7 @@ void LinkUserMessages( void )
 #if FEATURE_MOVE_MODE
 	gmsgMovementState = REG_USER_MSG( "MoveMode", 2 );
 #endif
+	gmsgUseSound = REG_USER_MSG( "UseSound", 1 );
 }
 
 LINK_ENTITY_TO_CLASS( player, CBasePlayer )
@@ -3005,7 +3005,14 @@ void CBasePlayer::PlayerUse( void )
 		caps = pObject->ObjectCaps();
 
 		if( m_afButtonPressed & IN_USE )
-			EMIT_SOUND( ENT(pev), CHAN_ITEM, "common/wpn_select.wav", 0.4, ATTN_NORM );
+		{
+			if (IsNetClient())
+			{
+				MESSAGE_BEGIN( MSG_ONE, gmsgUseSound, NULL, pev );
+					WRITE_BYTE( 1 );
+				MESSAGE_END();
+			}
+		}
 
 		if( ( ( pev->button & IN_USE ) && ( caps & FCAP_CONTINUOUS_USE ) ) ||
 			 ( ( m_afButtonPressed & IN_USE ) && ( caps & ( FCAP_IMPULSE_USE | FCAP_ONOFF_USE ) ) ) )
@@ -3024,7 +3031,14 @@ void CBasePlayer::PlayerUse( void )
 	else
 	{
 		if( m_afButtonPressed & IN_USE )
-			EMIT_SOUND( ENT( pev ), CHAN_ITEM, "common/wpn_denyselect.wav", 0.4, ATTN_NORM );
+		{
+			if (IsNetClient())
+			{
+				MESSAGE_BEGIN( MSG_ONE, gmsgUseSound, NULL, pev );
+					WRITE_BYTE( 0 );
+				MESSAGE_END();
+			}
+		}
 	}
 }
 

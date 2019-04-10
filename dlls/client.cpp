@@ -855,7 +855,7 @@ void ClientPrecache( void )
 
 	// PRECACHE_SOUND( "player/pl_jumpland2.wav" );		// UNDONE: play 2x step sound
 
-	PRECACHE_SOUND( "player/pl_fallpain2.wav" );
+	//PRECACHE_SOUND( "player/pl_fallpain2.wav" );
 	PRECACHE_SOUND( "player/pl_fallpain3.wav" );
 
 	PRECACHE_SOUND( "player/pl_step1.wav" );		// walk on concrete
@@ -935,18 +935,18 @@ void ClientPrecache( void )
 	// player pain sounds
 	//PRECACHE_SOUND( "player/pl_pain2.wav" );
 	//PRECACHE_SOUND( "player/pl_pain4.wav" );
-	PRECACHE_SOUND( "player/pl_pain5.wav" );
-	PRECACHE_SOUND( "player/pl_pain6.wav" );
-	PRECACHE_SOUND( "player/pl_pain7.wav" );
+//	PRECACHE_SOUND( "player/pl_pain5.wav" );
+//	PRECACHE_SOUND( "player/pl_pain6.wav" );
+//	PRECACHE_SOUND( "player/pl_pain7.wav" );
 
 	PRECACHE_MODEL( "models/player.mdl" );
 
 	// hud sounds
-	PRECACHE_SOUND( "common/wpn_hudoff.wav" );
-	PRECACHE_SOUND( "common/wpn_hudon.wav" );
-	PRECACHE_SOUND( "common/wpn_moveselect.wav" );
-	PRECACHE_SOUND( "common/wpn_select.wav" );
-	PRECACHE_SOUND( "common/wpn_denyselect.wav" );
+//	PRECACHE_SOUND( "common/wpn_hudoff.wav" );
+//	PRECACHE_SOUND( "common/wpn_hudon.wav" );
+//	PRECACHE_SOUND( "common/wpn_moveselect.wav" );
+//	PRECACHE_SOUND( "common/wpn_select.wav" );
+//	PRECACHE_SOUND( "common/wpn_denyselect.wav" );
 
 	// geiger sounds
 //	PRECACHE_SOUND( "player/geiger6.wav" );
@@ -972,16 +972,12 @@ void ClientPrecache( void )
 	PRECACHE_SOUND( "scientist/sci_pain5.wav" );
 
 	PRECACHE_SOUND( "scientist/sci_die1.wav" );
-	PRECACHE_SOUND( "scientist/sci_die2.wav" );
-	PRECACHE_SOUND( "scientist/sci_die3.wav" );
-	PRECACHE_SOUND( "scientist/sci_die4.wav" );
 
 	// Gina player character sounds
 	PRECACHE_SOUND( "gina/gina_pain0.wav" );
 	PRECACHE_SOUND( "gina/gina_pain1.wav" );
 	PRECACHE_SOUND( "gina/gina_pain2.wav" );
-	PRECACHE_SOUND( "gina/gina_pain3.wav" );
-	
+
 	PRECACHE_SOUND( "gina/gina_die0.wav" );
 	PRECACHE_SOUND( "gina/gina_die1.wav" );
 	PRECACHE_SOUND( "gina/gina_die2.wav" );
