@@ -81,6 +81,9 @@ public:
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void KeyValue( KeyValueData* pkvd );
 
+	void DesiredAction( void ); //LRC - used to be called Next!
+
+	void EXPORT PostponeNext( void );
 	void EXPORT Next( void );
 	void EXPORT Find( void );
 	void EXPORT NearestPath( void );

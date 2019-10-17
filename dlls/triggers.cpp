@@ -30,6 +30,7 @@
 #include "skill.h"
 #include "monsters.h"
 #include "talkmonster.h"
+#include "movewith.h"
 #include "locus.h"
 
 #define FEATURE_TRIGGER_RANDOM 1
@@ -4237,7 +4238,7 @@ public:
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void KeyValue( KeyValueData *pkvd );
 	void Affect(CBaseEntity *pTarget, CBaseEntity *pActivator );
-	void Activate( void ); // TODO: change to PostSpawn
+	void PostSpawn( void );
 	void UpdateOnRemove();
 	void RemoveThreads();
 
@@ -4249,7 +4250,6 @@ public:
 	int m_iPosMode;
 	string_t m_iszFacing;
 	int m_iFaceMode;
-	BOOL m_activated;
 };
 LINK_ENTITY_TO_CLASS( motion_manager, CMotionManager )
 
@@ -4259,7 +4259,6 @@ TYPEDESCRIPTION	CMotionManager::m_SaveData[] =
 	DEFINE_FIELD( CMotionManager, m_iPosMode, FIELD_INTEGER ),
 	DEFINE_FIELD( CMotionManager, m_iszFacing, FIELD_STRING ),
 	DEFINE_FIELD( CMotionManager, m_iFaceMode, FIELD_INTEGER ),
-	DEFINE_FIELD( CMotionManager, m_activated, FIELD_BOOLEAN ),
 };
 
 IMPLEMENT_SAVERESTORE(CMotionManager,CPointEntity)
@@ -4290,13 +4289,10 @@ void CMotionManager::KeyValue( KeyValueData *pkvd )
 		CPointEntity::KeyValue( pkvd );
 }
 
-void CMotionManager::Activate( void )
+void CMotionManager::PostSpawn( void )
 {
-	if (m_activated)
-		return;
 	if (FStringNull(pev->targetname))
 		Use( this, this, USE_ON, 0 );
-	m_activated = TRUE;
 }
 
 void CMotionManager::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )

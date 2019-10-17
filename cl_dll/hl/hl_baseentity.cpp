@@ -57,6 +57,12 @@ int CBaseEntity::DamageDecal( int bitsDamageType ) { return -1; }
 CBaseEntity *CBaseEntity::Create( const char *szName, const Vector &vecOrigin, const Vector &vecAngles, edict_t *pentOwner ) { return NULL; }
 void CBaseEntity::UpdateOnRemove( void ) { }
 void CBaseEntity::SUB_Remove( void ) { }
+void CBaseEntity::KeyValue( KeyValueData* pkvd ) { }
+void CBaseEntity::Activate( void ) { } //LRC
+void CBaseEntity::InitMoveWith( void ) { } //LRC
+void CBaseEntity::SetNextThink( float delay, BOOL correctSpeed ) { }//LRC
+void CBaseEntity::AbsoluteNextThink( float time, BOOL correctSpeed ) { }//LRC
+void CBaseEntity::ThinkCorrection( ) { }//LRC
 
 // CBaseDelay Stubs
 void CBaseDelay::KeyValue( struct KeyValueData_s * ) { }

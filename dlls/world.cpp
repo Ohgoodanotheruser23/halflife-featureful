@@ -465,6 +465,9 @@ void CWorld::Spawn( void )
 
 void CWorld::Precache( void )
 {
+	g_pWorld = this;
+	m_pAssistLink = NULL;
+
 	g_pLastSpawn = NULL;
 #if 1
 	CVAR_SET_STRING( "sv_gravity", "800" ); // 67ft/sec

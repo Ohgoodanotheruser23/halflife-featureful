@@ -178,6 +178,36 @@ public:
 	CBaseEntity *m_pGoalEnt;// path corner we are heading towards
 	CBaseEntity *m_pLink;// used for temporary link-list operations. 
 
+	CBaseEntity			*m_pMoveWith; // LRC- the entity I move with.
+	int					m_MoveWith;	//LRC- Name of that entity
+	CBaseEntity			*m_pChildMoveWith;	//LRC- one of the entities that's moving with me.
+	CBaseEntity			*m_pSiblingMoveWith; //LRC- another entity that's Moving With the same ent as me. (linked list.)
+	Vector				m_vecMoveWithOffset; // LRC- Position I should be in relative to m_pMoveWith->pev->origin.
+	Vector				m_vecRotWithOffset; // LRC- Angles I should be facing relative to m_pMoveWith->pev->angles.
+	CBaseEntity			*m_pAssistLink; // LRC- link to the next entity which needs to be Assisted before physics are applied.
+	Vector				m_vecPostAssistVel; // LRC
+	Vector				m_vecPostAssistAVel; // LRC
+	float				m_fNextThink; // LRC - for SetNextThink and SetPhysThink. Marks the time when a think will be performed - not necessarily the same as pev->nextthink!
+	float				m_fPevNextThink; // LRC - always set equal to pev->nextthink, so that we can tell when the latter gets changed by the @#$^¬! engine.
+	int					m_iLFlags; // LRC- a new set of flags. (pev->spawnflags and pev->flags are full...)
+	virtual void		DesiredAction( void ) {} // LRC - for postponing stuff until PostThink time, not as a think.
+
+	Vector				m_vecSpawnOffset; // LRC- To fix things which (for example) MoveWith a door which Starts Open.
+	BOOL				m_activated;	// LRC- moved here from func_train. Signifies that an entity has already been
+										// activated. (and hence doesn't need reactivating.)
+
+	//LRC - decent mechanisms for setting think times!
+	// this should have been done a long time ago, but MoveWith finally forced me.
+	virtual void		SetNextThink( float delay ) { SetNextThink(delay, FALSE); }
+	virtual void		SetNextThink( float delay, BOOL correctSpeed );
+	virtual void		AbsoluteNextThink( float time ) { AbsoluteNextThink(time, FALSE); }
+	virtual void		AbsoluteNextThink( float time, BOOL correctSpeed );
+	void				SetEternalThink( );
+	//LRC use this instead of "SetThink( NULL )" or "pev->nextthink = -1".
+	void	DontThink( void );
+
+	virtual void ThinkCorrection( void );
+
 	virtual bool	CalcPosition( CBaseEntity *pLocus, Vector* outResult )	{ *outResult = pev->origin; return true; }
 	virtual bool	CalcVelocity( CBaseEntity *pLocus, Vector* outResult )	{ *outResult = pev->velocity; return true; }
 	virtual bool	CalcRatio( CBaseEntity *pLocus, float* outResult )	{ *outResult = 0; return true; }
@@ -185,11 +215,14 @@ public:
 	// initialization functions
 	virtual void Spawn( void ) { return; }
 	virtual void Precache( void ) { return; }
-	virtual void KeyValue( KeyValueData* pkvd ) { pkvd->fHandled = FALSE; }
+	virtual void KeyValue( KeyValueData* pkvd );
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	virtual int ObjectCaps( void ) { return FCAP_ACROSS_TRANSITION; }
-	virtual void Activate( void ) {}
+	virtual void Activate( void );
+	void			InitMoveWith( void ); //LRC - called by Activate() to set up moveWith values
+	virtual void	PostSpawn( void ) {} //LRC - called by Activate() to handle entity-specific initialisation.
+											 // (mostly setting positions, for MoveWith support)
 
 	// Setup the object->object collision box (pev->mins / pev->maxs is the object->world collision box)
 	virtual void SetObjectCollisionBox( void );
@@ -541,6 +574,8 @@ public:
 	float				m_flHeight;
 	void (CBaseToggle::*m_pfnCallWhenMoveDone)(void);
 	Vector				m_vecFinalDest;
+	float				m_flLinearMoveSpeed;	// LRC- allows a LinearMove to be delayed until a think.
+	float				m_flAngularMoveSpeed;	// LRC
 	Vector				m_vecFinalAngle;
 
 	int					m_bitsDamageInflict;	// DMG_ damage type that the door or tigger does
@@ -555,9 +590,13 @@ public:
 
 	// common member functions
 	void LinearMove( Vector	vecDest, float flSpeed );
+	void EXPORT LinearMoveNow( void ); //LRC- think function that lets us guarantee a LinearMove gets done as a think.
 	void EXPORT LinearMoveDone( void );
+	void EXPORT LinearMoveDoneNow( void ); //LRC
 	void AngularMove( Vector vecDestAngle, float flSpeed );
+	void EXPORT AngularMoveNow( void ); //LRC- think function that lets us guarantee an AngularMove gets done as a think.
 	void EXPORT AngularMoveDone( void );
+	void EXPORT AngularMoveDoneNow( void );
 	BOOL IsLockedByMaster( void );
 
 	static float		AxisValue( int flags, const Vector &angles );
@@ -669,6 +708,7 @@ class CBaseButton : public CBaseToggle
 {
 public:
 	void Spawn( void );
+	virtual void PostSpawn( void ); //LRC
 	virtual void Precache( void );
 	void RotSpawn( void );
 	virtual void KeyValue( KeyValueData* pkvd);
@@ -799,4 +839,6 @@ public:
 	void Precache( void );
 	void KeyValue( KeyValueData *pkvd );
 };
+
+extern CWorld *g_pWorld;
 #endif

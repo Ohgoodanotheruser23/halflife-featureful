@@ -197,7 +197,16 @@ typedef enum
 	MONSTERSTATE_DEAD
 } MONSTERSTATE;
 
+//LRC- the values used for the new "global states" mechanism.
+typedef enum
+{
+	STATE_OFF = 0,	// disabled, inactive, invisible, closed, or stateless. Or non-alert monster.
+	STATE_TURN_ON,  // door opening, env_fade fading in, etc.
+	STATE_ON,		// enabled, active, visisble, or open. Or alert monster.
+	STATE_TURN_OFF, // door closing, monster dying (?).
+} STATE;
 
+extern const char *GetStringForState( STATE state );
 
 // Things that toggle (buttons/triggers/doors) need this
 typedef enum
@@ -260,6 +269,7 @@ inline void UTIL_MakeVectorsPrivate( const Vector &vecAngles, float *p_vForward,
 extern void			UTIL_MakeAimVectors		( const Vector &vecAngles ); // like MakeVectors, but assumes pitch isn't inverted
 extern void			UTIL_MakeInvVectors		( const Vector &vec, globalvars_t *pgv );
 
+extern void			UTIL_SetOrigin			( CBaseEntity* pEntity, const Vector &vecOrigin );
 extern void			UTIL_SetOrigin			( entvars_t* pev, const Vector &vecOrigin );
 extern void			UTIL_EmitAmbientSound	( edict_t *entity, const Vector &vecOrigin, const char *samp, float vol, float attenuation, int fFlags, int pitch );
 extern void			UTIL_ParticleEffect		( const Vector &vecOrigin, const Vector &vecDirection, ULONG ulColor, ULONG ulCount );
@@ -593,13 +603,5 @@ void UTIL_CleanSpawnPoint( Vector origin, float dist );
 void UTIL_MuzzleLight( Vector vecSrc, float flRadius, byte r, byte g, byte b, float flTime, float flDecay );
 
 char *memfgets( byte *pMemFile, int fileSize, int &filePos, char *pBuffer, int bufferSize );
-
-//TODO: move this to movewith.h later
-extern void			UTIL_AssignOrigin		( CBaseEntity* pEntity, const Vector vecOrigin );
-extern void			UTIL_AssignOrigin		( CBaseEntity* pEntity, const Vector vecOrigin, BOOL bInitiator );
-extern void			UTIL_SetVelocity		( CBaseEntity *pEnt,	const Vector vecSet );
-extern void			UTIL_SetAngles			( CBaseEntity* pEntity, const Vector vecAngles );
-extern void			UTIL_SetAngles			( CBaseEntity* pEntity, const Vector vecAngles, BOOL bInitiator );
-extern void			UTIL_SetAvelocity		( CBaseEntity *pEnt, const Vector vecSet );
 
 #endif // UTIL_H

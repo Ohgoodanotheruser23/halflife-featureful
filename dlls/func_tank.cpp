@@ -19,6 +19,7 @@
 #include "effects.h"
 #include "weapons.h"
 #include "explode.h"
+#include "movewith.h"
 
 #include "player.h"
 
@@ -53,6 +54,7 @@ class CFuncTank : public CBaseEntity
 {
 public:
 	void Spawn( void );
+	void PostSpawn( void );
 	void Precache( void );
 	void KeyValue( KeyValueData *pkvd );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
@@ -72,7 +74,7 @@ public:
 	virtual int ObjectCaps( void ) { return CBaseEntity :: ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
 	inline BOOL IsActive( void ) { return (pev->spawnflags & SF_TANK_ACTIVE)?TRUE:FALSE; }
-	inline void TankActivate( void ) { pev->spawnflags |= SF_TANK_ACTIVE; pev->nextthink = pev->ltime + 0.1f; m_fireLast = 0; }
+	inline void TankActivate( void ) { pev->spawnflags |= SF_TANK_ACTIVE; SetNextThink( 0.1f ); m_fireLast = 0; }
 	inline void TankDeactivate( void ) { pev->spawnflags &= ~SF_TANK_ACTIVE; m_fireLast = 0; StopRotSound(); }
 	inline BOOL CanFire( void ) { return (gpGlobals->time - m_lastSightTime) < m_persist; }
 	BOOL InRange( float range );
@@ -207,7 +209,7 @@ void CFuncTank::Spawn( void )
 	m_pitchCenter = pev->angles.x;
 
 	if( IsActive() )
-		pev->nextthink = pev->ltime + 1.0f;
+		SetNextThink( 1.0f );
 
 	m_sightOrigin = BarrelPosition(); // Point at the end of the barrel
 
@@ -220,6 +222,20 @@ void CFuncTank::Spawn( void )
 	
 	if (!m_bulletCount) {
 		m_bulletCount = -1;
+	}
+}
+
+void CFuncTank::PostSpawn( void )
+{
+	if (m_pMoveWith)
+	{
+		m_yawCenter = pev->angles.y - m_pMoveWith->pev->angles.y;
+		m_pitchCenter = pev->angles.x - m_pMoveWith->pev->angles.x;
+	}
+	else
+	{
+		m_yawCenter = pev->angles.y;
+		m_pitchCenter = pev->angles.x;
 	}
 }
 
@@ -403,7 +419,7 @@ BOOL CFuncTank::StartControl( CBasePlayer *pController )
 	m_pController->m_iHideHUD |= HIDEHUD_WEAPONS;
 	m_vecControllerUsePos = m_pController->pev->origin;
 
-	pev->nextthink = pev->ltime + 0.1f;
+	SetNextThink( 0.1f );
 
 	return TRUE;
 }
@@ -425,14 +441,14 @@ void CFuncTank::StopControl()
 
 	if (m_pSpot)
 		m_pSpot->pev->effects |= EF_NODRAW;
-
-	pev->nextthink = 0;
+	DontThink();
+	UTIL_SetAvelocity(this, g_vecZero);
 
 	m_pController->m_pTank = NULL;
 	m_pController = NULL;
 
 	if( IsActive() )
-		pev->nextthink = pev->ltime + 1.0f;
+		SetNextThink( 1.0f );
 }
 
 void CFuncTank::UpdateSpot( void )
@@ -577,7 +593,7 @@ BOOL CFuncTank::InRange( float range )
 
 void CFuncTank::Think( void )
 {
-	pev->avelocity = g_vecZero;
+	//pev->avelocity = g_vecZero;
 	TrackTarget();
 
 	if( fabs( pev->avelocity.x ) > 1 || fabs( pev->avelocity.y ) > 1 )
@@ -602,21 +618,27 @@ void CFuncTank::TrackTarget( void )
 		// Tanks attempt to mirror the player's angles
 		angles = m_pController->pev->v_angle;
 		angles[0] = 0 - angles[0];
-		pev->nextthink = pev->ltime + 0.05f;
+		SetNextThink( 0.05f, FALSE );
 	}
 	else
 	{
 		if( IsActive() )
-			pev->nextthink = pev->ltime + 0.1f;
+		{
+			SetNextThink( 0.1f );
+		}
 		else
+		{
+			DontThink();
+			UTIL_SetAvelocity(this, g_vecZero);
 			return;
+		}
 
 		UpdateSpot();
 
 		if( FNullEnt( pPlayer ) )
 		{
 			if( IsActive() )
-				pev->nextthink = pev->ltime + 2.0f;	// Wait 2 secs
+				SetNextThink( 2.0f );	// Wait 2 secs
 			return;
 		}
 		pTarget = FindTarget( pPlayer );
@@ -655,9 +677,22 @@ void CFuncTank::TrackTarget( void )
 
 	angles.x = -angles.x;
 
+	float currentYawCenter, currentPitchCenter;
+
 	// Force the angles to be relative to the center position
-	angles.y = m_yawCenter + UTIL_AngleDistance( angles.y, m_yawCenter );
-	angles.x = m_pitchCenter + UTIL_AngleDistance( angles.x, m_pitchCenter );
+	if (m_pMoveWith)
+	{
+		currentYawCenter = m_yawCenter + m_pMoveWith->pev->angles.y;
+		currentPitchCenter = m_pitchCenter + m_pMoveWith->pev->angles.x;
+	}
+	else
+	{
+		currentYawCenter = m_yawCenter;
+		currentPitchCenter = m_pitchCenter;
+	}
+
+	angles.y = currentYawCenter + UTIL_AngleDistance( angles.y, currentYawCenter );
+	angles.x = currentPitchCenter + UTIL_AngleDistance( angles.x, currentPitchCenter );
 
 	// Limit against range in y
 	if( angles.y > m_yawCenter + m_yawRange )
@@ -676,11 +711,13 @@ void CFuncTank::TrackTarget( void )
 
 	// Move toward target at rate or less
 	float distY = UTIL_AngleDistance( angles.y, pev->angles.y );
-	pev->avelocity.y = distY * 10;
-	if( pev->avelocity.y > m_yawRate )
-		pev->avelocity.y = m_yawRate;
-	else if( pev->avelocity.y < -m_yawRate )
-		pev->avelocity.y = -m_yawRate;
+	Vector setAVel = g_vecZero;
+
+	setAVel.y = distY * 10;
+	if( setAVel.y > m_yawRate )
+		setAVel.y = m_yawRate;
+	else if( setAVel.y < -m_yawRate )
+		setAVel.y = -m_yawRate;
 
 	// Limit against range in x
 	if( angles.x > m_pitchCenter + m_pitchRange )
@@ -690,12 +727,14 @@ void CFuncTank::TrackTarget( void )
 
 	// Move toward target at rate or less
 	float distX = UTIL_AngleDistance( angles.x, pev->angles.x );
-	pev->avelocity.x = distX  * 10;
+	setAVel.x = distX  * 10;
 
-	if( pev->avelocity.x > m_pitchRate )
-		pev->avelocity.x = m_pitchRate;
-	else if( pev->avelocity.x < -m_pitchRate )
-		pev->avelocity.x = -m_pitchRate;
+	if( setAVel.x > m_pitchRate )
+		setAVel.x = m_pitchRate;
+	else if( setAVel.x < -m_pitchRate )
+		setAVel.x = -m_pitchRate;
+
+	UTIL_SetAvelocity(this, setAVel);
 
 	if( m_pController )
 		return;
@@ -775,7 +814,7 @@ void CFuncTank::Fire( const Vector &barrelEnd, const Vector &forward, entvars_t 
 			pSprite->SetScale( m_spriteScale );
 
 			// Hack Hack, make it stick around for at least 100 ms.
-			pSprite->pev->nextthink += 0.1f;
+			pSprite->AbsoluteNextThink( pSprite->m_fNextThink + 0.1 );
 		}
 		SUB_UseTargets( this, USE_TOGGLE, 0 );
 	}
@@ -985,7 +1024,7 @@ void CFuncTankLaser::Fire( const Vector &barrelEnd, const Vector &forward, entva
 				m_pLaser->TurnOn();
 				m_pLaser->pev->dmgtime = gpGlobals->time - 1.0f;
 				m_pLaser->FireAtPoint( tr, pevAttacker );
-				m_pLaser->pev->nextthink = 0;
+				m_pLaser->DontThink();
 				RemoveBullet();
 			}
 			CFuncTank::Fire( barrelEnd, forward, pevAttacker );
@@ -1168,7 +1207,7 @@ void CFuncTankControls::Spawn( void )
 	UTIL_SetSize( pev, pev->mins, pev->maxs );
 	UTIL_SetOrigin( pev, pev->origin );
 
-	pev->nextthink = gpGlobals->time + 0.3f;	// After all the func_tank's have spawned
+	SetNextThink( 0.3f );	// After all the func_tank's have spawned
 
 	CBaseEntity::Spawn();
 }

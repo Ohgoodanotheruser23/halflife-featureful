@@ -486,7 +486,7 @@ void CBreakable::BreakTouch( CBaseEntity *pOther )
 			m_flDelay = 0.1f;
 		}
 
-		pev->nextthink = pev->ltime + m_flDelay;
+		SetNextThink( m_flDelay );
 	}
 }
 
@@ -590,7 +590,7 @@ int CBreakable::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 	pev->health -= flDamage;
 	if( pev->health <= 0 )
 	{
-		Killed( pevInflictor, pevAttacker, GIB_NORMAL );
+		//Killed( pevInflictor, pevAttacker, GIB_NORMAL );
 		Die();
 		return 0;
 	}
@@ -777,7 +777,7 @@ void CBreakable::Die( void )
 	SUB_UseTargets( NULL, USE_TOGGLE, 0 );
 
 	SetThink( &CBaseEntity::SUB_Remove );
-	pev->nextthink = pev->ltime + 0.1f;
+	SetNextThink( 0.1f );
 	if (pev->message)
 	{
 		CBaseEntity* foundEntity = UTIL_FindEntityByTargetname(NULL, STRING(pev->message));

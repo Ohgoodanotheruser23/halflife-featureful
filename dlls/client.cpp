@@ -38,6 +38,7 @@
 #include "weaponinfo.h"
 #include "usercmd.h"
 #include "netadr.h"
+#include "movewith.h"
 #include "pm_shared.h"
 
 extern DLL_GLOBAL ULONG		g_ulModelIndexPlayer;
@@ -725,6 +726,9 @@ void ServerDeactivate( void )
 {
 	//ALERT( at_console, "ServerDeactivate()\n" );
 
+	// make sure they reinitialise the World in the next server
+	g_pWorld = NULL;
+
 	// It's possible that the engine will call this function more times than is necessary
 	//  Therefore, only run it one time for each call to ServerActivate 
 	if( g_serveractive != 1 )
@@ -774,6 +778,10 @@ void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
 	LinkUserMessages();
 }
 
+// a cached version of gpGlobals->frametime. The engine sets frametime to 0 if the player is frozen... so we just cache it in prethink,
+// allowing it to be restored later and used by CheckDesiredList.
+float cached_frametime = 0.0f;
+
 /*
 ================
 PlayerPreThink
@@ -789,6 +797,8 @@ void PlayerPreThink( edict_t *pEntity )
 
 	if( pPlayer )
 		pPlayer->PreThink();
+
+	cached_frametime = gpGlobals->frametime;
 }
 
 /*
@@ -806,6 +816,13 @@ void PlayerPostThink( edict_t *pEntity )
 
 	if( pPlayer )
 		pPlayer->PostThink();
+
+	// use the old frametime, even if the engine has reset it
+	gpGlobals->frametime = cached_frametime;
+
+	//LRC - moved to here from CBasePlayer::PostThink, so that
+	// things don't stop when the player dies
+	CheckDesiredList( );
 }
 
 void ParmsNewLevel( void )
@@ -837,6 +854,7 @@ void StartFrame( void )
 	gpGlobals->teamplay = teamplay.value;
 	g_ulFrameCount++;
 
+	CheckAssistList(); //LRC
 	int oldBhopcap = g_bhopcap;
 	g_bhopcap = ( g_pGameRules->IsMultiplayer() && bhopcap.value != 0.0f ) ? 1 : 0;
 	if( g_bhopcap != oldBhopcap )

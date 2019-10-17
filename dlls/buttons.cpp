@@ -130,14 +130,6 @@ void CEnvGlobal::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 #define SF_ENVSTATE_START_ON		1
 #define SF_ENVSTATE_DEBUG			2
 
-enum
-{
-	STATE_OFF,
-	STATE_TURN_OFF,
-	STATE_ON,
-	STATE_TURN_ON,
-};
-
 static const char* GetStringForUseType(USE_TYPE useType)
 {
 	switch (useType) {
@@ -172,7 +164,7 @@ public:
 
 	static	TYPEDESCRIPTION m_SaveData[];
 
-	int			m_iState;
+	STATE			m_iState;
 	float		m_fTurnOnTime;
 	float		m_fTurnOffTime;
 	string_t	m_sMaster;
@@ -788,7 +780,7 @@ void CBaseButton::Spawn()
 	if( IsSparkingButton() )// this button should spark in OFF state
 	{
 		SetThink( &CBaseButton::ButtonSpark );
-		pev->nextthink = gpGlobals->time + 0.5f;// no hurry, make sure everything else spawns
+		SetNextThink( 0.5f );// no hurry, make sure everything else spawns
 	}
 
 	SetMovedir( pev );
@@ -811,13 +803,6 @@ void CBaseButton::Spawn()
 		m_flLip = 4.0f;
 
 	m_toggle_state = TS_AT_BOTTOM;
-	m_vecPosition1 = pev->origin;
-	// Subtract 2 from size because the engine expands bboxes by 1 in all directions making the size too big
-	m_vecPosition2	= m_vecPosition1 + ( pev->movedir * ( fabs( pev->movedir.x * ( pev->size.x - 2.0f ) ) + fabs( pev->movedir.y * ( pev->size.y - 2.0f ) ) + fabs( pev->movedir.z * ( pev->size.z - 2.0f ) ) - m_flLip ) );
-
-	// Is this a non-moving button?
-	if( ( ( m_vecPosition2 - m_vecPosition1 ).Length() < 1.0f ) || ( pev->spawnflags & SF_BUTTON_DONTMOVE ) )
-		m_vecPosition2 = m_vecPosition1;
 
 	m_fStayPushed = m_flWait == -1.0f ? TRUE : FALSE;
 	m_fRotating = FALSE;
@@ -836,6 +821,22 @@ void CBaseButton::Spawn()
 			SetUse( &CBaseButton::ButtonUse );
 	}
 }
+
+//LRC
+void CBaseButton::PostSpawn( void )
+{
+	if (m_pMoveWith)
+		m_vecPosition1 = pev->origin - m_pMoveWith->pev->origin;
+	else
+		m_vecPosition1 = pev->origin;
+	// Subtract 2 from size because the engine expands bboxes by 1 in all directions
+	m_vecPosition2	= m_vecPosition1 + ( pev->movedir * ( fabs( pev->movedir.x * ( pev->size.x - 2.0f ) ) + fabs( pev->movedir.y * ( pev->size.y - 2.0f ) ) + fabs( pev->movedir.z * ( pev->size.z - 2.0f ) ) - m_flLip ) );
+
+	// Is this a non-moving button?
+	if ( ((m_vecPosition2 - m_vecPosition1).Length() < 1) || (pev->spawnflags & SF_BUTTON_DONTMOVE) )
+		m_vecPosition2 = m_vecPosition1;
+}
+
 
 // Button sound table. 
 // Also used by CBaseDoor to get 'touched' door lock/unlock sounds
@@ -952,7 +953,7 @@ void DoSpark( entvars_t *pev, const Vector &location )
 void CBaseButton::ButtonSpark( void )
 {
 	SetThink( &CBaseButton::ButtonSpark );
-	pev->nextthink = pev->ltime + 0.1f + RANDOM_FLOAT( 0.0f, 1.5f );// spark again at random interval
+	SetNextThink( 0.1f + RANDOM_FLOAT( 0, 1.5f ) );// spark again at random interval
 
 	DoSpark( pev, pev->mins );
 }
@@ -1100,6 +1101,10 @@ void CBaseButton::TriggerAndWait( void )
 
 	m_toggle_state = TS_AT_TOP;
 
+	pev->frame = 1;			// use alternate textures
+
+	SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 );
+
 	// If button automatically comes back out, start it moving out.
 	// Else re-instate touch method
 	if( m_fStayPushed || FBitSet( pev->spawnflags, SF_BUTTON_TOGGLE ) )
@@ -1114,13 +1119,16 @@ void CBaseButton::TriggerAndWait( void )
 	}
 	else
 	{
-		pev->nextthink = pev->ltime + m_flWait;
 		SetThink( &CBaseButton::ButtonReturn );
+		if (m_flWait)
+		{
+			SetNextThink( m_flWait );
+		}
+		else
+		{
+			ButtonReturn();
+		}
 	}
-
-	pev->frame = 1;			// use alternate textures
-
-	SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 );
 }
 
 //
@@ -1130,6 +1138,8 @@ void CBaseButton::ButtonReturn( void )
 {
 	ASSERT( m_toggle_state == TS_AT_TOP );
 	m_toggle_state = TS_GOING_DOWN;
+	
+	pev->frame = 0;			// use normal textures
 
 	SetMoveDone( &CBaseButton::ButtonBackHome );
 	if( !m_fRotating )
@@ -1137,7 +1147,6 @@ void CBaseButton::ButtonReturn( void )
 	else
 		AngularMove( m_vecAngle1, pev->speed );
 
-	pev->frame = 0;			// use normal textures
 }
 
 //
@@ -1187,7 +1196,11 @@ void CBaseButton::ButtonBackHome( void )
 	if( IsSparkingButton() )
 	{
 		SetThink( &CBaseButton::ButtonSpark );
-		pev->nextthink = gpGlobals->time + 0.5f;// no hurry.
+		SetNextThink( 0.5f );// no hurry.
+	}
+	else
+	{
+		DontThink();
 	}
 }
 
@@ -1204,6 +1217,7 @@ class CRotButton : public CBaseButton
 {
 public:
 	void Spawn( void );
+	void PostSpawn( void ) {} // don't use the moveWith fix from CBaseButton
 };
 
 LINK_ENTITY_TO_CLASS( func_rot_button, CRotButton )
@@ -1405,9 +1419,9 @@ void CMomentaryRotButton::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, US
 	UpdateAllButtons( pev->ideal_yaw, 1 );
 
 	// Calculate destination angle and use it to predict value, this prevents sending target in wrong direction on retriggering
-	Vector dest = pev->angles + pev->avelocity * ( pev->nextthink - pev->ltime );
-	float value1 = CBaseToggle::AxisDelta( pev->spawnflags, dest, m_start ) / m_flMoveDistance;
-	UpdateTarget( value1 );
+	float f = m_fNextThink - pev->ltime;
+	f = CBaseToggle::AxisDelta( pev->spawnflags, pev->angles + pev->avelocity*f, m_start ) / m_flMoveDistance;
+	UpdateTarget( f );
 }
 
 void CMomentaryRotButton::UpdateAllButtons( float value, int start )
@@ -1445,7 +1459,7 @@ void CMomentaryRotButton::UpdateSelf( float value )
 	}
 	m_lastUsed = 1;
 
-	pev->nextthink = pev->ltime + 0.1f;
+	SetNextThink( 0.1f );
 	if( m_direction > 0 && value >= 1.0f )
 	{
 		pev->avelocity = g_vecZero;
@@ -1463,10 +1477,14 @@ void CMomentaryRotButton::UpdateSelf( float value )
 		PlaySound();
 
 	// HACKHACK -- If we're going slow, we'll get multiple player packets per frame, bump nexthink on each one to avoid stalling
-	if( pev->nextthink < pev->ltime )
-		pev->nextthink = pev->ltime + 0.1f;
+	//LRC- that is to say: our avelocity will get us to the target point in 0.1 secs.
+	// If we're being told to move further than that, wait that much longer.
+	if ( m_fNextThink < pev->ltime )
+		SetNextThink( 0.1f );
 	else
-		pev->nextthink += 0.1f;
+	{
+		AbsoluteNextThink( m_fNextThink + 0.1f );
+	}
 	
 	pev->avelocity = m_direction * pev->speed * pev->movedir;
 	SetThink( &CMomentaryRotButton::Off );
@@ -1498,7 +1516,7 @@ void CMomentaryRotButton::Off( void )
 	if( FBitSet( pev->spawnflags, SF_PENDULUM_AUTO_RETURN ) && m_returnSpeed > 0 )
 	{
 		SetThink( &CMomentaryRotButton::Return );
-		pev->nextthink = pev->ltime + 0.1f;
+		SetNextThink( 0.1f );
 		m_direction = -1;
 	}
 	else
@@ -1520,13 +1538,13 @@ void CMomentaryRotButton::UpdateSelfReturn( float value )
 	{
 		pev->avelocity = g_vecZero;
 		pev->angles = m_start;
-		pev->nextthink = -1.0f;
+		DontThink();
 		SetThink( NULL );
 	}
 	else
 	{
 		pev->avelocity = -m_returnSpeed * pev->movedir;
-		pev->nextthink = pev->ltime + 0.1f;
+		SetNextThink( 0.1f );
 	}
 }
 

@@ -143,7 +143,7 @@ void CWallCharger::Off()
 	{
 		if ( ( m_iReactivate = RechargeTime() ) > 0 )
 		{
-			pev->nextthink = pev->ltime + m_iReactivate;
+			SetNextThink( m_iReactivate );
 			SetThink( &CWallCharger::Recharge );
 		}
 	}
@@ -304,7 +304,7 @@ void CWallCharger::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		return;
 	}
 
-	pev->nextthink = pev->ltime + 0.25f;
+	SetNextThink( 0.25f );
 	SetThink( &CWallCharger::Off );
 
 	// Time to recharge yet?

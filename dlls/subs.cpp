@@ -26,6 +26,7 @@
 #include "saverestore.h"
 #include "nodes.h"
 #include "doors.h"
+#include "movewith.h"
 
 extern CGraph WorldGraph;
 
@@ -110,6 +111,67 @@ BOOL CBaseDMStart::IsTriggered( CBaseEntity *pEntity )
 void CBaseEntity::UpdateOnRemove( void )
 {
 	int i;
+	CBaseEntity* pTemp;
+
+	if (!g_pWorld)
+	{
+		ALERT(at_console, "UpdateOnRemove has no AssistList!\n");
+		return;
+	}
+
+	//LRC - remove this from the AssistList.
+	for (pTemp = g_pWorld; pTemp->m_pAssistLink != NULL; pTemp = pTemp->m_pAssistLink)
+	{
+		if (this == pTemp->m_pAssistLink)
+		{
+//			ALERT(at_console,"REMOVE: %s removed from the Assist List.\n", STRING(pev->classname));
+			pTemp->m_pAssistLink = this->m_pAssistLink;
+			this->m_pAssistLink = NULL;
+			break;
+		}
+	}
+
+	//LRC
+	if (m_pMoveWith)
+	{
+		// if I'm moving with another entity, take me out of the list. (otherwise things crash!)
+		pTemp = m_pMoveWith->m_pChildMoveWith;
+		if (pTemp == this)
+		{
+			m_pMoveWith->m_pChildMoveWith = this->m_pSiblingMoveWith;
+		}
+		else
+		{
+			while (pTemp->m_pSiblingMoveWith)
+			{
+				if (pTemp->m_pSiblingMoveWith == this)
+				{
+					pTemp->m_pSiblingMoveWith = this->m_pSiblingMoveWith;
+					break;
+				}
+				pTemp = pTemp->m_pSiblingMoveWith;
+			}
+
+		}
+//		ALERT(at_console,"REMOVE: %s removed from the %s ChildMoveWith list.\n", STRING(pev->classname), STRING(m_pMoveWith->pev->targetname));
+	}
+
+	//LRC - do the same thing if another entity is moving with _me_.
+	if (m_pChildMoveWith)
+	{
+		CBaseEntity* pCur = m_pChildMoveWith;
+		CBaseEntity* pNext;
+		while (pCur != NULL)
+		{
+			pNext = pCur->m_pSiblingMoveWith;
+			// bring children to a stop
+			UTIL_SetMoveWithVelocity(pCur, g_vecZero, 100);
+			UTIL_SetMoveWithAvelocity(pCur, g_vecZero, 100);
+			pCur->m_pMoveWith = NULL;
+			pCur->m_pSiblingMoveWith = NULL;
+			pCur = pNext;
+		}
+	}
 
 	if( FBitSet( pev->flags, FL_GRAPHED ) )
 	{
@@ -258,7 +320,7 @@ void CBaseDelay::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, floa
 		CBaseDelay *pTemp = GetClassPtr( (CBaseDelay *)NULL );
 		pTemp->pev->classname = MAKE_STRING( "DelayedUse" );
 
-		pTemp->pev->nextthink = gpGlobals->time + m_flDelay;
+		pTemp->SetNextThink( m_flDelay );
 
 		pTemp->SetThink( &CBaseDelay::DelayThink );
 
@@ -347,6 +409,8 @@ TYPEDESCRIPTION	CBaseToggle::m_SaveData[] =
 	//DEFINE_FIELD( CBaseToggle, m_hActivator, FIELD_EHANDLE ), // now in CBaseDelay
 	DEFINE_FIELD( CBaseToggle, m_pfnCallWhenMoveDone, FIELD_FUNCTION ),
 	DEFINE_FIELD( CBaseToggle, m_vecFinalDest, FIELD_POSITION_VECTOR ),
+	DEFINE_FIELD( CBaseToggle, m_flLinearMoveSpeed, FIELD_FLOAT ),
+	DEFINE_FIELD( CBaseToggle, m_flAngularMoveSpeed, FIELD_FLOAT ), //LRC
 	DEFINE_FIELD( CBaseToggle, m_vecFinalAngle, FIELD_VECTOR ),
 	DEFINE_FIELD( CBaseToggle, m_sMaster, FIELD_STRING),
 	DEFINE_FIELD( CBaseToggle, m_bitsDamageInflict, FIELD_INTEGER ),	// damage type inflicted
@@ -394,6 +458,28 @@ void CBaseToggle::LinearMove( Vector vecDest, float flSpeed )
 	//ASSERTSZ( m_pfnCallWhenMoveDone != NULL, "LinearMove: no post-move function defined" );
 
 	m_vecFinalDest = vecDest;
+	m_flLinearMoveSpeed = flSpeed;
+
+	if (m_pMoveWith || m_pChildMoveWith)
+	{
+		SetThink(&CBaseToggle::LinearMoveNow );
+		UTIL_DesiredThink( this );
+	}
+	else
+		LinearMoveNow();
+}
+
+void CBaseToggle::LinearMoveNow( void )
+{
+	Vector vecDest;
+	if (m_pMoveWith)
+	{
+		vecDest = m_vecFinalDest + m_pMoveWith->pev->origin;
+	}
+	else
+	{
+		vecDest = m_vecFinalDest;
+	}
 
 	// Already there?
 	if( vecDest == pev->origin )
@@ -406,7 +492,7 @@ void CBaseToggle::LinearMove( Vector vecDest, float flSpeed )
 	Vector vecDestDelta = vecDest - pev->origin;
 
 	// divide vector length by speed to get time to reach dest
-	float flTravelTime = vecDestDelta.Length() / flSpeed;
+	float flTravelTime = vecDestDelta.Length() / m_flLinearMoveSpeed;
 
 	if( flTravelTime < 0.05f )
 	{
@@ -416,11 +502,11 @@ void CBaseToggle::LinearMove( Vector vecDest, float flSpeed )
 	}
 
 	// set nextthink to trigger a call to LinearMoveDone when dest is reached
-	pev->nextthink = pev->ltime + flTravelTime;
+	SetNextThink( flTravelTime, TRUE );
 	SetThink( &CBaseToggle::LinearMoveDone );
 
 	// scale the destdelta vector by the time spent traveling to get velocity
-	pev->velocity = vecDestDelta / flTravelTime;
+	UTIL_SetVelocity( this, vecDestDelta / flTravelTime);
 }
 
 /*
@@ -432,15 +518,48 @@ void CBaseToggle::LinearMoveDone( void )
 {
 	Vector delta = m_vecFinalDest - pev->origin;
 	float error = delta.Length();
-	if( error > 0.03125f )
+	//ALERT(at_console, "LMDone %s %s\n", STRING(pev->classname), STRING(pev->targetname));
+
+	if ( error > 0.03125f && !m_pMoveWith)
 	{
-		LinearMove( m_vecFinalDest, 100 );
-		return;
+		Vector delta = m_vecFinalDest - pev->origin;
+		float error = delta.Length();
+		if( error > 0.03125 )
+		{
+			LinearMove( m_vecFinalDest, 100 );
+			return;
+		}
 	}
 
-	UTIL_SetOrigin( pev, m_vecFinalDest );
-	pev->velocity = g_vecZero;
-	pev->nextthink = -1;
+	if (m_pMoveWith || m_pChildMoveWith)
+	{
+		SetThink(&CBaseToggle::LinearMoveDoneNow);
+		//ALERT(at_console, "LMD: desiredThink %s\n", STRING(pev->targetname));
+		UTIL_DesiredThink( this );
+	}
+	else
+		LinearMoveDoneNow();
+}
+
+void CBaseToggle::LinearMoveDoneNow( void )
+{
+	UTIL_SetVelocity(this, g_vecZero);
+
+	Vector vecDest;
+
+	if (m_pMoveWith)
+	{
+		vecDest = m_vecFinalDest + m_pMoveWith->pev->origin;
+//		ALERT(at_console, "LMDone %s: p.origin = %f %f %f, origin = %f %f %f. Set it to %f %f %f\n", STRING(pev->targetname), m_pMoveWith->pev->origin.x,  m_pMoveWith->pev->origin.y,  m_pMoveWith->pev->origin.z, pev->origin.x, pev->origin.y, pev->origin.z, vecDest.x, vecDest.y, vecDest.z);
+	}
+	else
+	{
+		vecDest = m_vecFinalDest;
+//		ALERT(at_console, "LMDone %s: origin = %f %f %f. Set it to %f %f %f\n", STRING(pev->targetname), pev->origin.x, pev->origin.y, pev->origin.z, vecDest.x, vecDest.y, vecDest.z);
+	}
+
+	UTIL_AssignOrigin(this, vecDest);
+	DontThink(); //LRC
 	if( m_pfnCallWhenMoveDone )
 		( this->*m_pfnCallWhenMoveDone )();
 }
@@ -468,6 +587,25 @@ void CBaseToggle::AngularMove( Vector vecDestAngle, float flSpeed )
 	//ASSERTSZ( m_pfnCallWhenMoveDone != NULL, "AngularMove: no post-move function defined" );
 
 	m_vecFinalAngle = vecDestAngle;
+	m_flAngularMoveSpeed = flSpeed;
+
+	if (m_pMoveWith || m_pChildMoveWith)
+	{
+		SetThink(&CBaseToggle::AngularMoveNow );
+		UTIL_DesiredThink( this );
+	}
+	else
+		AngularMoveNow();
+}
+
+void CBaseToggle::AngularMoveNow()
+{
+	Vector vecDestAngle;
+
+	if (m_pMoveWith)
+		vecDestAngle = m_vecFinalAngle + m_pMoveWith->pev->angles;
+	else
+		vecDestAngle = m_vecFinalAngle;
 
 	// Already there?
 	if( vecDestAngle == pev->angles )
@@ -480,14 +618,14 @@ void CBaseToggle::AngularMove( Vector vecDestAngle, float flSpeed )
 	Vector vecDestDelta = vecDestAngle - pev->angles;
 
 	// divide by speed to get time to reach dest
-	float flTravelTime = vecDestDelta.Length() / flSpeed;
+	float flTravelTime = vecDestDelta.Length() / m_flAngularMoveSpeed;
 
 	// set nextthink to trigger a call to AngularMoveDone when dest is reached
-	pev->nextthink = pev->ltime + flTravelTime;
+	SetNextThink( flTravelTime, TRUE );
 	SetThink( &CBaseToggle::AngularMoveDone );
 
 	// scale the destdelta vector by the time spent traveling to get velocity
-	pev->avelocity = vecDestDelta / flTravelTime;
+	UTIL_SetAvelocity(this, vecDestDelta / flTravelTime);
 }
 
 /*
@@ -497,9 +635,28 @@ After rotating, set angle to exact final angle, call "move done" function
 */
 void CBaseToggle::AngularMoveDone( void )
 {
-	pev->angles = m_vecFinalAngle;
-	pev->avelocity = g_vecZero;
-	pev->nextthink = -1;
+	if (m_pMoveWith || m_pChildMoveWith)
+	{
+		SetThink(&CBaseToggle ::AngularMoveDoneNow);
+	//	ALERT(at_console, "LMD: desiredThink %s\n", STRING(pev->targetname));
+		UTIL_DesiredThink( this );
+	}
+	else
+		AngularMoveDoneNow();
+}
+
+void CBaseToggle::AngularMoveDoneNow()
+{
+	UTIL_SetAvelocity(this, g_vecZero);
+	if (m_pMoveWith)
+	{
+		UTIL_SetAngles(this, m_vecFinalAngle + m_pMoveWith->pev->angles);
+	}
+	else
+	{
+		UTIL_SetAngles(this, m_vecFinalAngle);
+	}
+	DontThink();
 	if( m_pfnCallWhenMoveDone )
 		( this->*m_pfnCallWhenMoveDone )();
 }

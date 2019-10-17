@@ -2100,6 +2100,7 @@ void PM_LadderMove( physent_t *pLadder )
 
 	VectorAdd( modelmins, modelmaxs, ladderCenter );
 	VectorScale( ladderCenter, 0.5, ladderCenter );
+	VectorAdd( ladderCenter, pLadder->origin, ladderCenter ); //LRC- allow for ladders moving around
 
 	pmove->movetype = MOVETYPE_FLY;
 

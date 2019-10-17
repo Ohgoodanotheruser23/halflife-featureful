@@ -82,6 +82,7 @@ set SOURCES=agrunt.cpp ^
 	monsters.cpp ^
 	monsterstate.cpp ^
 	mortar.cpp ^
+	movewith.cpp ^
 	mp5.cpp ^
 	multiplay_gamerules.cpp ^
 	nihilanth.cpp ^

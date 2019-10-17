@@ -25,6 +25,7 @@
 #include "game.h"
 #include "weapons.h"
 #include "soundradius.h"
+#include "movewith.h"
 
 extern void SetMovedir( entvars_t *ev );
 
@@ -36,6 +37,7 @@ class CBaseDoor : public CBaseToggle
 public:
 	void Spawn( void );
 	void Precache( void );
+	void PostSpawn();
 	virtual void KeyValue( KeyValueData *pkvd );
 	virtual void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	virtual void Blocked( CBaseEntity *pOther );
@@ -423,19 +425,6 @@ void CBaseDoor::Spawn()
 	if( pev->speed == 0.0f )
 		pev->speed = 100.0f;
 
-	m_vecPosition1 = pev->origin;
-
-	// Subtract 2 from size because the engine expands bboxes by 1 in all directions making the size too big
-	m_vecPosition2 = m_vecPosition1 + ( pev->movedir * ( fabs( pev->movedir.x * ( pev->size.x - 2.0f ) ) + fabs( pev->movedir.y * ( pev->size.y - 2.0f ) ) + fabs( pev->movedir.z * ( pev->size.z - 2.0f ) ) - m_flLip ) );
-	ASSERTSZ( m_vecPosition1 != m_vecPosition2, "door start/end positions are equal" );
-	if( FBitSet( pev->spawnflags, SF_DOOR_START_OPEN ) )
-	{
-		// swap pos1 and pos2, put door at pos2
-		UTIL_SetOrigin( pev, m_vecPosition2 );
-		m_vecPosition2 = m_vecPosition1;
-		m_vecPosition1 = pev->origin;
-	}
-
 	m_toggle_state = TS_AT_BOTTOM;
 
 	// if the door is flagged for USE button activation only, use NULL touch function
@@ -447,13 +436,54 @@ void CBaseDoor::Spawn()
 	else // touchable button
 		SetTouch( &CBaseDoor::DoorTouch );
 }
+
+//LRC
+void CBaseDoor::PostSpawn( void )
+{
+	if (m_pMoveWith)
+		m_vecPosition1 = pev->origin - m_pMoveWith->pev->origin;
+	else
+		m_vecPosition1 = pev->origin;
+
+	// Subtract 2 from size because the engine expands bboxes by 1 in all directions
+	m_vecPosition2 = m_vecPosition1 + ( pev->movedir * ( fabs( pev->movedir.x * ( pev->size.x - 2.0f ) ) + fabs( pev->movedir.y * ( pev->size.y - 2.0f ) ) + fabs( pev->movedir.z * ( pev->size.z - 2.0f ) ) - m_flLip ) );
+
+	ASSERTSZ(m_vecPosition1 != m_vecPosition2, "door start/end positions are equal");
+	if ( FBitSet (pev->spawnflags, SF_DOOR_START_OPEN) )
+	{	// swap pos1 and pos2, put door at pos2
+		if (m_pMoveWith)
+		{
+			m_vecSpawnOffset = m_vecSpawnOffset + (m_vecPosition2 + m_pMoveWith->pev->origin) - pev->origin;
+			UTIL_AssignOrigin(this, m_vecPosition2 + m_pMoveWith->pev->origin);
+		}
+		else
+		{
+			m_vecSpawnOffset = m_vecSpawnOffset + m_vecPosition2 - pev->origin;
+			UTIL_AssignOrigin(this, m_vecPosition2);
+		}
+		Vector vecTemp = m_vecPosition2;
+		m_vecPosition2 = m_vecPosition1;
+		m_vecPosition1 = vecTemp;
+//		ALERT(at_console, "func_door postspawn: origin %f %f %f\n", pev->origin.x, pev->origin.y, pev->origin.z);
+	}
+}
  
 void CBaseDoor::SetToggleState( int state )
 {
 	if( state == TS_AT_TOP )
-		UTIL_SetOrigin( pev, m_vecPosition2 );
+	{
+		if (m_pMoveWith)
+			UTIL_AssignOrigin( this, m_vecPosition2 + m_pMoveWith->pev->origin);
+		else
+			UTIL_AssignOrigin( this, m_vecPosition2 );
+	}
 	else
-		UTIL_SetOrigin( pev, m_vecPosition1 );
+	{
+		if (m_pMoveWith)
+			UTIL_AssignOrigin( this, m_vecPosition1 + m_pMoveWith->pev->origin);
+	else
+			UTIL_AssignOrigin( this, m_vecPosition1 );
+	}
 }
 
 void CBaseDoor::Precache( void )
@@ -867,12 +897,12 @@ void CBaseDoor::DoorHitTop( void )
 	else
 	{
 		// In flWait seconds, DoorGoDown will fire, unless wait is -1, then door stays open
-		pev->nextthink = pev->ltime + m_flWait;
+		SetNextThink(m_flWait);
 		SetThink( &CBaseDoor::DoorGoDown );
 
 		if( m_flWait == -1.0f )
 		{
-			pev->nextthink = -1.0f;
+			DontThink();
 		}
 	}
 
@@ -1027,13 +1057,13 @@ void CBaseDoor::Blocked( CBaseEntity *pOther )
 							{
 								// set origin to realign normal doors
 								pDoor->pev->origin = pev->origin;
-								pDoor->pev->velocity = g_vecZero;// stop!
+								UTIL_SetVelocity(pDoor, g_vecZero);// stop!
 							}
 							else
 							{
 								// set angles to realign rotating doors
 								pDoor->pev->angles = pev->angles;
-								pDoor->pev->avelocity = g_vecZero;
+								UTIL_SetVelocity(pDoor, g_vecZero);
 							}
 						}
 						if( !FBitSet( pev->spawnflags, SF_DOOR_SILENT ) )
@@ -1093,6 +1123,7 @@ class CRotDoor : public CBaseDoor
 {
 public:
 	void Spawn( void );
+	virtual void PostSpawn( void ) {} // don't use the moveWith fix from CBaseDoor
 	virtual void SetToggleState( int state );
 };
 

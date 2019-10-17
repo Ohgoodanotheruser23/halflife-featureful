@@ -103,6 +103,10 @@
 [
 	targetname(target_source) : "Name" : : "Property used to identify entities."
 ]
+@BaseClass = MoveWith
+[
+	movewith(target_destination) : "Moves with"
+]
 @BaseClass = Target
 [
 	target(target_destination) : "Target" : : "When an entity is activated, it triggers the entity with the name specified by Target."
@@ -706,7 +710,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@BaseClass base(Targetname, Target, RenderFields, Global, Angles) = BaseTank
+@BaseClass base(Targetname, Target, MoveWith, RenderFields, Global, Angles) = BaseTank
 [
 	spawnflags(flags) =
 	[
@@ -919,7 +923,7 @@
 
 @PointClass base(ScriptedSequence) = aiscripted_sequence:"AI Scripted Sequence" []
 
-@BaseClass iconsprite("sprites/ambient_generic.spr") base(Targetname) = Ambient
+@BaseClass iconsprite("sprites/ambient_generic.spr") base(Targetname, MoveWith) = Ambient
 [
 	message(sound) : "WAV Name"
 	health(integer) : "Volume (10 = loudest)" : 10
@@ -1883,7 +1887,7 @@
 	m_vEndSpriteColor(color255) : "Sprite2 Color" : "159 240 214"
 ]
 
-@SolidClass base(Breakable, RenderFields, ZHLT) = func_breakable : "Breakable Object" 
+@SolidClass base(Breakable, MoveWith, RenderFields, ZHLT) = func_breakable : "Breakable Object"
 [
 	spawnflags(flags) =
 	[
@@ -1898,7 +1902,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Global, Targetname, Target, RenderFields, Angles, ZHLT, BaseLockable) = func_button : "Button"
+@SolidClass base(Global, Targetname, Target, MoveWith, RenderFields, Angles, ZHLT, BaseLockable) = func_button : "Button"
 [
 	speed(integer) : "Speed" : 5
 	health(integer) : "Health (shootable if > 0)"
@@ -1947,7 +1951,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Door, ZHLT) = func_door : "Basic door"
+@SolidClass base(Door, MoveWith, ZHLT) = func_door : "Basic door"
 [
 	directuse(choices) : "Direct use only" =
 	[
@@ -1956,7 +1960,7 @@
 	]
 ]
 
-@SolidClass base(Door, ZHLT) = func_door_rotating : "Rotating door"
+@SolidClass base(Door, MoveWith, ZHLT) = func_door_rotating : "Rotating door"
 [
 	directuse(choices) : "Direct use only" =
 	[
@@ -1987,13 +1991,13 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Global, Recharger, RenderFields, ZHLT) = func_healthcharger: "Wall health recharger"
+@SolidClass base(Global, MoveWith, Recharger, RenderFields, ZHLT) = func_healthcharger: "Wall health recharger"
 [
 	// dmdelay(integer) : "Deathmatch recharge delay" : 0
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, RenderFields, ZHLT) = func_illusionary : "Fake Wall/Light"
+@SolidClass base(Targetname, MoveWith, RenderFields, ZHLT) = func_illusionary : "Fake Wall/Light"
 [
 
 	skin(choices) : "Contents" : -1 =
@@ -2004,7 +2008,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname) = func_ladder : "Ladder" []
+@SolidClass base(Targetname, MoveWith) = func_ladder : "Ladder" []
 
 @SolidClass base(Targetname) = func_monsterclip : "Monster clip brush" []
 
@@ -2022,7 +2026,7 @@
 	m_iszYController(target_destination) : "Y Controller"
 ]
 
-@SolidClass base(Global,Appearflags, Targetname, RenderFields, Angles, ZHLT) = func_pendulum : "Swings back and forth"
+@SolidClass base(Global,Appearflags, Targetname, MoveWith, RenderFields, Angles, ZHLT) = func_pendulum : "Swings back and forth"
 [
 	speed(integer) : "Speed" : 100
 	distance(integer) : "Distance (deg)" : 90
@@ -2082,13 +2086,13 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Global, Recharger, RenderFields, ZHLT) = func_recharge: "Battery recharger"
+@SolidClass base(Global, MoveWith, Recharger, RenderFields, ZHLT) = func_recharge: "Battery recharger"
 [
 	// dmdelay(integer) : "Deathmatch recharge delay" : 0
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT, BaseLockable) = func_rot_button : "RotatingButton"
+@SolidClass base(Targetname, MoveWith, Global, RenderFields, Angles, ZHLT, BaseLockable) = func_rot_button : "RotatingButton"
 [
 	target(target_destination) : "Targetted object"
 	// changetarget will change the button's target's TARGET field to the button's changetarget.
@@ -2125,7 +2129,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_rotating : "Rotating Object"
+@SolidClass base(Targetname, MoveWith, Global, RenderFields, Angles, ZHLT) = func_rotating : "Rotating Object"
 [
 	speed(integer)	: "Rotation Speed" : 0
 	volume(integer) : "Volume (10 = loudest)" : 10
@@ -2279,7 +2283,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Appearflags, RenderFields, Global, ZHLT) = func_wall : "Wall"
+@SolidClass base(Targetname, MoveWith, Appearflags, RenderFields, Global, ZHLT) = func_wall : "Wall"
 [
 	_minlight(string) : "Minimum light level"
 ]
@@ -2815,7 +2819,7 @@
 	]
 ]
 
-@SolidClass base(Targetname, Target, Angles, RenderFields, ZHLT) = momentary_rot_button : "Direct wheel control"
+@SolidClass base(Targetname, Target, MoveWith, Angles, RenderFields, ZHLT) = momentary_rot_button : "Direct wheel control"
 [
 	speed(integer) : "Speed" : 50
 	master(string) : "Master"
