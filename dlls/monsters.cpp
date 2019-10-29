@@ -2014,6 +2014,9 @@ void CBaseMonster::MonsterInit( void )
 	// set eye position
 	SetEyePosition();
 
+	m_vecSpawnOrigin = pev->origin;
+	m_vecSpawnAngles = pev->angles;
+
 	SetThink( &CBaseMonster::MonsterInitThink );
 	pev->nextthink = gpGlobals->time + 0.1;
 	SetUse( &CBaseMonster::MonsterUse );

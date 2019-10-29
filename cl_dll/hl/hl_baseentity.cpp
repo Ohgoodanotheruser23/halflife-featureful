@@ -123,6 +123,8 @@ int CBaseMonster::ISoundMask( void ) { return 0; }
 CSound *CBaseMonster::PBestSound( void ) { return NULL; }
 CSound *CBaseMonster::PBestScent( void ) { return NULL; } 
 float CBaseAnimating::StudioFrameAdvance( float flInterval ) { return 0.0; }
+CBaseEntity* CBaseMonster::Respawn( void ) { return NULL; }
+void CBaseMonster::WaitForRespawn( void ) {}
 void CBaseMonster::MonsterThink( void ) { }
 void CBaseMonster::MonsterUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value ) { }
 int CBaseMonster::IgnoreConditions( void ) { return 0; }

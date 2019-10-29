@@ -326,8 +326,7 @@ void CBaseMonster::GibMonster( void )
 		if( gibbed )
 		{
 			// don't remove players!
-			SetThink( &CBaseEntity::SUB_Remove );
-			pev->nextthink = gpGlobals->time;
+			WaitForRespawn();
 		}
 		else
 		{
@@ -567,6 +566,20 @@ void CBaseMonster::CallGibMonster( void )
 
 	if( ShouldFadeOnDeath() && !fade )
 		UTIL_Remove( this );
+}
+
+CBaseEntity* CBaseMonster::Respawn( void )
+{
+	pev->origin = m_vecSpawnOrigin;
+	pev->angles = m_vecSpawnAngles;
+	Spawn();
+	return this;
+}
+
+void CBaseMonster::WaitForRespawn()
+{
+	SetThink( &CBaseMonster::RespawnThink );
+	pev->nextthink = gpGlobals->time + 5;
 }
 
 /*

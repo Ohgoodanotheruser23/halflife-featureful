@@ -471,6 +471,7 @@ void CBaseMonster::RunTask( Task_t *pTask )
 				else
 				{
 					// body is gonna be around for a while, so have it stink for a bit.
+					WaitForRespawn();
 					CSoundEnt::InsertSound( bits_SOUND_CARCASS, pev->origin, 384, 30 );
 				}
 			}

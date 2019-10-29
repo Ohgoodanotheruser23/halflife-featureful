@@ -106,6 +106,9 @@ public:
 	SCRIPTSTATE m_scriptState;		// internal cinematic state
 	CCineMonster *m_pCine;
 
+	Vector m_vecSpawnOrigin;
+	Vector m_vecSpawnAngles;
+
 	virtual int Save( CSave &save ); 
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
@@ -137,6 +140,9 @@ public:
 	// stuff written for new state machine
 	virtual void MonsterThink( void );
 	void EXPORT CallMonsterThink( void ) { this->MonsterThink(); }
+	void EXPORT RespawnThink( void ) { this->Respawn(); }
+	CBaseEntity *Respawn( void );
+	void WaitForRespawn( void );
 	virtual int IRelationship( CBaseEntity *pTarget );
 	virtual void MonsterInit( void );
 	virtual void MonsterInitDead( void );	// Call after animation/pose is set up
