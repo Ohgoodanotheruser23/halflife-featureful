@@ -107,11 +107,13 @@ public:
 	int DefaultGibCount() {
 		return STRIIPER_GIB_COUNT;
 	}
-	void DropShockRoach();
+	void DropShockRoach(bool gibbed);
 
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int SizeForGrapple() { return GRAPPLE_LARGE; }
+	Vector DefaultMinHullSize() { return Vector( -24.0f, -24.0f, 0.0f ); }
+	Vector DefaultMaxHullSize() { return Vector( 24.0f, 24.0f, 72.0f ); }
 
 	BOOL m_bRightClaw;
 	float m_rechargeTime;
@@ -254,7 +256,7 @@ void CStrooper::GibMonster(void)
 {
 	if (GetBodygroup(STROOPER_GUN_GROUP) != STROOPER_GUN_NONE)
 	{
-		DropShockRoach();
+		DropShockRoach(true);
 	}
 
 	CBaseMonster::GibMonster();
@@ -295,7 +297,7 @@ void CStrooper::HandleAnimEvent(MonsterEvent_t *pEvent)
 	{
 		if (GetBodygroup(STROOPER_GUN_GROUP) != STROOPER_GUN_NONE)
 		{
-			DropShockRoach();
+			DropShockRoach(false);
 		}
 	}
 	break;
@@ -393,7 +395,7 @@ void CStrooper::Spawn()
 	Precache();
 
 	SpawnHelper("models/strooper.mdl", gSkillData.strooperHealth * 2.5, BLOOD_COLOR_GREEN);
-	UTIL_SetSize( pev, Vector(-24, -24, 0), Vector(24, 24, 72) );
+	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	if (pev->weapons == 0)
 	{
@@ -540,9 +542,9 @@ void CStrooper::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDi
 	CFollowingMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
-void CStrooper::DropShockRoach()
+void CStrooper::DropShockRoach(bool gibbed)
 {
-	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
+	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GUN))
 	{
 		Vector	vecGunPos;
 		Vector	vecGunAngles;
@@ -550,19 +552,25 @@ void CStrooper::DropShockRoach()
 		GetAttachment(0, vecGunPos, vecGunAngles);
 		SetBodygroup(STROOPER_GUN_GROUP, STROOPER_GUN_NONE);
 
-		Vector vecDropAngles = vecGunAngles;
-
-		// Remove any pitch.
-		vecDropAngles.x = 0;
-		vecDropAngles.z = 0;
-
-		Vector vecPos = pev->origin;
-		vecPos.z += 32;
+		Vector vecDropGunAngles = pev->angles;
+		vecDropGunAngles.x = vecDropGunAngles.z = 0;
 
 		// now spawn a shockroach.
-		CBaseEntity* pRoach = CBaseEntity::Create( "monster_shockroach", vecPos, vecDropAngles );
+		CBaseEntity* pRoach = CBaseEntity::Create( "monster_shockroach", vecGunPos, pev->angles );
 		if (pRoach)
 		{
+			if (gibbed)
+			{
+				pRoach->pev->velocity = Vector(RANDOM_FLOAT(-100.0f, 100.0f), RANDOM_FLOAT(-100.0f, 100.0f), RANDOM_FLOAT(200.0f, 300.0f));
+				pRoach->pev->avelocity = Vector(0, RANDOM_FLOAT(200.0f, 300.0f), 0);
+			}
+			else
+			{
+				pRoach->pev->velocity = Vector(RANDOM_FLOAT(-20.0f, 20.0f) , RANDOM_FLOAT(-20.0f, 20.0f), RANDOM_FLOAT(20.0f, 30.0f));
+				pRoach->pev->avelocity = Vector(0, RANDOM_FLOAT(20.0f, 40.0f), 0);
+			}
+			if (ShouldFadeOnDeath())
+				pRoach->pev->spawnflags |= SF_MONSTER_FADECORPSE;
 			CBaseMonster *pNewMonster = pRoach->MyMonsterPointer();
 			if (pNewMonster && (m_iClass != 0 || m_reverseRelationship)) {
 				pNewMonster->m_iClass = Classify();

@@ -27,8 +27,6 @@ LINK_ENTITY_TO_CLASS( weapon_sniperrifle, CSniperrifle )
 
 void CSniperrifle::Spawn( )
 {
-
-	pev->classname = MAKE_STRING("weapon_sniperrifle"); // hack to allow for old names
 	Precache( );
 	m_iId = WEAPON_SNIPERRIFLE;
 	SET_MODEL(ENT(pev), MyWModel());
@@ -64,7 +62,7 @@ int CSniperrifle::GetItemInfo(ItemInfo *p)
 	p->pszAmmo2 = NULL;
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = 5;
-#if FEATURE_OPFOR
+#if FEATURE_OPFOR_SPECIFIC
 	p->iSlot = 5;
 	p->iPosition = 2;
 #else
@@ -107,18 +105,17 @@ void CSniperrifle::SecondaryAttack()
 	if ( m_pPlayer->pev->fov != 0 )
 	{
 		m_pPlayer->pev->fov = m_pPlayer->m_iFOV = 0; // 0 means reset to default fov
-		m_fInZoom = 0;
+		m_fInZoom = FALSE;
 	}
 	else if ( m_pPlayer->pev->fov != 15 )
 	{
 		m_pPlayer->pev->fov = m_pPlayer->m_iFOV = 15;
-		m_fInZoom = 1;
+		m_fInZoom = TRUE;
 	}
 
 	EMIT_SOUND_DYN(ENT(m_pPlayer->pev), CHAN_ITEM, "weapons/sniper_zoom.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
 
-	pev->nextthink = UTIL_WeaponTimeBase() + 0.1;
-	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5;
+	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5f;
 }
 void CSniperrifle::PrimaryAttack()
 {
@@ -130,7 +127,7 @@ void CSniperrifle::PrimaryAttack()
 		if (m_fFireOnEmpty)
 		{
 			PlayEmptySound();
-			m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.2;
+			m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.2f;
 		}
 
 		return;
@@ -140,11 +137,11 @@ void CSniperrifle::PrimaryAttack()
 	if (m_pPlayer->pev->waterlevel == 3)
 	{
 		PlayEmptySound( );
-		m_flNextPrimaryAttack = 0.15;
+		m_flNextPrimaryAttack = 0.15f;
 		return;
 	}
 
-	float flSpread = 0.001;
+	float flSpread = 0.001f;
 
 	m_iClip--;
 
@@ -170,14 +167,14 @@ void CSniperrifle::PrimaryAttack()
 	Vector vecDir;
 
 	vecDir = m_pPlayer->FireBulletsPlayer( 1, vecSrc, vecAiming, Vector( flSpread, flSpread, flSpread ), 8192, BULLET_PLAYER_762, 0, 0, m_pPlayer->pev, m_pPlayer->random_seed );
-	m_flNextPrimaryAttack = 1.75;
-	PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usSniper, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, ( m_iClip == 0 ) ? 1 : 0, 0, 0, 0 );
+	m_flNextPrimaryAttack = 1.75f;
+	PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usSniper, 0.0, g_vecZero, g_vecZero, vecDir.x, vecDir.y, ( m_iClip == 0 ) ? 1 : 0, 0, 0, 0 );
 
 	if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 	// HEV suit - indicate out of ammo condition
 	m_pPlayer->SetSuitUpdate("!HEV_AMO0", FALSE, 0);
 
-	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 68.0 / 38.0;
+	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 68.0f / 38.0f;
 }
 
 
@@ -195,45 +192,46 @@ void CSniperrifle::Reload( void )
 
 	if (m_iClip == 0)
 	{
-		iResult = DefaultReload( 5, SNIPER_RELOAD1, 80 / 34 );
+		iResult = DefaultReload( SNIPERRIFLE_MAX_CLIP, SNIPER_RELOAD1, 80.0f / 34.0f );
 		m_fInSpecialReload = 1;
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 2.25;
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 2.25;
 	}
 	else
 	{
-		iResult = DefaultReload( 5, SNIPER_RELOAD3, 2.25 );
+		iResult = DefaultReload( SNIPERRIFLE_MAX_CLIP, SNIPER_RELOAD3, 2.25f );
 	}
 }
 void CSniperrifle::WeaponIdle( void )
 {
-	if (m_flTimeWeaponIdle <  UTIL_WeaponTimeBase() )
+	ResetEmptySound( );
+
+	m_pPlayer->GetAutoaimVector( AUTOAIM_10DEGREES );
+
+	if (m_flTimeWeaponIdle > UTIL_WeaponTimeBase() )
+		return;
+
+	if ( m_fInSpecialReload )
 	{
-		if ( m_fInSpecialReload )
+		m_fInSpecialReload = 0;
+		SendWeaponAnim( SNIPER_RELOAD2 );
+		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 49.0f / 27.0f;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 49.0f / 27.0f;
+	}
+	else
+	{
+		int iAnim;
+		if (m_iClip <= 0)
 		{
-			m_fInSpecialReload = 0;
-			SendWeaponAnim( SNIPER_RELOAD2 );
-			m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 49.0 / 27.0;
-			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 49.0 / 27.0;
+			iAnim = SNIPER_SLOWIDLE2;
+			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 80.0f / 16.0f;
 		}
 		else
 		{
-			m_pPlayer->GetAutoaimVector( AUTOAIM_10DEGREES );
-
-			int iAnim;
-			float flRand = UTIL_SharedRandomFloat( m_pPlayer->random_seed, 0.0, 1.0 );
-			if (m_iClip <= 0)
-			{
-				iAnim = SNIPER_SLOWIDLE2;
-				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 80.0 / 16.0;
-			}
-			else
-			{
-				iAnim = SNIPER_SLOWIDLE1;
-				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 67.5 / 16;
-			}
-			SendWeaponAnim( iAnim, 1 );
+			iAnim = SNIPER_SLOWIDLE1;
+			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 67.5f / 16.0f;
 		}
+		SendWeaponAnim( iAnim, 1 );
 	}
 }
 

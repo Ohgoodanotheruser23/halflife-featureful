@@ -9,11 +9,12 @@
 #include "followingmonster.h"
 #include "scripted.h"
 #include "soundent.h"
+#include "gamerules.h"
 
 Task_t tlFollow[] =
 {
-	{ TASK_MOVE_TO_TARGET_RANGE, (float)128 },	// Move within 128 of target ent (client)
-	{ TASK_SET_SCHEDULE, (float)SCHED_TARGET_FACE },
+	{ TASK_MOVE_NEAREST_TO_TARGET_RANGE, (float)128.0f },	// Move within 128 of target ent (client)
+	{ TASK_SET_SCHEDULE, (float)SCHED_TARGET_REACHED },
 };
 
 Schedule_t slFollow[] =
@@ -58,11 +59,11 @@ Schedule_t slFaceTarget[] =
 Task_t tlMoveAway[] =
 {
 	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_MOVE_AWAY_FAIL },
-	{ TASK_STORE_LASTPOSITION, (float)0 },
-	{ TASK_MOVE_AWAY_PATH, (float)100 },
-	{ TASK_WALK_PATH_FOR_UNITS, (float)100 },
-	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_FACE_PLAYER, (float)0.5 },
+	{ TASK_STORE_LASTPOSITION, 0.0f },
+	{ TASK_MOVE_AWAY_PATH, 100.0f },
+	{ TASK_WALK_PATH_FOR_UNITS, 100.0f },
+	{ TASK_STOP_MOVING, 0.0f },
+	{ TASK_FACE_PLAYER, 0.5f },
 };
 
 Schedule_t slMoveAway[] =
@@ -78,8 +79,8 @@ Schedule_t slMoveAway[] =
 
 Task_t tlMoveAwayFail[] =
 {
-	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_FACE_PLAYER, (float)0.5 },
+	{ TASK_STOP_MOVING, 0.0f },
+	{ TASK_FACE_PLAYER, 0.5f },
 };
 
 Schedule_t slMoveAwayFail[] =
@@ -95,12 +96,12 @@ Schedule_t slMoveAwayFail[] =
 
 Task_t tlMoveAwayFollow[] =
 {
-	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_TARGET_FACE },
+	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_TARGET_REACHED },
 	{ TASK_STORE_LASTPOSITION, (float)0 },
 	{ TASK_MOVE_AWAY_PATH, (float)100 },
 	{ TASK_WALK_PATH_FOR_UNITS, (float)100 },
 	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_SET_SCHEDULE, (float)SCHED_TARGET_FACE },
+	{ TASK_SET_SCHEDULE, (float)SCHED_TARGET_REACHED },
 };
 
 Schedule_t slMoveAwayFollow[] =
@@ -141,7 +142,7 @@ void CFollowingMonster::Touch( CBaseEntity *pOther )
 
 		// Heuristic for determining if the player is pushing me away
 		float speed = fabs( pOther->pev->velocity.x ) + fabs( pOther->pev->velocity.y );
-		if( speed > 50 )
+		if( speed > 50.0f )
 		{
 			SetConditions( bits_COND_CLIENT_PUSH );
 			MakeIdealYaw( pOther->pev->origin );
@@ -161,7 +162,7 @@ int CFollowingMonster::ObjectCaps()
 	int caps = CSquadMonster::ObjectCaps();
 	if (m_afCapability & bits_CAP_USABLE)
 	{
-		caps |= FCAP_IMPULSE_USE | FCAP_ONLYDIRECT_USE;
+		caps |= FCAP_IMPULSE_USE | FCAP_ONLYVISIBLE_USE;
 	}
 	return caps;
 }
@@ -177,6 +178,7 @@ Schedule_t *CFollowingMonster::GetScheduleOfType( int Type )
 	case SCHED_MOVE_AWAY_FAIL:
 		return slMoveAwayFail;
 	case SCHED_TARGET_FACE:
+	case SCHED_TARGET_REACHED:
 		return slFaceTarget;
 	case SCHED_TARGET_CHASE:
 	case SCHED_FOLLOW:
@@ -211,13 +213,13 @@ void CFollowingMonster::StartTask( Task_t *pTask )
 			else if( FindCover( pev->origin, pev->view_ofs, 0, CoverRadius() ) )
 			{
 				// then try for plain ole cover
-				m_flMoveWaitFinished = gpGlobals->time + 2;
+				m_flMoveWaitFinished = gpGlobals->time + 2.0f;
 				TaskComplete();
 			}
 			else
 			{
 				// nowhere to go?
-				TaskFail();
+				TaskFail("can't move away");
 			}
 		}
 		break;
@@ -229,19 +231,19 @@ void CFollowingMonster::StartTask( Task_t *pTask )
 
 void CFollowingMonster::RunTask( Task_t *pTask )
 {
-	edict_t *pPlayer;
+	CBaseEntity *pPlayer;
 	switch( pTask->iTask )
 	{
 	case TASK_FACE_PLAYER:
 		{
 			// Get edict for one player
-			pPlayer = g_engfuncs.pfnPEntityOfEntIndex( 1 );
+			pPlayer = PlayerToFace();
 
 			if( pPlayer )
 			{
-				MakeIdealYaw( pPlayer->v.origin );
+				MakeIdealYaw( pPlayer->pev->origin );
 				ChangeYaw( pev->yaw_speed );
-				IdleHeadTurn( pPlayer->v.origin );
+				IdleHeadTurn( pPlayer->pev->origin );
 				if( gpGlobals->time > m_flWaitFinished && FlYawDiff() < 10 )
 				{
 					TaskComplete();
@@ -249,7 +251,7 @@ void CFollowingMonster::RunTask( Task_t *pTask )
 			}
 			else
 			{
-				TaskFail();
+				TaskFail("no player to face");
 			}
 		}
 		break;
@@ -316,7 +318,7 @@ void CFollowingMonster::StopFollowing(BOOL clearSchedule , bool saySentence)
 			PlayUnUseSentence();
 		}
 
-		if( m_movementGoal == MOVEGOAL_TARGETENT && m_hTargetEnt == FollowedPlayer() )
+		if( (m_movementGoal & MOVEGOAL_TARGETENT) && m_hTargetEnt == FollowedPlayer() )
 			RouteClear(); // Stop him from walking toward the player
 		ClearFollowedPlayer();
 		if( clearSchedule )
@@ -391,14 +393,14 @@ void CFollowingMonster::ClearFollowedPlayer()
 	m_hTargetEnt = 0;
 }
 
-bool CFollowingMonster::ReadyForUse()
+bool CFollowingMonster::InScriptedSentence()
 {
-	return true;
+	return false;
 }
 
-Schedule_t* CFollowingMonster::GetFollowingSchedule()
+Schedule_t* CFollowingMonster::GetFollowingSchedule(bool ignoreEnemy)
 {
-	if( m_hEnemy == 0 && IsFollowingPlayer() )
+	if( (ignoreEnemy || m_hEnemy == 0 || !m_hEnemy->IsAlive()) && IsFollowingPlayer() )
 	{
 		if( !FollowedPlayer()->IsAlive() )
 		{
@@ -425,31 +427,85 @@ Schedule_t* CFollowingMonster::GetFollowingSchedule()
 
 void CFollowingMonster::FollowerUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	if( !ReadyForUse() )
-		return;
+	DoFollowerUse(pCaller, true, USE_TOGGLE);
+}
 
-	if( pCaller != NULL && pCaller->IsPlayer() && IRelationship(pCaller) < R_DL && IRelationship(pCaller) != R_FR )
+int CFollowingMonster::DoFollowerUse(CBaseEntity *pCaller, bool saySentence, USE_TYPE useType, bool ignoreScriptedSentence)
+{
+	if( pCaller != NULL && pCaller->IsPlayer() )
 	{
+		if (!ignoreScriptedSentence && InScriptedSentence())
+			return FOLLOWING_NOTREADY;
+
+		int rel = IRelationship(pCaller);
+		if (rel >= R_DL || rel == R_FR)
+			return FOLLOWING_DISCARDED;
+
 		// Pre-disaster followers can't be used unless they've got a master to override their behaviour...
 		if (IsLockedByMaster() || (pev->spawnflags & SF_MONSTER_PREDISASTER && !m_sMaster))
 		{
-			DeclineFollowing();
+			if (saySentence)
+				DeclineFollowing(pCaller);
+			return FOLLOWING_DECLINED;
 		}
-		else if( CanFollow() )
+		if( AbleToFollow() )
 		{
-			LimitFollowers( pCaller, MaxFollowers() );
+			const bool isFollowing = IsFollowingPlayer();
 
-			if( m_afMemory & bits_MEMORY_PROVOKED )
-				ALERT( at_console, "I'm not following you, you evil person!\n" );
-			else
+			if (isFollowing && useType == USE_ON)
 			{
-				StartFollowing( pCaller );
+				return FOLLOWING_NOCHANGE;
+			}
+			if (!isFollowing && useType == USE_OFF)
+			{
+				return FOLLOWING_NOCHANGE;
+			}
+
+			if (!isFollowing && (useType == USE_TOGGLE || useType == USE_ON))
+			{
+				LimitFollowers( pCaller, MaxFollowers() );
+
+				if( m_afMemory & bits_MEMORY_PROVOKED )
+				{
+					ALERT( at_console, "I'm not following you, you evil person!\n" );
+					return FOLLOWING_DISCARDED;
+				}
+				else
+				{
+					StartFollowing( pCaller, saySentence );
+					return FOLLOWING_STARTED;
+				}
+			}
+			if (isFollowing && (useType == USE_TOGGLE || useType == USE_OFF))
+			{
+				StopFollowing( TRUE, saySentence );
+				return FOLLOWING_STOPPED;
 			}
 		}
-		else
-		{
-			StopFollowing( TRUE );
-		}
 	}
+	return FOLLOWING_NOTALLOWED;
 }
 
+CBaseEntity* CFollowingMonster::PlayerToFace()
+{
+	CBaseEntity* pPlayer = CBaseEntity::Instance(g_engfuncs.pfnPEntityOfEntIndex( 1 ));
+	if (g_pGameRules->IsMultiplayer())
+	{
+		CBaseEntity* followedPlayer = FollowedPlayer();
+		if (followedPlayer && followedPlayer->IsPlayer() && followedPlayer->IsAlive())
+		{
+			pPlayer = followedPlayer;
+		}
+	}
+
+	if (pPlayer && pPlayer->IsPlayer())
+		return pPlayer;
+	return 0;
+}
+
+void CFollowingMonster::ReportAIState(ALERT_TYPE level)
+{
+	CSquadMonster::ReportAIState(level);
+	if (IsFollowingPlayer())
+		ALERT(level, "Following a player. ");
+}

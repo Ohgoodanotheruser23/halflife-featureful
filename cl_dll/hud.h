@@ -24,7 +24,9 @@
 #define HUD_H
 #include "mod_features.h"
 
-#if FEATURE_OPFOR
+#define FOG_LIMIT 30000
+
+#if FEATURE_OPFOR_SPECIFIC
 #define RGB_YELLOWISH 0x0000A000
 #else
 #define RGB_YELLOWISH 0x00FFA000 //255,160,0
@@ -557,7 +559,7 @@ private:
 
 	int m_HUD_title_life;
 	int m_HUD_title_half;
-#if FEATURE_OPFOR
+#if FEATURE_OPFOR_SPECIFIC
 	int m_HUD_title_opposing;
 	int m_HUD_title_force;
 #endif
@@ -633,6 +635,17 @@ private:
 };
 #endif
 
+struct FogProperties
+{
+	short r,g,b;
+
+	float startDist;
+	float endDist;
+	float finalEndDist;
+	float fadeDuration;
+	bool affectSkybox;
+};
+
 //
 //-----------------------------------------------------
 //
@@ -671,6 +684,8 @@ public:
 	int GetNumWidth( int iNumber, int iFlags );
 	int DrawHudStringLen( const char *szIt );
 	void DrawDarkRectangle( int x, int y, int wide, int tall );
+
+	int m_iHUDColor;
 
 private:
 	// the memory for these arrays are allocated in the first call to CHud::VidInit(), when the hud.txt and associated sprites are loaded.
@@ -734,6 +749,9 @@ public:
 	int _cdecl MsgFunc_SetFOV( const char *pszName,  int iSize, void *pbuf );
 	int  _cdecl MsgFunc_Concuss( const char *pszName, int iSize, void *pbuf );
 
+	int _cdecl MsgFunc_HUDColor( const char *pszName, int iSize, void *pbuf );
+	int _cdecl MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf );
+
 	// Screen information
 	SCREENINFO	m_scrinfo;
 
@@ -749,6 +767,9 @@ public:
 	void AddHudElem( CHudBase *p );
 
 	float GetSensitivity();
+
+	bool m_iHardwareMode;
+	FogProperties fog;
 };
 
 extern CHud gHUD;

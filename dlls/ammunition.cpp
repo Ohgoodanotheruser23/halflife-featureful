@@ -16,8 +16,7 @@ void CBasePlayerAmmo::Spawn( void )
 	pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 
-	const int ammoSize = 16;
-	UTIL_SetSize( pev, Vector( -ammoSize, -ammoSize, 0 ), Vector( ammoSize, ammoSize, ammoSize ) );
+	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
 	UTIL_SetOrigin( pev, pev->origin );
 
 	SetTouch( &CBasePlayerAmmo::DefaultTouch );
@@ -27,6 +26,17 @@ void CBasePlayerAmmo::Precache()
 {
 	PRECACHE_MODEL( MyModel() );
 	PRECACHE_SOUND( AMMO_PICKUP_SOUND );
+}
+
+void CBasePlayerAmmo::FallThink()
+{
+	pev->nextthink = gpGlobals->time + 0.1;
+	if( pev->flags & FL_ONGROUND )
+	{
+		pev->solid = SOLID_TRIGGER;
+		UTIL_SetOrigin( pev, pev->origin );
+		ResetThink();
+	}
 }
 
 CBaseEntity* CBasePlayerAmmo::Respawn( void )
@@ -76,6 +86,12 @@ int CBasePlayerAmmo::ObjectCaps()
 	} else {
 		return CBaseEntity::ObjectCaps();
 	}
+}
+
+void CBasePlayerAmmo::SetObjectCollisionBox()
+{
+	pev->absmin = pev->origin + Vector( -16, -16, 0 );
+	pev->absmax = pev->origin + Vector( 16, 16, 16 );
 }
 
 void CBasePlayerAmmo::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -129,7 +145,7 @@ void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 		{
 			SetTouch( NULL );
 			SetThink( &CBaseEntity::SUB_Remove );
-			pev->nextthink = gpGlobals->time + .1;
+			pev->nextthink = gpGlobals->time + 0.1f;
 		}
 	}
 	else if( gEvilImpulse101 )
@@ -137,7 +153,7 @@ void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 		// evil impulse 101 hack, kill always
 		SetTouch( NULL );
 		SetThink( &CBaseEntity::SUB_Remove );
-		pev->nextthink = gpGlobals->time + .1;
+		pev->nextthink = gpGlobals->time + 0.1f;
 	}
 }
 
@@ -327,6 +343,7 @@ LINK_ENTITY_TO_CLASS( ammo_egonclip, CEgonAmmo )
 
 LINK_ENTITY_TO_CLASS( ammo_gaussclip, CGaussAmmo )
 
+#if FEATURE_SNIPERRIFLE
 class CSniperrifleAmmo : public CBasePlayerAmmo
 {
 	const char* MyModel() {
@@ -340,7 +357,9 @@ class CSniperrifleAmmo : public CBasePlayerAmmo
 	}
 };
 LINK_ENTITY_TO_CLASS( ammo_762, CSniperrifleAmmo )
+#endif
 
+#if FEATURE_M249
 class CM249AmmoClip : public CBasePlayerAmmo
 {
 	const char* MyModel() {
@@ -355,3 +374,4 @@ class CM249AmmoClip : public CBasePlayerAmmo
 };
 
 LINK_ENTITY_TO_CLASS(ammo_556, CM249AmmoClip)
+#endif

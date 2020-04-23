@@ -18,7 +18,6 @@
 #include "weapons.h"
 #include "gamerules.h"
 #include "player.h"
-#include "grapple_tonguetip.h"
 #include "skill.h"
 #include "nodes.h"
 #include "soundent.h"
@@ -28,6 +27,7 @@
 #if FEATURE_GRAPPLE
 
 #ifndef CLIENT_DLL
+#include "grapple_tonguetip.h"
 
 LINK_ENTITY_TO_CLASS( grapple_tip, CBarnacleGrappleTip );
 
@@ -257,14 +257,10 @@ void CBarnacleGrapple::Precache( void )
 	PRECACHE_MODEL( "sprites/tongue.spr" );
 
 	UTIL_PrecacheOther( "grapple_tip" );
-	m_flNextPrimaryAttack = 0;
-	m_flNextSecondaryAttack = 0;
-	m_flTimeWeaponIdle = 0;
 }
 
 void CBarnacleGrapple::Spawn( void )
 {
-	pev->classname = MAKE_STRING( "weapon_grapple" ); // hack to allow for old names
 	Precache();
 	m_iId = WEAPON_GRAPPLE;
 	SET_MODEL( ENT(pev), MyWModel() );
@@ -300,7 +296,7 @@ int CBarnacleGrapple::AddToPlayer( CBasePlayer* pPlayer )
 BOOL CBarnacleGrapple::Deploy()
 {
 	int r = DefaultDeploy("models/v_bgrap.mdl", "models/p_bgrap.mdl", BGRAPPLE_UP, "gauss" );
-	m_flTimeWeaponIdle = gpGlobals->time + 1.1;
+	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.1;
 	return r;
 }
 
@@ -308,7 +304,7 @@ void CBarnacleGrapple::Holster( int skiplocal /* = 0 */ )
 {
 	m_pPlayer->m_flNextAttack = gpGlobals->time + 0.5;
 
-	if( m_FireState != OFF )
+	if( m_fireState != OFF )
 		EndAttack();
 
 	SendWeaponAnim( BGRAPPLE_DOWN );
@@ -318,10 +314,10 @@ void CBarnacleGrapple::WeaponIdle( void )
 {
 	ResetEmptySound();
 
-	if( m_flTimeWeaponIdle > gpGlobals->time )
+	if( m_flTimeWeaponIdle > UTIL_WeaponTimeBase() )
 		return;
 
-	if( m_FireState != OFF )
+	if( m_fireState != OFF )
 	{
 		EndAttack();
 		return;
@@ -336,19 +332,19 @@ void CBarnacleGrapple::WeaponIdle( void )
 	if( flNextIdle <= 0.5 )
 	{
 		iAnim = BGRAPPLE_LONGIDLE;
-		m_flTimeWeaponIdle = gpGlobals->time + 10.0;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 10.0;
 	}
 	else if( flNextIdle > 0.95 )
 	{
 		EMIT_SOUND_DYN( ENT(m_pPlayer->pev), CHAN_STATIC, "weapons/bgrapple_cough.wav", VOL_NORM, ATTN_NORM, 0, PITCH_NORM );
 
 		iAnim = BGRAPPLE_COUGH;
-		m_flTimeWeaponIdle = gpGlobals->time + 4.6;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 4.6;
 	}
 	else
 	{
 		iAnim = BGRAPPLE_BREATHE;
-		m_flTimeWeaponIdle = gpGlobals->time + 2.566;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 2.566;
 	}
 
 	SendWeaponAnim( iAnim );
@@ -358,7 +354,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 {
 	if( m_bMissed )
 	{
-		m_flTimeWeaponIdle = gpGlobals->time + 0.1;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.1;
 		return;
 	}
 
@@ -387,11 +383,11 @@ void CBarnacleGrapple::PrimaryAttack( void )
 			{
 				SendWeaponAnim( BGRAPPLE_FIRETRAVEL );
 
-				EMIT_SOUND_DYN( ENT(m_pPlayer->pev), CHAN_WEAPON, "weapons/bgrapple_impact.wav", 0.98, ATTN_NORM, 0, 125 );
+				EMIT_SOUND_DYN( ENT(m_pPlayer->pev), CHAN_STATIC, "weapons/bgrapple_impact.wav", 0.98, ATTN_NORM, 0, 125 );
 
 				if( pTarget->IsPlayer() )
 				{
-					EMIT_SOUND_DYN( ENT(pTarget->pev), CHAN_WEAPON,"weapons/bgrapple_impact.wav", 0.98, ATTN_NORM, 0, 125 );
+					EMIT_SOUND_DYN( ENT(pTarget->pev), CHAN_STATIC,"weapons/bgrapple_impact.wav", 0.98, ATTN_NORM, 0, 125 );
 				}
 
 				m_bMomentaryStuck = FALSE;
@@ -463,7 +459,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 		}
 	}
 #endif
-	if( m_FireState != OFF )
+	if( m_fireState != OFF )
 	{
 		m_pPlayer->m_iWeaponVolume = 450;
 
@@ -490,7 +486,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 
 		m_pPlayer->m_iWeaponVolume = 450;
 
-		m_flTimeWeaponIdle = gpGlobals->time + 0.1;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.1;
 #ifndef CLIENT_DLL
 		if( g_pGameRules->IsMultiplayer() )
 		{
@@ -502,15 +498,16 @@ void CBarnacleGrapple::PrimaryAttack( void )
 		}
 #endif
 		EMIT_SOUND_DYN( ENT(m_pPlayer->pev), CHAN_WEAPON, "weapons/bgrapple_fire.wav", 0.98, ATTN_NORM, 0, 125 );
-		m_FireState = CHARGE;
+		m_fireState = CHARGE;
 	}
 
 	if( !m_pTip )
 	{
-		m_flNextPrimaryAttack = gpGlobals->time + 0.01;
+		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.01;
 		return;
 	}
 
+#ifndef CLIENT_DLL
 	if( m_pTip->GetGrappleType() != GRAPPLE_FIXED && m_pTip->IsStuck() )
 	{
 		UTIL_MakeVectors( m_pPlayer->pev->v_angle );
@@ -525,9 +522,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 
 		if( tr.flFraction >= 1.0 )
 		{
-#ifndef CLIENT_DLL
 			UTIL_TraceHull( vecSrc, vecEnd, dont_ignore_monsters, head_hull, m_pPlayer->edict(), &tr );
-#endif
 			if( tr.flFraction < 1.0 )
 			{
 				CBaseEntity* pHit = Instance( tr.pHit );
@@ -605,6 +600,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 			}
 		}
 	}
+#endif
 
 	//TODO: CTF support - Solokiller
 	/*
@@ -615,7 +611,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 	else
 	*/
 	{
-		m_flNextPrimaryAttack = gpGlobals->time + 0.01;
+		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.1;
 	}
 }
 
@@ -649,16 +645,16 @@ void CBarnacleGrapple::Fire( Vector vecOrigin, Vector vecDir )
 
 void CBarnacleGrapple::EndAttack( void )
 {
-	m_FireState = OFF;
+	m_fireState = OFF;
 	SendWeaponAnim( BGRAPPLE_FIRERELEASE );
-
-	EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/bgrapple_release.wav", 1, ATTN_NORM);
 
 	EMIT_SOUND_DYN( ENT( m_pPlayer->pev ), CHAN_WEAPON, "weapons/bgrapple_pull.wav", 0.0, ATTN_NONE, SND_STOP, 100 );
 
-	m_flTimeWeaponIdle = gpGlobals->time + 0.9;
+	EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/bgrapple_release.wav", 1, ATTN_NORM);
 
-	m_flNextPrimaryAttack = gpGlobals->time + 0.01;
+	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.9;
+
+	m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.01;
 
 	DestroyEffect();
 
@@ -727,11 +723,13 @@ void CBarnacleGrapple::DestroyEffect( void )
 		m_pBeam = NULL;
 	}
 
+#ifndef CLIENT_DLL
 	if( m_pTip )
 	{
-		m_pTip->Killed( NULL, GIB_NEVER );
+		m_pTip->Killed( NULL, NULL, GIB_NEVER );
 		m_pTip = NULL;
 	}
+#endif
 }
 
 #endif

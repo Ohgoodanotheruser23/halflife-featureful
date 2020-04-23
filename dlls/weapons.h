@@ -54,7 +54,7 @@ public:
 
 	virtual void BounceSound( void );
 	virtual int	BloodColor( void ) { return DONT_BLEED; }
-	virtual void Killed( entvars_t *pevAttacker, int iGib );
+	virtual void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	virtual float ExplosionRadius() { return 0.0f; } // if 0 the default radius is used (depending on amount of damage)
 
 	BOOL m_fRegisteredSound;// whether or not this grenade has issued its DANGER sound to the world sound list yet.
@@ -65,6 +65,8 @@ public:
 #define ITEM_ANTIDOTE		2
 #define ITEM_SECURITY		3
 #define ITEM_BATTERY		4
+
+#define SF_ITEM_NOFALL (1<<9)
 
 #define WEAPON_NONE				0
 #define WEAPON_CROWBAR			1
@@ -116,6 +118,9 @@ public:
 #if FEATURE_PENGUIN
 #define	WEAPON_PENGUIN			26
 #endif
+#if FEATURE_UZI
+#define WEAPON_UZI				27
+#endif
 
 #if FEATURE_FLASHLIGHT_ITEM
 #define WEAPON_ALLWEAPONS		(~((1<<WEAPON_SUIT)|(1<<WEAPON_FLASHLIGHT)))
@@ -156,6 +161,7 @@ public:
 #define KNIFE_WEIGHT			0
 #define GRAPPLE_WEIGHT			21
 #define MEDKIT_WEIGHT		-1
+#define UZI_WEIGHT			15
 
 // weapon clip/carry ammo capacities
 #define URANIUM_MAX_CARRY		100
@@ -200,11 +206,12 @@ public:
 #define SNIPERRIFLE_MAX_CLIP	5
 #define SHOCKRIFLE_MAX_CLIP		10
 #define SPORELAUNCHER_MAX_CLIP		5
+#define UZI_MAX_CLIP			32
 
 // the default amount of ammo that comes with each gun when it spawns
 #define GLOCK_DEFAULT_GIVE			17
 #define PYTHON_DEFAULT_GIVE			6
-#if FEATURE_OPFOR
+#if FEATURE_OPFOR_SPECIFIC
 #define MP5_DEFAULT_GIVE			50
 #else
 #define MP5_DEFAULT_GIVE			25
@@ -229,6 +236,7 @@ public:
 #define SHOCKRIFLE_DEFAULT_GIVE		10
 #define SPORELAUNCHER_DEFAULT_GIVE	5
 #define MEDKIT_DEFAULT_GIVE			50
+#define UZI_DEFAULT_GIVE			UZI_MAX_CLIP
 
 // The amount of ammo given to a player by an ammo item.
 #define AMMO_URANIUMBOX_GIVE	20
@@ -1272,7 +1280,11 @@ public:
 	void DestroyEffect( void );
 	virtual BOOL UseDecrement(void)
 	{
+#if defined( CLIENT_WEAPONS )
+		return TRUE;
+#else
 		return FALSE;
+#endif
 	}
 
 	const char* MyWModel() { return "models/w_bgrap.mdl"; }
@@ -1284,8 +1296,6 @@ private:
 
 	float m_flShootTime;
 	float m_flDamageTime;
-
-	FireState m_FireState;
 
 	bool m_bGrappling;
 	bool m_bMissed;
@@ -1311,7 +1321,7 @@ public:
 
 	void PrimaryAttack(void);
 	BOOL Deploy(void);
-	void Holster();
+	void Holster(int skiplocal = 0);
 	void Reload(void);
 	void WeaponTick();
 	void WeaponIdle(void);
@@ -1331,8 +1341,6 @@ public:
 	const char* MyWModel() { return "models/w_saw.mdl"; }
 
 	void UpdateTape();
-
-	BOOL m_fReloadLaunched;
 
 private:
 	unsigned short m_usM249;
@@ -1378,11 +1386,6 @@ public:
 
 	int WeaponCategory() { return WEAPON_CATEGORY_MEDIUM; }
 	const char* MyWModel() { return "models/w_m40a1.mdl"; }
-
-	BOOL m_fNeedAjustBolt;
-	int	 m_iBoltState;
-
-	enum SNIPER_BOLTSTATE { BOLTSTATE_FINE = 0, BOLTSTATE_ADJUST, BOLTSTATE_ADJUSTING, };
 
 private:
 	unsigned short m_usSniper;
@@ -1574,6 +1577,39 @@ public:
 private:
 	unsigned short m_usSporeFire;
 };
+#endif
+
+#if FEATURE_UZI
+
+class CUzi : public CBasePlayerWeapon
+{
+public:
+	void Spawn( void );
+	void Precache( void );
+	int GetItemInfo(ItemInfo *p);
+	int AddToPlayer( CBasePlayer *pPlayer );
+
+	void PrimaryAttack( void );
+	BOOL Deploy( void );
+	void Reload( void );
+	void WeaponIdle( void );
+	int m_iShell;
+
+	virtual BOOL UseDecrement( void )
+	{
+#if defined( CLIENT_WEAPONS )
+		return TRUE;
+#else
+		return FALSE;
+#endif
+	}
+
+	const char* MyWModel() { return "models/w_uzi.mdl"; }
+
+private:
+	unsigned short m_usUzi;
+};
+
 #endif
 
 #endif // WEAPONS_H

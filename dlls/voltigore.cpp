@@ -33,18 +33,18 @@
 #if FEATURE_VOLTIFORE
 #define		VOLTIGORE_SPRINT_DIST	256 // how close the voltigore has to get before starting to sprint and refusing to swerve
 
-#define		VOLTIGORE_MAX_BEAMS		12
+#define		VOLTIGORE_MAX_BEAMS		8
 
 #define VOLTIGORE_ZAP_RED 180
 #define VOLTIGORE_ZAP_GREEN 16
 #define VOLTIGORE_ZAP_BLUE 255
 #define VOLTIGORE_ZAP_BEAM "sprites/lgtning.spr"
 #define VOLTIGORE_ZAP_NOISE 80
-#define VOLTIGORE_ZAP_WIDTH 40
+#define VOLTIGORE_ZAP_WIDTH 30
 #define VOLTIGORE_ZAP_BRIGHTNESS 255
 #define VOLTIGORE_ZAP_DISTANCE 512
-#define VOLTIGORE_GLOW_SCALE 1.0f
-#define VOLTIGORE_GIB_COUNT 9
+#define VOLTIGORE_GLOW_SCALE 0.75f
+#define VOLTIGORE_GIB_COUNT 10
 #define VOLTIGORE_GLOW_SPRITE "sprites/blueflare2.spr"
 
 //=========================================================
@@ -64,8 +64,8 @@ public:
 	void Spawn(void);
 
 	static void Shoot(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity);
-	void Touch(CBaseEntity *pOther);
-	void EXPORT BeamThink(void);
+	void EXPORT BallTouch(CBaseEntity *pOther);
+	void EXPORT FlyThink(void);
 
 	virtual int		Save(CSave &save);
 	virtual int		Restore(CRestore &restore);
@@ -108,7 +108,7 @@ void CVoltigoreEnergyBall::Spawn(void)
 
 	pev->solid = SOLID_BBOX;
 	pev->rendermode = kRenderTransAdd;
-	pev->renderamt = 220;
+	pev->renderamt = 255;
 
 	SET_MODEL(ENT(pev), VOLTIGORE_GLOW_SPRITE);
 	pev->frame = 0;
@@ -132,18 +132,16 @@ void CVoltigoreEnergyBall::Shoot(entvars_t *pevOwner, Vector vecStart, Vector ve
 	pEnergyBall->pev->owner = ENT(pevOwner);
 	pEnergyBall->pev->angles = pevOwner->angles;
 
-	pEnergyBall->SetThink(&CVoltigoreEnergyBall::BeamThink);
+	pEnergyBall->SetTouch(&CVoltigoreEnergyBall::BallTouch);
+	pEnergyBall->SetThink(&CVoltigoreEnergyBall::FlyThink);
 	pEnergyBall->pev->nextthink = gpGlobals->time + 0.1;
 }
 
 //=========================================================
 // Purpose:
 //=========================================================
-void CVoltigoreEnergyBall::Touch(CBaseEntity *pOther)
+void CVoltigoreEnergyBall::BallTouch(CBaseEntity *pOther)
 {
-	if (m_timeToDie) {
-		return;
-	}
 	TraceResult tr;
 	if (!pOther->pev->takedamage)
 	{
@@ -158,18 +156,19 @@ void CVoltigoreEnergyBall::Touch(CBaseEntity *pOther)
 		entvars_t* attacker = VARS( pev->owner );
 		if (!attacker)
 			attacker = pev;
-		pOther->TraceAttack(attacker, gSkillData.voltigoreDmgBeam, pev->velocity, &tr, DMG_SHOCK);
+		pOther->TraceAttack(attacker, gSkillData.voltigoreDmgBeam, pev->velocity, &tr, DMG_SHOCK|DMG_ALWAYSGIB);
 		ApplyMultiDamage(pev, attacker);
 	}
 	pev->velocity = Vector(0,0,0);
 
 	m_timeToDie = gpGlobals->time + 0.3;
+	ResetTouch();
 }
 
 //=========================================================
 // Purpose:
 //=========================================================
-void CVoltigoreEnergyBall::BeamThink(void)
+void CVoltigoreEnergyBall::FlyThink(void)
 {
 	pev->nextthink = gpGlobals->time + 0.1;
 	if (m_timeToDie)
@@ -334,12 +333,13 @@ public:
 	Schedule_t *GetSchedule(void);
 	Schedule_t *GetScheduleOfType(int Type);
 	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
-	virtual void Killed(entvars_t *pevAttacker, int iGib);
+	virtual void Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib);
+	void UpdateOnRemove();
 	const char* DefaultGibModel() {
 		return "models/vgibs.mdl";
 	}
 	int DefaultGibCount() {
-		return 10;
+		return VOLTIGORE_GIB_COUNT;
 	}
 	
 	int	Save(CSave &save);
@@ -349,8 +349,10 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int SizeForGrapple() { return GRAPPLE_LARGE; }
+	Vector DefaultMinHullSize() { return Vector( -80.0f, -80.0f, 0.0f ); }
+	Vector DefaultMaxHullSize() { return Vector( 80.0f, 80.0f, 90.0f ); }
 
-	float m_flNextZapTime; // last time the voltigore used the spit attack.
+	float m_flNextZapTime; // next time the voltigore can use the spit attack.
 	BOOL m_fShouldUpdateBeam;
 	CBeam* m_pBeam[3];
 	CSprite* m_pBeamGlow;
@@ -524,7 +526,7 @@ BOOL CVoltigore::CheckRangeAttack1(float flDot, float flDist)
 		else
 		{
 			// not moving, so spit again pretty soon.
-			m_flNextZapTime = gpGlobals->time + 2;
+			m_flNextZapTime = gpGlobals->time + 3;
 		}
 
 		return TRUE;
@@ -634,31 +636,33 @@ void CVoltigore::HandleAnimEvent(MonsterEvent_t *pEvent)
 	case VOLTIGORE_AE_THROW:
 	{
 		// SOUND HERE!
-		Vector	vecSpitOffset;
-		Vector	vecSpitDir;
+		Vector	vecShootDir;
 
 		UTIL_MakeVectors(pev->angles);
 
-		// !!!HACKHACK - the spot at which the spit originates (in front of the mouth) was measured in 3ds and hardcoded here.
-		// we should be able to read the position of bones at runtime for this info.
-		vecSpitOffset = (gpGlobals->v_right * 8 + gpGlobals->v_forward * 37 + gpGlobals->v_up * 23);
-		vecSpitOffset = (pev->origin + vecSpitOffset);
+		Vector vecBoltOrigin, vecAngles;
+		GetAttachment(3, vecBoltOrigin, vecAngles);
+
 		Vector vecEnemyPosition;
 		if (m_hEnemy != 0)
-			vecEnemyPosition = (m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs);
+		{
+			if (HasConditions(bits_COND_ENEMY_OCCLUDED))
+			{
+				vecEnemyPosition = m_vecEnemyLKP + (m_hEnemy->BodyTarget(pev->origin) - m_hEnemy->pev->origin);
+			}
+			else
+			{
+				vecEnemyPosition = m_hEnemy->BodyTarget(pev->origin);
+			}
+		}
 		else
 			vecEnemyPosition = m_vecEnemyLKP;
-		vecSpitDir = (vecEnemyPosition - vecSpitOffset).Normalize();
-
-		vecSpitDir.x += RANDOM_FLOAT(-0.01, 0.01);
-		vecSpitDir.y += RANDOM_FLOAT(-0.01, 0.01);
-		vecSpitDir.z += RANDOM_FLOAT(-0.01, 0);
-
+		vecShootDir = (vecEnemyPosition - vecBoltOrigin).Normalize();
 
 		// do stuff for this event.
 		//AttackSound();
 
-		CVoltigoreEnergyBall::Shoot(pev, vecSpitOffset, vecSpitDir * 1000);
+		CVoltigoreEnergyBall::Shoot(pev, vecBoltOrigin, vecShootDir * 1000);
 
 		// turn the beam glow off.
 		DestroyBeams();
@@ -676,12 +680,19 @@ void CVoltigore::HandleAnimEvent(MonsterEvent_t *pEvent)
 		CBaseEntity *pHurt = CheckTraceHullAttack(120, gSkillData.voltigoreDmgPunch, DMG_CLUB);
 		if (pHurt)
 		{
-			pHurt->pev->punchangle.z = -15;
-			pHurt->pev->punchangle.x = 15;
-			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * -150;
-			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100;
+			if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
+			{
+				pHurt->pev->punchangle.z = -15;
+				pHurt->pev->punchangle.x = 15;
+				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * -150;
+				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100;
+			}
 
 			EMIT_SOUND(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pMeleeHitSounds), RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+
+			Vector vecArmPos, vecArmAng;
+			GetAttachment( 0, vecArmPos, vecArmAng );
+			SpawnBlood( vecArmPos, pHurt->BloodColor(), 25 );// a little surface blood.
 		}
 		else
 		{
@@ -696,11 +707,18 @@ void CVoltigore::HandleAnimEvent(MonsterEvent_t *pEvent)
 		CBaseEntity *pHurt = CheckTraceHullAttack(120, gSkillData.voltigoreDmgPunch, DMG_CLUB);
 		if (pHurt)
 		{
-			pHurt->pev->punchangle.x = 20;
-			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 150;
-			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100;
+			if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
+			{
+				pHurt->pev->punchangle.x = 20;
+				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 150;
+				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100;
+			}
 
 			EMIT_SOUND(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pMeleeHitSounds), RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+
+			Vector vecArmPos, vecArmAng;
+			GetAttachment( 0, vecArmPos, vecArmAng );
+			SpawnBlood( vecArmPos, pHurt->BloodColor(), 25 );// a little surface blood.
 		}
 		else
 		{
@@ -729,7 +747,7 @@ void CVoltigore::Spawn()
 	Precache();
 
 	SetMyModel("models/voltigore.mdl");
-	UTIL_SetSize(pev, Vector(-80, -80, 0), Vector(80, 80, 90));
+	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid			= SOLID_SLIDEBOX;
 	pev->movetype		= MOVETYPE_STEP;
@@ -825,7 +843,6 @@ Schedule_t	slVoltigoreRangeAttack1[] =
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
 		bits_COND_HEAVY_DAMAGE |
-		bits_COND_ENEMY_OCCLUDED |
 		bits_COND_NO_AMMO_LOADED,
 		0,
 		"Voltigore Range Attack1"
@@ -835,7 +852,7 @@ Schedule_t	slVoltigoreRangeAttack1[] =
 // Chase enemy schedule
 Task_t tlVoltigoreChaseEnemy1[] =
 {
-	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_RANGE_ATTACK1 },// !!!OEM - this will stop nasty voltigore oscillation.
+	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_CHASE_ENEMY_FAILED },
 	{ TASK_GET_PATH_TO_ENEMY, (float)0 },
 	{ TASK_RUN_PATH, (float)0 },
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
@@ -927,6 +944,10 @@ Schedule_t *CVoltigore::GetSchedule(void)
 			return GetScheduleOfType(SCHED_WAKE_ANGRY);
 		}
 
+		if( HasConditions( bits_COND_ENEMY_OCCLUDED ) )
+		{
+			return GetScheduleOfType(SCHED_CHASE_ENEMY);
+		}
 
 		if (HasConditions(bits_COND_CAN_RANGE_ATTACK1))
 		{
@@ -942,6 +963,8 @@ Schedule_t *CVoltigore::GetSchedule(void)
 
 		break;
 	}
+	default:
+		break;
 	}
 
 	return CSquadMonster::GetSchedule();
@@ -999,15 +1022,23 @@ void CVoltigore::StartTask(Task_t *pTask)
 		break;
 	case TASK_GET_PATH_TO_ENEMY:
 		{
-			if (BuildRoute(m_hEnemy->pev->origin, bits_MF_TO_ENEMY, m_hEnemy))
+			CBaseEntity *pEnemy = m_hEnemy;
+
+			if( pEnemy == NULL )
 			{
-				m_iTaskStatus = TASKSTATUS_COMPLETE;
+				TaskFail("no enemy");
+				return;
+			}
+
+			if( BuildRoute( pEnemy->pev->origin, bits_MF_TO_ENEMY, pEnemy ) )
+			{
+				TaskComplete();
 			}
 			else
 			{
-				ALERT(at_aiconsole, "GetPathToEnemy failed!!\n");
-				TaskFail();
+				TaskFail("can't build path to enemy");
 			}
+			break;
 		}
 		break;
 	default:
@@ -1016,7 +1047,7 @@ void CVoltigore::StartTask(Task_t *pTask)
 	}
 }
 
-void CVoltigore::Killed(entvars_t *pevAttacker, int iGib)
+void CVoltigore::Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib)
 {
 	DestroyBeams();
 	DestroyGlow();
@@ -1045,7 +1076,7 @@ void CVoltigore::Killed(entvars_t *pevAttacker, int iGib)
 				WRITE_SHORT( m_beamTexture );
 				WRITE_BYTE( 0 ); // framestart
 				WRITE_BYTE( 10 ); // framerate
-				WRITE_BYTE( RANDOM_LONG( 10, 15 ) ); // life
+				WRITE_BYTE( RANDOM_LONG( 8, 10 ) ); // life
 				WRITE_BYTE( VOLTIGORE_ZAP_WIDTH );  // width
 				WRITE_BYTE( VOLTIGORE_ZAP_NOISE );   // noise
 				WRITE_BYTE( VOLTIGORE_ZAP_RED );   // r, g, b
@@ -1058,15 +1089,22 @@ void CVoltigore::Killed(entvars_t *pevAttacker, int iGib)
 		iTimes++;
 	}
 
-	CSquadMonster::Killed(pevAttacker, iGib);
+	CSquadMonster::Killed(pevInflictor, pevAttacker, iGib);
+}
+
+void CVoltigore::UpdateOnRemove()
+{
+	DestroyBeams();
+	DestroyGlow();
+	CSquadMonster::UpdateOnRemove();
 }
 
 void CVoltigore::GibBeamDamage()
 {
 	CBaseEntity *pEntity = NULL;
 	// iterate on all entities in the vicinity.
-	const float attackRadius = gSkillData.voltigoreDmgBeam * 10;
-	float flAdjustedDamage = gSkillData.voltigoreDmgBeam/2;
+	const float attackRadius = Q_min(gSkillData.voltigoreDmgBeam * 4, 200);
+	float flAdjustedDamage = gSkillData.voltigoreDmgBeam;
 	while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, attackRadius ) ) != NULL )
 	{
 		if( pEntity->pev->takedamage != DAMAGE_NO )
@@ -1155,9 +1193,9 @@ void CVoltigore::UpdateBeams()
 void CVoltigore::CreateGlow()
 {
 	m_pBeamGlow = CSprite::SpriteCreate(VOLTIGORE_GLOW_SPRITE, pev->origin, FALSE);
-	m_pBeamGlow->SetTransparency(kRenderTransAdd, 255, 255, 255, 255, kRenderFxNoDissipation);
-	m_pBeamGlow->SetAttachment(edict(), 4);
+	m_pBeamGlow->SetTransparency(kRenderTransAdd, 255, 255, 255, 0, kRenderFxNoDissipation);
 	m_pBeamGlow->SetScale(VOLTIGORE_GLOW_SCALE);
+	m_pBeamGlow->SetAttachment(edict(), 4);
 }
 
 void CVoltigore::DestroyGlow()
@@ -1212,12 +1250,14 @@ public:
 	BOOL	CheckMeleeAttack1(float flDot, float flDist);
 	BOOL	CheckRangeAttack1(float flDot, float flDist);
 	void	StartTask(Task_t *pTask);
-	void	Killed(entvars_t *pevAttacker, int iGib);
+	void	Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib);
 	void	GibMonster();
 	Schedule_t* GetSchedule();
 	Schedule_t* GetScheduleOfType(int Type);
 
 	virtual int SizeForGrapple() { return GRAPPLE_SMALL; }
+	Vector DefaultMinHullSize() { return Vector( -16.0f, -16.0f, 0.0f ); }
+	Vector DefaultMaxHullSize() { return Vector( 16.0f, 16.0f, 32.0f ); }
 };
 
 LINK_ENTITY_TO_CLASS(monster_alien_babyvoltigore, CBabyVoltigore)
@@ -1232,7 +1272,7 @@ void CBabyVoltigore::Spawn()
 	Precache();
 
 	SetMyModel("models/baby_voltigore.mdl");
-	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 32));
+	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid			= SOLID_SLIDEBOX;
 	pev->movetype		= MOVETYPE_STEP;
@@ -1269,12 +1309,19 @@ void CBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 		CBaseEntity *pHurt = CheckTraceHullAttack(70, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB | DMG_ALWAYSGIB);
 		if (pHurt)
 		{
-			pHurt->pev->punchangle.z = -10;
-			pHurt->pev->punchangle.x = 10;
-			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * -100;
-			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 50;
+			if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
+			{
+				pHurt->pev->punchangle.z = -10;
+				pHurt->pev->punchangle.x = 10;
+				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * -100;
+				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 50;
+			}
 
 			EMIT_SOUND(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pMeleeHitSounds), RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+
+			Vector vecArmPos, vecArmAng;
+			GetAttachment( 0, vecArmPos, vecArmAng );
+			SpawnBlood( vecArmPos, pHurt->BloodColor(), 25 );// a little surface blood.
 		}
 		else
 		{
@@ -1288,9 +1335,16 @@ void CBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 		CBaseEntity *pHurt = CheckTraceHullAttack(70, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB | DMG_ALWAYSGIB);
 		if (pHurt)
 		{
-			pHurt->pev->punchangle.x = 15;
-			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 100;
-			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 50;
+			if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
+			{
+				pHurt->pev->punchangle.x = 15;
+				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 100;
+				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 50;
+
+				Vector vecArmPos, vecArmAng;
+				GetAttachment( 0, vecArmPos, vecArmAng );
+				SpawnBlood( vecArmPos, pHurt->BloodColor(), 25 );// a little surface blood.
+			}
 
 			EMIT_SOUND(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pMeleeHitSounds), RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 		}
@@ -1336,10 +1390,10 @@ void CBabyVoltigore::StartTask(Task_t *pTask)
 	}
 }
 
-void CBabyVoltigore::Killed(entvars_t* pevAttacker, int iGib)
+void CBabyVoltigore::Killed(entvars_t *pevInflictor, entvars_t* pevAttacker, int iGib)
 {
 	DestroyBeams();
-	CSquadMonster::Killed(pevAttacker, iGib);
+	CSquadMonster::Killed(pevInflictor, pevAttacker, iGib);
 }
 
 void CBabyVoltigore::GibMonster()
@@ -1382,6 +1436,8 @@ Schedule_t *CBabyVoltigore::GetSchedule(void)
 
 		break;
 	}
+	default:
+		break;
 	}
 
 	return CSquadMonster::GetSchedule();

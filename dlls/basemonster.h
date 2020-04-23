@@ -16,6 +16,9 @@
 #ifndef BASEMONSTER_H
 #define BASEMONSTER_H
 
+class CFollowingMonster;
+class CDeadMonster;
+
 //
 // generic Monster
 //
@@ -118,6 +121,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	void KeyValue( KeyValueData *pkvd );
+	void SetMySize(const Vector& vecMin, const Vector& vecMax);
 
 	// monster use function
 	void EXPORT MonsterUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
@@ -127,6 +131,7 @@ public:
 	virtual int BloodColor( void ) { return m_bloodColor; }
 
 	virtual CBaseMonster *MyMonsterPointer( void ) { return this; }
+	virtual CFollowingMonster* MyFollowingMonsterPointer() { return NULL; }
 	virtual void Look( int iDistance );// basic sight function for monsters
 	virtual void RunAI( void );// core ai function!	
 	void Listen( void );
@@ -184,6 +189,7 @@ public:
 	void ClearSchedule( void );
 	BOOL FScheduleDone( void );
 	void ChangeSchedule( Schedule_t *pNewSchedule );
+	virtual void OnChangeSchedule( Schedule_t *pNewSchedule ) {}
 	void NextScheduledTask( void );
 	Schedule_t *ScheduleInList( const char *pName, Schedule_t **pList, int listCount );
 
@@ -199,7 +205,7 @@ public:
 	// virtual int CanPlaySequence( void ) { return ((m_pCine == NULL) && (m_MonsterState == MONSTERSTATE_NONE || m_MonsterState == MONSTERSTATE_IDLE || m_IdealMonsterState == MONSTERSTATE_IDLE)); }
 	virtual int CanPlaySequence( BOOL fDisregardState, int interruptLevel );
 	virtual int CanPlaySentence( BOOL fDisregardState ) { return IsAlive(); }
-	virtual void PlaySentence( const char *pszSentence, float duration, float volume, float attenuation );
+	virtual bool PlaySentence( const char *pszSentence, float duration, float volume, float attenuation );
 	virtual void PlayScriptedSentence( const char *pszSentence, float duration, float volume, float attenuation, BOOL bConcurrent, CBaseEntity *pListener );
 
 	virtual void SentenceStop( void );
@@ -209,7 +215,7 @@ public:
 	virtual void SetActivity( Activity NewActivity );
 	void SetSequenceByName( const char *szSequence );
 	void SetState( MONSTERSTATE State );
-	virtual void ReportAIState( void );
+	virtual void ReportAIState( ALERT_TYPE level );
 
 	void CheckAttacks( CBaseEntity *pTarget, float flDist );
 	virtual int CheckEnemy( CBaseEntity *pEnemy );
@@ -220,7 +226,7 @@ public:
 	
 	inline void TaskComplete( void ) { if ( !HasConditions( bits_COND_TASK_FAILED ) ) m_iTaskStatus = TASKSTATUS_COMPLETE; }
 	void MovementComplete( void );
-	inline void TaskFail( void ) { SetConditions( bits_COND_TASK_FAILED ); }
+	inline void TaskFail( const char* reason = NULL ) { SetConditions( bits_COND_TASK_FAILED ); taskFailReason = reason; }
 	inline void TaskBegin( void ) { m_iTaskStatus = TASKSTATUS_RUNNING; }
 	int TaskIsRunning( void );
 	inline int TaskIsComplete( void ) { return ( m_iTaskStatus == TASKSTATUS_COMPLETE ); }
@@ -231,7 +237,8 @@ public:
 	BOOL FRouteClear( void );
 	void RouteSimplify( CBaseEntity *pTargetEnt );
 	void AdvanceRoute( float distance );
-	int FTriangulate(const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApexes, int n = 1, int tries = 8);
+	int FTriangulate(const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApexes, int n = 1, int tries = 8, bool recursive = false);
+	Vector FTriangulateToNearest(const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector& apex);
 	void MakeIdealYaw( Vector vecTarget );
 	virtual void SetYawSpeed( void ) { return; };// allows different yaw_speeds for each activity
 	BOOL BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget );
@@ -241,6 +248,7 @@ public:
 
 	BOOL FindLateralCover( const Vector &vecThreat, const Vector &vecViewOffset );
 	virtual BOOL FindCover( Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist );
+	virtual BOOL FindRunAway( Vector vecThreat, float flMinDist, float flMaxDist );
 	virtual BOOL FValidateCover( const Vector &vecCoverLocation ) { return TRUE; };
 	virtual float CoverRadius( void ) { return 784; } // Default cover radius
 
@@ -260,14 +268,15 @@ public:
 	float FLSoundVolume( CSound *pSound );
 
 	BOOL MoveToNode( Activity movementAct, float waitTime, const Vector &goal );
-	BOOL MoveToTarget( Activity movementAct, float waitTime );
+	BOOL MoveToTarget( Activity movementAct, float waitTime, bool closest = false );
 	BOOL MoveToLocation( Activity movementAct, float waitTime, const Vector &goal );
 	BOOL MoveToEnemy( Activity movementAct, float waitTime );
 
 	// Returns the time when the door will be open
 	float OpenDoorAndWait( entvars_t *pevDoor );
 
-	virtual int ISoundMask( void );
+	int ISoundMask();
+	virtual int DefaultISoundMask( void );
 	virtual CSound* PBestSound( void );
 	virtual CSound* PBestScent( void );
 	virtual float HearingSensitivity( void ) { return 1.0; };
@@ -301,9 +310,10 @@ public:
 	float UpdateTarget( entvars_t *pevTarget );
 	virtual Activity GetDeathActivity( void );
 	Activity GetSmallFlinchActivity( void );
-	virtual void Killed( entvars_t *pevAttacker, int iGib );
+	virtual void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	virtual void OnDying();
 	virtual void GibMonster( void );
+	virtual void UpdateOnRemove( void );
 	BOOL ShouldGibMonster( int iGib );
 	void CallGibMonster( void );
 	virtual BOOL HasHumanGibs( void );
@@ -315,7 +325,7 @@ public:
 
 	virtual	Vector GetGunPosition( void );
 
-	virtual int TakeHealth( float flHealth, int bitsDamageType );
+	virtual int TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamageType );
 	virtual int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	int DeadTakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 
@@ -341,6 +351,7 @@ public:
 	BOOL ExitScriptedSequence();
 	BOOL CineCleanup();
 
+	Schedule_t* StartPatrol( CBaseEntity* path );
 	CBaseEntity* DropItem ( const char *pszItemName, const Vector &vecPos, const Vector &vecAng );// drop an item.
 	
 	void SetMyHealth( const float health );
@@ -352,7 +363,7 @@ public:
 	virtual int DefaultClassify();
 	virtual const char* ReverseRelationshipModel() { return NULL; }
 
-	virtual BOOL IsInitiallyDead() {return FALSE;}
+	virtual CDeadMonster* MyDeadMonsterPointer() {return NULL;}
 
 	virtual const char* DefaultGibModel();
 	const char* GibModel();
@@ -363,6 +374,12 @@ public:
 
 	virtual const char* DefaultDisplayName() { return NULL; }
 	const char* DisplayName();
+
+	virtual Vector DefaultMinHullSize();
+	virtual Vector DefaultMaxHullSize();
+
+	// Allows to set a head via monstermaker before spawn
+	virtual void SetHead(int head) {}
 
 	//
 	// Glowshell effects
@@ -379,6 +396,17 @@ public:
 	Vector m_prevRenderColor;
 	int m_prevRenderFx;
 	int m_prevRenderAmt;
+
+	float m_nextPatrolPathCheck;
+
+	// Custom hull sizes
+	Vector m_minHullSize;
+	Vector m_maxHullSize;
+
+	int m_customSoundMask;
+	short m_prisonerTo;
+
+	const char* taskFailReason;
 };
 
 class CDeadMonster : public CBaseMonster
@@ -388,7 +416,7 @@ public:
 	void SpawnHelper(const char* modelName, int bloodColor = BLOOD_COLOR_RED, int health = 8);
 	void KeyValue( KeyValueData *pkvd );
  
-	BOOL IsInitiallyDead() {return TRUE;}
+	CDeadMonster* MyDeadMonsterPointer() {return this;}
 	virtual const char* getPos(int pose) const = 0;
 	int	m_iPose;// which sequence to display	-- temporary, don't need to save
 };

@@ -81,6 +81,7 @@ public:
 	void Spawn( void );
 	void SpawnHelper(const char* modelName, float health);
 	void Precache( void );
+	void PrecacheSounds();
 	void RunTask ( Task_t *pTask );
 	void StartTask ( Task_t *pTask );
 	void SetYawSpeed ( void );
@@ -107,6 +108,8 @@ public:
 	CUSTOM_SCHEDULES
 
 	virtual int SizeForGrapple() { return GRAPPLE_SMALL; }
+	Vector DefaultMinHullSize() { return Vector( -12.0f, -12.0f, 0.0f ); }
+	Vector DefaultMaxHullSize() { return Vector( 12.0f, 12.0f, 24.0f ); }
 
 	static const char *pIdleSounds[];
 	static const char *pAlertSounds[];
@@ -182,7 +185,7 @@ int CHeadCrab::DefaultClassify( void )
 //=========================================================
 Vector CHeadCrab::Center( void )
 {
-	return Vector( pev->origin.x, pev->origin.y, pev->origin.z + 6 );
+	return Vector( pev->origin.x, pev->origin.y, pev->origin.z + 6.0f );
 }
 
 Vector CHeadCrab::BodyTarget( const Vector &posSrc ) 
@@ -253,7 +256,7 @@ void CHeadCrab::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 				// Scale the sideways velocity to get there at the right time
 				vecJumpDir = m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs - pev->origin;
-				vecJumpDir = vecJumpDir * ( 1.0 / time );
+				vecJumpDir = vecJumpDir * ( 1.0f / time );
 
 				// Speed to offset gravity at the desired height
 				vecJumpDir.z = speed;
@@ -261,21 +264,21 @@ void CHeadCrab::HandleAnimEvent( MonsterEvent_t *pEvent )
 				// Don't jump too far/fast
 				float distance = vecJumpDir.Length();
 
-				if( distance > 650 )
+				if( distance > 650.0f )
 				{
-					vecJumpDir = vecJumpDir * ( 650.0 / distance );
+					vecJumpDir = vecJumpDir * ( 650.0f / distance );
 				}
 			}
 			else
 			{
 				// jump hop, don't care where
-				vecJumpDir = Vector( gpGlobals->v_forward.x, gpGlobals->v_forward.y, gpGlobals->v_up.z ) * 350;
+				vecJumpDir = Vector( gpGlobals->v_forward.x, gpGlobals->v_forward.y, gpGlobals->v_up.z ) * 350.0f;
 			}
 
 			AttackSound();
 
 			pev->velocity = vecJumpDir;
-			m_flNextAttack = gpGlobals->time + 2;
+			m_flNextAttack = gpGlobals->time + 2.0f;
 		}
 		break;
 		default:
@@ -304,7 +307,7 @@ void CHeadCrab::Spawn()
 void CHeadCrab::SpawnHelper(const char *modelName, float health)
 {
 	SetMyModel( modelName );
-	UTIL_SetSize( pev, Vector( -12, -12, 0 ), Vector( 12, 12, 24 ) );
+	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid		= SOLID_SLIDEBOX;
 	pev->movetype		= MOVETYPE_STEP;
@@ -322,14 +325,19 @@ void CHeadCrab::SpawnHelper(const char *modelName, float health)
 //=========================================================
 void CHeadCrab::Precache()
 {
+	PrecacheSounds();
+
+	PrecacheMyModel( "models/headcrab.mdl" );
+}
+
+void CHeadCrab::PrecacheSounds()
+{
 	PRECACHE_SOUND_ARRAY( pIdleSounds );
 	PRECACHE_SOUND_ARRAY( pAlertSounds );
 	PRECACHE_SOUND_ARRAY( pPainSounds );
 	PRECACHE_SOUND_ARRAY( pAttackSounds );
 	PRECACHE_SOUND_ARRAY( pDeathSounds );
 	PRECACHE_SOUND_ARRAY( pBiteSounds );
-
-	PrecacheMyModel( "models/headcrab.mdl" );
 }
 
 //=========================================================
@@ -390,7 +398,7 @@ void CHeadCrab::LeapTouch( CBaseEntity *pOther )
 void CHeadCrab::PrescheduleThink( void )
 {
 	// make the crab coo a little bit in combat state
-	if( m_MonsterState == MONSTERSTATE_COMBAT && RANDOM_FLOAT( 0, 5 ) < 0.1 )
+	if( m_MonsterState == MONSTERSTATE_COMBAT && RANDOM_FLOAT( 0, 5 ) < 0.1f )
 	{
 		IdleSound();
 	}
@@ -421,7 +429,7 @@ void CHeadCrab::StartTask( Task_t *pTask )
 //=========================================================
 BOOL CHeadCrab::CheckRangeAttack1( float flDot, float flDist )
 {
-	if( FBitSet( pev->flags, FL_ONGROUND ) && flDist <= 256 && flDot >= 0.65 )
+	if( FBitSet( pev->flags, FL_ONGROUND ) && flDist <= 256 && flDot >= 0.65f )
 	{
 		return TRUE;
 	}
@@ -436,7 +444,7 @@ BOOL CHeadCrab::CheckRangeAttack2( float flDot, float flDist )
 	return FALSE;
 	// BUGBUG: Why is this code here?  There is no ACT_RANGE_ATTACK2 animation.  I've disabled it for now.
 #if 0
-	if( FBitSet( pev->flags, FL_ONGROUND ) && flDist > 64 && flDist <= 256 && flDot >= 0.5 )
+	if( FBitSet( pev->flags, FL_ONGROUND ) && flDist > 64 && flDist <= 256 && flDot >= 0.5f )
 	{
 		return TRUE;
 	}
@@ -446,9 +454,13 @@ BOOL CHeadCrab::CheckRangeAttack2( float flDot, float flDist )
 
 int CHeadCrab::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
 {
-	// Don't take any acid damage -- BigMomma's mortar is acid
-	if( bitsDamageType & DMG_ACID )
-		flDamage = 0;
+	// Don't take ally acid damage -- BigMomma's mortar is acid
+	if( ( bitsDamageType & DMG_ACID ) && pevAttacker)
+	{
+		const int rel = IRelationship( Instance( pevAttacker ) );
+		if (rel < R_DL && rel != R_FR)
+			return 0;
+	}
 
 	return CBaseMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
 }
@@ -508,28 +520,29 @@ public:
 	void Precache( void );
 	const char* DefaultDisplayName() { return "Baby Headcrab"; }
 	void SetYawSpeed( void );
-	float GetDamageAmount( void ) { return gSkillData.headcrabDmgBite * 0.3; }
+	float GetDamageAmount( void ) { return gSkillData.headcrabDmgBite * 0.3f; }
 	BOOL CheckRangeAttack1( float flDot, float flDist );
 	Schedule_t *GetScheduleOfType ( int Type );
 	virtual int GetVoicePitch( void ) { return PITCH_NORM + RANDOM_LONG( 40, 50 ); }
-	virtual float GetSoundVolue( void ) { return 0.8; }
+	virtual float GetSoundVolue( void ) { return 0.8f; }
 };
 
 LINK_ENTITY_TO_CLASS( monster_babycrab, CBabyCrab )
 
 void CBabyCrab::Spawn( void )
 {
-	SpawnHelper("models/baby_headcrab.mdl", gSkillData.headcrabHealth * 0.25); // less health than full grown
+	Precache();
+	SpawnHelper("models/baby_headcrab.mdl", gSkillData.headcrabHealth * 0.25f); // less health than full grown
 	pev->rendermode = kRenderTransTexture;
 	pev->renderamt = 192;
-	UTIL_SetSize( pev, Vector( -12, -12, 0 ), Vector( 12, 12, 24 ) );
 	MonsterInit();
 }
 
 void CBabyCrab::Precache( void )
 {
+	PrecacheSounds();
+
 	PrecacheMyModel( "models/baby_headcrab.mdl" );
-	CHeadCrab::Precache();
 }
 
 void CBabyCrab::SetYawSpeed( void )
@@ -545,7 +558,7 @@ BOOL CBabyCrab::CheckRangeAttack1( float flDot, float flDist )
 			return TRUE;
 
 		// A little less accurate, but jump from closer
-		if( flDist <= 180 && flDot >= 0.55 )
+		if( flDist <= 180.0f && flDot >= 0.55f )
 			return TRUE;
 	}
 
@@ -583,8 +596,9 @@ public:
 	void DeathSound(void);
 	void IdleSound(void);
 	void AlertSound(void);
-	void PrescheduleThink(void);
+	void MonsterThink(void);
 	void StartTask(Task_t* pTask);
+	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 
 	virtual int		Save(CSave &save);
 	virtual int		Restore(CRestore &restore);
@@ -654,9 +668,10 @@ void CShockRoach::Spawn()
 	Precache();
 
 	SetMyModel("models/w_shock_rifle.mdl");
+	UTIL_SetOrigin(pev, pev->origin);
 
 	pev->solid = SOLID_SLIDEBOX;
-	pev->movetype = MOVETYPE_STEP;
+	pev->movetype = MOVETYPE_FLY;
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	pev->effects = 0;
 	SetMyHealth( gSkillData.sroachHealth );
@@ -727,21 +742,24 @@ void CShockRoach::LeapTouch(CBaseEntity *pOther)
 //=========================================================
 // PrescheduleThink
 //=========================================================
-void CShockRoach::PrescheduleThink(void)
+void CShockRoach::MonsterThink(void)
 {
-	if (!m_fRoachSolid && m_flBirthTime + 0.2 >= gpGlobals->time) {
-		m_fRoachSolid = TRUE;
-		UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 24));
-	}
-	// explode when ready
-	if (gpGlobals->time >= m_flBirthTime + gSkillData.sroachLifespan)
+	float lifeTime = (gpGlobals->time - m_flBirthTime);
+	if (lifeTime >= 0.2)
 	{
-		pev->health = -1;
-		Killed(pev, 0);
-		return;
+		pev->movetype = MOVETYPE_STEP;
+	}
+	if (!m_fRoachSolid && lifeTime >= 2.0) {
+		m_fRoachSolid = TRUE;
+		SetMySize(Vector(-12, -12, 0), Vector(12, 12, 24));
+	}
+	// die when ready
+	if (lifeTime >= gSkillData.sroachLifespan)
+	{
+		TakeDamage(pev, pev, pev->health, DMG_NEVERGIB);
 	}
 
-	CHeadCrab::PrescheduleThink();
+	CHeadCrab::MonsterThink();
 }
 
 //=========================================================
@@ -796,8 +814,14 @@ void CShockRoach::StartTask(Task_t *pTask)
 
 void CShockRoach::AttackSound()
 {
-	int iSound = RANDOM_LONG(0,2);
-	if( iSound != 0 )
-		EMIT_SOUND_DYN( edict(), CHAN_VOICE, pAttackSounds[iSound], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch() );
+	EMIT_SOUND_DYN( edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch() );
+}
+
+int CShockRoach::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
+{
+	if ( gpGlobals->time - m_flBirthTime < 2.0 )
+		flDamage = 0.0;
+	// Skip headcrab's TakeDamage to avoid unwanted immunity to friendly acid.
+	return CBaseMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
 }
 #endif

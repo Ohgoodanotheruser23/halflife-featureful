@@ -52,8 +52,10 @@
 #define SF_MONSTER_NO_YELLOW_BLOBS_SPIRIT 128 // Wait for script is not used anyway. Add compatibility with spirit.
 #define SF_MONSTER_PREDISASTER			256	//this is a predisaster scientist or barney. Influences how they speak.
 #define SF_MONSTER_FADECORPSE			512 // Fade out corpse after death
-#define SF_MONSTER_DONT_DROP_GRUN		1024
+#define SF_MONSTER_DONT_DROP_GUN		1024
 #define SF_MONSTER_NO_YELLOW_BLOBS		8192
+#define SF_MONSTER_SPECIAL_FLAG			32768
+#define SF_MONSTER_NONSOLID_CORPSE		65536
 #define SF_MONSTER_FALL_TO_GROUND		0x80000000
 
 // specialty spawnflags
@@ -147,20 +149,21 @@ public:
 	void EXPORT BounceGibTouch( CBaseEntity *pOther );
 	void EXPORT StickyGibTouch( CBaseEntity *pOther );
 	void EXPORT WaitTillLand( void );
+	void EXPORT StartFadeOut ( void );
 	void LimitVelocity( void );
 
 	virtual int ObjectCaps( void ) { return ( CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION ) | FCAP_DONT_SAVE; }
 	static void SpawnHeadGib( entvars_t *pevVictim );
 	static void SpawnHumanGibs(entvars_t *pevVictim, int cGibs = 4 );
-	static void SpawnRandomGibs( entvars_t *pevVictim, int cGibs, const char* gibModel, int gibBodiesNum = 0, int startGibNum = 0 );
+	static void SpawnRandomGibs( entvars_t *pevVictim, int cGibs, const char* gibModel, int gibBodiesNum = 0, int startGibIndex = 0 );
 	static void SpawnStickyGibs( entvars_t *pevVictim, Vector vecOrigin, int cGibs );
+	static void SpawnRandomClientGibs(entvars_t *pevVictim, int cGibs, const char* gibModel, int gibBodiesNum = 0, int startGibIndex = 0 );
 
 	int m_bloodColor;
 	int m_cBloodDecals;
 	int m_material;
 	float m_lifeTime;
-	// start fading even if gib had not stopped moving at this time. This is to prevent gibs endlessly rotating on edges
-	float m_startFadeTime;
+	float m_bornTime;
 };
 
 void AddScoreForDamage(entvars_t *pevAttacker, CBaseEntity* victim, const float damage);

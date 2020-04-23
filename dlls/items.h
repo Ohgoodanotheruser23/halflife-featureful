@@ -16,7 +16,7 @@
 #ifndef ITEMS_H
 #define ITEMS_H
 
-class CItem : public CBaseEntity
+class CItem : public CBaseDelay
 {
 public:
 	void Spawn( void );
@@ -29,6 +29,7 @@ public:
 		return FALSE;
 	}
 	int ObjectCaps();
+	void SetObjectCollisionBox();
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void TouchOrUse( CBaseEntity* pOther );
 	void SetMyModel( const char* model );

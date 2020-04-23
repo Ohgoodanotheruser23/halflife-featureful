@@ -76,6 +76,11 @@ BOOL CHalfLifeRules::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerWeapo
 		return TRUE;
 	}
 
+	if( !pPlayer->m_iAutoWepSwitch )
+	{
+		return FALSE;
+	}
+
 	if( !pPlayer->m_pActiveItem->CanHolster() )
 	{
 		return FALSE;
@@ -142,10 +147,15 @@ void CHalfLifeRules::PlayerThink( CBasePlayer *pPlayer )
 {
 	if ( !pPlayer->m_fInitHUD && !pPlayer->m_settingsLoaded)
 	{
-		CBaseEntity* pSettingEntity = UTIL_FindEntityByClassname( NULL, "game_player_settings" );
-		if ( pSettingEntity )
+		CBaseEntity* pSettingEntity = NULL;
+		while ( (pSettingEntity = UTIL_FindEntityByClassname( pSettingEntity, "game_player_settings" )) != NULL )
 		{
-			pSettingEntity->Touch( pPlayer );
+			// If game_player_settings has a name, it means to be called by trigger, not run automatically.
+			if (FStringNull(pSettingEntity->pev->targetname))
+			{
+				pSettingEntity->Touch( pPlayer );
+				break;
+			}
 		}
 		pPlayer->m_settingsLoaded = true;
 	}
@@ -340,7 +350,12 @@ BOOL CHalfLifeRules::FAllowMonsters( void )
 	return TRUE;
 }
 
-bool CHalfLifeRules::FMonsterCanDropWeapons( CBaseEntity* pMonster )
+bool CHalfLifeRules::FMonsterCanDropWeapons(CBaseMonster *pMonster )
+{
+	return true;
+}
+
+bool CHalfLifeRules::FMonsterCanTakeDamage( CBaseMonster* pMonster, CBaseEntity* pAttacker )
 {
 	return true;
 }

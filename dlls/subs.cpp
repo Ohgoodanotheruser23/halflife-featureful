@@ -127,13 +127,6 @@ void CBaseEntity::UpdateOnRemove( void )
 
 	if( pev->globalname )
 		gGlobalState.EntitySetState( pev->globalname, GLOBAL_DEAD );
-
-	// tell owner ( if any ) that we're dead.This is mostly for MonsterMaker functionality.
-	//Killtarget didn't do this before, so the counter broke. - Solokiller
-	if( CBaseEntity* pOwner = pev->owner ? Instance( pev->owner ) : 0 )
-	{
-		pOwner->DeathNotice( pev );
-	}
 }
 
 // Convenient way to delay removing oneself
@@ -144,7 +137,8 @@ void CBaseEntity::SUB_Remove( void )
 	{
 		// this situation can screw up monsters who can't tell their entity pointers are invalid.
 		pev->health = 0;
-		ALERT( at_aiconsole, "SUB_Remove called on entity with health > 0\n" );
+		// This message is useless as it's fine to remove entity with positive amount of health.
+		//ALERT( at_aiconsole, "SUB_Remove called on entity with health > 0\n" );
 	}
 
 	REMOVE_ENTITY( ENT( pev ) );
@@ -159,7 +153,9 @@ void CBaseEntity::SUB_DoNothing( void )
 TYPEDESCRIPTION	CBaseDelay::m_SaveData[] =
 {
 	DEFINE_FIELD( CBaseDelay, m_flDelay, FIELD_FLOAT ),
+	DEFINE_FIELD( CBaseDelay, m_flMaxDelay, FIELD_FLOAT ),
 	DEFINE_FIELD( CBaseDelay, m_iszKillTarget, FIELD_STRING ),
+	DEFINE_FIELD( CBaseDelay, m_hActivator, FIELD_EHANDLE ),
 };
 
 IMPLEMENT_SAVERESTORE( CBaseDelay, CBaseEntity )
@@ -215,7 +211,7 @@ void CBaseEntity::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, flo
 
 void FireTargets( const char *targetName, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	edict_t *pentTarget = NULL;
+	CBaseEntity* pTarget = NULL;
 	if( !targetName || *targetName == '\0' )
 		return;
 
@@ -223,11 +219,10 @@ void FireTargets( const char *targetName, CBaseEntity *pActivator, CBaseEntity *
 
 	for( ; ; )
 	{
-		pentTarget = FIND_ENTITY_BY_TARGETNAME( pentTarget, targetName );
-		if( FNullEnt( pentTarget ) )
+		pTarget = UTIL_FindEntityByTargetname(pTarget, targetName, pActivator);
+		if( !pTarget )
 			break;
 
-		CBaseEntity *pTarget = CBaseEntity::Instance( pentTarget );
 		if( pTarget && !( pTarget->pev->flags & FL_KILLME ) )	// Don't use dying ents
 		{
 			ALERT( at_aiconsole, "Found: %s, firing (%s)\n", STRING( pTarget->pev->classname ), targetName );
@@ -263,22 +258,11 @@ void CBaseDelay::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, floa
 		// Save the useType
 		pTemp->pev->button = (int)useType;
 		pTemp->m_iszKillTarget = m_iszKillTarget;
-		pTemp->m_flDelay = 0; // prevent "recursion"
-		pTemp->m_flMaxDelay = 0;
+		pTemp->m_flDelay = 0.0f; // prevent "recursion"
+		pTemp->m_flMaxDelay = 0.0f;
 		pTemp->pev->target = pev->target;
 
-		// HACKHACK
-		// This wasn't in the release build of Half-Life.  We should have moved m_hActivator into this class
-		// but changing member variable hierarchy would break save/restore without some ugly code.
-		// This code is not as ugly as that code
-		if( pActivator && pActivator->IsPlayer() )		// If a player activates, then save it
-		{
-			pTemp->pev->owner = pActivator->edict();
-		}
-		else
-		{
-			pTemp->pev->owner = NULL;
-		}
+		pTemp->m_hActivator = pActivator;
 
 		return;
 	}
@@ -342,15 +326,8 @@ void SetMovedir( entvars_t *pev )
 
 void CBaseDelay::DelayThink( void )
 {
-	CBaseEntity *pActivator = NULL;
-
-	if( pev->owner != NULL )		// A player activated this on delay
-	{
-		pActivator = CBaseEntity::Instance( pev->owner );	
-	}
-
 	// The use type is cached (and stashed) in pev->button
-	SUB_UseTargets( pActivator, (USE_TYPE)pev->button, 0 );
+	SUB_UseTargets( m_hActivator, (USE_TYPE)pev->button, 0 );
 	REMOVE_ENTITY( ENT( pev ) );
 }
 
@@ -378,7 +355,7 @@ TYPEDESCRIPTION	CBaseToggle::m_SaveData[] =
 	DEFINE_FIELD( CBaseToggle, m_vecAngle2, FIELD_VECTOR ),		// UNDONE: Position could go through transition, but also angle?
 	DEFINE_FIELD( CBaseToggle, m_cTriggersLeft, FIELD_INTEGER ),
 	DEFINE_FIELD( CBaseToggle, m_flHeight, FIELD_FLOAT ),
-	DEFINE_FIELD( CBaseToggle, m_hActivator, FIELD_EHANDLE ),
+	//DEFINE_FIELD( CBaseToggle, m_hActivator, FIELD_EHANDLE ), // now in CBaseDelay
 	DEFINE_FIELD( CBaseToggle, m_pfnCallWhenMoveDone, FIELD_FUNCTION ),
 	DEFINE_FIELD( CBaseToggle, m_vecFinalDest, FIELD_POSITION_VECTOR ),
 	DEFINE_FIELD( CBaseToggle, m_vecFinalAngle, FIELD_VECTOR ),
@@ -442,6 +419,13 @@ void CBaseToggle::LinearMove( Vector vecDest, float flSpeed )
 	// divide vector length by speed to get time to reach dest
 	float flTravelTime = vecDestDelta.Length() / flSpeed;
 
+	if( flTravelTime < 0.05f )
+	{
+		UTIL_SetOrigin( pev, m_vecFinalDest );
+		LinearMoveDone();
+		return;
+	}
+
 	// set nextthink to trigger a call to LinearMoveDone when dest is reached
 	pev->nextthink = pev->ltime + flTravelTime;
 	SetThink( &CBaseToggle::LinearMoveDone );
@@ -459,7 +443,7 @@ void CBaseToggle::LinearMoveDone( void )
 {
 	Vector delta = m_vecFinalDest - pev->origin;
 	float error = delta.Length();
-	if( error > 0.03125 )
+	if( error > 0.03125f )
 	{
 		LinearMove( m_vecFinalDest, 100 );
 		return;

@@ -29,6 +29,7 @@
 #define SF_SCRIPT_OVERRIDESTATE		64
 #define SF_SCRIPT_NOSCRIPTMOVEMENT	128
 #define SF_SCRIPT_CONTINUOUS		256
+#define SF_SCRIPT_APPLYNEWANGLES		512
 
 #define SCRIPT_BREAK_CONDITIONS		(bits_COND_LIGHT_DAMAGE|bits_COND_HEAVY_DAMAGE)
 
@@ -78,6 +79,7 @@ public:
 	BOOL	CanInterrupt( void );
 	void	AllowInterrupt( BOOL fAllow );
 	int		IgnoreConditions( void );
+	virtual bool	ShouldResetOnGroundFlag();
 
 	string_t m_iszIdle;		// string index for idle animation
 	string_t m_iszPlay;		// string index for scripted animation
@@ -96,10 +98,14 @@ public:
 	//Vector m_vecOrigOrigin;
 	BOOL m_interruptable;
 	string_t m_iszFireOnAnimStart;
+	short m_targetActivator;
+	bool m_cantFindReported; // no need to save
+	bool m_cantPlayReported;
 };
 
 class CCineAI : public CCineMonster
 {
 	BOOL FCanOverrideState ( void );
+	bool ShouldResetOnGroundFlag();
 };
 #endif //SCRIPTED_H

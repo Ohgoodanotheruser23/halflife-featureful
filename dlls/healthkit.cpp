@@ -71,7 +71,7 @@ BOOL CHealthKit::MyTouch( CBasePlayer *pPlayer )
 		return FALSE;
 	}
 
-	if( pPlayer->TakeHealth( gSkillData.healthkitCapacity, DMG_GENERIC ) )
+	if( pPlayer->TakeHealth( this, gSkillData.healthkitCapacity, DMG_GENERIC ) )
 	{
 		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
 			WRITE_STRING( STRING( pev->classname ) );
@@ -308,13 +308,13 @@ void CWallCharger::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	{
 		if( m_flSoundTime <= gpGlobals->time )
 		{
-			m_flSoundTime = gpGlobals->time + 0.62;
+			m_flSoundTime = gpGlobals->time + 0.62f;
 			EMIT_SOUND( ENT( pev ), CHAN_ITEM, DenySound(), SoundVolume(), ATTN_NORM );
 		}
 		return;
 	}
 
-	pev->nextthink = pev->ltime + 0.25;
+	pev->nextthink = pev->ltime + 0.25f;
 	SetThink( &CWallCharger::Off );
 
 	// Time to recharge yet?
@@ -322,7 +322,7 @@ void CWallCharger::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		return;
 
 	// govern the rate of charge
-	m_flNextCharge = gpGlobals->time + 0.1;
+	m_flNextCharge = gpGlobals->time + 0.1f;
 
 	// charge the player
 	if( GiveCharge(pActivator) )
@@ -338,7 +338,7 @@ void CWallCharger::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	{
 		if( m_flSoundTime <= gpGlobals->time )
 		{
-			m_flSoundTime = gpGlobals->time + 0.62;
+			m_flSoundTime = gpGlobals->time + 0.62f;
 			EMIT_SOUND( ENT( pev ), CHAN_ITEM, DenySound(), SoundVolume(), ATTN_NORM );
 		}
 		if( m_iOn > 1 )
@@ -352,7 +352,7 @@ void CWallCharger::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	{
 		m_iOn++;
 		EMIT_SOUND( ENT( pev ), CHAN_ITEM, ChargeStartSound(), 1.0, ATTN_NORM );
-		m_flSoundTime = 0.56 + gpGlobals->time;
+		m_flSoundTime = 0.56f + gpGlobals->time;
 	}
 	if( ( m_iOn == 1 ) && ( m_flSoundTime <= gpGlobals->time ) )
 	{
@@ -376,7 +376,7 @@ public:
 	float SoundVolume() { return 1.0f; }
 	bool GiveCharge(CBaseEntity* pActivator)
 	{
-		return pActivator->TakeHealth( 1, DMG_GENERIC ) > 0;
+		return pActivator->TakeHealth( this, 1, DMG_GENERIC ) > 0;
 	}
 };
 
@@ -390,6 +390,9 @@ class CWallHealthJarDecay : public CBaseAnimating
 {
 public:
 	void Spawn();
+	void Think();
+	void Update(bool slosh, float value);
+	void ToRest();
 };
 
 void CWallHealthJarDecay::Spawn()
@@ -401,6 +404,46 @@ void CWallHealthJarDecay::Spawn()
 	pev->renderamt = 180;
 	pev->rendermode = kRenderTransTexture;
 	InitBoneControllers();
+}
+
+void CWallHealthJarDecay::Think()
+{
+	if (pev->sequence > 0)
+	{
+		StudioFrameAdvance();
+		if (pev->sequence == 2 && m_fSequenceFinished)
+		{
+			pev->sequence = 0;
+		}
+		else
+		{
+			pev->nextthink = gpGlobals->time + 0.1;
+		}
+	}
+}
+
+void CWallHealthJarDecay::Update(bool slosh, float value)
+{
+	if (slosh && pev->sequence != 1)
+	{
+		pev->sequence = 1;
+		ResetSequenceInfo();
+		pev->frame = 0;
+		m_fSequenceLoops = TRUE;
+		pev->nextthink = gpGlobals->time;
+	}
+	const float jarBoneControllerValue = value * 11 - 11;
+	SetBoneController(0,  jarBoneControllerValue );
+}
+
+void CWallHealthJarDecay::ToRest()
+{
+	if (pev->sequence == 1)
+	{
+		pev->sequence = 2;
+		ResetSequenceInfo();
+		pev->frame = 0;
+	}
 }
 
 LINK_ENTITY_TO_CLASS(item_healthcharger_jar, CWallHealthJarDecay)
@@ -421,14 +464,7 @@ public:
 	void SetNeedleState(int state);
 	void SetNeedleController(float yaw);
 	void UpdateOnRemove();
-	void UpdateJar()
-	{
-		if (m_jar)
-		{
-			const float jarBoneControllerValue = (m_iJuice / (float)ChargerCapacity()) * 11 - 11;
-			m_jar->SetBoneController(0,  jarBoneControllerValue );
-		}
-	}
+	void UpdateJar();
 	int ChargerCapacity() { return (int)(pev->health > 0 ? pev->health : gSkillData.healthchargerCapacity); }
 
 	virtual int Save( CSave &save );
@@ -630,7 +666,7 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	{
 		if( m_flSoundTime <= gpGlobals->time )
 		{
-			m_flSoundTime = gpGlobals->time + 0.62;
+			m_flSoundTime = gpGlobals->time + 0.62f;
 			EMIT_SOUND( ENT( pev ), CHAN_ITEM, "items/medshotno1.wav", 1.0, ATTN_NORM );
 		}
 		return;
@@ -648,7 +684,7 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	}
 	else
 	{
-		m_goToOffTime = gpGlobals->time + 0.25;
+		m_goToOffTime = gpGlobals->time + 0.25f;
 	}
 
 	// Time to recharge yet?
@@ -682,7 +718,7 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	}
 
 	// charge the player
-	if( pActivator->TakeHealth( 1, DMG_GENERIC ) )
+	if( pActivator->TakeHealth( this, 1, DMG_GENERIC ) )
 	{
 		m_iJuice--;
 		if (m_iJuice <= 0)
@@ -701,6 +737,10 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	}
 	else
 	{
+		if (m_jar)
+		{
+			m_jar->ToRest();
+		}
 		if( m_flSoundTime <= gpGlobals->time )
 		{
 			m_flSoundTime = gpGlobals->time + 0.62;
@@ -713,7 +753,7 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	}
 
 	// govern the rate of charge
-	m_flNextCharge = gpGlobals->time + 0.1;
+	m_flNextCharge = gpGlobals->time + 0.1f;
 }
 
 void CWallHealthDecay::Recharge( void )
@@ -735,6 +775,10 @@ void CWallHealthDecay::Off( void )
 		if (m_playingChargeSound) {
 			STOP_SOUND( ENT( pev ), CHAN_STATIC, "items/medcharge4.wav" );
 			m_playingChargeSound = FALSE;
+		}
+		if (m_jar)
+		{
+			m_jar->ToRest();
 		}
 		SetNeedleState(RetractShot);
 		break;
@@ -841,7 +885,15 @@ void CWallHealthDecay::SetNeedleController(float yaw)
 
 void CWallHealthDecay::UpdateOnRemove()
 {
-	CBaseAnimating::UpdateOnRemove();
 	UTIL_Remove(m_jar);
 	m_jar = NULL;
+	CBaseAnimating::UpdateOnRemove();
+}
+
+void CWallHealthDecay::UpdateJar()
+{
+	if (m_jar)
+	{
+		m_jar->Update(m_iState == Healing || m_iState == GiveShot, m_iJuice / (float)ChargerCapacity());
+	}
 }

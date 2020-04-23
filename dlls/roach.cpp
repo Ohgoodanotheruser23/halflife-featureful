@@ -44,13 +44,13 @@ public:
 	void Move( float flInterval );
 	void PickNewDest( int iCondition );
 	void EXPORT Touch( CBaseEntity *pOther );
-	void Killed( entvars_t *pevAttacker, int iGib );
+	void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 
 	float m_flLastLightLevel;
 	float m_flNextSmellTime;
 	int DefaultClassify( void );
 	void Look( int iDistance );
-	int ISoundMask( void );
+	int DefaultISoundMask( void );
 
 	virtual int SizeForGrapple() { return GRAPPLE_SMALL; }
 
@@ -67,7 +67,7 @@ LINK_ENTITY_TO_CLASS( monster_cockroach, CRoach )
 // of sounds this monster regards. In the base class implementation,
 // monsters care about all sounds, but no scents.
 //=========================================================
-int CRoach::ISoundMask( void )
+int CRoach::DefaultISoundMask( void )
 {
 	return bits_SOUND_CARCASS | bits_SOUND_MEAT;
 }
@@ -160,7 +160,7 @@ void CRoach::Precache()
 //=========================================================
 // Killed.
 //=========================================================
-void CRoach::Killed( entvars_t *pevAttacker, int iGib )
+void CRoach::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
 {
 	pev->solid = SOLID_NOT;
 
@@ -192,7 +192,7 @@ void CRoach::MonsterThink( void )
 	if( FNullEnt( FIND_CLIENT_IN_PVS( edict() ) ) )
 		pev->nextthink = gpGlobals->time + RANDOM_FLOAT( 1, 1.5 );
 	else
-		pev->nextthink = gpGlobals->time + 0.1;// keep monster thinking
+		pev->nextthink = gpGlobals->time + 0.1f;// keep monster thinking
 
 	float flInterval = StudioFrameAdvance(); // animate
 
@@ -264,7 +264,7 @@ void CRoach::MonsterThink( void )
 					pSound = CSoundEnt::SoundPointerForIndex( m_iAudibleList );
 
 					// roach smells food and is just standing around. Go to food unless food isn't on same z-plane.
-					if( pSound && fabs( pSound->m_vecOrigin.z - pev->origin.z ) <= 3.0 )
+					if( pSound && fabs( pSound->m_vecOrigin.z - pev->origin.z ) <= 3.0f )
 					{
 						PickNewDest( ROACH_SMELL_FOOD );
 						SetActivity( ACT_WALK );

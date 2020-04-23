@@ -47,6 +47,17 @@ int __MsgFunc_Logo( const char *pszName, int iSize, void *pbuf )
 	return gHUD.MsgFunc_Logo( pszName, iSize, pbuf );
 }
 
+int __MsgFunc_HUDColor(const char *pszName, int iSize, void *pbuf)
+{
+	return gHUD.MsgFunc_HUDColor(pszName, iSize, pbuf );
+}
+
+//LRC
+int __MsgFunc_SetFog(const char *pszName, int iSize, void *pbuf)
+{
+	return gHUD.MsgFunc_SetFog( pszName, iSize, pbuf );
+}
+
 //DECLARE_MESSAGE( m_Logo, Logo )
 int __MsgFunc_ResetHUD( const char *pszName, int iSize, void *pbuf )
 {
@@ -163,6 +174,8 @@ void CHud::Init( void )
 	HOOK_MESSAGE( ViewMode );
 	HOOK_MESSAGE( SetFOV );
 	HOOK_MESSAGE( Concuss );
+	HOOK_MESSAGE( HUDColor );
+	HOOK_MESSAGE( SetFog );
 
 	// TFFree CommandMenu
 	HOOK_COMMAND( "+commandmenu", OpenCommandMenu );
@@ -192,8 +205,11 @@ void CHud::Init( void )
 	m_iLogo = 0;
 	m_iFOV = 0;
 
-	CVAR_CREATE( "zoom_sensitivity_ratio", "1.2", 0 );
-	default_fov = CVAR_CREATE( "default_fov", "90", 0 );
+	m_iHUDColor = RGB_YELLOWISH;
+
+	CVAR_CREATE( "zoom_sensitivity_ratio", "1.2", FCVAR_ARCHIVE );
+	CVAR_CREATE( "cl_autowepswitch", "1", FCVAR_ARCHIVE | FCVAR_USERINFO );
+	default_fov = CVAR_CREATE( "default_fov", "90", FCVAR_ARCHIVE );
 	m_pCvarStealMouse = CVAR_CREATE( "hud_capturemouse", "1", FCVAR_ARCHIVE );
 	m_pCvarDraw = CVAR_CREATE( "hud_draw", "1", FCVAR_ARCHIVE );
 	cl_lw = gEngfuncs.pfnGetCvarPointer( "cl_lw" );
@@ -424,6 +440,8 @@ void CHud::VidInit( void )
 	m_Nightvision.VidInit();
 	m_Scoreboard.VidInit();
 	m_MOTD.VidInit();
+
+	memset(&fog, 0, sizeof(fog));
 }
 
 int CHud::MsgFunc_Logo( const char *pszName,  int iSize, void *pbuf )
@@ -432,6 +450,15 @@ int CHud::MsgFunc_Logo( const char *pszName,  int iSize, void *pbuf )
 
 	// update Train data
 	m_iLogo = READ_BYTE();
+
+	return 1;
+}
+
+int CHud::MsgFunc_HUDColor(const char *pszName,  int iSize, void *pbuf)
+{
+	BEGIN_READ( pbuf, iSize );
+
+	m_iHUDColor = READ_LONG();
 
 	return 1;
 }

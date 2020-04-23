@@ -32,7 +32,9 @@ typedef enum
 {
 		SCHED_NONE = 0,
 		SCHED_IDLE_STAND,
+		SCHED_IDLE_PATROL_TURNING,
 		SCHED_IDLE_WALK,
+		SCHED_IDLE_RUN,
 		SCHED_WAKE_ANGRY,
 		SCHED_WAKE_CALLED,
 		SCHED_ALERT_FACE,
@@ -89,6 +91,7 @@ typedef enum
 		TASK_WALK_TO_TARGET,
 		TASK_RUN_TO_TARGET,
 		TASK_MOVE_TO_TARGET_RANGE,
+		TASK_MOVE_NEAREST_TO_TARGET_RANGE,
 		TASK_GET_PATH_TO_ENEMY,
 		TASK_GET_PATH_TO_ENEMY_LKP,
 		TASK_GET_PATH_TO_ENEMY_CORPSE,
@@ -165,6 +168,7 @@ typedef enum
 		TASK_FACE_SCRIPT,
 		TASK_WAIT_RANDOM,
 		TASK_WAIT_INDEFINITE,
+		TASK_WAIT_PATROL_TURNING, // wait while turning to ideal yaw during the patrol
 		TASK_STOP_MOVING,
 		TASK_TURN_LEFT,
 		TASK_TURN_RIGHT,
@@ -173,6 +177,7 @@ typedef enum
 		TASK_WAIT_FOR_MOVEMENT,			// wait until MovementIsComplete()
 		TASK_GET_HEALTH_FROM_FOOD,
 		TASK_CHECK_FIRE, // check friendly fire
+		TASK_CATCH_WITH_TARGET_RANGE,
 		LAST_COMMON_TASK // LEAVE THIS AT THE BOTTOM!! (sjb)
 } SHARED_TASKS;
 
@@ -238,6 +243,7 @@ struct WayPoint_t
 #define bits_MF_TO_LOCATION			( 1 << 6 ) // local move to an arbitrary point
 #define bits_MF_IS_GOAL				( 1 << 7 ) // this waypoint is the goal of the whole move.
 #define bits_MF_DONT_SIMPLIFY		( 1 << 8 ) // Don't let the route code simplify this waypoint
+#define bits_MF_NEAREST_PATH		( 1 << 9 )
 
 // If you define any flags that aren't _TO_ flags, add them here so we can mask
 // them off when doing compares.
@@ -249,6 +255,7 @@ struct WayPoint_t
 #define MOVEGOAL_PATHCORNER			(bits_MF_TO_PATHCORNER)
 #define MOVEGOAL_LOCATION			(bits_MF_TO_LOCATION)
 #define MOVEGOAL_NODE				(bits_MF_TO_NODE)
+#define MOVEGOAL_TARGETENT_NEAREST	(bits_MF_TO_TARGETENT|bits_MF_NEAREST_PATH)
 
 // these bits represent conditions that may befall the monster, of which some are allowed 
 // to interrupt certain schedules. 

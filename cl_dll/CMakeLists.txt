@@ -25,6 +25,11 @@ project (CLDLL)
 
 set (CLDLL_LIBRARY client)
 
+include(CheckIncludeFile)
+check_include_file("tgmath.h" HAVE_TGMATH_H)
+if(HAVE_TGMATH_H)
+	add_definitions(-DHAVE_TGMATH_H)
+endif()
 
 add_definitions(-DCLIENT_WEAPONS -DCLIENT_DLL)
 
@@ -71,6 +76,7 @@ set (CLDLL_SOURCES
 	../dlls/shockrifle.cpp
 	../dlls/sporelauncher.cpp
 	../dlls/medkit.cpp
+	../dlls/uzi.cpp
 	ev_hldm.cpp
 	hl/hl_baseentity.cpp
 	hl/hl_events.cpp
@@ -137,15 +143,15 @@ if (GOLDSOURCE_SUPPORT)
 	target_link_libraries( ${CLDLL_LIBRARY} ${CMAKE_DL_LIBS} )
 endif()
 
+if(WIN32)
+	target_link_libraries( ${CLDLL_LIBRARY} user32.lib )
+endif()
+
 set_target_properties (${CLDLL_LIBRARY} PROPERTIES
 	POSITION_INDEPENDENT_CODE 1)
 
 if(APPLE OR WIN32 OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 	set(CLDLL_NAME "client")
-	if(64BIT)
-		set(CLDLL_NAME "client64")
-	endif()
-
 	set_target_properties(${CLDLL_LIBRARY} PROPERTIES
 		OUTPUT_NAME ${CLDLL_NAME}
 		PREFIX "")

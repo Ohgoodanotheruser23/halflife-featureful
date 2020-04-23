@@ -22,6 +22,7 @@
 #include	"player.h"
 #include	"weapons.h"
 #include	"ammunition.h"
+#include	"monsters.h"
 #include	"gamerules.h"
 #include	"mod_features.h"
  
@@ -386,6 +387,12 @@ struct AmmoEnt
 	short count;
 };
 
+struct WeaponEnt
+{
+	char entName[32];
+	short count;
+};
+
 struct OverrideCvar
 {
 	char name[32];
@@ -394,7 +401,7 @@ struct OverrideCvar
 
 struct MapConfig
 {
-	char weapons[MAX_WEAPONS][32];
+	WeaponEnt weapons[MAX_WEAPONS];
 	AmmoEnt ammo[MAX_AMMO_SLOTS];
 	OverrideCvar overrideCvars[32];
 	int cvarCount;
@@ -454,7 +461,11 @@ bool ReadMapConfig(const char* mapName)
 		if (strncmp(key, "weapon_", 7) == 0)
 		{
 			if (g_mapConfig.weaponsCount < MAX_WEAPONS)
-				strncpy(g_mapConfig.weapons[g_mapConfig.weaponsCount++], key, 31);
+				strncpy(g_mapConfig.weapons[g_mapConfig.weaponsCount].entName, key, 31);
+			g_mapConfig.weapons[g_mapConfig.weaponsCount].count = atoi(value);
+			if (!g_mapConfig.weapons[g_mapConfig.weaponsCount].count)
+				g_mapConfig.weapons[g_mapConfig.weaponsCount].count = 1;
+			g_mapConfig.weaponsCount++;
 		}
 		else if (strncmp(key, "ammo_", 5) == 0)
 		{
@@ -883,9 +894,8 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerW
 		return TRUE;
 	}
 
-	if( !pPlayer->m_pActiveItem->CanHolster() )
+	if( !pPlayer->m_iAutoWepSwitch )
 	{
-		// can't put away the active item.
 		return FALSE;
 	}
 
@@ -899,38 +909,6 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerW
 
 		return FALSE;
 	}
-}
-
-BOOL CHalfLifeMultiplay::GetBestWeapon(CBasePlayer *pPlayer)
-{
-	CBasePlayerWeapon *pBest = pPlayer->m_pActiveItem;
-	int i;
-
-	if (!pBest)
-		return FALSE;
-
-	for( i = 0; i < MAX_WEAPONS; i++ )
-	{
-		CBasePlayerWeapon *pCheck = pPlayer->m_rgpPlayerWeapons[i];
-
-		if ( pCheck )
-		{
-			if( pCheck->iWeight() > pBest->iWeight() && pCheck != pBest )
-			{
-				if( pCheck->CanDeploy() )
-				{
-					pBest = pCheck;
-				}
-			}
-		}
-	}
-
-	if (pBest)
-	{
-		pPlayer->SwitchWeapon(pBest);
-		return TRUE;
-	}
-	return FALSE;
 }
 
 BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pCurrentWeapon )
@@ -1191,15 +1169,17 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 
 	if (IsCoOp() && g_mapConfig.valid)
 	{
-		int i;
+		int i, j;
 		gEvilImpulse101 = TRUE;
 		for (i=0; i<g_mapConfig.weaponsCount; ++i)
 		{
-			pPlayer->GiveNamedItem(g_mapConfig.weapons[i]);
+			for (j=0; j<g_mapConfig.weapons[i].count; ++j)
+			{
+				pPlayer->GiveNamedItem(g_mapConfig.weapons[i].entName);
+			}
 		}
 		for (i=0; i<g_mapConfig.ammoCount; ++i)
 		{
-			int j;
 			for (j=0; j<g_mapConfig.ammo[i].count; ++j)
 			{
 				pPlayer->GiveNamedItem(g_mapConfig.ammo[i].entName);
@@ -1226,7 +1206,7 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 			g_engfuncs.pfnSetPhysicsKeyValue( pPlayer->edict(), "slj", "1" );
 		}
 
-		GetBestWeapon(pPlayer);
+		pPlayer->SwitchToBestWeapon();
 
 		addDefault = FALSE;
 	}
@@ -1840,7 +1820,7 @@ BOOL CHalfLifeMultiplay::FAllowMonsters( void )
 	return IsCoOp() || ( allowmonsters.value != 0 );
 }
 
-bool CHalfLifeMultiplay::FMonsterCanDropWeapons(CBaseEntity *pMonster)
+bool CHalfLifeMultiplay::FMonsterCanDropWeapons(CBaseMonster *pMonster)
 {
 	return npc_dropweapons.value != 0;
 }
@@ -1863,6 +1843,30 @@ void CHalfLifeMultiplay::DelayPanic(float delay)
 	toAdd *= gSkillData.panicDelayFactor;
 	ALERT(at_console, "Next panic delay: %f\n", toAdd);
 	m_panicTime = gpGlobals->time + toAdd;
+}
+
+bool CHalfLifeMultiplay::FMonsterCanTakeDamage( CBaseMonster* pMonster, CBaseEntity* pAttacker )
+{
+	if (npckill.value == 1)
+		return true;
+	if (!pMonster->IsPlayer() && IsCoOp() && pMonster->IDefaultRelationship(CLASS_PLAYER) == R_AL)
+	{
+		if (npckill.value == 0)
+		{
+			return false;
+		}
+		else if (npckill.value == 2)
+		{
+			if (pAttacker)
+			{
+				if (pMonster->IDefaultRelationship(pAttacker) == R_AL)
+				{
+					return false;
+				}
+			}
+		}
+	}
+	return true;
 }
 
 void CHalfLifeMultiplay::BeforeChangeLevel(const char *nextMap)
@@ -2123,7 +2127,8 @@ int ReloadMapCycleFile( const char *filename, mapcycle_t *cycle )
 			hasbuffer = 0;
 
 			pFileList = COM_Parse( pFileList );
-			if( strlen( com_token ) <= 0 )
+
+			if( com_token[0] == '\0' )
 				break;
 
 			strcpy( szMap, com_token );
@@ -2132,7 +2137,8 @@ int ReloadMapCycleFile( const char *filename, mapcycle_t *cycle )
 			if( COM_TokenWaiting( pFileList ) )
 			{
 				pFileList = COM_Parse( pFileList );
-				if( strlen( com_token ) > 0 )
+
+				if( com_token[0] != '\0' )
 				{
 					hasbuffer = 1;
 					strcpy( szBuffer, com_token );
@@ -2288,7 +2294,8 @@ void ExtractCommandString( char *s, char *szCommand )
 		*o = 0;
 
 		strcat( szCommand, pkey );
-		if( strlen( value ) > 0 )
+
+		if( value[0] != '\0' )
 		{
 			strcat( szCommand, " " );
 			strcat( szCommand, value );
@@ -2427,13 +2434,15 @@ void CHalfLifeMultiplay::ChangeLevel( void )
 	{
 		ALERT( at_console, "PLAYER COUNT:  min %i max %i current %i\n", minplayers, maxplayers, curplayers );
 	}
-	if( strlen( szRules ) > 0 )
+
+	if( szRules[0] != '\0' )
 	{
 		ALERT( at_console, "RULES:  %s\n", szRules );
 	}
 
 	CHANGE_LEVEL( szNextMap, NULL );
-	if( strlen( szCommands ) > 0 )
+
+	if( szCommands[0] != '\0' )
 	{
 		SERVER_COMMAND( szCommands );
 	}

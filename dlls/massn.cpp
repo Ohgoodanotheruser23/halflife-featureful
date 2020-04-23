@@ -62,11 +62,20 @@ public:
 	void GibMonster();
 	void PlayUseSentence();
 	void PlayUnUseSentence();
+	int	DefaultClassify ( void )
+	{
+#if FEATURE_BLACKOPS_CLASS
+		return CLASS_HUMAN_BLACKOPS;
+#else
+		return CHGrunt::DefaultClassify();
+#endif
+	}
 
 	BOOL FOkToSpeak(void);
 
 	void Spawn( void );
 	void Precache( void );
+	void MonsterInit();
 
 	void DeathSound(void);
 	void PainSound(void);
@@ -74,9 +83,11 @@ public:
 
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
+	void SetHead(int head);
+
 	void DropMyItems(BOOL isGibbed);
 
-	int head;
+	int m_iHead;
 };
 
 LINK_ENTITY_TO_CLASS(monster_male_assassin, CMassn)
@@ -113,11 +124,6 @@ void CMassn::IdleSound(void)
 //=========================================================
 void CMassn::Sniperrifle(void)
 {
-	if (m_hEnemy == 0)
-	{
-		return;
-	}
-
 	Vector vecShootOrigin = GetGunPosition();
 	Vector vecShootDir = ShootAtEnemy(vecShootOrigin);
 
@@ -150,7 +156,7 @@ void CMassn::GibMonster( void )
 
 void CMassn::DropMyItems(BOOL isGibbed)
 {
-	if (g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN))
+	if (g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GUN))
 	{
 		Vector vecGunPos;
 		Vector vecGunAngles;
@@ -178,7 +184,7 @@ void CMassn::KeyValue(KeyValueData *pkvd)
 {
 	if( FStrEq(pkvd->szKeyName, "head" ) )
 	{
-		head = atoi( pkvd->szValue );
+		m_iHead = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -206,14 +212,33 @@ void CMassn::HandleAnimEvent(MonsterEvent_t *pEvent)
 		{
 			Shoot();
 			PlayFirstBurstSounds();
+			CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 384, 0.3);
 		}
 		else if (FBitSet(pev->weapons, MASSN_SNIPERRIFLE))
 		{
 			Sniperrifle();
-			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/sniper_fire.wav", 1, ATTN_NORM);
+			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/sniper_fire.wav", 1, 0.6);
+			CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 512, 0.3);
+
+			Vector vecGunPos;
+			Vector vecGunAngles;
+			GetAttachment( 0, vecGunPos, vecGunAngles );
+
+			MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY );
+				WRITE_BYTE( TE_ELIGHT );
+				WRITE_SHORT( entindex() + 0x1000 );		// entity, attachment
+				WRITE_COORD( vecGunPos.x );		// origin
+				WRITE_COORD( vecGunPos.y );
+				WRITE_COORD( vecGunPos.z );
+				WRITE_COORD( 24 );	// radius
+				WRITE_BYTE( 255 );	// R
+				WRITE_BYTE( 255 );	// G
+				WRITE_BYTE( 192 );	// B
+				WRITE_BYTE( 3 );	// life * 10
+				WRITE_COORD( 0 ); // decay
+			MESSAGE_END();
 		}
 
-		CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 384, 0.3);
 	}
 	break;
 
@@ -269,12 +294,21 @@ void CMassn::Spawn()
 	}
 	m_cAmmoLoaded = m_cClipSize;
 
-	if (head == -1 || head >= MASSN_HEAD_COUNT) {
-		head = RANDOM_LONG(MASSN_HEAD_WHITE, MASSN_HEAD_BLACK); // never random night googles
+	if (m_iHead == -1 || m_iHead >= MASSN_HEAD_COUNT) {
+		m_iHead = RANDOM_LONG(MASSN_HEAD_WHITE, MASSN_HEAD_BLACK); // never random night googles
 	}
-	SetBodygroup(MASSN_HEAD_GROUP, head);
+	SetBodygroup(MASSN_HEAD_GROUP, m_iHead);
 
 	FollowingMonsterInit();
+}
+
+void CMassn::MonsterInit()
+{
+	CHGrunt::MonsterInit();
+	if (FBitSet(pev->weapons, MASSN_SNIPERRIFLE))
+	{
+		m_flDistTooFar = 2048.0f;
+	}
 }
 
 //=========================================================
@@ -309,6 +343,11 @@ void CMassn::DeathSound(void)
 void CMassn::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
 	CFollowingMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+}
+
+void CMassn::SetHead(int head)
+{
+	m_iHead = head;
 }
 
 //=========================================================
@@ -355,14 +394,21 @@ void CAssassinRepel::KeyValue(KeyValueData *pkvd)
 void CAssassinRepel::PrepareBeforeSpawn(CBaseEntity *pEntity)
 {
 	CMassn* massn = (CMassn*)pEntity;
-	massn->head = head;
+	massn->m_iHead = head;
 }
 
 class CDeadMassn : public CDeadMonster
 {
 public:
 	void Spawn( void );
-	int	DefaultClassify ( void ) { return	CLASS_HUMAN_MILITARY; }
+	int	DefaultClassify ( void )
+	{
+#if FEATURE_BLACKOPS_CLASS
+		return CLASS_HUMAN_BLACKOPS;
+#else
+		return CLASS_HUMAN_MILITARY;
+#endif
+	}
 
 	void KeyValue( KeyValueData *pkvd );
 	const char* getPos(int pos) const;
@@ -390,6 +436,7 @@ void CDeadMassn::KeyValue( KeyValueData *pkvd )
 }
 
 LINK_ENTITY_TO_CLASS( monster_male_assassin_dead, CDeadMassn )
+LINK_ENTITY_TO_CLASS( monster_massassin_dead, CDeadMassn )
 
 void CDeadMassn::Spawn( )
 {

@@ -22,6 +22,7 @@
 //#include "items.h"
 class CBasePlayerWeapon;
 class CBasePlayer;
+class CBaseMonster;
 class CItem;
 class CBasePlayerAmmo;
 
@@ -98,7 +99,7 @@ public:
 
 	virtual BOOL AllowAutoTargetCrosshair( void ) { return TRUE; };
 	virtual BOOL ClientCommand( CBasePlayer *pPlayer, const char *pcmd ) { return FALSE; };  // handles the user commands;  returns TRUE if command handled properly
-	virtual void ClientUserInfoChanged( CBasePlayer *pPlayer, char *infobuffer ) {}		// the player has changed userinfo;  can change it now
+	virtual void ClientUserInfoChanged( CBasePlayer *pPlayer, char *infobuffer );		// the player has changed userinfo;  can change it now
 
 	// Client kills/scoring
 	virtual int IPointsForKill( CBasePlayer *pAttacker, CBasePlayer *pKilled ) = 0;// how many points do I award whoever kills this player?
@@ -159,7 +160,8 @@ public:
 
 	// Monsters
 	virtual BOOL FAllowMonsters( void ) = 0;//are monsters allowed
-	virtual bool FMonsterCanDropWeapons( CBaseEntity* pMonster ) = 0;
+	virtual bool FMonsterCanDropWeapons( CBaseMonster* pMonster ) = 0;
+	virtual bool FMonsterCanTakeDamage( CBaseMonster* pMonster, CBaseEntity* pAttacker ) = 0;
 
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame( void ) {}
@@ -253,7 +255,8 @@ public:
 
 	// Monsters
 	virtual BOOL FAllowMonsters( void );
-	virtual bool FMonsterCanDropWeapons( CBaseEntity* pMonster );
+	virtual bool FMonsterCanDropWeapons( CBaseMonster* pMonster );
+	virtual bool FMonsterCanTakeDamage( CBaseMonster* pMonster, CBaseEntity* pAttacker );
 
 	// Teamplay stuff	
 	virtual const char *GetTeamID( CBaseEntity *pEntity ) {return "";};
@@ -283,7 +286,6 @@ public:
 	virtual BOOL FAllowFlashlight( void );
 
 	virtual BOOL FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon );
-	BOOL GetBestWeapon( CBasePlayer *pPlayer );
 	virtual BOOL GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pCurrentWeapon );
 
 	// Functions to verify the single/multiplayer status of a game
@@ -366,7 +368,8 @@ public:
 
 	// Monsters
 	virtual BOOL FAllowMonsters( void );
-	virtual bool FMonsterCanDropWeapons( CBaseEntity* pMonster );
+	virtual bool FMonsterCanDropWeapons( CBaseMonster* pMonster );
+	virtual bool FMonsterCanTakeDamage( CBaseMonster* pMonster, CBaseEntity* pAttacker );
 
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame( void ) { GoToIntermission(); }

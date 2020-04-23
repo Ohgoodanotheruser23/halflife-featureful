@@ -66,8 +66,12 @@ cvar_t survival_warmup_time = { "mp_survival_warmup_time", "30", FCVAR_SERVER };
 cvar_t bhopcap		= { "mp_bhopcap", "1", FCVAR_SERVER };
 
 cvar_t allow_spectators = { "allow_spectators", "0", FCVAR_SERVER };	// 0 prevents players from being spectators
+cvar_t multibyte_only = { "mp_multibyte_only", "0", FCVAR_SERVER };
+
 cvar_t use_through_walls = { "use_through_walls", "1", FCVAR_SERVER };
 cvar_t tridepth = { "tridepth", "1", FCVAR_SERVER };
+cvar_t npc_nearest = { "npc_nearest", "0", FCVAR_SERVER };
+cvar_t npc_patrol = { "npc_patrol", "1", FCVAR_SERVER };
 
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
 cvar_t mp_semclip = { "mp_semclip", "1", FCVAR_SERVER };
@@ -81,6 +85,7 @@ cvar_t speed_degradation = { "mp_speed_degradation", "1", FCVAR_SERVER };
 cvar_t barnacle_paralyze  = { "mp_barnacle_paralyze", "1", FCVAR_SERVER };
 
 cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
+cvar_t grenade_jump = { "grenade_jump","1", FCVAR_SERVER };
 
 cvar_t keepinventory	= { "mp_keepinventory","1", FCVAR_SERVER }; // keep inventory across level transitions in multiplayer coop
 
@@ -776,6 +781,12 @@ cvar_t	sk_plr_displacer_radius2 = { "sk_plr_displacer_radius2", "0" };
 cvar_t	sk_plr_displacer_radius3 = { "sk_plr_displacer_radius3", "0" };
 #endif
 
+#if FEATURE_UZI
+cvar_t	sk_plr_uzi1 = {"sk_plr_uzi1","6"};
+cvar_t	sk_plr_uzi2 = {"sk_plr_uzi2","6"};
+cvar_t	sk_plr_uzi3 = {"sk_plr_uzi3","6"};
+#endif
+
 // HORNET
 cvar_t	sk_hornet_dmg1 = {"sk_hornet_dmg1","0"};
 cvar_t	sk_hornet_dmg2 = {"sk_hornet_dmg2","0"};
@@ -878,6 +889,8 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &allow_spectators );
 	CVAR_REGISTER( &use_through_walls );
 	CVAR_REGISTER( &tridepth );
+	CVAR_REGISTER( &npc_nearest );
+	CVAR_REGISTER( &npc_patrol );
 
 	CVAR_REGISTER( &teamplay );
 	CVAR_REGISTER( &fraglimit );
@@ -922,6 +935,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &survival_restart_number );
 
 	CVAR_REGISTER( &bhopcap );
+	CVAR_REGISTER( &multibyte_only );
 
 	CVAR_REGISTER( &mp_chattime );
 
@@ -936,6 +950,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &mp_semclip );
 
 	CVAR_REGISTER( &use_to_take );
+	CVAR_REGISTER( &grenade_jump );
 
 	CVAR_REGISTER( &keepinventory );
 
@@ -1588,6 +1603,13 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_plr_displacer_radius3 );
 #endif
 
+#if FEATURE_UZI
+	// Glock Round
+	CVAR_REGISTER( &sk_plr_uzi1 );// {"sk_plr_uzi1","0"};
+	CVAR_REGISTER( &sk_plr_uzi2 );// {"sk_plr_uzi2","0"};
+	CVAR_REGISTER( &sk_plr_uzi3 );// {"sk_plr_uzi3","0"};
+#endif
+
 	// WORLD WEAPONS
 	CVAR_REGISTER( &sk_12mm_bullet1 );// {"sk_12mm_bullet1","0"};
 	CVAR_REGISTER( &sk_12mm_bullet2 );// {"sk_12mm_bullet2","0"};
@@ -1702,7 +1724,7 @@ void GameDLLInit( void )
 // END REGISTER CVARS FOR SKILL LEVEL STUFF
 
 	SERVER_COMMAND( "exec skill.cfg\n" );
-#if FEATURE_OPFOR
+#if FEATURE_OPFOR_SPECIFIC
 	SERVER_COMMAND( "exec skillopfor.cfg\n" );
 #endif
 }

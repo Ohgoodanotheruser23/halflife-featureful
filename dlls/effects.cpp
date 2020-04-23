@@ -23,12 +23,15 @@
 #include "decals.h"
 #include "func_break.h"
 #include "shake.h"
+#include "bullsquid.h"
 #include "soundradius.h"
+#include "locus.h"
 #include "mod_features.h"
 
 #define	SF_GIBSHOOTER_REPEATABLE		1 // allows a gibshooter to be refired
 
 #define SF_FUNNEL_REVERSE			1 // funnel effect repels particles instead of attracting them.
+#define SF_FUNNEL_REPEATABLE		2 // allows a funnel to be refired
 
 // Lightning target, just alias landmark
 LINK_ENTITY_TO_CLASS( info_target, CPointEntity )
@@ -87,7 +90,7 @@ void CBubbling::Spawn( void )
 	if( !( pev->spawnflags & SF_BUBBLES_STARTOFF ) )
 	{
 		SetThink( &CBubbling::FizzThink );
-		pev->nextthink = gpGlobals->time + 2.0;
+		pev->nextthink = gpGlobals->time + 2.0f;
 		m_state = 1;
 	}
 	else 
@@ -107,7 +110,7 @@ void CBubbling::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 	if( m_state )
 	{
 		SetThink( &CBubbling::FizzThink );
-		pev->nextthink = gpGlobals->time + 0.1;
+		pev->nextthink = gpGlobals->time + 0.1f;
 	}
 	else
 	{
@@ -147,9 +150,9 @@ void CBubbling::FizzThink( void )
 	MESSAGE_END();
 
 	if( m_frequency > 19 )
-		pev->nextthink = gpGlobals->time + 0.5;
+		pev->nextthink = gpGlobals->time + 0.5f;
 	else
-		pev->nextthink = gpGlobals->time + 2.5 - ( 0.1 * m_frequency );
+		pev->nextthink = gpGlobals->time + 2.5f - ( 0.1f * m_frequency );
 }
 
 // --------------------------------------------------
@@ -455,7 +458,7 @@ void CLightning::Spawn( void )
 		if( pev->dmg > 0 )
 		{
 			SetThink( &CLightning::DamageThink );
-			pev->nextthink = gpGlobals->time + 0.1;
+			pev->nextthink = gpGlobals->time + 0.1f;
 		}
 		if( pev->targetname )
 		{
@@ -481,7 +484,7 @@ void CLightning::Spawn( void )
 		if( FStringNull( pev->targetname ) || FBitSet( pev->spawnflags, SF_BEAM_STARTON ) )
 		{
 			SetThink( &CLightning::StrikeThink );
-			pev->nextthink = gpGlobals->time + 1.0;
+			pev->nextthink = gpGlobals->time + 1.0f;
 		}
 	}
 }
@@ -595,7 +598,7 @@ void CLightning::StrikeUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_T
 	else
 	{
 		SetThink( &CLightning::StrikeThink );
-		pev->nextthink = gpGlobals->time + 0.1;
+		pev->nextthink = gpGlobals->time + 0.1f;
 	}
 
 	if( !FBitSet( pev->spawnflags, SF_BEAM_TOGGLE ) )
@@ -617,7 +620,7 @@ void CLightning::StrikeThink( void )
 	if( m_life != 0 )
 	{
 		if( pev->spawnflags & SF_BEAM_RANDOM )
-			pev->nextthink = gpGlobals->time + m_life + RANDOM_FLOAT( 0, m_restrike );
+			pev->nextthink = gpGlobals->time + m_life + RANDOM_FLOAT( 0.0f, m_restrike );
 		else
 			pev->nextthink = gpGlobals->time + m_life + m_restrike;
 	}
@@ -697,7 +700,7 @@ void CLightning::StrikeThink( void )
 			WRITE_SHORT( m_spriteTexture );
 			WRITE_BYTE( m_frameStart ); // framestart
 			WRITE_BYTE( (int)pev->framerate ); // framerate
-			WRITE_BYTE( (int)( m_life * 10.0 ) ); // life
+			WRITE_BYTE( (int)( m_life * 10.0f ) ); // life
 			WRITE_BYTE( m_boltWidth );  // width
 			WRITE_BYTE( m_noiseAmplitude );   // noise
 			WRITE_BYTE( (int)pev->rendercolor.x );   // r, g, b
@@ -719,7 +722,7 @@ void CLightning::StrikeThink( void )
 void CBeam::BeamDamage(TraceResult *ptr , entvars_t *pevAttacker)
 {
 	RelinkBeam();
-	if( ptr->flFraction != 1.0 && ptr->pHit != NULL )
+	if( ptr->flFraction != 1.0f && ptr->pHit != NULL )
 	{
 		CBaseEntity *pHit = CBaseEntity::Instance( ptr->pHit );
 		if( pHit )
@@ -739,7 +742,7 @@ void CBeam::BeamDamage(TraceResult *ptr , entvars_t *pevAttacker)
 
 void CLightning::DamageThink( void )
 {
-	pev->nextthink = gpGlobals->time + 0.1;
+	pev->nextthink = gpGlobals->time + 0.1f;
 	TraceResult tr;
 	UTIL_TraceLine( GetStartPos(), GetEndPos(), dont_ignore_monsters, NULL, &tr );
 	BeamDamage( &tr );
@@ -759,7 +762,7 @@ void CLightning::Zap( const Vector &vecSrc, const Vector &vecDest )
 		WRITE_SHORT( m_spriteTexture );
 		WRITE_BYTE( m_frameStart ); // framestart
 		WRITE_BYTE( (int)pev->framerate ); // framerate
-		WRITE_BYTE( (int)( m_life * 10.0) ); // life
+		WRITE_BYTE( (int)( m_life * 10.0f ) ); // life
 		WRITE_BYTE( m_boltWidth );  // width
 		WRITE_BYTE( m_noiseAmplitude );   // noise
 		WRITE_BYTE( (int)pev->rendercolor.x );   // r, g, b
@@ -794,32 +797,32 @@ void CLightning::RandomArea( void )
 	{
 		Vector vecSrc = pev->origin;
 
-		Vector vecDir1 = Vector( RANDOM_FLOAT( -1.0, 1.0 ), RANDOM_FLOAT( -1.0, 1.0 ),RANDOM_FLOAT( -1.0, 1.0 ) );
+		Vector vecDir1 = Vector( RANDOM_FLOAT( -1.0f, 1.0f ), RANDOM_FLOAT( -1.0f, 1.0f ),RANDOM_FLOAT( -1.0f, 1.0f ) );
 		vecDir1 = vecDir1.Normalize();
 		TraceResult tr1;
 		UTIL_TraceLine( vecSrc, vecSrc + vecDir1 * m_radius, ignore_monsters, ENT( pev ), &tr1 );
 
-		if( tr1.flFraction == 1.0 )
+		if( tr1.flFraction == 1.0f )
 			continue;
 
 		Vector vecDir2;
 		do
 		{
-			vecDir2 = Vector( RANDOM_FLOAT( -1.0, 1.0 ), RANDOM_FLOAT( -1.0, 1.0 ),RANDOM_FLOAT( -1.0, 1.0 ) );
-		} while( DotProduct( vecDir1, vecDir2 ) > 0 );
+			vecDir2 = Vector( RANDOM_FLOAT( -1.0f, 1.0f ), RANDOM_FLOAT( -1.0f, 1.0f ),RANDOM_FLOAT( -1.0f, 1.0f ) );
+		} while( DotProduct( vecDir1, vecDir2 ) > 0.0f );
 		vecDir2 = vecDir2.Normalize();
 		TraceResult tr2;
 		UTIL_TraceLine( vecSrc, vecSrc + vecDir2 * m_radius, ignore_monsters, ENT( pev ), &tr2 );
 
-		if( tr2.flFraction == 1.0 )
+		if( tr2.flFraction == 1.0f )
 			continue;
 
-		if( ( tr1.vecEndPos - tr2.vecEndPos ).Length() < m_radius * 0.1 )
+		if( ( tr1.vecEndPos - tr2.vecEndPos ).Length() < m_radius * 0.1f )
 			continue;
 
 		UTIL_TraceLine( tr1.vecEndPos, tr2.vecEndPos, ignore_monsters, ENT( pev ), &tr2 );
 
-		if( tr2.flFraction != 1.0 )
+		if( tr2.flFraction != 1.0f )
 			continue;
 
 		Zap( tr1.vecEndPos, tr2.vecEndPos );
@@ -834,15 +837,15 @@ void CLightning::RandomPoint( Vector &vecSrc )
 
 	for( iLoops = 0; iLoops < 10; iLoops++ )
 	{
-		Vector vecDir1 = Vector( RANDOM_FLOAT( -1.0, 1.0 ), RANDOM_FLOAT( -1.0, 1.0 ),RANDOM_FLOAT( -1.0, 1.0 ) );
+		Vector vecDir1 = Vector( RANDOM_FLOAT( -1.0f, 1.0f ), RANDOM_FLOAT( -1.0f, 1.0f ), RANDOM_FLOAT( -1.0f, 1.0f ) );
 		vecDir1 = vecDir1.Normalize();
 		TraceResult tr1;
 		UTIL_TraceLine( vecSrc, vecSrc + vecDir1 * m_radius, ignore_monsters, ENT( pev ), &tr1 );
 
-		if( ( tr1.vecEndPos - vecSrc ).Length() < m_radius * 0.1 )
+		if( ( tr1.vecEndPos - vecSrc ).Length() < m_radius * 0.1f )
 			continue;
 
-		if( tr1.flFraction == 1.0 )
+		if( tr1.flFraction == 1.0f )
 			continue;
 
 		Zap( vecSrc, tr1.vecEndPos );
@@ -1068,7 +1071,7 @@ void CLaser::StrikeThink( void )
 
 	UTIL_TraceLine( pev->origin, m_firePosition, dont_ignore_monsters, NULL, &tr );
 	FireAtPoint( tr );
-	pev->nextthink = gpGlobals->time + 0.1;
+	pev->nextthink = gpGlobals->time + 0.1f;
 }
 
 class CGlow : public CPointEntity
@@ -1106,8 +1109,8 @@ void CGlow::Spawn( void )
 	SET_MODEL( ENT( pev ), STRING( pev->model ) );
 
 	m_maxFrame = (float) MODEL_FRAMES( pev->modelindex ) - 1;
-	if( m_maxFrame > 1.0 && pev->framerate != 0 )
-		pev->nextthink	= gpGlobals->time + 0.1;
+	if( m_maxFrame > 1.0f && pev->framerate != 0 )
+		pev->nextthink	= gpGlobals->time + 0.1f;
 
 	m_lastTime = gpGlobals->time;
 }
@@ -1116,7 +1119,7 @@ void CGlow::Think( void )
 {
 	Animate( pev->framerate * ( gpGlobals->time - m_lastTime ) );
 
-	pev->nextthink = gpGlobals->time + 0.1;
+	pev->nextthink = gpGlobals->time + 0.1f;
 	m_lastTime = gpGlobals->time;
 }
 
@@ -1175,6 +1178,16 @@ void CSprite::Precache( void )
 	}
 }
 
+void CSprite::Activate()
+{
+	if (pev->message)
+	{
+		CBaseEntity *pTemp = UTIL_FindEntityByTargetname(NULL, STRING(pev->message));
+		if (pTemp)
+			SetAttachment(pTemp->edict(), (int)pev->frags);
+	}
+}
+
 void CSprite::SpriteInit( const char *pSpriteName, const Vector &origin )
 {
 	pev->model = MAKE_STRING( pSpriteName );
@@ -1199,7 +1212,7 @@ void CSprite::AnimateThink( void )
 {
 	Animate( pev->framerate * ( gpGlobals->time - m_lastTime ) );
 
-	pev->nextthink = gpGlobals->time + 0.1;
+	pev->nextthink = gpGlobals->time + 0.1f;
 	m_lastTime = gpGlobals->time;
 }
 
@@ -1236,7 +1249,7 @@ void CSprite::ExpandThink( void )
 	}
 	else
 	{
-		pev->nextthink = gpGlobals->time + 0.1;
+		pev->nextthink = gpGlobals->time + 0.1f;
 		m_lastTime = gpGlobals->time;
 	}
 }
@@ -1246,9 +1259,14 @@ void CSprite::Animate( float frames )
 	pev->frame += frames;
 	if( pev->frame > m_maxFrame )
 	{
-		if( pev->spawnflags & SF_SPRITE_ONCE )
+		if( FBitSet( pev->spawnflags, SF_SPRITE_ONCE|SF_SPRITE_ONCE_AND_REMOVE ) )
 		{
 			TurnOff();
+			if (FBitSet(pev->spawnflags, SF_SPRITE_ONCE_AND_REMOVE))
+			{
+				SetThink(&CBaseEntity::SUB_Remove);
+				pev->nextthink = gpGlobals->time;
+			}
 		}
 		else
 		{
@@ -1267,7 +1285,7 @@ void CSprite::TurnOff( void )
 void CSprite::TurnOn( void )
 {
 	pev->effects = 0;
-	if( ( pev->framerate && m_maxFrame > 1.0 ) || ( pev->spawnflags & SF_SPRITE_ONCE ) )
+	if( ( pev->framerate && m_maxFrame > 1.0f ) || FBitSet( pev->spawnflags, SF_SPRITE_ONCE|SF_SPRITE_ONCE_AND_REMOVE ) )
 	{
 		SetThink( &CSprite::AnimateThink );
 		pev->nextthink = gpGlobals->time;
@@ -1303,7 +1321,7 @@ class CEnvModel : public CBaseAnimating
 {
 	void Spawn( void );
 	void Precache( void );
-	void EXPORT Think( void );
+	void Think( void );
 	void KeyValue( KeyValueData *pkvd );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	virtual int	ObjectCaps( void ) { return CBaseEntity :: ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
@@ -1496,7 +1514,7 @@ public:
 	void EXPORT ShootThink( void );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 
-	virtual CGib *CreateGib( void );
+	virtual CGib *CreateGib( float lifeTime );
 
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -1509,6 +1527,10 @@ public:
 	float m_flGibVelocity;
 	float m_flVariance;
 	float m_flGibLife;
+	string_t m_iszPosition;
+	string_t m_iszVelocity;
+	string_t m_iszVelFactor;
+	string_t m_iszSpawnTarget;
 };
 
 TYPEDESCRIPTION CGibShooter::m_SaveData[] =
@@ -1517,9 +1539,13 @@ TYPEDESCRIPTION CGibShooter::m_SaveData[] =
 	DEFINE_FIELD( CGibShooter, m_iGibCapacity, FIELD_INTEGER ),
 	DEFINE_FIELD( CGibShooter, m_iGibMaterial, FIELD_INTEGER ),
 	DEFINE_FIELD( CGibShooter, m_iGibModelIndex, FIELD_INTEGER ),
-	DEFINE_FIELD( CGibShooter, m_flGibVelocity, FIELD_FLOAT ),
+	//DEFINE_FIELD( CGibShooter, m_flGibVelocity, FIELD_FLOAT ),
 	DEFINE_FIELD( CGibShooter, m_flVariance, FIELD_FLOAT ),
 	DEFINE_FIELD( CGibShooter, m_flGibLife, FIELD_FLOAT ),
+	DEFINE_FIELD( CGibShooter, m_iszPosition, FIELD_STRING),
+	DEFINE_FIELD( CGibShooter, m_iszVelocity, FIELD_STRING),
+	DEFINE_FIELD( CGibShooter, m_iszVelFactor, FIELD_STRING),
+	DEFINE_FIELD( CGibShooter, m_iszSpawnTarget, FIELD_STRING),
 };
 
 IMPLEMENT_SAVERESTORE( CGibShooter, CBaseDelay )
@@ -1546,7 +1572,7 @@ void CGibShooter::KeyValue( KeyValueData *pkvd )
 	}
 	else if( FStrEq( pkvd->szKeyName, "m_flVelocity" ) )
 	{
-		m_flGibVelocity = atof( pkvd->szValue );
+		m_iszVelFactor = ALLOC_STRING(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else if( FStrEq( pkvd->szKeyName, "m_flVariance" ) )
@@ -1559,6 +1585,26 @@ void CGibShooter::KeyValue( KeyValueData *pkvd )
 		m_flGibLife = atof( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if (FStrEq(pkvd->szKeyName, "m_iszPosition"))
+	{
+		m_iszPosition = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iszVelocity"))
+	{
+		m_iszVelocity = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iszVelFactor"))
+	{
+		m_iszVelFactor = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iszSpawnTarget"))
+	{
+		m_iszSpawnTarget = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
 	else
 	{
 		CBaseDelay::KeyValue( pkvd );
@@ -1567,6 +1613,7 @@ void CGibShooter::KeyValue( KeyValueData *pkvd )
 
 void CGibShooter::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
+	m_hActivator = pActivator;
 	SetThink( &CGibShooter::ShootThink );
 	pev->nextthink = gpGlobals->time;
 }
@@ -1592,13 +1639,17 @@ void CGibShooter::Spawn( void )
 	pev->body = MODEL_FRAMES( m_iGibModelIndex );
 }
 
-CGib *CGibShooter::CreateGib( void )
+CGib *CGibShooter::CreateGib( float lifeTime )
 {
 	if( CVAR_GET_FLOAT( "violence_hgibs" ) == 0 )
 		return NULL;
 
 	CGib *pGib = GetClassPtr( (CGib *)NULL );
+	if (!pGib)
+		return NULL;
+
 	pGib->Spawn( "models/hgibs.mdl" );
+	pGib->m_lifeTime = lifeTime;
 	pGib->m_bloodColor = BLOOD_COLOR_RED;
 
 	if( pev->body <= 1 )
@@ -1613,38 +1664,89 @@ CGib *CGibShooter::CreateGib( void )
 
 void CGibShooter::ShootThink( void )
 {
-	pev->nextthink = gpGlobals->time + GetTriggerDelay();
-
-	Vector vecShootDir;
-
-	vecShootDir = pev->movedir;
-
-	vecShootDir = vecShootDir + gpGlobals->v_right * RANDOM_FLOAT( -1, 1 ) * m_flVariance;;
-	vecShootDir = vecShootDir + gpGlobals->v_forward * RANDOM_FLOAT( -1, 1 ) * m_flVariance;;
-	vecShootDir = vecShootDir + gpGlobals->v_up * RANDOM_FLOAT( -1, 1 ) * m_flVariance;;
-
-	vecShootDir = vecShootDir.Normalize();
-	CGib *pGib = CreateGib();
-	
-	if( pGib )
+	int i;
+	if (m_flDelay == 0) // LRC - delay is 0, fire them all at once.
 	{
-		pGib->pev->origin = pev->origin;
-		pGib->pev->velocity = vecShootDir * m_flGibVelocity;
-
-		pGib->pev->avelocity.x = RANDOM_FLOAT( 100, 200 );
-		pGib->pev->avelocity.y = RANDOM_FLOAT( 100, 300 );
-
-		float thinkTime = pGib->pev->nextthink - gpGlobals->time;
-
-		pGib->m_lifeTime = ( m_flGibLife * RANDOM_FLOAT( 0.95, 1.05 ) );	// +/- 5%
-		if( pGib->m_lifeTime < thinkTime )
-		{
-			pGib->pev->nextthink = gpGlobals->time + pGib->m_lifeTime;
-			pGib->m_lifeTime = 0;
-		}
+		i = m_iGibs;
+	}
+	else
+	{
+		i = 1;
+		pev->nextthink = gpGlobals->time + GetTriggerDelay();
 	}
 
-	if( --m_iGibs <= 0 )
+	bool evaluated;
+	float flGibVelocity;
+	Vector baseShootDir;
+
+	if (!FStringNull(m_iszVelFactor))
+	{
+		flGibVelocity = CalcLocus_Ratio(m_hActivator, STRING(m_iszVelFactor), &evaluated);
+		if (!evaluated)
+			return;
+	}
+	else
+		flGibVelocity = 1;
+
+	if (!FStringNull(m_iszVelocity))
+	{
+		baseShootDir = CalcLocus_Velocity(this, m_hActivator, STRING(m_iszVelocity), &evaluated);
+		if (!evaluated)
+			return;
+		flGibVelocity = flGibVelocity * baseShootDir.Length();
+		baseShootDir = baseShootDir.Normalize();
+	}
+	else
+		baseShootDir = pev->movedir;
+
+	Vector vecPos;
+	if (!FStringNull(m_iszPosition))
+	{
+		vecPos = CalcLocus_Position(this, m_hActivator, STRING(m_iszPosition), &evaluated);
+		if (!evaluated)
+			return;
+	}
+	else
+		vecPos = pev->origin;
+
+	while (i > 0)
+	{
+		Vector vecShootDir = baseShootDir;
+
+		vecShootDir = vecShootDir + gpGlobals->v_right * RANDOM_FLOAT( -1.0f, 1.0f ) * m_flVariance;;
+		vecShootDir = vecShootDir + gpGlobals->v_forward * RANDOM_FLOAT( -1.0f, 1.0f ) * m_flVariance;;
+		vecShootDir = vecShootDir + gpGlobals->v_up * RANDOM_FLOAT( -1.0f, 1.0f ) * m_flVariance;;
+
+		vecShootDir = vecShootDir.Normalize();
+
+		const float lifeTime = ( m_flGibLife * RANDOM_FLOAT( 0.95f, 1.05f ) );	// +/- 5%
+		CGib *pGib = CreateGib(lifeTime);
+
+		if( pGib )
+		{
+			pGib->pev->origin = vecPos;
+			pGib->pev->velocity = vecShootDir * flGibVelocity;
+
+			pGib->pev->avelocity.x = RANDOM_FLOAT( 100.0f, 200.0f );
+			pGib->pev->avelocity.y = RANDOM_FLOAT( 100.0f, 300.0f );
+
+			float thinkTime = pGib->pev->nextthink - gpGlobals->time;
+
+			if( pGib->m_lifeTime < thinkTime )
+			{
+				pGib->pev->nextthink = gpGlobals->time + pGib->m_lifeTime;
+				pGib->m_lifeTime = 0;
+			}
+
+			if (m_iszSpawnTarget)
+				FireTargets( STRING(m_iszSpawnTarget), pGib, this, USE_TOGGLE, 0 );
+		}
+
+		i--;
+		m_iGibs--;
+	}
+
+	if( m_iGibs <= 0 )
 	{
 		if( pev->spawnflags & SF_GIBSHOOTER_REPEATABLE )
 		{
@@ -1661,12 +1763,14 @@ void CGibShooter::ShootThink( void )
 }
 
 #define SF_ENVSHOOTER_SCALEMODELS 2
+#define SF_ENVSHOOTER_DONT_WAIT_TILL_LAND 4
+
 class CEnvShooter : public CGibShooter
 {
 	void Precache( void );
 	void KeyValue( KeyValueData *pkvd );
 
-	CGib *CreateGib( void );
+	CGib *CreateGib( float lifeTime );
 };
 
 LINK_ENTITY_TO_CLASS( env_shooter, CEnvShooter )
@@ -1717,11 +1821,20 @@ void CEnvShooter::Precache( void )
 	CBreakable::MaterialSoundPrecache( (Materials)m_iGibMaterial );
 }
 
-CGib *CEnvShooter::CreateGib( void )
+CGib *CEnvShooter::CreateGib( float lifeTime )
 {
 	CGib *pGib = GetClassPtr( (CGib *)NULL );
+	if (!pGib)
+		return NULL;
 
 	pGib->Spawn( STRING( pev->model ) );
+	pGib->m_lifeTime = lifeTime;
+
+	if (FBitSet(pev->spawnflags, SF_ENVSHOOTER_DONT_WAIT_TILL_LAND))
+	{
+		pGib->SetThink( &CGib::StartFadeOut );
+		pGib->pev->nextthink = gpGlobals->time + lifeTime;
+	}
 
 	int bodyPart = 0;
 
@@ -1802,7 +1915,7 @@ void CTestEffect::TestThink( void )
 		TraceResult tr;
 
 		Vector vecSrc = pev->origin;
-		Vector vecDir = Vector( RANDOM_FLOAT( -1.0, 1.0 ), RANDOM_FLOAT( -1.0, 1.0 ),RANDOM_FLOAT( -1.0, 1.0 ) );
+		Vector vecDir = Vector( RANDOM_FLOAT( -1.0f, 1.0f ), RANDOM_FLOAT( -1.0f, 1.0f ),RANDOM_FLOAT( -1.0f, 1.0f ) );
 		vecDir = vecDir.Normalize();
 		UTIL_TraceLine( vecSrc, vecSrc + vecDir * 128, ignore_monsters, ENT( pev ), &tr );
 
@@ -1816,7 +1929,7 @@ void CTestEffect::TestThink( void )
 		m_pBeam[m_iBeam] = pbeam;
 		m_iBeam++;
 #if 0
-		Vector vecMid = ( vecSrc + tr.vecEndPos ) * 0.5;
+		Vector vecMid = ( vecSrc + tr.vecEndPos ) * 0.5f;
 		MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
 			WRITE_BYTE( TE_DLIGHT );
 			WRITE_COORD( vecMid.x );	// X
@@ -1832,15 +1945,15 @@ void CTestEffect::TestThink( void )
 #endif
 	}
 
-	if( t < 3.0 )
+	if( t < 3.0f )
 	{
 		for( i = 0; i < m_iBeam; i++ )
 		{
-			t = ( gpGlobals->time - m_flBeamTime[i] ) / ( 3 + m_flStartTime - m_flBeamTime[i] );
-			m_pBeam[i]->SetBrightness( (int)( 255 * t ) );
+			t = ( gpGlobals->time - m_flBeamTime[i] ) / ( 3.0f + m_flStartTime - m_flBeamTime[i] );
+			m_pBeam[i]->SetBrightness( (int)( 255.0f * t ) );
 			// m_pBeam[i]->SetScrollRate( 20 * t );
 		}
-		pev->nextthink = gpGlobals->time + 0.1;
+		pev->nextthink = gpGlobals->time + 0.1f;
 	}
 	else
 	{
@@ -1858,7 +1971,7 @@ void CTestEffect::TestThink( void )
 void CTestEffect::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	SetThink( &CTestEffect::TestThink );
-	pev->nextthink = gpGlobals->time + 0.1;
+	pev->nextthink = gpGlobals->time + 0.1f;
 	m_flStartTime = gpGlobals->time;
 }
 
@@ -1890,7 +2003,7 @@ public:
 		pev->dmg = amount;
 	}
 	
-	Vector Direction( void );
+	Vector Direction(CBaseEntity *pActivator );
 	Vector BloodPosition( CBaseEntity *pActivator );
 private:
 };
@@ -1937,12 +2050,14 @@ void CBlood::KeyValue( KeyValueData *pkvd )
 		CPointEntity::KeyValue( pkvd );
 }
 
-Vector CBlood::Direction( void )
+Vector CBlood::Direction( CBaseEntity *pActivator )
 {
 	if( pev->spawnflags & SF_BLOOD_RANDOM )
 		return UTIL_RandomBloodVector();
-
-	return pev->movedir;
+	else if (pev->netname)
+		return CalcLocus_Velocity(this, pActivator, STRING(pev->netname));
+	else
+		return pev->movedir;
 }
 
 Vector CBlood::BloodPosition( CBaseEntity *pActivator )
@@ -1958,7 +2073,11 @@ Vector CBlood::BloodPosition( CBaseEntity *pActivator )
 		else
 			pPlayer = g_engfuncs.pfnPEntityOfEntIndex( 1 );
 		if( pPlayer )
-			return( pPlayer->v.origin + pPlayer->v.view_ofs ) + Vector( RANDOM_FLOAT( -10, 10 ), RANDOM_FLOAT( -10, 10 ), RANDOM_FLOAT( -10, 10 ) );
+			return( pPlayer->v.origin + pPlayer->v.view_ofs ) + Vector( RANDOM_FLOAT( -10.0f, 10.0f ), RANDOM_FLOAT( -10.0f, 10.0f ), RANDOM_FLOAT( -10.0f, 10.0f ) );
+	}
+	else if (pev->target)
+	{
+		return CalcLocus_Position(this, pActivator, STRING(pev->target));
 	}
 
 	return pev->origin;
@@ -1967,18 +2086,18 @@ Vector CBlood::BloodPosition( CBaseEntity *pActivator )
 void CBlood::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	if( pev->spawnflags & SF_BLOOD_STREAM )
-		UTIL_BloodStream( BloodPosition( pActivator ), Direction(), ( Color() == BLOOD_COLOR_RED ) ? 70 : Color(), (int)BloodAmount() );
+		UTIL_BloodStream( BloodPosition( pActivator ), Direction( pActivator ), ( Color() == BLOOD_COLOR_RED ) ? 70 : Color(), (int)BloodAmount() );
 	else
-		UTIL_BloodDrips( BloodPosition( pActivator ), Direction(), Color(), (int)BloodAmount() );
+		UTIL_BloodDrips( BloodPosition( pActivator ), Direction( pActivator ), Color(), (int)BloodAmount() );
 
 	if( pev->spawnflags & SF_BLOOD_DECAL )
 	{
-		Vector forward = Direction();
+		Vector forward = Direction( pActivator );
 		Vector start = BloodPosition( pActivator );
 		TraceResult tr;
 
 		UTIL_TraceLine( start, start + forward * BloodAmount() * 2, ignore_monsters, NULL, &tr );
-		if( tr.flFraction != 1.0 )
+		if( tr.flFraction != 1.0f )
 			UTIL_BloodDecalTrace( &tr, Color() );
 	}
 }
@@ -2231,8 +2350,8 @@ void CMessage::Spawn( void )
 	pev->impulse = 0;
 
 	// No volume, use normal
-	if( pev->scale <= 0 )
-		pev->scale = 1.0;
+	if( pev->scale <= 0.0f )
+		pev->scale = 1.0f;
 }
 
 void CMessage::Precache( void )
@@ -2296,6 +2415,7 @@ class CEnvFunnel : public CBaseDelay
 public:
 	void Spawn( void );
 	void Precache( void );
+	void KeyValue( KeyValueData *pkvd );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 
 	int m_iSprite;	// Don't save, precache
@@ -2303,18 +2423,32 @@ public:
 
 void CEnvFunnel::Precache( void )
 {
-	m_iSprite = PRECACHE_MODEL( "sprites/flare6.spr" );
+	if (pev->netname)
+			m_iSprite = PRECACHE_MODEL ( STRING(pev->netname) );
+		else
+			m_iSprite = PRECACHE_MODEL( "sprites/flare6.spr" );
 }
 
 LINK_ENTITY_TO_CLASS( env_funnel, CEnvFunnel )
 
 void CEnvFunnel::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
+	Vector vecPos;
+	if (pev->message)
+	{
+		bool evaluated;
+		vecPos = CalcLocus_Position( this, pActivator, STRING(pev->message), &evaluated );
+		if (!evaluated)
+			return;
+	}
+	else
+		vecPos = pev->origin;
+
 	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
 		WRITE_BYTE( TE_LARGEFUNNEL );
-		WRITE_COORD( pev->origin.x );
-		WRITE_COORD( pev->origin.y );
-		WRITE_COORD( pev->origin.z );
+		WRITE_COORD( vecPos.x );
+		WRITE_COORD( vecPos.y );
+		WRITE_COORD( vecPos.z );
 		WRITE_SHORT( m_iSprite );
 
 		if( pev->spawnflags & SF_FUNNEL_REVERSE )// funnel flows in reverse?
@@ -2328,8 +2462,11 @@ void CEnvFunnel::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 
 	MESSAGE_END();
 
-	SetThink( &CBaseEntity::SUB_Remove );
-	pev->nextthink = gpGlobals->time;
+	if (!(pev->spawnflags & SF_FUNNEL_REPEATABLE))
+	{
+		SetThink( &CBaseEntity::SUB_Remove );
+		pev->nextthink = gpGlobals->time;
+	}
 }
 
 void CEnvFunnel::Spawn( void )
@@ -2339,11 +2476,24 @@ void CEnvFunnel::Spawn( void )
 	pev->effects = EF_NODRAW;
 }
 
+void CEnvFunnel::KeyValue( KeyValueData *pkvd )
+{
+	if( FStrEq( pkvd->szKeyName, "sprite" ) )
+	{
+		pev->netname = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CBaseDelay::KeyValue( pkvd );
+}
+
 //=========================================================
 // Beverage Dispenser
 // overloaded pev->frags, is now a flag for whether or not a can is stuck in the dispenser. 
 // overloaded pev->health, is now how many cans remain in the machine.
 //=========================================================
+#define DEFAULT_CAN_MODEL "models/can.mdl"
+
 class CEnvBeverage : public CBaseDelay
 {
 public:
@@ -2354,7 +2504,7 @@ public:
 
 void CEnvBeverage::Precache( void )
 {
-	PRECACHE_MODEL( "models/can.mdl" );
+	PRECACHE_MODEL( FStringNull( pev->model ) ? DEFAULT_CAN_MODEL : STRING( pev->model ) );
 	PRECACHE_SOUND( "weapons/g_bounce3.wav" );
 }
 
@@ -2368,16 +2518,35 @@ void CEnvBeverage::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		return;
 	}
 
-	CBaseEntity *pCan = CBaseEntity::Create( "item_sodacan", pev->origin, pev->angles, edict() );	
-
-	if( pev->skin == 6 )
+	Vector vecPos;
+	if (pev->target)
 	{
-		// random
-		pCan->pev->skin = RANDOM_LONG( 0, 5 );
+		bool evaluated;
+		vecPos = CalcLocus_Position( this, pActivator, STRING(pev->target), &evaluated );
+		if (!evaluated)
+			return;
 	}
 	else
+		vecPos = pev->origin;
+
+	CBaseEntity *pCan = CBaseEntity::CreateNoSpawn( "item_sodacan", vecPos, pev->angles, edict() );
+
+	if (pCan)
 	{
-		pCan->pev->skin = pev->skin;
+		pCan->pev->model = pev->model;
+		DispatchSpawn( pCan->edict() );
+
+		pCan->pev->health = pev->weapons;
+
+		if( pev->skin == 6 )
+		{
+			// random
+			pCan->pev->skin = RANDOM_LONG( 0, 5 );
+		}
+		else
+		{
+			pCan->pev->skin = pev->skin;
+		}
 	}
 
 	pev->frags = 1;
@@ -2414,7 +2583,7 @@ public:
 
 void CItemSoda::Precache( void )
 {
-	PRECACHE_MODEL( "models/can.mdl" );
+	PRECACHE_MODEL( FStringNull( pev->model ) ? DEFAULT_CAN_MODEL : STRING( pev->model ) );
 	PRECACHE_SOUND( "weapons/g_bounce3.wav" );
 }
 
@@ -2426,11 +2595,11 @@ void CItemSoda::Spawn( void )
 	pev->solid = SOLID_NOT;
 	pev->movetype = MOVETYPE_TOSS;
 
-	SET_MODEL( ENT( pev ), "models/can.mdl" );
+	SET_MODEL( ENT( pev ), FStringNull( pev->model ) ? DEFAULT_CAN_MODEL : STRING( pev->model ) );
 	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
 	
 	SetThink( &CItemSoda::CanThink );
-	pev->nextthink = gpGlobals->time + 0.5;
+	pev->nextthink = gpGlobals->time + 0.5f;
 }
 
 void CItemSoda::CanThink( void )
@@ -2451,7 +2620,7 @@ void CItemSoda::CanTouch( CBaseEntity *pOther )
 	}
 
 	// spoit sound here
-	pOther->TakeHealth( gSkillData.sodaHeal, DMG_GENERIC );// a bit of health.
+	pOther->TakeHealth( this, pev->health ? pev->health : gSkillData.sodaHeal, DMG_GENERIC );// a bit of health.
 
 	if( !FNullEnt( pev->owner ) )
 	{
@@ -2686,25 +2855,26 @@ void CEnvWarpBall::Precache( void )
 void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	CBaseEntity *pEntity = NULL;
-	edict_t *pos;
-	if (pev->dmg_inflictor && (pEntity = CBaseEntity::Instance(pev->dmg_inflictor)) != NULL)
+	edict_t *posEnt;
+
+	if (useType == USE_SET && pev->dmg_inflictor != NULL)
 	{
-		vecOrigin = pEntity->pev->origin;
-		pos = pEntity->edict();
+		vecOrigin = pev->vuser1;
+		posEnt = pev->dmg_inflictor;
 	}
 	else if( !FStringNull( pev->message ) && (pEntity = UTIL_FindEntityByTargetname( NULL, STRING( pev->message ) )) != NULL )//target found ?
 	{
 		vecOrigin = pEntity->pev->origin;
-		pos = pEntity->edict();
+		posEnt = pEntity->edict();
 	}
 	else
 	{
-		//use as center
+		//use myself as center
 		vecOrigin = pev->origin;
-		pos = edict();
+		posEnt = edict();
 	}
 	if (!FBitSet(pev->spawnflags, SF_WARPBALL_NOSOUND))
-		EMIT_SOUND( pos, CHAN_BODY, WarpballSound1(), 1, SoundAttenuation() );
+		EMIT_SOUND( posEnt, CHAN_BODY, WarpballSound1(), 1, SoundAttenuation() );
 	
 	if (!(pev->spawnflags & SF_WARPBALL_NOSHAKE)) {
 		UTIL_ScreenShake( vecOrigin, Amplitude(), Frequency(), Duration(), Radius() );
@@ -2743,7 +2913,7 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	}
 
 	if (!FBitSet(pev->spawnflags, SF_WARPBALL_NOSOUND))
-		EMIT_SOUND( pos, CHAN_ITEM, WarpballSound2(), 1, SoundAttenuation() );
+		EMIT_SOUND( posEnt, CHAN_ITEM, WarpballSound2(), 1, SoundAttenuation() );
 
 	int beamRed = pev->punchangle.x;
 	int beamGreen = pev->punchangle.y;
@@ -2964,41 +3134,28 @@ void CEnvXenMaker::KeyValue(KeyValueData *pkvd)
 
 void CEnvXenMaker::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
-	if (pev->dmg_inflictor)
-	{
-		CBaseEntity* pEntity = CBaseEntity::Instance(pev->dmg_inflictor);
-		if (pEntity)
-		{
-			TrySpawn();
-		}
-	}
-	else
-	{
-		TrySpawn();
-	}
+	TrySpawn();
 }
 
 void CEnvXenMaker::TrySpawn()
 {
 	//use myself as center
-	CBaseEntity *pEntity = this;
-	edict_t *posEnt;
-	Vector vecOrigin;
+	edict_t *posEnt = edict();
+	Vector vecOrigin = pev->origin;
 
-	if (pev->dmg_inflictor)
+	const bool asTemplate = pev->dmg_inflictor != NULL;
+
+	if (asTemplate)
 	{
 		// used as template
-		pEntity = CBaseEntity::Instance(pev->dmg_inflictor);
+		posEnt = pev->dmg_inflictor;
+		vecOrigin = pev->vuser1;
 	}
-	if (!pEntity)
-		return;
 
-	vecOrigin = pEntity->pev->origin;
-	posEnt = pEntity->edict();
-	m_posEntOffset = pEntity->eoffset();
+	m_posEntOffset = OFFSET(posEnt);
 
 	if (!FBitSet(pev->spawnflags, SF_XENMAKER_NOSPAWN)
-			&& !pev->dmg_inflictor) // never spawn if xenmaker is used as a template for monstermaker
+			&& !asTemplate) // never spawn if xenmaker is used as a template for monstermaker
 	{
 		if( !m_flGround )
 		{
@@ -3085,7 +3242,7 @@ void CEnvXenMaker::TrySpawn()
 
 	EMIT_SOUND( posEnt, CHAN_ITEM, XENMAKER_SOUND1, 1, ATTN_NORM );
 
-	if (pev->dmg_inflictor)
+	if (asTemplate)
 	{
 		PlaySecondSound();
 	}
@@ -3111,6 +3268,7 @@ void CEnvXenMaker::PlaySecondSound()
 
 enum
 {
+	BLOWERCANNON_SQUIDSPIT = 0,
 	BLOWERCANNON_SPOREROCKET = 1,
 	BLOWERCANNON_SPOREGRENADE,
 	BLOWERCANNON_SHOCKBEAM,
@@ -3123,7 +3281,7 @@ enum
 	BLOWERCANNON_FIRE,
 };
 
-class CBlowerCannon : public CBaseEntity
+class CBlowerCannon : public CBaseDelay
 {
 public:
 	void Spawn( void );
@@ -3138,20 +3296,20 @@ public:
 
 	static TYPEDESCRIPTION m_SaveData[];
 
-	int m_iWeapType;
-	float m_flDelay;
-	int m_iFireType;
+	short m_iWeapType;
+	short m_iFireType;
 	int m_iZOffSet;
+	string_t m_iszOwner;
 };
 
 LINK_ENTITY_TO_CLASS(env_blowercannon, CBlowerCannon)
 
 TYPEDESCRIPTION	CBlowerCannon::m_SaveData[] =
 {
-	DEFINE_FIELD(CBlowerCannon, m_iFireType, FIELD_INTEGER),
-	DEFINE_FIELD(CBlowerCannon, m_iWeapType, FIELD_INTEGER),
+	DEFINE_FIELD(CBlowerCannon, m_iFireType, FIELD_SHORT),
+	DEFINE_FIELD(CBlowerCannon, m_iWeapType, FIELD_SHORT),
 	DEFINE_FIELD(CBlowerCannon, m_iZOffSet, FIELD_INTEGER),
-	DEFINE_FIELD(CBlowerCannon, m_flDelay, FIELD_FLOAT),
+	DEFINE_FIELD(CBlowerCannon, m_iszOwner, FIELD_STRING),
 };
 IMPLEMENT_SAVERESTORE( CBlowerCannon, CBaseEntity )
 
@@ -3160,17 +3318,12 @@ void CBlowerCannon::KeyValue(KeyValueData *pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "firetype"))
 	{
-		m_iFireType = (int)atoi(pkvd->szValue);
-		pkvd->fHandled = TRUE;
-	}
-	else if (FStrEq(pkvd->szKeyName, "delay"))
-	{
-		m_flDelay = (float)atof(pkvd->szValue);
+		m_iFireType = (short)atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else if (FStrEq(pkvd->szKeyName, "weaptype"))
 	{
-		m_iWeapType = (int)atoi(pkvd->szValue);
+		m_iWeapType = (short)atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else if (FStrEq(pkvd->szKeyName, "zoffset"))
@@ -3178,8 +3331,23 @@ void CBlowerCannon::KeyValue(KeyValueData *pkvd)
 		m_iZOffSet = (int)atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
+	else if (FStrEq(pkvd->szKeyName, "position"))
+	{
+		pev->message = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "direction"))
+	{
+		pev->netname = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "projectile_owner"))
+	{
+		m_iszOwner = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
 	else
-		pkvd->fHandled = FALSE;
+		CBaseDelay::KeyValue( pkvd );
 }
 
 void CBlowerCannon::Spawn(void)
@@ -3194,19 +3362,34 @@ void CBlowerCannon::Spawn(void)
 
 void CBlowerCannon::Precache( void )
 {
+	switch (m_iWeapType) {
+	case BLOWERCANNON_SQUIDSPIT:
+		UTIL_PrecacheOther("squidspit");
+		break;
+	case BLOWERCANNON_SHOCKBEAM:
 #if FEATURE_SHOCKBEAM
-	UTIL_PrecacheOther( "shock_beam" );
+		UTIL_PrecacheOther( "shock_beam" );
 #endif
+		break;
+	case BLOWERCANNON_DISPLACERBALL:
 #if FEATURE_DISPLACER
-	UTIL_PrecacheOther( "displacer_ball" );
+		UTIL_PrecacheOther( "displacer_ball" );
 #endif
+		break;
+	case BLOWERCANNON_SPOREGRENADE:
+	case BLOWERCANNON_SPOREROCKET:
 #if FEATURE_SPOREGRENADE
-	UTIL_PrecacheOther( "spore" );
+		UTIL_PrecacheOther( "spore" );
 #endif
+		break;
+	default:
+		break;
+	}
 }
 
 void CBlowerCannon::BlowerCannonStart( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
+	m_hActivator = pActivator;
 	SetUse( &CBlowerCannon::BlowerCannonStop );
 	SetThink( &CBlowerCannon::BlowerCannonThink );
 	pev->nextthink = gpGlobals->time + m_flDelay;
@@ -3220,39 +3403,68 @@ void CBlowerCannon::BlowerCannonStop( CBaseEntity *pActivator, CBaseEntity *pCal
 
 void CBlowerCannon::BlowerCannonThink( void )
 {
-	CBaseEntity *pTarget = GetNextTarget();
-
-	if( pTarget && pTarget->IsAlive() )
+	Vector direction;
+	bool evaluated = true;
+	if (pev->netname)
 	{
-		Vector direction = pTarget->pev->origin - pev->origin;
-		direction.z = m_iZOffSet + pTarget->pev->origin.z - pev->origin.z;
+		direction = CalcLocus_Velocity(this, m_hActivator, STRING(pev->netname), &evaluated);
+	}
+	else
+	{
+		CBaseEntity *pTarget = GetNextTarget();
+		direction = pTarget->pev->origin - pev->origin;
+	}
+
+	if( evaluated )
+	{
+		direction.z += m_iZOffSet;
 
 		Vector angles = UTIL_VecToAngles( direction );
-		UTIL_MakeVectors( angles );
+		direction = direction.Normalize();
 
-		switch (m_iWeapType)
+		Vector position = pev->origin;
+		if (pev->message)
 		{
+			position = CalcLocus_Position(this, m_hActivator, STRING(pev->message), &evaluated);
+		}
+
+		if ( evaluated )
+		{
+			CBaseEntity* owner = NULL;
+			if (m_iszOwner)
+			{
+				owner = UTIL_FindEntityByTargetname(NULL, STRING(m_iszOwner), m_hActivator);
+			}
+			if (!owner)
+				owner = this;
+
+			switch (m_iWeapType)
+			{
+			case BLOWERCANNON_SQUIDSPIT:
+				CSquidSpit::Shoot(owner->pev, position, direction * 900);
+				break;
 #if FEATURE_SPOREGRENADE
-		case BLOWERCANNON_SPOREROCKET:
-			CSporeGrenade::ShootContact(pev, pev->origin, gpGlobals->v_forward * 1500);
-			break;
-		case BLOWERCANNON_SPOREGRENADE:
-			CSporeGrenade::ShootTimed(pev, pev->origin, gpGlobals->v_forward * 700, false);
-			break;
+			case BLOWERCANNON_SPOREROCKET:
+				CSporeGrenade::ShootContact(owner->pev, position, direction * 1500);
+				break;
+			case BLOWERCANNON_SPOREGRENADE:
+				CSporeGrenade::ShootTimed(owner->pev, position, direction * 700, false);
+				break;
 #endif
 #if FEATURE_SHOCKBEAM
-		case BLOWERCANNON_SHOCKBEAM:
-			CShock::Shoot(pev, pev->angles, pev->origin, gpGlobals->v_forward * 2000);
-			break;
+			case BLOWERCANNON_SHOCKBEAM:
+				CShock::Shoot(owner->pev, angles, position, direction * 2000);
+				break;
 #endif
 #if FEATURE_DISPLACER
-		case BLOWERCANNON_DISPLACERBALL:
-			CDisplacerBall::Shoot(pev, pev->origin, gpGlobals->v_forward * 500, angles);
-			break;
+			case BLOWERCANNON_DISPLACERBALL:
+				CDisplacerBall::Shoot(owner->pev, position, direction * 500, angles);
+				break;
 #endif
-		default:
-			ALERT(at_console, "Unknown projectile type in blowercannon: %d\n", m_iWeapType);
-			break;
+			default:
+				ALERT(at_console, "Unknown projectile type in blowercannon: %d\n", m_iWeapType);
+				break;
+			}
 		}
 	}
 	if( m_iFireType == BLOWERCANNON_FIRE )
@@ -3265,3 +3477,484 @@ void CBlowerCannon::BlowerCannonThink( void )
 }
 
 #endif
+
+//==================================================================
+//LRC- Shockwave effect, like when a Houndeye attacks.
+//==================================================================
+#define SF_SHOCKWAVE_CENTERED 1
+#define SF_SHOCKWAVE_REPEATABLE 2
+
+class CEnvShockwave : public CPointEntity
+{
+public:
+	void	Precache( void );
+	void	Spawn( void ) { Precache(); }
+	void	Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void	KeyValue( KeyValueData *pkvd );
+	virtual int		Save( CSave &save );
+	virtual int		Restore( CRestore &restore );
+	static	TYPEDESCRIPTION m_SaveData[];
+
+	void DoEffect( Vector vecPos );
+
+	int m_iTime;
+	int m_iRadius;
+	int	m_iHeight;
+	int m_iScrollRate;
+	int m_iNoise;
+	int m_iFrameRate;
+	int m_iStartFrame;
+	int m_iSpriteTexture;
+	char m_cType;
+	string_t m_iszPosition;
+};
+
+LINK_ENTITY_TO_CLASS( env_shockwave, CEnvShockwave )
+
+TYPEDESCRIPTION	CEnvShockwave::m_SaveData[] =
+{
+	DEFINE_FIELD( CEnvShockwave, m_iHeight, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvShockwave, m_iTime, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvShockwave, m_iRadius, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvShockwave, m_iScrollRate, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvShockwave, m_iNoise, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvShockwave, m_iFrameRate, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvShockwave, m_iStartFrame, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvShockwave, m_iSpriteTexture, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvShockwave, m_cType, FIELD_CHARACTER ),
+	DEFINE_FIELD( CEnvShockwave, m_iszPosition, FIELD_STRING ),
+};
+
+IMPLEMENT_SAVERESTORE( CEnvShockwave, CBaseEntity )
+
+void CEnvShockwave::Precache( void )
+{
+	m_iSpriteTexture = PRECACHE_MODEL( STRING(pev->netname) );
+}
+
+void CEnvShockwave::KeyValue( KeyValueData *pkvd )
+{
+	if (FStrEq(pkvd->szKeyName, "m_iTime"))
+	{
+		m_iTime = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iRadius"))
+	{
+		m_iRadius = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iHeight"))
+	{
+		m_iHeight = atoi(pkvd->szValue)/2; //LRC- the actual height is doubled when drawn
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iScrollRate"))
+	{
+		m_iScrollRate = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iNoise"))
+	{
+		m_iNoise = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iFrameRate"))
+	{
+		m_iFrameRate = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iStartFrame"))
+	{
+		m_iStartFrame = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_iszPosition"))
+	{
+		m_iszPosition = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "m_cType"))
+	{
+		m_cType = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CBaseEntity::KeyValue( pkvd );
+}
+
+void CEnvShockwave::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	Vector vecPos;
+	if (!FStringNull(m_iszPosition))
+	{
+		bool evaluated;
+		vecPos = CalcLocus_Position( this, pActivator, STRING(m_iszPosition), &evaluated );
+		if (!evaluated)
+			return;
+	}
+	else
+	{
+		vecPos = pev->origin;
+	}
+
+	if (!(pev->spawnflags & SF_SHOCKWAVE_CENTERED))
+		vecPos.z += m_iHeight;
+
+	int type = m_cType;
+	switch (type) {
+	case TE_BEAMTORUS:
+	case TE_BEAMDISK:
+	case TE_BEAMCYLINDER:
+		break;
+	default:
+		type = TE_BEAMCYLINDER;
+		break;
+	}
+
+	// blast circle
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, pev->origin );
+		WRITE_BYTE( type );
+		WRITE_COORD( vecPos.x );// coord coord coord (center position)
+		WRITE_COORD( vecPos.y );
+		WRITE_COORD( vecPos.z );
+		WRITE_COORD( vecPos.x );// coord coord coord (axis and radius)
+		WRITE_COORD( vecPos.y );
+		WRITE_COORD( vecPos.z + m_iRadius );
+		WRITE_SHORT( m_iSpriteTexture ); // short (sprite index)
+		WRITE_BYTE( m_iStartFrame ); // byte (starting frame)
+		WRITE_BYTE( m_iFrameRate ); // byte (frame rate in 0.1's)
+		WRITE_BYTE( m_iTime ); // byte (life in 0.1's)
+		WRITE_BYTE( m_iHeight );  // byte (line width in 0.1's)
+		WRITE_BYTE( m_iNoise );   // byte (noise amplitude in 0.01's)
+		WRITE_BYTE( pev->rendercolor.x );   // byte,byte,byte (color)
+		WRITE_BYTE( pev->rendercolor.y );
+		WRITE_BYTE( pev->rendercolor.z );
+		WRITE_BYTE( pev->renderamt );  // byte (brightness)
+		WRITE_BYTE( m_iScrollRate );	// byte (scroll speed in 0.1's)
+	MESSAGE_END();
+
+	if (!(pev->spawnflags & SF_SHOCKWAVE_REPEATABLE))
+	{
+		SetThink(&CEnvShockwave:: SUB_Remove );
+		pev->nextthink = gpGlobals->time;
+	}
+}
+
+//=========================================================
+// LRC - Decal effect
+//=========================================================
+class CEnvDecal : public CPointEntity
+{
+public:
+	void	Spawn( void );
+	void	Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+
+LINK_ENTITY_TO_CLASS( env_decal, CEnvDecal )
+
+void CEnvDecal::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	int iTexture = 0;
+
+	switch(pev->impulse)
+	{
+		case 1: iTexture = DECAL_GUNSHOT1	+	RANDOM_LONG(0,4); break;
+		case 2: iTexture = DECAL_BLOOD1		+	RANDOM_LONG(0,5); break;
+		case 3: iTexture = DECAL_YBLOOD1	+	RANDOM_LONG(0,5); break;
+		case 4: iTexture = DECAL_GLASSBREAK1+	RANDOM_LONG(0,2); break;
+		case 5: iTexture = DECAL_BIGSHOT1	+	RANDOM_LONG(0,4); break;
+		case 6: iTexture = DECAL_SCORCH1	+	RANDOM_LONG(0,1); break;
+		case 7: iTexture = DECAL_SPIT1		+	RANDOM_LONG(0,1); break;
+		case 8: iTexture = DECAL_SMALLSCORCH1 +	RANDOM_LONG(0,2); break;
+#if FEATURE_OPFOR_DECALS
+		case 9: iTexture = DECAL_SPR_SPLT1 +	RANDOM_LONG(0,2); break;
+		case 10: iTexture = DECAL_OPFOR_SCORCH1 +	RANDOM_LONG(0,2); break;
+		case 11: iTexture = DECAL_OPFOR_SMALLSCORCH1 +	RANDOM_LONG(0,2); break;
+#else
+		case 9: iTexture = DECAL_YBLOOD5 +	RANDOM_LONG(0,1); break;
+		case 10: iTexture = DECAL_SCORCH1 +	RANDOM_LONG(0,1); break;
+		case 11: iTexture = DECAL_SMALLSCORCH1 +	RANDOM_LONG(0,2); break;
+#endif
+	}
+
+	if (pev->impulse)
+		iTexture = gDecals[ iTexture ].index;
+	else
+		iTexture = pev->skin; // custom texture
+
+	bool evaluated;
+	Vector vecPos;
+	if (!FStringNull(pev->target))
+	{
+		vecPos = CalcLocus_Position( this, pActivator, STRING(pev->target), &evaluated );
+		if (!evaluated)
+			return;
+	}
+	else
+	{
+		vecPos = pev->origin;
+	}
+
+	Vector vecOffs;
+	if (!FStringNull(pev->netname))
+	{
+
+		vecOffs = CalcLocus_Velocity( this, pActivator, STRING(pev->netname), &evaluated );
+		if (!evaluated)
+			return;
+	}
+	else
+	{
+		UTIL_MakeVectors(pev->angles);
+		vecOffs = gpGlobals->v_forward;
+	}
+
+	vecOffs = vecOffs.Normalize() * 4000;
+
+	TraceResult trace;
+	int			entityIndex;
+
+	UTIL_TraceLine( vecPos, vecPos+vecOffs, ignore_monsters, NULL, &trace );
+
+	if (trace.flFraction == 1.0)
+		return; // didn't hit anything, oh well
+
+	entityIndex = (short)ENTINDEX(trace.pHit);
+
+	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY);
+		WRITE_BYTE( TE_BSPDECAL );
+		WRITE_COORD( trace.vecEndPos.x );
+		WRITE_COORD( trace.vecEndPos.y );
+		WRITE_COORD( trace.vecEndPos.z );
+		WRITE_SHORT( iTexture );
+		WRITE_SHORT( entityIndex );
+		if ( entityIndex )
+			WRITE_SHORT( (int)VARS(trace.pHit)->modelindex );
+	MESSAGE_END();
+}
+
+void CEnvDecal::Spawn( void )
+{
+	if (pev->impulse == 0)
+	{
+		pev->skin = DECAL_INDEX( STRING(pev->noise) );
+		pev->noise = iStringNull;
+
+		if ( pev->skin == 0 )
+			ALERT( at_console, "%s \"%s\" can't find decal \"%s\"\n", STRING(pev->classname), STRING(pev->noise) );
+	}
+}
+
+//=========================================================
+// LRC - env_fog, extended a bit from the DMC version
+//=========================================================
+#define SF_FOG_ACTIVE 1
+#define SF_FOG_FADING 0x8000
+
+class CEnvFog : public CBaseEntity
+{
+public:
+	void Spawn( void );
+	void Precache( void );
+	void EXPORT ResumeThink( void );
+	void EXPORT TurnOn( void );
+	void EXPORT TurnOff( void );
+	void EXPORT FadeInDone( void );
+	void EXPORT FadeOutDone( void );
+	void SendData( Vector col, int fFadeTime, int StartDist, int iEndDist);
+	void KeyValue( KeyValueData *pkvd );
+	virtual int		Save( CSave &save );
+	virtual int		Restore( CRestore &restore );
+	static	TYPEDESCRIPTION m_SaveData[];
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+
+	int m_iStartDist;
+	int m_iEndDist;
+	float m_iFadeIn;
+	float m_iFadeOut;
+	float m_fHoldTime;
+	float m_fFadeStart; // if we're fading in/out, then when did the fade start?
+};
+
+TYPEDESCRIPTION	CEnvFog::m_SaveData[] =
+{
+	DEFINE_FIELD( CEnvFog, m_iStartDist, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvFog, m_iEndDist, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvFog, m_iFadeIn, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvFog, m_iFadeOut, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvFog, m_fHoldTime, FIELD_FLOAT ),
+	DEFINE_FIELD( CEnvFog, m_fFadeStart, FIELD_TIME ),
+};
+
+IMPLEMENT_SAVERESTORE( CEnvFog, CBaseEntity )
+
+void CEnvFog :: KeyValue( KeyValueData *pkvd )
+{
+	if (FStrEq(pkvd->szKeyName, "startdist"))
+	{
+		m_iStartDist = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "enddist"))
+	{
+		m_iEndDist = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "fadein"))
+	{
+		m_iFadeIn = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "fadeout"))
+	{
+		m_iFadeOut = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "holdtime"))
+	{
+		m_fHoldTime = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CBaseEntity::KeyValue( pkvd );
+}
+
+void CEnvFog :: Spawn ( void )
+{
+	pev->effects |= EF_NODRAW;
+
+	if (pev->targetname == 0)
+		pev->spawnflags |= SF_FOG_ACTIVE;
+
+	if (pev->spawnflags & SF_FOG_ACTIVE)
+	{
+		SetThink(&CEnvFog :: TurnOn );
+	}
+
+// Precache is now used only to continue after a game has loaded.
+//	Precache();
+
+	// things get messed up if we try to draw fog with a startdist
+	// or an enddist of 0, so we don't allow it.
+	if (m_iStartDist == 0) m_iStartDist = 1;
+	if (m_iEndDist == 0) m_iEndDist = 1;
+}
+
+void CEnvFog :: Precache ( void )
+{
+	if (pev->spawnflags & SF_FOG_ACTIVE)
+	{
+		SetThink(&CEnvFog :: ResumeThink );
+		pev->nextthink = gpGlobals->time + 0.1;
+	}
+}
+
+extern int gmsgSetFog;
+
+void CEnvFog :: TurnOn ( void )
+{
+//	ALERT(at_console, "Fog turnon %f\n", gpGlobals->time);
+
+	pev->spawnflags |= SF_FOG_ACTIVE;
+
+	if( m_iFadeIn )
+	{
+		pev->spawnflags |= SF_FOG_FADING;
+		SendData( pev->rendercolor, m_iFadeIn, m_iStartDist, m_iEndDist);
+		pev->nextthink = gpGlobals->time + m_iFadeIn;
+		SetThink(&CEnvFog :: FadeInDone );
+	}
+	else
+	{
+		pev->spawnflags &= ~SF_FOG_FADING;
+		SendData( pev->rendercolor, 0, m_iStartDist, m_iEndDist);
+		if (m_fHoldTime)
+		{
+			pev->nextthink = gpGlobals->time + m_fHoldTime;
+			SetThink(&CEnvFog :: TurnOff );
+		}
+	}
+}
+
+void CEnvFog :: TurnOff ( void )
+{
+//	ALERT(at_console, "Fog turnoff\n");
+
+	pev->spawnflags &= ~SF_FOG_ACTIVE;
+
+	if( m_iFadeOut )
+	{
+		pev->spawnflags |= SF_FOG_FADING;
+		SendData( pev->rendercolor, -m_iFadeOut, m_iStartDist, m_iEndDist);
+		pev->nextthink = gpGlobals->time  + m_iFadeOut;
+		SetThink(&CEnvFog :: FadeOutDone );
+	}
+	else
+	{
+		pev->spawnflags &= ~SF_FOG_FADING;
+		SendData( g_vecZero, 0, 0, 0 );
+		//DontThink();
+	}
+}
+
+//yes, this intermediate think function is necessary.
+// the engine seems to ignore the nextthink time when starting up.
+// So this function gets called immediately after the precache finishes,
+// regardless of what nextthink time is specified.
+void CEnvFog :: ResumeThink ( void )
+{
+//	ALERT(at_console, "Fog resume %f\n", gpGlobals->time);
+	SetThink(&CEnvFog ::FadeInDone);
+	pev->nextthink = gpGlobals->time;
+}
+
+void CEnvFog :: FadeInDone ( void )
+{
+	pev->spawnflags &= ~SF_FOG_FADING;
+	SendData( pev->rendercolor, 0, m_iStartDist, m_iEndDist);
+
+	if (m_fHoldTime)
+	{
+		pev->nextthink = gpGlobals->time + m_fHoldTime;
+		SetThink(&CEnvFog :: TurnOff );
+	}
+}
+
+void CEnvFog :: FadeOutDone ( void )
+{
+	pev->spawnflags &= ~SF_FOG_FADING;
+	SendData( g_vecZero, 0, 0, 0);
+}
+
+void CEnvFog :: Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if (ShouldToggle(useType, pev->spawnflags & SF_FOG_ACTIVE))
+	{
+		if (pev->spawnflags & SF_FOG_ACTIVE)
+			TurnOff();
+		else
+			TurnOn();
+	}
+}
+
+void CEnvFog :: SendData ( Vector col, int iFadeTime, int iStartDist, int iEndDist )
+{
+	for ( int i = 1; i <= gpGlobals->maxClients; i++ )
+	{
+		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
+		if ( pPlayer )
+		{
+			MESSAGE_BEGIN( MSG_ONE, gmsgSetFog, NULL, pPlayer->pev );
+				WRITE_BYTE ( col.x );
+				WRITE_BYTE ( col.y );
+				WRITE_BYTE ( col.z );
+				WRITE_SHORT ( iFadeTime );
+				WRITE_SHORT ( iStartDist );
+				WRITE_SHORT ( iEndDist );
+			MESSAGE_END();
+		}
+	}
+}
+
+LINK_ENTITY_TO_CLASS( env_fog, CEnvFog )

@@ -37,16 +37,18 @@ public:
 	void SetYawSpeed( void );
 	int DefaultClassify( void );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
-	int ISoundMask( void );
+	int DefaultISoundMask( void );
 	void PlayScriptedSentence( const char *pszSentence, float duration, float volume, float attenuation, BOOL bConcurrent, CBaseEntity *pListener );
 	void IdleHeadTurn( Vector &vecFriend );
 	void MonsterThink();
-	void Killed( entvars_t *pevAttacker, int iGib );
+	void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 
 	int Save( CSave &save );
 	int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
 
+	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
+	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
 private:
 	float m_talkTime;
 	EHANDLE m_hTalkTarget;
@@ -73,7 +75,7 @@ IMPLEMENT_SAVERESTORE( CGenericMonster, CBaseMonster )
 //=========================================================
 int CGenericMonster::DefaultClassify( void )
 {
-	return pev->takedamage ? CLASS_PLAYER_ALLY : CLASS_NONE;
+	return (pev->spawnflags & SF_GENERICMONSTER_NOTSOLID) ? CLASS_NONE : CLASS_PLAYER_ALLY;
 }
 
 //=========================================================
@@ -112,7 +114,7 @@ void CGenericMonster::HandleAnimEvent( MonsterEvent_t *pEvent )
 //=========================================================
 // ISoundMask - generic monster can't hear.
 //=========================================================
-int CGenericMonster::ISoundMask( void )
+int CGenericMonster::DefaultISoundMask( void )
 {
 	return 0;
 }
@@ -139,9 +141,9 @@ void CGenericMonster::Spawn()
 		UTIL_SetSize( pev, VEC_HULL_MIN, VEC_HULL_MAX);
 */
 	if( FStrEq( STRING( pev->model ), "models/player.mdl" ) || FStrEq( STRING( pev->model ), "models/holo.mdl" ) )
-		UTIL_SetSize( pev, VEC_HULL_MIN, VEC_HULL_MAX );
+		SetMySize( VEC_HULL_MIN, VEC_HULL_MAX );
 	else
-		UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
+		SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -235,10 +237,10 @@ void CGenericMonster::MonsterThink()
 	CBaseMonster::MonsterThink();
 }
 
-void CGenericMonster::Killed(entvars_t *pevAttacker, int iGib)
+void CGenericMonster::Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib)
 {
 	SentenceStop();
-	CBaseMonster::Killed(pevAttacker, iGib);
+	CBaseMonster::Killed(pevInflictor, pevAttacker, iGib);
 }
 
 class CDeadGenericMonster : public CBaseMonster
@@ -330,7 +332,7 @@ void CLoader::Spawn()
 
 	SetMyModel("models/loader.mdl");
 
-	UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
+	SetMySize( VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;

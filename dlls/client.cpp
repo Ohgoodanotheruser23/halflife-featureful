@@ -49,8 +49,10 @@ extern void CopyToBodyQue( entvars_t* pev );
 extern int giPrecacheGrunt;
 extern int gmsgSayText;
 extern int gmsgBhopcap;
+extern int gmsgHUDColor;
 
 extern cvar_t allow_spectators;
+extern cvar_t multibyte_only;
 
 extern int g_teamplay;
 
@@ -72,7 +74,7 @@ void set_suicide_frame( entvars_t *pev )
 	pev->solid = SOLID_NOT;
 	pev->movetype = MOVETYPE_TOSS;
 	pev->deadflag = DEAD_DEAD;
-	pev->nextthink = -1;
+	pev->nextthink = -1.0f;
 }
 
 
@@ -176,11 +178,11 @@ void ClientKill( edict_t *pEntity )
 	if( pl->m_fNextSuicideTime > gpGlobals->time )
 		return;  // prevent suiciding too ofter
 
-	pl->m_fNextSuicideTime = gpGlobals->time + 1;  // don't let them suicide for 5 seconds after suiciding
+	pl->m_fNextSuicideTime = gpGlobals->time + 1.0f;  // don't let them suicide for 5 seconds after suiciding
 
 	// have the player kill themself
 	pev->health = 0;
-	pl->Killed( pev, GIB_NEVER );
+	pl->Killed( pev, pev, GIB_NEVER );
 
 	//pev->modelindex = g_ulModelIndexPlayer;
 	//pev->frags -= 2;		// extra penalty
@@ -202,6 +204,7 @@ void ClientPutInServer( edict_t *pEntity )
 
 	pPlayer = GetClassPtr( (CBasePlayer *)pev );
 	pPlayer->SetCustomDecalFrames( -1 ); // Assume none;
+	pPlayer->SetPrefsFromUserinfo( g_engfuncs.pfnGetInfoKeyBuffer( pEntity ) );
 
 	// Allocate a CBasePlayer for pev, and call spawn
 	pPlayer->m_iRespawnPoint = 0;
@@ -295,6 +298,10 @@ decodeFinishedMaybeCESU8:
 bool Q_UnicodeValidate( const char *pUTF8 )
 {
 	bool bError = false;
+
+	if( !multibyte_only.value )
+		return true;
+
 	while( *pUTF8 )
 	{
 		unsigned int uVal;
@@ -497,7 +504,7 @@ void ClientCommand( edict_t *pEntity )
 	}
 	else if( FStrEq(pcmd, "give" ) )
 	{
-		if( g_flWeaponCheat != 0.0 )
+		if( g_flWeaponCheat != 0.0f )
 		{
 			int iszItem = ALLOC_STRING( CMD_ARGV( 1 ) );	// Make a copy of the classname
 			GetClassPtr( (CBasePlayer *)pev )->GiveNamedItem( STRING( iszItem ) );
@@ -505,7 +512,7 @@ void ClientCommand( edict_t *pEntity )
 	}
 	else if( FStrEq( pcmd, "fire" ) )
 	{
-		if( g_flWeaponCheat != 0.0 )
+		if( g_flWeaponCheat != 0.0f )
 		{
 			CBaseEntity *pPlayer = CBaseEntity::Instance( pEntity );
 			if( CMD_ARGC() > 1 )
@@ -636,6 +643,22 @@ void ClientCommand( edict_t *pEntity )
 	else if ( FStrEq( pcmd, "phrase" ) )
 	{
 		GetClassPtr( (CBasePlayer *)pev )->SayByCommand( (char *)CMD_ARGV( 1 ) );
+	}
+	else if ( FStrEq(pcmd, "hud_color") )
+	{
+		if (CMD_ARGC() == 4)
+		{
+			int color = (atoi(CMD_ARGV(1)) & 0xFF) << 16;
+			color += (atoi(CMD_ARGV(2)) & 0xFF) << 8;
+			color += (atoi(CMD_ARGV(3)) & 0xFF);
+			MESSAGE_BEGIN( MSG_ONE, gmsgHUDColor, NULL, &pEntity->v );
+				WRITE_LONG(color);
+			MESSAGE_END();
+		}
+		else
+		{
+			ALERT(at_console, "Syntax: hud_color RRR GGG BBB\n");
+		}
 	}
 	else
 	{
@@ -984,11 +1007,6 @@ void ClientPrecache( void )
 
 	if( giPrecacheGrunt )
 		UTIL_PrecacheOther( "monster_human_grunt" );
-
-#if FEATURE_DISPLACER
-	// Teleport sounds. Used by trigger_xen_return
-	PRECACHE_SOUND( "debris/beamstart7.wav" );
-#endif
 }
 
 /*
@@ -1157,8 +1175,8 @@ void SetupVisibility( edict_t *pViewEntity, edict_t *pClient, unsigned char **pv
 		}
 	}
 
-	*pvs = ENGINE_SET_PVS( (float *)&org );
-	*pas = ENGINE_SET_PAS( (float *)&org );
+	*pvs = ENGINE_SET_PVS( org );
+	*pas = ENGINE_SET_PAS( org );
 }
 
 #include "entity_state.h"
@@ -1258,7 +1276,7 @@ int AddToFullPack( struct entity_state_s *state, int e, edict_t *ent, edict_t *h
 	//
 
 	// Round animtime to nearest millisecond
-	state->animtime = (int)( 1000.0 * ent->v.animtime ) / 1000.0;
+	state->animtime = (int)( 1000.0f * ent->v.animtime ) / 1000.0f;
 
 	memcpy( state->origin, ent->v.origin, 3 * sizeof(float) );
 	memcpy( state->angles, ent->v.angles, 3 * sizeof(float) );
@@ -1718,12 +1736,12 @@ int GetWeaponData( struct edict_s *player, struct weapon_data_s *info )
 					item->m_iId			= II.iId;
 					item->m_iClip			= gun->m_iClip;
 
-					item->m_flTimeWeaponIdle	= Q_max( gun->m_flTimeWeaponIdle, -0.001 );
-					item->m_flNextPrimaryAttack	= Q_max( gun->m_flNextPrimaryAttack, -0.001 );
-					item->m_flNextSecondaryAttack	= Q_max( gun->m_flNextSecondaryAttack, -0.001 );
+					item->m_flTimeWeaponIdle	= Q_max( gun->m_flTimeWeaponIdle, -0.001f );
+					item->m_flNextPrimaryAttack	= Q_max( gun->m_flNextPrimaryAttack, -0.001f );
+					item->m_flNextSecondaryAttack	= Q_max( gun->m_flNextSecondaryAttack, -0.001f );
 					item->m_fInReload		= gun->m_fInReload;
 					item->m_fInSpecialReload	= gun->m_fInSpecialReload;
-					item->fuser1			= Q_max( gun->pev->fuser1, -0.001 );
+					item->fuser1			= Q_max( gun->pev->fuser1, -0.001f );
 					item->fuser2			= gun->m_flStartThrow;
 					item->fuser3			= gun->m_flReleaseThrow;
 					item->iuser1			= gun->m_chargeReady;
@@ -1854,12 +1872,6 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 					else if( pl->m_pActiveItem->m_iId == WEAPON_KNIFE )
 					{
 						cd->vuser2.y = ( (CKnife *)pl->m_pActiveItem )->m_iSwingMode;
-					}
-#endif
-#if FEATURE_M249
-					else if( pl->m_pActiveItem->m_iId == WEAPON_M249 )
-					{
-						cd->vuser2.y  = ( (CM249 *)pl->m_pActiveItem )->m_fReloadLaunched;
 					}
 #endif
 				}
@@ -2001,7 +2013,7 @@ One of the ENGINE_FORCE_UNMODIFIED files failed the consistency check for the sp
 int InconsistentFile( const edict_t *player, const char *filename, char *disconnect_message )
 {
 	// Server doesn't care?
-	if( CVAR_GET_FLOAT( "mp_consistency" ) != 1 )
+	if( CVAR_GET_FLOAT( "mp_consistency" ) != 1.0f )
 		return 0;
 
 	// Default behavior is to kick the player

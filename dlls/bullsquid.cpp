@@ -31,7 +31,7 @@
 // Slow big poisonous ball as alternative range attack for bullsquid
 #define FEATURE_BULLSQUID_BIGSPIT 1
 
-#define		SQUID_SPRINT_DIST	256 // how close the squid has to get before starting to sprint and refusing to swerve
+#define		SQUID_SPRINT_DIST	256.0f // how close the squid has to get before starting to sprint and refusing to swerve
 
 int iSquidSpitSprite;
 	
@@ -71,11 +71,23 @@ IMPLEMENT_SAVERESTORE( CSquidSpit, CBaseEntity )
 
 void CSquidSpit::Spawn( void )
 {
-	SpawnHelper("sprites/bigspit.spr", "squidspit");
+	SpawnHelper("squidspit");
 }
 
-void CSquidSpit::SpawnHelper(const char *modelName, const char *className)
+void CSquidSpit::Precache()
 {
+	PRECACHE_MODEL( "sprites/bigspit.spr" );
+	PRECACHE_SOUND( "bullchicken/bc_acid1.wav" );
+
+	PRECACHE_SOUND( "bullchicken/bc_spithit1.wav" );
+	PRECACHE_SOUND( "bullchicken/bc_spithit2.wav" );
+
+	iSquidSpitSprite = PRECACHE_MODEL( "sprites/tinyspit.spr" );// client side spittle.
+}
+
+void CSquidSpit::SpawnHelper(const char *className)
+{
+	Precache();
 	pev->movetype = MOVETYPE_FLY;
 	pev->classname = MAKE_STRING( className );
 
@@ -83,7 +95,7 @@ void CSquidSpit::SpawnHelper(const char *modelName, const char *className)
 	pev->rendermode = kRenderTransAlpha;
 	pev->renderamt = 255;
 
-	SET_MODEL( ENT( pev ), modelName );
+	SET_MODEL( ENT( pev ), "sprites/bigspit.spr" );
 	pev->frame = 0;
 	pev->scale = 0.8;
 
@@ -94,7 +106,7 @@ void CSquidSpit::SpawnHelper(const char *modelName, const char *className)
 
 void CSquidSpit::Animate( void )
 {
-	pev->nextthink = gpGlobals->time + 0.1;
+	pev->nextthink = gpGlobals->time + 0.1f;
 
 	if( pev->frame++ )
 	{
@@ -115,7 +127,7 @@ void CSquidSpit::Shoot( entvars_t *pevOwner, Vector vecStart, Vector vecVelocity
 	pSpit->pev->owner = ENT( pevOwner );
 
 	pSpit->SetThink( &CSquidSpit::Animate );
-	pSpit->pev->nextthink = gpGlobals->time + 0.1;
+	pSpit->pev->nextthink = gpGlobals->time + 0.1f;
 }
 
 void CSquidSpit::Touch( CBaseEntity *pOther )
@@ -124,7 +136,7 @@ void CSquidSpit::Touch( CBaseEntity *pOther )
 	int iPitch;
 
 	// splat sound
-	iPitch = RANDOM_FLOAT( 90, 110 );
+	iPitch = RANDOM_FLOAT( 90.0f, 110.0f );
 
 	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "bullchicken/bc_acid1.wav", 1, ATTN_NORM, 0, iPitch );
 
@@ -161,7 +173,9 @@ void CSquidSpit::Touch( CBaseEntity *pOther )
 	}
 	else
 	{
-		pOther->TakeDamage( pev, pev, gSkillData.bullsquidDmgSpit, DMG_ACID );
+		CBaseMonster* owner = GetMonsterPointer( pev->owner );
+		entvars_t* pevAttacker = owner ? owner->pev : pev;
+		pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit, DMG_ACID );
 	}
 
 	SetThink( &CBaseEntity::SUB_Remove );
@@ -174,6 +188,7 @@ class CBigSquidSpit : public CBaseEntity
 {
 public:
 	void Spawn( void );
+	void Precache();
 
 	static void Shoot( entvars_t *pevOwner, Vector vecStart, Vector vecVelocity );
 	void Touch( CBaseEntity *pOther );
@@ -192,7 +207,6 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	int m_maxFrame;
-	float m_attackTime;
 };
 
 LINK_ENTITY_TO_CLASS( bigsquidspit, CBigSquidSpit )
@@ -200,13 +214,13 @@ LINK_ENTITY_TO_CLASS( bigsquidspit, CBigSquidSpit )
 TYPEDESCRIPTION	CBigSquidSpit::m_SaveData[] =
 {
 	DEFINE_FIELD( CBigSquidSpit, m_maxFrame, FIELD_INTEGER ),
-	DEFINE_FIELD( CBigSquidSpit, m_attackTime, FIELD_FLOAT ),
 };
 
 IMPLEMENT_SAVERESTORE( CBigSquidSpit, CBaseEntity )
 
 void CBigSquidSpit::Spawn( void )
 {
+	Precache();
 	pev->movetype = MOVETYPE_FLY;
 	pev->classname = MAKE_STRING( "bigsquidspit" );
 
@@ -224,6 +238,17 @@ void CBigSquidSpit::Spawn( void )
 	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
 
 	m_maxFrame = (float)MODEL_FRAMES( pev->modelindex ) - 1;
+}
+
+void CBigSquidSpit::Precache()
+{
+	PRECACHE_MODEL( "sprites/cnt1.spr" );
+	PRECACHE_SOUND( "bullchicken/bc_acid2.wav" );
+
+	PRECACHE_SOUND( "bullchicken/bc_spithit3.wav" );
+	PRECACHE_SOUND( "bullchicken/bc_spithit3.wav" );
+
+	iSquidSpitSprite = PRECACHE_MODEL( "sprites/tinyspit.spr" );
 }
 
 void CBigSquidSpit::Animate( void )
@@ -341,7 +366,7 @@ public:
 	virtual void Spawn(void);
 	virtual void Precache(void);
 	void SetYawSpeed(void);
-	int  ISoundMask(void);
+	int  DefaultISoundMask(void);
 	virtual int  DefaultClassify(void);
 	const char* DefaultDisplayName() { return "Bullsquid"; }
 	virtual void HandleAnimEvent(MonsterEvent_t *pEvent);
@@ -371,6 +396,8 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
+	Vector DefaultMinHullSize() { return Vector( -32.0f, -32.0f, 0.0f ); }
+	Vector DefaultMaxHullSize() { return Vector( 32.0f, 32.0f, 64.0f ); }
 
 	BOOL m_fCanThreatDisplay;// this is so the squid only does the "I see a headcrab!" dance one time. 
 
@@ -396,7 +423,7 @@ int CBullsquid::IgnoreConditions( void )
 {
 	int iIgnore = CBaseMonster::IgnoreConditions();
 
-	if( gpGlobals->time - m_flLastHurtTime <= 20 )
+	if( gpGlobals->time - m_flLastHurtTime <= 20.0f )
 	{
 		// haven't been hurt in 20 seconds, so let the squid care about stink. 
 		iIgnore = bits_COND_SMELL | bits_COND_SMELL_FOOD;
@@ -420,7 +447,7 @@ int CBullsquid::IgnoreConditions( void )
 //=========================================================
 int CBullsquid::IRelationship( CBaseEntity *pTarget )
 {
-	if( gpGlobals->time - m_flLastHurtTime < 5 && FClassnameIs( pTarget->pev, "monster_headcrab" ) )
+	if( gpGlobals->time - m_flLastHurtTime < 5.0f && IDefaultRelationship(pTarget) >= R_DL && FClassnameIs( pTarget->pev, "monster_headcrab" ) )
 	{
 		// if squid has been hurt in the last 5 seconds, and is getting relationship for a headcrab, 
 		// tell squid to disregard crab. 
@@ -441,7 +468,7 @@ int CBullsquid::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 
 	// if the squid is running, has an enemy, was hurt by the enemy, hasn't been hurt in the last 3 seconds, and isn't too close to the enemy,
 	// it will swerve. (whew).
-	if( m_hEnemy != 0 && IsMoving() && pevAttacker == m_hEnemy->pev && gpGlobals->time - m_flLastHurtTime > 3 )
+	if( m_hEnemy != 0 && IsMoving() && pevAttacker == m_hEnemy->pev && gpGlobals->time - m_flLastHurtTime > 3.0f )
 	{
 		flDist = ( pev->origin - m_hEnemy->pev->origin ).Length2D();
 
@@ -449,14 +476,14 @@ int CBullsquid::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 		{
 			flDist = ( pev->origin - m_Route[m_iRouteIndex].vecLocation ).Length2D();// reusing flDist.
 
-			if( FTriangulate( pev->origin, m_Route[m_iRouteIndex].vecLocation, flDist * 0.5, m_hEnemy, &vecApex ) )
+			if( FTriangulate( pev->origin, m_Route[m_iRouteIndex].vecLocation, flDist * 0.5f, m_hEnemy, &vecApex ) )
 			{
 				InsertWaypoint( vecApex, bits_MF_TO_DETOUR | bits_MF_DONT_SIMPLIFY );
 			}
 		}
 	}
 
-	if( !FClassnameIs( pevAttacker, "monster_headcrab" ) )
+	if( pevAttacker && !FClassnameIs( pevAttacker, "monster_headcrab" ) )
 	{
 		// don't forget about headcrabs if it was a headcrab that hurt the squid.
 		m_flLastHurtTime = gpGlobals->time;
@@ -470,17 +497,17 @@ int CBullsquid::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 //=========================================================
 BOOL CBullsquid::CheckRangeAttack1( float flDot, float flDist )
 {
-	if( IsMoving() && flDist >= 512 )
+	if( IsMoving() && flDist >= 512.0f )
 	{
 		// squid will far too far behind if he stops running to spit at this distance from the enemy.
 		return FALSE;
 	}
 
-	if( flDist > 64 && flDist <= 784 && flDot >= 0.5 && gpGlobals->time >= m_flNextSpitTime )
+	if( flDist > 64.0f && flDist <= 784.0f && flDot >= 0.5f && gpGlobals->time >= m_flNextSpitTime )
 	{
 		if( m_hEnemy != 0 )
 		{
-			if( fabs( pev->origin.z - m_hEnemy->pev->origin.z ) > 256 )
+			if( fabs( pev->origin.z - m_hEnemy->pev->origin.z ) > 256.0f )
 			{
 				// don't try to spit at someone up really high or down really low.
 				return FALSE;
@@ -490,12 +517,12 @@ BOOL CBullsquid::CheckRangeAttack1( float flDot, float flDist )
 		if( IsMoving() )
 		{
 			// don't spit again for a long time, resume chasing enemy.
-			m_flNextSpitTime = gpGlobals->time + 5;
+			m_flNextSpitTime = gpGlobals->time + 5.0f;
 		}
 		else
 		{
 			// not moving, so spit again pretty soon.
-			m_flNextSpitTime = gpGlobals->time + 0.5;
+			m_flNextSpitTime = gpGlobals->time + 0.5f;
 		}
 
 		return TRUE;
@@ -510,7 +537,7 @@ BOOL CBullsquid::CheckRangeAttack1( float flDot, float flDist )
 //=========================================================
 BOOL CBullsquid::CheckMeleeAttack1( float flDot, float flDist )
 {
-	if( m_hEnemy->pev->health <= gSkillData.bullsquidDmgWhip && flDist <= 85 && flDot >= 0.7 )
+	if( m_hEnemy->pev->health <= gSkillData.bullsquidDmgWhip && flDist <= 85.0f && flDot >= 0.7f )
 	{
 		return TRUE;
 	}
@@ -525,7 +552,7 @@ BOOL CBullsquid::CheckMeleeAttack1( float flDot, float flDist )
 //=========================================================
 BOOL CBullsquid::CheckMeleeAttack2( float flDot, float flDist )
 {
-	if( flDist <= 85 && flDot >= 0.7 && !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )		// The player & bullsquid can be as much as their bboxes 
+	if( flDist <= 85.0f && flDot >= 0.7f && !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )		// The player & bullsquid can be as much as their bboxes 
 	{										// apart (48 * sqrt(3)) and he can still attack (85 is a little more than 48*sqrt(3))
 		return TRUE;
 	}
@@ -552,7 +579,7 @@ BOOL CBullsquid::FValidateHintType( short sHint )
 		}
 	}
 
-	ALERT( at_aiconsole, "Couldn't validate hint type" );
+	ALERT( at_aiconsole, "Couldn't validate hint type\n" );
 	return FALSE;
 }
 
@@ -561,7 +588,7 @@ BOOL CBullsquid::FValidateHintType( short sHint )
 // of sounds this monster regards. In the base class implementation,
 // monsters care about all sounds, but no scents.
 //=========================================================
-int CBullsquid::ISoundMask( void )
+int CBullsquid::DefaultISoundMask( void )
 {
 	return	bits_SOUND_WORLD |
 		bits_SOUND_COMBAT |
@@ -658,7 +685,7 @@ void CBullsquid::SetYawSpeed( void )
 
 	ys = 0;
 
-	switch ( m_Activity )
+	switch( m_Activity )
 	{
 	case ACT_WALK:
 		ys = 90;
@@ -705,7 +732,7 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 				// !!!HACKHACK - the spot at which the spit originates (in front of the mouth) was measured in 3ds and hardcoded here.
 				// we should be able to read the position of bones at runtime for this info.
-				Vector vecSpitOffset = ( gpGlobals->v_right * 8 + gpGlobals->v_forward * 37 + gpGlobals->v_up * 23 );
+				Vector vecSpitOffset = ( gpGlobals->v_right * 8.0f + gpGlobals->v_forward * 37.0f + gpGlobals->v_up * 23.0f );
 				vecSpitOffset = ( pev->origin + vecSpitOffset );
 				Vector vecEnemyPosition;
 				if (m_hEnemy != 0)
@@ -724,9 +751,9 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 				}
 #endif
 
-				vecSpitDir.x += RANDOM_FLOAT( -0.05, 0.05 );
-				vecSpitDir.y += RANDOM_FLOAT( -0.05, 0.05 );
-				vecSpitDir.z += RANDOM_FLOAT( -0.05, 0 );
+				vecSpitDir.x += RANDOM_FLOAT( -0.05f, 0.05f );
+				vecSpitDir.y += RANDOM_FLOAT( -0.05f, 0.05f );
+				vecSpitDir.z += RANDOM_FLOAT( -0.05f, 0.0f );
 
 				// do stuff for this event.
 				AttackSound(bigSpit);
@@ -747,12 +774,12 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 				MESSAGE_END();
 
 				if (bigSpit) {
-					CBigSquidSpit::Shoot(pev, vecSpitOffset, vecSpitDir * 600);
+					CBigSquidSpit::Shoot(pev, vecSpitOffset, vecSpitDir * 600.0f);
 				} else {
 					const float spitAngle = 0.13;
-					CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * 900 );
-					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, spitAngle) * 900 );
-					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, -spitAngle) * 900 );
+					CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * 900.0f );
+					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, spitAngle) * 900.0f );
+					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, -spitAngle) * 900.0f );
 				}
 			}
 			break;
@@ -763,10 +790,13 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 				if( pHurt )
 				{
-					//pHurt->pev->punchangle.z = -15;
-					//pHurt->pev->punchangle.x = -45;
-					pHurt->pev->velocity = pHurt->pev->velocity - gpGlobals->v_forward * 100;
-					pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100;
+					if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
+					{
+						//pHurt->pev->punchangle.z = -15;
+						//pHurt->pev->punchangle.x = -45;
+						pHurt->pev->velocity = pHurt->pev->velocity - gpGlobals->v_forward * 100.0f;
+						pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100.0f;
+					}
 				}
 			}
 			break;
@@ -776,10 +806,13 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 				if( pHurt ) 
 				{
-					pHurt->pev->punchangle.z = -20;
-					pHurt->pev->punchangle.x = 20;
-					pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * 200;
-					pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100;
+					if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
+					{
+						pHurt->pev->punchangle.z = -20.0f;
+						pHurt->pev->punchangle.x = 20.0f;
+						pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * 200.0f;
+						pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100.0f;
+					}
 				}
 			}
 			break;
@@ -800,8 +833,8 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 				}
 
 				// jump into air for 0.8 (24/30) seconds
-				//pev->velocity.z += ( 0.875 * flGravity ) * 0.5;
-				pev->velocity.z += ( 0.625 * flGravity ) * 0.5;
+				//pev->velocity.z += ( 0.875f * flGravity ) * 0.5f;
+				pev->velocity.z += ( 0.625f * flGravity ) * 0.5f;
 			}
 			break;
 		case BSQUID_AE_THROW:
@@ -814,14 +847,14 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 				if( pHurt )
 				{
 					// croonchy bite sound
-					iPitch = RANDOM_FLOAT( 90, 110 );
+					iPitch = RANDOM_FLOAT( 90.0f, 110.0f );
 					switch( RANDOM_LONG( 0, 1 ) )
 					{
 					case 0:
-						EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "bullchicken/bc_bite2.wav", 1, ATTN_NORM, 0, iPitch );
+						EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "bullchicken/bc_bite2.wav", 1.0f, ATTN_NORM, 0, iPitch );
 						break;
 					case 1:
-						EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "bullchicken/bc_bite3.wav", 1, ATTN_NORM, 0, iPitch );
+						EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "bullchicken/bc_bite3.wav", 1.0f, ATTN_NORM, 0, iPitch );
 						break;
 					}
 
@@ -830,12 +863,12 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 					//pHurt->pev->punchangle.y = RANDOM_LONG( 0, 89 ) - 45;
 		
 					// screeshake transforms the viewmodel as well as the viewangle. No problems with seeing the ends of the viewmodels.
-					UTIL_ScreenShake( pHurt->pev->origin, 25.0, 1.5, 0.7, 2 );
+					UTIL_ScreenShake( pHurt->pev->origin, 25.0f, 1.5f, 0.7f, 2.0f );
 
 					if( pHurt->IsPlayer() )
 					{
 						UTIL_MakeVectors( pev->angles );
-						pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 300 + gpGlobals->v_up * 300;
+						pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 300.0f + gpGlobals->v_up * 300.0f;
 					}
 				}
 			}
@@ -853,14 +886,14 @@ void CBullsquid::Spawn()
 	Precache();
 
 	SetMyModel( "models/bullsquid.mdl" );
-	UTIL_SetSize( pev, Vector( -32, -32, 0 ), Vector( 32, 32, 64 ) );
+	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	pev->effects = 0;
 	SetMyHealth( gSkillData.bullsquidHealth );
-	m_flFieldOfView = 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	m_flFieldOfView = 0.2f;// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	m_fCanThreatDisplay = TRUE;
@@ -876,12 +909,10 @@ void CBullsquid::Precache()
 {
 	PrecacheMyModel( "models/bullsquid.mdl" );
 
-	PRECACHE_MODEL( "sprites/bigspit.spr" );// spit projectile.
+	UTIL_PrecacheOther("squidspit");
 #if FEATURE_BULLSQUID_BIGSPIT
-	PRECACHE_MODEL( "sprites/cnt1.spr" ); // big spit projectile
+	UTIL_PrecacheOther("bigsquidspit"); // big spit projectile
 #endif
-
-	iSquidSpitSprite = PRECACHE_MODEL( "sprites/tinyspit.spr" );// client side spittle.
 
 	PRECACHE_SOUND( "zombie/claw_miss2.wav" );// because we use the basemonster SWIPE animation event
 
@@ -908,15 +939,8 @@ void CBullsquid::Precache()
 	PRECACHE_SOUND( "bullchicken/bc_attackgrowl2.wav" );
 	PRECACHE_SOUND( "bullchicken/bc_attackgrowl3.wav" );
 
-	PRECACHE_SOUND( "bullchicken/bc_acid1.wav" );
-	PRECACHE_SOUND( "bullchicken/bc_acid2.wav" );
-
 	PRECACHE_SOUND( "bullchicken/bc_bite2.wav" );
 	PRECACHE_SOUND( "bullchicken/bc_bite3.wav" );
-
-	PRECACHE_SOUND( "bullchicken/bc_spithit1.wav" );
-	PRECACHE_SOUND( "bullchicken/bc_spithit2.wav" );
-	PRECACHE_SOUND( "bullchicken/bc_spithit3.wav" );
 }
 
 //=========================================================
@@ -983,7 +1007,7 @@ void CBullsquid::RunAI( void )
 		// chasing enemy. Sprint for last bit
 		if( ( pev->origin - m_hEnemy->pev->origin).Length2D() < SQUID_SPRINT_DIST )
 		{
-			pev->framerate = 1.25;
+			pev->framerate = 1.25f;
 		}
 	}
 }
@@ -996,8 +1020,8 @@ void CBullsquid::RunAI( void )
 Task_t tlSquidRangeAttack1[] =
 {
 	{ TASK_STOP_MOVING, 0 },
-	{ TASK_FACE_IDEAL, (float)0 },
-	{ TASK_RANGE_ATTACK1, (float)0 },
+	{ TASK_FACE_IDEAL, 0.0f },
+	{ TASK_RANGE_ATTACK1, 0.0f },
 	{ TASK_SET_ACTIVITY, (float)ACT_IDLE },
 };
 
@@ -1020,9 +1044,9 @@ Schedule_t slSquidRangeAttack1[] =
 Task_t tlSquidChaseEnemy1[] =
 {
 	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_RANGE_ATTACK1 },// !!!OEM - this will stop nasty squid oscillation.
-	{ TASK_GET_PATH_TO_ENEMY, (float)0 },
-	{ TASK_RUN_PATH, (float)0 },
-	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
+	{ TASK_GET_PATH_TO_ENEMY, 0.0f },
+	{ TASK_RUN_PATH, 0.0f },
+	{ TASK_WAIT_FOR_MOVEMENT, 0.0f },
 };
 
 Schedule_t slSquidChaseEnemy[] =
@@ -1046,10 +1070,10 @@ Schedule_t slSquidChaseEnemy[] =
 
 Task_t tlSquidHurtHop[] =
 {
-	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_SOUND_WAKE, (float)0 },
-	{ TASK_SQUID_HOPTURN, (float)0 },
-	{ TASK_FACE_ENEMY, (float)0 },// in case squid didn't turn all the way in the air.
+	{ TASK_STOP_MOVING, 0.0f },
+	{ TASK_SOUND_WAKE, 0.0f },
+	{ TASK_SQUID_HOPTURN, 0.0f },
+	{ TASK_FACE_ENEMY, 0.0f },// in case squid didn't turn all the way in the air.
 };
 
 Schedule_t slSquidHurtHop[] =
@@ -1065,10 +1089,10 @@ Schedule_t slSquidHurtHop[] =
 
 Task_t tlSquidSeeCrab[] =
 {
-	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_SOUND_WAKE, (float)0 },
+	{ TASK_STOP_MOVING, 0.0f },
+	{ TASK_SOUND_WAKE, 0.0f },
 	{ TASK_PLAY_SEQUENCE, (float)ACT_EXCITED },
-	{ TASK_FACE_ENEMY, (float)0 },
+	{ TASK_FACE_ENEMY, 0.0f },
 };
 
 Schedule_t slSquidSeeCrab[] =
@@ -1086,23 +1110,23 @@ Schedule_t slSquidSeeCrab[] =
 // squid walks to something tasty and eats it.
 Task_t tlSquidEat[] =
 {
-	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_EAT, (float)10 },// this is in case the squid can't get to the food
-	{ TASK_STORE_LASTPOSITION, (float)0 },
-	{ TASK_GET_PATH_TO_BESTSCENT, (float)0 },
-	{ TASK_WALK_PATH, (float)0 },
-	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
+	{ TASK_STOP_MOVING, 0.0f },
+	{ TASK_EAT, 10.0f },// this is in case the squid can't get to the food
+	{ TASK_STORE_LASTPOSITION, 0.0f },
+	{ TASK_GET_PATH_TO_BESTSCENT, 0.0f },
+	{ TASK_WALK_PATH, 0.0f },
+	{ TASK_WAIT_FOR_MOVEMENT, 0.0f },
 	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
 	{ TASK_GET_HEALTH_FROM_FOOD, 0.25f },
 	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
 	{ TASK_GET_HEALTH_FROM_FOOD, 0.25f },
 	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
 	{ TASK_GET_HEALTH_FROM_FOOD, 0.5f },
-	{ TASK_EAT, (float)50 },
-	{ TASK_GET_PATH_TO_LASTPOSITION, (float)0 },
-	{ TASK_WALK_PATH, (float)0 },
-	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
-	{ TASK_CLEAR_LASTPOSITION, (float)0 },
+	{ TASK_EAT, 50.0f },
+	{ TASK_GET_PATH_TO_LASTPOSITION, 0.0f },
+	{ TASK_WALK_PATH, 0.0f },
+	{ TASK_WAIT_FOR_MOVEMENT, 0.0f },
+	{ TASK_CLEAR_LASTPOSITION, 0.0f },
 };
 
 Schedule_t slSquidEat[] =
@@ -1125,24 +1149,24 @@ Schedule_t slSquidEat[] =
 // the squid. This schedule plays a sniff animation before going to the source of food.
 Task_t tlSquidSniffAndEat[] =
 {
-	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_EAT, (float)10 },// this is in case the squid can't get to the food
+	{ TASK_STOP_MOVING, 0.0f },
+	{ TASK_EAT, 10.0f },// this is in case the squid can't get to the food
 	{ TASK_PLAY_SEQUENCE, (float)ACT_DETECT_SCENT },
-	{ TASK_STORE_LASTPOSITION, (float)0 },
-	{ TASK_GET_PATH_TO_BESTSCENT, (float)0 },
-	{ TASK_WALK_PATH, (float)0 },
-	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
+	{ TASK_STORE_LASTPOSITION, 0.0f },
+	{ TASK_GET_PATH_TO_BESTSCENT, 0.0f },
+	{ TASK_WALK_PATH, 0.0f },
+	{ TASK_WAIT_FOR_MOVEMENT, 0.0f },
 	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
 	{ TASK_GET_HEALTH_FROM_FOOD, 0.25f },
 	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
 	{ TASK_GET_HEALTH_FROM_FOOD, 0.25f },
 	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
 	{ TASK_GET_HEALTH_FROM_FOOD, 0.5f },
-	{ TASK_EAT, (float)50 },
-	{ TASK_GET_PATH_TO_LASTPOSITION, (float)0 },
-	{ TASK_WALK_PATH, (float)0 },
-	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
-	{ TASK_CLEAR_LASTPOSITION, (float)0 },
+	{ TASK_EAT, 50.0f },
+	{ TASK_GET_PATH_TO_LASTPOSITION, 0.0f },
+	{ TASK_WALK_PATH, 0.0f },
+	{ TASK_WAIT_FOR_MOVEMENT, 0.0f },
+	{ TASK_CLEAR_LASTPOSITION, 0.0f },
 };
 
 Schedule_t slSquidSniffAndEat[] =
@@ -1164,18 +1188,18 @@ Schedule_t slSquidSniffAndEat[] =
 // squid does this to stinky things. 
 Task_t tlSquidWallow[] =
 {
-	{ TASK_STOP_MOVING, (float)0 },
-	{ TASK_EAT, (float)10 },// this is in case the squid can't get to the stinkiness
-	{ TASK_STORE_LASTPOSITION, (float)0 },
-	{ TASK_GET_PATH_TO_BESTSCENT, (float)0 },
-	{ TASK_WALK_PATH, (float)0 },
-	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
+	{ TASK_STOP_MOVING, 0.0f },
+	{ TASK_EAT, 10.0f },// this is in case the squid can't get to the stinkiness
+	{ TASK_STORE_LASTPOSITION, 0.0f },
+	{ TASK_GET_PATH_TO_BESTSCENT, 0.0f },
+	{ TASK_WALK_PATH, 0.0f },
+	{ TASK_WAIT_FOR_MOVEMENT, 0.0f },
 	{ TASK_PLAY_SEQUENCE, (float)ACT_INSPECT_FLOOR },
-	{ TASK_EAT, (float)50 },// keeps squid from eating or sniffing anything else for a while.
-	{ TASK_GET_PATH_TO_LASTPOSITION, (float)0 },
-	{ TASK_WALK_PATH, (float)0 },
-	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
-	{ TASK_CLEAR_LASTPOSITION, (float)0 },
+	{ TASK_EAT, 50.0f },// keeps squid from eating or sniffing anything else for a while.
+	{ TASK_GET_PATH_TO_LASTPOSITION, 0.0f },
+	{ TASK_WALK_PATH, 0.0f },
+	{ TASK_WAIT_FOR_MOVEMENT, 0.0f },
+	{ TASK_CLEAR_LASTPOSITION, 0.0f },
 };
 
 Schedule_t slSquidWallow[] =
@@ -1429,14 +1453,21 @@ void CBullsquid::StartTask( Task_t *pTask )
 		}
 	case TASK_GET_PATH_TO_ENEMY:
 		{
-			if( BuildRoute( m_hEnemy->pev->origin, bits_MF_TO_ENEMY, m_hEnemy ) )
+			CBaseEntity *pEnemy = m_hEnemy;
+
+			if( pEnemy == NULL )
 			{
-				m_iTaskStatus = TASKSTATUS_COMPLETE;
+				TaskFail("no enemy");
+				return;
+			}
+
+			if( BuildRoute( pEnemy->pev->origin, bits_MF_TO_ENEMY, pEnemy ) )
+			{
+				TaskComplete();
 			}
 			else
 			{
-				ALERT( at_aiconsole, "GetPathToEnemy failed!!\n" );
-				TaskFail();
+				TaskFail("can't build path to enemy");
 			}
 			break;
 		}
@@ -1508,4 +1539,27 @@ MONSTERSTATE CBullsquid::GetIdealState( void )
 	m_IdealMonsterState = CBaseMonster::GetIdealState();
 
 	return m_IdealMonsterState;
+}
+
+class CDeadBullsquid : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_ALIEN_MONSTER; }
+
+	const char* getPos(int pos) const;
+};
+
+const char* CDeadBullsquid::getPos(int pos) const
+{
+	return "die1";
+}
+
+LINK_ENTITY_TO_CLASS( monster_bullchicken_dead, CDeadBullsquid )
+
+void CDeadBullsquid :: Spawn( )
+{
+	SpawnHelper("models/bullsquid.mdl", BLOOD_COLOR_YELLOW, gSkillData.bullsquidHealth/2);
+	MonsterInitDead();
+	pev->frame = 255;
 }

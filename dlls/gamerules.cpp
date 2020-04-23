@@ -160,7 +160,7 @@ void CGameRules::RefreshSkillData ( void )
 
 #if FEATURE_CLEANSUIT_SCIENTIST
 	// Cleansuit Scientist
-	gSkillData.cleansuitScientistHealth = GetSkillCvar( "sk_cleansuit_scientist_health");
+	gSkillData.cleansuitScientistHealth = GetSkillCvar( "sk_cleansuit_scientist_health", "sk_scientist_health" );
 #endif
 	// Gargantua
 	gSkillData.gargantuaHealth = GetSkillCvar( "sk_gargantua_health" );
@@ -230,9 +230,9 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.controllerDmgBall = GetSkillCvar( "sk_controller_dmgball" );
 #if FEATURE_MASSN
 	// Massn
-	gSkillData.massnHealth = GetSkillCvar( "sk_massassin_health" );
-	gSkillData.massnDmgKick = GetSkillCvar( "sk_massassin_kick" );
-	gSkillData.massnGrenadeSpeed = GetSkillCvar( "sk_massassin_gspeed" );
+	gSkillData.massnHealth = GetSkillCvar( "sk_massassin_health", "sk_hgrunt_health" );
+	gSkillData.massnDmgKick = GetSkillCvar( "sk_massassin_kick", "sk_hgrunt_kick" );
+	gSkillData.massnGrenadeSpeed = GetSkillCvar( "sk_massassin_gspeed", "sk_hgrunt_gspeed" );
 #endif
 	// Nihilanth
 	gSkillData.nihilanthHealth = GetSkillCvar( "sk_nihilanth_health" );
@@ -258,7 +258,7 @@ void CGameRules::RefreshSkillData ( void )
 #endif
 #if FEATURE_OTIS
 	// Otis
-	gSkillData.otisHealth = GetSkillCvar( "sk_otis_health");
+	gSkillData.otisHealth = GetSkillCvar( "sk_otis_health", "sk_barney_health" );
 #endif
 #if FEATURE_ROBOGRUNT
 	// Robogrunt
@@ -299,9 +299,9 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.zombieDmgBothSlash = GetSkillCvar( "sk_zombie_dmg_both_slash" );
 #if FEATURE_ZOMBIE_BARNEY
 	// Zombie Barney
-	gSkillData.zombieBarneyHealth = GetSkillCvar( "sk_zombie_barney_health");
-	gSkillData.zombieBarneyDmgOneSlash = GetSkillCvar( "sk_zombie_barney_dmg_one_slash");
-	gSkillData.zombieBarneyDmgBothSlash = GetSkillCvar( "sk_zombie_barney_dmg_both_slash");
+	gSkillData.zombieBarneyHealth = GetSkillCvar( "sk_zombie_barney_health", "sk_zombie_health" );
+	gSkillData.zombieBarneyDmgOneSlash = GetSkillCvar( "sk_zombie_barney_dmg_one_slash", "sk_zombie_dmg_one_slash" );
+	gSkillData.zombieBarneyDmgBothSlash = GetSkillCvar( "sk_zombie_barney_dmg_both_slash", "sk_zombie_dmg_both_slash" );
 #endif
 #if FEATURE_ZOMBIE_SOLDIER
 	// Zombie Soldier
@@ -418,6 +418,10 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.plrDisplacerRadius = GetSkillCvar( "sk_plr_displacer_radius" );
 #endif
 
+#if FEATURE_UZI
+	gSkillData.plrDmgUzi = GetSkillCvar( "sk_plr_uzi" );
+#endif
+
 	// MONSTER WEAPONS
 	gSkillData.monDmg12MM = GetSkillCvar( "sk_12mm_bullet" );
 	gSkillData.monDmgMP5 = GetSkillCvar ("sk_9mmAR_bullet" );
@@ -456,6 +460,11 @@ void CGameRules::RefreshSkillData ( void )
 	
 	// panic delay factor
 	gSkillData.panicDelayFactor = GetSkillCvar( "sk_panic_delay_factor" );
+}
+
+void CGameRules::ClientUserInfoChanged( CBasePlayer *pPlayer, char *infobuffer )
+{
+	pPlayer->SetPrefsFromUserinfo( infobuffer );
 }
 
 //=========================================================

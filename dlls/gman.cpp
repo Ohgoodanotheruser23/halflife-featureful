@@ -34,7 +34,7 @@ public:
 	void SetYawSpeed( void );
 	int DefaultClassify ( void );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
-	int ISoundMask ( void );
+	int DefaultISoundMask ( void );
 
 	int Save( CSave &save ); 
 	int Restore( CRestore &restore );
@@ -46,6 +46,9 @@ public:
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
 	void PlayScriptedSentence( const char *pszSentence, float duration, float volume, float attenuation, BOOL bConcurrent, CBaseEntity *pListener );
+
+	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
+	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
 
 	EHANDLE m_hPlayer;
 	EHANDLE m_hTalkTarget;
@@ -107,7 +110,7 @@ void CGMan::HandleAnimEvent( MonsterEvent_t *pEvent )
 //=========================================================
 // ISoundMask - generic monster can't hear.
 //=========================================================
-int CGMan::ISoundMask( void )
+int CGMan::DefaultISoundMask( void )
 {
 	return 0;
 }
@@ -120,7 +123,7 @@ void CGMan::Spawn()
 	Precache();
 
 	SetMyModel( "models/gman.mdl" );
-	UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
+	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid		= SOLID_SLIDEBOX;
 	pev->movetype		= MOVETYPE_STEP;

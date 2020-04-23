@@ -60,14 +60,14 @@ public:
 	int DefaultClassify( void );
 	const char* DefaultDisplayName() { return "Human Grunt"; }
 	const char* ReverseRelationshipModel();
-	int ISoundMask( void );
+	int DefaultISoundMask( void );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	BOOL FCanCheckAttacks( void );
 	BOOL CheckMeleeAttack1( float flDot, float flDist );
 	BOOL CheckRangeAttack1( float flDot, float flDist );
 	BOOL CheckRangeAttack2( float flDot, float flDist );
 	void CheckAmmo( void );
-	void SetActivity( Activity NewActivity );
+	int LookupActivity(int activity);
 	void StartTask( Task_t *pTask );
 	void RunTask( Task_t *pTask );
 	void DeathSound( void );
@@ -103,6 +103,10 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
+	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
+	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
+
+	void ReportAIState(ALERT_TYPE level);
 
 	// checking the feasibility of a grenade toss is kind of costly, so we do it every couple of seconds,
 	// not every server frame.
@@ -148,9 +152,9 @@ class CHGruntRepel : public CBaseMonster
 public:
 	void Spawn( void );
 	void Precache( void );
+	void KeyValue(KeyValueData* pkvd);
 	void EXPORT RepelUse ( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	int m_iSpriteTexture;	// Don't save, precache
-	virtual int SizeForGrapple() { return GRAPPLE_LARGE; }
 	virtual const char* TrooperName();
 	virtual void PrepareBeforeSpawn(CBaseEntity* pEntity);
 };

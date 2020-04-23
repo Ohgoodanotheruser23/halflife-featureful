@@ -50,7 +50,7 @@ void UTIL_MuzzleLight( Vector vecSrc, float flRadius, byte r, byte g, byte b, fl
 float UTIL_WeaponTimeBase( void )
 {
 #if defined( CLIENT_WEAPONS )
-	return 0.0;
+	return 0.0f;
 #else
 	return gpGlobals->time;
 #endif
@@ -146,7 +146,7 @@ float UTIL_SharedRandomFloat( unsigned int seed, float low, float high )
 
 		tensixrand = U_Random() & 65535;
 
-		offset = (float)tensixrand / 65536.0;
+		offset = (float)tensixrand / 65536.0f;
 
 		return ( low + offset * range );
 	}
@@ -163,8 +163,8 @@ void UTIL_ParametricRocket( entvars_t *pev, Vector vecOrigin, Vector vecAngles, 
 
 	// Now compute how long it will take based on current velocity
 	Vector vecTravel = pev->endpos - pev->startpos;
-	float travelTime = 0.0;
-	if( pev->velocity.Length() > 0 )
+	float travelTime = 0.0f;
+	if( pev->velocity.Length() > 0.0f )
 	{
 		travelTime = vecTravel.Length() / pev->velocity.Length();
 	}
@@ -474,7 +474,7 @@ int UTIL_MonstersInSphere( CBaseEntity **pList, int listMax, const Vector &cente
 
 		// Use origin for X & Y since they are centered for all monsters
 		// Now X
-		delta = center.x - pEdict->v.origin.x;//( pEdict->v.absmin.x + pEdict->v.absmax.x ) * 0.5;
+		delta = center.x - pEdict->v.origin.x;//( pEdict->v.absmin.x + pEdict->v.absmax.x ) * 0.5f;
 		delta *= delta;
 
 		if( delta > radiusSquared )
@@ -482,7 +482,7 @@ int UTIL_MonstersInSphere( CBaseEntity **pList, int listMax, const Vector &cente
 		distance = delta;
 
 		// Now Y
-		delta = center.y - pEdict->v.origin.y;//( pEdict->v.absmin.y + pEdict->v.absmax.y )*0.5;
+		delta = center.y - pEdict->v.origin.y;//( pEdict->v.absmin.y + pEdict->v.absmax.y ) * 0.5f;
 		delta *= delta;
 
 		distance += delta;
@@ -490,7 +490,7 @@ int UTIL_MonstersInSphere( CBaseEntity **pList, int listMax, const Vector &cente
 			continue;
 
 		// Now Z
-		delta = center.z - ( pEdict->v.absmin.z + pEdict->v.absmax.z ) * 0.5;
+		delta = center.z - ( pEdict->v.absmin.z + pEdict->v.absmax.z ) * 0.5f;
 		delta *= delta;
 
 		distance += delta;
@@ -551,6 +551,19 @@ CBaseEntity *UTIL_FindEntityByClassname( CBaseEntity *pStartEntity, const char *
 CBaseEntity *UTIL_FindEntityByTargetname( CBaseEntity *pStartEntity, const char *szName )
 {
 	return UTIL_FindEntityByString( pStartEntity, "targetname", szName );
+}
+
+CBaseEntity *UTIL_FindEntityByTargetname( CBaseEntity *pStartEntity, const char *szName, CBaseEntity *pActivator )
+{
+	if (UTIL_TargetnameIsActivator(szName))
+	{
+		if (pActivator && (pStartEntity == NULL || pActivator->eoffset() > pStartEntity->eoffset()))
+			return pActivator;
+		else
+			return NULL;
+	}
+	else
+		return UTIL_FindEntityByTargetname( pStartEntity, szName );
 }
 
 CBaseEntity *UTIL_FindEntityGeneric( const char *szWhatever, Vector &vecSrc, float flRadius )
@@ -1105,13 +1118,26 @@ int UTIL_IsMasterTriggered( string_t sMaster, CBaseEntity *pActivator )
 {
 	if( sMaster )
 	{
-		edict_t *pentTarget = FIND_ENTITY_BY_TARGETNAME( NULL, STRING( sMaster ) );
+		bool reverse = false;
+		const char* szMaster = STRING( sMaster );
+		if (szMaster[0] == '~')
+		{
+			szMaster++;
+			reverse = true;
+		}
+
+		edict_t *pentTarget = FIND_ENTITY_BY_TARGETNAME( NULL, szMaster );
 
 		if( !FNullEnt( pentTarget ) )
 		{
 			CBaseEntity *pMaster = CBaseEntity::Instance( pentTarget );
 			if( pMaster && ( pMaster->ObjectCaps() & FCAP_MASTER ) )
-				return pMaster->IsTriggered( pActivator );
+			{
+				if (reverse)
+					return !pMaster->IsTriggered( pActivator );
+				else
+					return pMaster->IsTriggered( pActivator );
+			}
 		}
 
 		ALERT( at_console, "Master was null or not a master!\n" );
@@ -1119,6 +1145,18 @@ int UTIL_IsMasterTriggered( string_t sMaster, CBaseEntity *pActivator )
 
 	// if this isn't a master entity, just say yes.
 	return 1;
+}
+
+bool UTIL_TargetnameIsActivator(const char *targetName)
+{
+	return targetName != 0 && (FStrEq(targetName, "*locus") || FStrEq(targetName, "!activator"));
+}
+
+bool UTIL_TargetnameIsActivator(string_t targetName)
+{
+	if (FStringNull(targetName))
+		return false;
+	return UTIL_TargetnameIsActivator(STRING(targetName));
 }
 
 BOOL UTIL_ShouldShowBlood( int color )
@@ -1233,7 +1271,7 @@ void UTIL_DecalTrace( TraceResult *pTrace, int decalNumber )
 	if( index < 0 )
 		return;
 
-	if( pTrace->flFraction == 1.0 )
+	if( pTrace->flFraction == 1.0f )
 		return;
 
 	// Only decal BSP models
@@ -1302,7 +1340,7 @@ void UTIL_PlayerDecalTrace( TraceResult *pTrace, int playernum, int decalNumber,
 	else
 		index = decalNumber;
 
-	if( pTrace->flFraction == 1.0 )
+	if( pTrace->flFraction == 1.0f )
 		return;
 
 	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
@@ -1325,7 +1363,7 @@ void UTIL_GunshotDecalTrace( TraceResult *pTrace, int decalNumber )
 	if( index < 0 )
 		return;
 
-	if( pTrace->flFraction == 1.0 )
+	if( pTrace->flFraction == 1.0f )
 		return;
 
 	MESSAGE_BEGIN( MSG_PAS, SVC_TEMPENTITY, pTrace->vecEndPos );
@@ -1355,7 +1393,7 @@ void UTIL_Ricochet( const Vector &position, float scale )
 		WRITE_COORD( position.x );
 		WRITE_COORD( position.y );
 		WRITE_COORD( position.z );
-		WRITE_BYTE( (int)( scale * 10 ) );
+		WRITE_BYTE( (int)( scale * 10.0f ) );
 	MESSAGE_END();
 }
 
@@ -1402,6 +1440,49 @@ void UTIL_StringToVector( float *pVector, const char *pString )
 		*/
 		for( j = j + 1;j < 3; j++ )
 			pVector[j] = 0;
+	}
+}
+
+//LRC - randomized vectors of the form "0 0 0 .. 1 0 0"
+void UTIL_StringToRandomVector( float *pVector, const char *pString )
+{
+	char *pstr, *pfront, tempString[128];
+	int	j;
+	float pAltVec[3];
+
+	strcpy( tempString, pString );
+	pstr = pfront = tempString;
+
+	for ( j = 0; j < 3; j++ )			// lifted from pr_edict.c
+	{
+		pVector[j] = atof( pfront );
+
+		while ( *pstr && *pstr != ' ' ) pstr++;
+		if (!*pstr) break;
+		pstr++;
+		pfront = pstr;
+	}
+	if (j < 2)
+	{
+		/*
+		ALERT( at_error, "Bad field in entity!! %s:%s == \"%s\"\n",
+			pkvd->szClassName, pkvd->szKeyName, pkvd->szValue );
+		*/
+		for (j = j+1;j < 3; j++)
+			pVector[j] = 0;
+	}
+	else if (*pstr == '.')
+	{
+		pstr++;
+		if (*pstr != '.') return;
+		pstr++;
+		if (*pstr != ' ') return;
+
+		UTIL_StringToVector(pAltVec, pstr);
+
+		pVector[0] = RANDOM_FLOAT( pVector[0], pAltVec[0] );
+		pVector[1] = RANDOM_FLOAT( pVector[1], pAltVec[1] );
+		pVector[2] = RANDOM_FLOAT( pVector[2], pAltVec[2] );
 	}
 }
 
@@ -1472,9 +1553,9 @@ float UTIL_WaterLevel( const Vector &position, float minz, float maxz )
 		return maxz;
 
 	float diff = maxz - minz;
-	while( diff > 1.0 )
+	while( diff > 1.0f )
 	{
-		midUp.z = minz + diff / 2.0;
+		midUp.z = minz + diff / 2.0f;
 		if( UTIL_PointContents( midUp ) == CONTENTS_WATER )
 		{
 			minz = midUp.z;
@@ -1493,7 +1574,7 @@ extern DLL_GLOBAL short g_sModelIndexBubbles;// holds the index for the bubbles 
 
 void UTIL_Bubbles( Vector mins, Vector maxs, int count )
 {
-	Vector mid = ( mins + maxs ) * 0.5;
+	Vector mid = ( mins + maxs ) * 0.5f;
 
 	float flHeight = UTIL_WaterLevel( mid, mid.z, mid.z + 1024 );
 	flHeight = flHeight - mins.z;
@@ -1581,7 +1662,7 @@ void UTIL_PrecacheOther( const char *szClassname )
 	REMOVE_ENTITY( pent );
 }
 
-void UTIL_PrecacheMonster(const char *szClassname, BOOL reverseRelationship)
+void UTIL_PrecacheMonster(const char *szClassname, BOOL reverseRelationship, Vector* vecMin, Vector* vecMax)
 {
 	edict_t	*pent = CREATE_NAMED_ENTITY( MAKE_STRING( szClassname ) );
 	if( FNullEnt( pent ) )
@@ -1595,7 +1676,13 @@ void UTIL_PrecacheMonster(const char *szClassname, BOOL reverseRelationship)
 	{
 		CBaseMonster *pMonster = pEntity->MyMonsterPointer();
 		if (pMonster)
+		{
 			pMonster->m_reverseRelationship = reverseRelationship;
+			if (vecMin)
+				*vecMin = pMonster->DefaultMinHullSize();
+			if (vecMax)
+				*vecMax = pMonster->DefaultMaxHullSize();
+		}
 		pEntity->Precache();
 	}
 	REMOVE_ENTITY( pent );
@@ -1798,12 +1885,12 @@ void CSaveRestoreBuffer::BufferRewind( int size )
 	m_pdata->size -= size;
 }
 
-#ifndef _WIN32
+#if !defined _WIN32 && !defined __WATCOMC__
 extern "C" {
 unsigned _rotr( unsigned val, int shift )
 {
-	register unsigned lobit;	/* non-zero means lo bit set */
-	register unsigned num = val;	/* number to rotate */
+	unsigned lobit;	/* non-zero means lo bit set */
+	unsigned num = val;	/* number to rotate */
 
 	shift &= 0x1f;			/* modulo 32 -- this will also make
 	                                   negative shifts work */
@@ -2265,7 +2352,7 @@ int CRestore::ReadField( void *pBaseData, TYPEDESCRIPTION *pFields, int fieldCou
 							pString++;
 						}
 						pInputData = pString;
-						if( strlen( (char *)pInputData ) == 0 )
+						if( ( (char *)pInputData )[0] == '\0' )
 							*( (string_t *)pOutputData ) = 0;
 						else
 						{
@@ -2360,7 +2447,7 @@ int CRestore::ReadField( void *pBaseData, TYPEDESCRIPTION *pFields, int fieldCou
 						*( (void**)pOutputData ) = *(void **)pInputData;
 						break;
 					case FIELD_FUNCTION:
-						if( strlen( (char *)pInputData ) == 0 )
+						if( ( (char *)pInputData )[0] == '\0' )
 							*( (void**)pOutputData ) = 0;
 						else
 							*( (void**)pOutputData ) = (void*)FUNCTION_FROM_NAME( (char *)pInputData );
@@ -2619,4 +2706,185 @@ char *memfgets( byte *pMemFile, int fileSize, int &filePos, char *pBuffer, int b
 
 	// No data read, bail
 	return NULL;
+}
+
+
+// LRC- change the origin to the given position, and bring any movewiths along too.
+void UTIL_AssignOrigin( CBaseEntity *pEntity, const Vector vecOrigin )
+{
+	UTIL_AssignOrigin( pEntity, vecOrigin, TRUE);
+}
+
+// LRC- bInitiator is true if this is being called directly, rather than because pEntity is moving with something else.
+void UTIL_AssignOrigin( CBaseEntity *pEntity, const Vector vecOrigin, BOOL bInitiator)
+{
+//	ALERT(at_console, "AssignOrigin before %f, after %f\n", pEntity->pev->origin.x, vecOrigin.x);
+#if 0
+	Vector vecDiff = vecOrigin - pEntity->pev->origin;
+	if (vecDiff.Length() > 0.01 && CVAR_GET_FLOAT("sohl_mwdebug"))
+		ALERT(at_console,"AssignOrigin %s %s: (%f %f %f) goes to (%f %f %f)\n",STRING(pEntity->pev->classname), STRING(pEntity->pev->targetname), pEntity->pev->origin.x, pEntity->pev->origin.y, pEntity->pev->origin.z, vecOrigin.x, vecOrigin.y, vecOrigin.z);
+#endif
+
+//	UTIL_SetDesiredPos(pEntity, vecOrigin);
+//	pEntity->pev->origin = vecOrigin;
+	UTIL_SetOrigin(pEntity->pev, vecOrigin);
+
+//	if (pEntity->m_vecDesiredVel != g_vecZero)
+//	{
+//		pEntity->pev->velocity = pEntity->m_vecDesiredVel;
+//	}
+#if 0
+	if (bInitiator && pEntity->m_pMoveWith)
+	{
+//		UTIL_DesiredMWOffset( pEntity );
+//		if (pEntity->m_vecMoveWithOffset != (pEntity->pev->origin - pEntity->m_pMoveWith->pev->origin))
+//			ALERT(at_console, "Changing MWOffset for %s \"%s\"\n", STRING(pEntity->pev->classname), STRING(pEntity->pev->targetname));
+		pEntity->m_vecMoveWithOffset = pEntity->pev->origin - pEntity->m_pMoveWith->pev->origin;
+//		ALERT(at_console,"set m_vecMoveWithOffset = %f %f %f\n",pEntity->m_vecMoveWithOffset.x,pEntity->m_vecMoveWithOffset.y,pEntity->m_vecMoveWithOffset.z);
+	}
+	if (pEntity->m_pChildMoveWith) // now I've moved pEntity, does anything else have to move with it?
+	{
+		CBaseEntity* pChild = pEntity->m_pChildMoveWith;
+//		if (vecDiff != g_vecZero)
+//		{
+			Vector vecTemp;
+			while (pChild)
+			{
+				//ALERT(at_console,"  pre: parent origin is (%f %f %f), child origin is (%f %f %f)\n",
+				//	pEntity->pev->origin.x,pEntity->pev->origin.y,pEntity->pev->origin.z,
+				//	pChild->pev->origin.x,pChild->pev->origin.y,pChild->pev->origin.z
+				//);
+				if (pChild->pev->movetype != MOVETYPE_PUSH || pChild->pev->velocity == pEntity->pev->velocity) // if the child isn't moving under its own power
+				{
+					UTIL_AssignOrigin( pChild, vecOrigin + pChild->m_vecMoveWithOffset, FALSE );
+//					ALERT(at_console,"used m_vecMoveWithOffset based on %f %f %f to set %f %f %f\n",pEntity->pev->origin.x,pEntity->pev->origin.y,pEntity->pev->origin.z,pChild->pev->origin.x,pChild->pev->origin.y,pChild->pev->origin.z);
+				}
+				else
+				{
+					vecTemp = vecDiff + pChild->pev->origin;
+					UTIL_AssignOrigin( pChild, vecTemp, FALSE );
+				}
+				//ALERT(at_console,"  child origin becomes (%f %f %f)\n",pChild->pev->origin.x,pChild->pev->origin.y,pChild->pev->origin.z);
+				//ALERT(at_console,"ent %p has sibling %p\n",pChild,pChild->m_pSiblingMoveWith);
+				pChild = pChild->m_pSiblingMoveWith;
+			}
+//		}
+	}
+#endif
+}
+
+void UTIL_SetAngles( CBaseEntity *pEntity, const Vector vecAngles )
+{
+	UTIL_SetAngles( pEntity, vecAngles, TRUE );
+}
+
+void UTIL_SetAngles( CBaseEntity *pEntity, const Vector vecAngles, BOOL bInitiator)
+{
+	Vector vecDiff = vecAngles - pEntity->pev->angles;
+#if 0
+	if (vecDiff.Length() > 0.01 && CVAR_GET_FLOAT("sohl_mwdebug"))
+		ALERT(at_console,"SetAngles %s %s: (%f %f %f) goes to (%f %f %f)\n",STRING(pEntity->pev->classname), STRING(pEntity->pev->targetname), pEntity->pev->angles.x, pEntity->pev->angles.y, pEntity->pev->angles.z, vecAngles.x, vecAngles.y, vecAngles.z);
+#endif
+
+//	UTIL_SetDesiredAngles(pEntity, vecAngles);
+	pEntity->pev->angles = vecAngles;
+#if 0
+	if (bInitiator && pEntity->m_pMoveWith)
+	{
+		pEntity->m_vecRotWithOffset = vecAngles - pEntity->m_pMoveWith->pev->angles;
+	}
+	if (pEntity->m_pChildMoveWith) // now I've moved pEntity, does anything else have to move with it?
+	{
+		CBaseEntity* pChild = pEntity->m_pChildMoveWith;
+		Vector vecTemp;
+		while (pChild)
+		{
+			if (pChild->pev->avelocity == pEntity->pev->avelocity) // if the child isn't turning under its own power
+			{
+				UTIL_SetAngles( pChild, vecAngles + pChild->m_vecRotWithOffset, FALSE );
+			}
+			else
+			{
+				vecTemp = vecDiff + pChild->pev->angles;
+				UTIL_SetAngles( pChild, vecTemp, FALSE );
+			}
+			//ALERT(at_console,"  child origin becomes (%f %f %f)\n",pChild->pev->origin.x,pChild->pev->origin.y,pChild->pev->origin.z);
+			//ALERT(at_console,"ent %p has sibling %p\n",pChild,pChild->m_pSiblingMoveWith);
+			pChild = pChild->m_pSiblingMoveWith;
+		}
+	}
+#endif
+}
+
+//LRC- an arbitrary limit. If this number is exceeded we assume there's an infinite loop, and abort.
+#define MAX_MOVEWITH_DEPTH 100
+
+//LRC
+void UTIL_SetVelocity ( CBaseEntity *pEnt, const Vector vecSet )
+{
+	Vector vecNew;
+#if 0
+	if (pEnt->m_pMoveWith)
+		vecNew = vecSet + pEnt->m_pMoveWith->pev->velocity;
+	else
+#endif
+		vecNew = vecSet;
+
+//	ALERT(at_console,"SetV: %s is sent (%f,%f,%f) - goes from (%f,%f,%f) to (%f,%f,%f)\n",
+//	    STRING(pEnt->pev->targetname), vecSet.x, vecSet.y, vecSet.z,
+//		pEnt->pev->velocity.x, pEnt->pev->velocity.y, pEnt->pev->velocity.z,
+//		vecNew.x, vecNew.y, vecNew.z
+//	);
+#if 0
+	if ( pEnt->m_pChildMoveWith )
+	{
+		CBaseEntity *pMoving = pEnt->m_pChildMoveWith;
+		int sloopbreaker = MAX_MOVEWITH_DEPTH; // LRC - to save us from infinite loops
+		while (pMoving)
+		{
+			UTIL_SetMoveWithVelocity(pMoving, vecNew, MAX_MOVEWITH_DEPTH );
+			pMoving = pMoving->m_pSiblingMoveWith;
+			sloopbreaker--;
+			if (sloopbreaker <= 0)
+			{
+				ALERT(at_error, "SetVelocity: Infinite sibling list for MoveWith!\n");
+				break;
+			}
+		}
+	}
+#endif
+	pEnt->pev->velocity = vecNew;
+}
+
+void UTIL_SetAvelocity ( CBaseEntity *pEnt, const Vector vecSet )
+{
+	Vector vecNew;
+#if 0
+	if (pEnt->m_pMoveWith)
+		vecNew = vecSet + pEnt->m_pMoveWith->pev->avelocity;
+	else
+#endif
+		vecNew = vecSet;
+
+//	ALERT(at_console, "Setting AVelocity %f %f %f\n", vecNew.x, vecNew.y, vecNew.z);
+#if 0
+	if ( pEnt->m_pChildMoveWith )
+	{
+		CBaseEntity *pMoving = pEnt->m_pChildMoveWith;
+		int sloopbreaker = MAX_MOVEWITH_DEPTH; // LRC - to save us from infinite loops
+		while (pMoving)
+		{
+			UTIL_SetMoveWithAvelocity(pMoving, vecNew, MAX_MOVEWITH_DEPTH );
+			pMoving = pMoving->m_pSiblingMoveWith;
+			sloopbreaker--;
+			if (sloopbreaker <= 0)
+			{
+				ALERT(at_error, "SetAvelocity: Infinite sibling list for MoveWith!\n");
+				break;
+			}
+		}
+	}
+#endif
+	//UTIL_SetDesiredAvelocity(pEnt, vecNew);
+	pEnt->pev->avelocity = vecNew;
 }

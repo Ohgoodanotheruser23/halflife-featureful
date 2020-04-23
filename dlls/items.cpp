@@ -293,22 +293,23 @@ extern int gEvilImpulse101;
 
 void CItem::Spawn( void )
 {
-	pev->movetype = MOVETYPE_TOSS;
+	if (FBitSet(pev->spawnflags, SF_ITEM_NOFALL))
+		pev->movetype = MOVETYPE_NONE;
+	else
+		pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 	UTIL_SetOrigin( pev, pev->origin );
-	UTIL_SetSize( pev, Vector( -16, -16, 0 ), Vector( 16, 16, 16 ) );
+	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
 	SetTouch( &CItem::ItemTouch );
-	SetThink( &CItem::FallThink );
-	pev->nextthink = gpGlobals->time+0.1;
-}
 
-void CItem::FallThink()
-{
-	if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
+	if (pev->movetype != MOVETYPE_NONE)
 	{
-		ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), pev->origin.x, pev->origin.y, pev->origin.z);
-		UTIL_Remove( this );
-		return;
+		if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
+		{
+			ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), (double)pev->origin.x, (double)pev->origin.y, (double)pev->origin.z);
+			UTIL_Remove( this );
+			return;
+		}
 	}
 }
 
@@ -319,6 +320,17 @@ void CItem::ItemTouch( CBaseEntity *pOther )
 	}
 }
 
+void CItem::FallThink()
+{
+	pev->nextthink = gpGlobals->time + 0.1;
+	if( pev->flags & FL_ONGROUND )
+	{
+		pev->solid = SOLID_TRIGGER;
+		UTIL_SetOrigin( pev, pev->origin );
+		ResetThink();
+	}
+}
+
 int CItem::ObjectCaps()
 {
 	if (use_to_take.value && !(pev->effects & EF_NODRAW)) {
@@ -326,6 +338,12 @@ int CItem::ObjectCaps()
 	} else {
 		return CBaseEntity::ObjectCaps();
 	}
+}
+
+void CItem::SetObjectCollisionBox()
+{
+	pev->absmin = pev->origin + Vector( -16, -16, 0 );
+	pev->absmax = pev->origin + Vector( 16, 16, 16 );
 }
 
 void CItem::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -426,6 +444,7 @@ void CItem::PrecacheMyModel(const char *model)
 
 class CItemSuit : public CItem
 {
+public:
 	void Spawn( void )
 	{
 		Precache();
@@ -469,15 +488,16 @@ LINK_ENTITY_TO_CLASS( item_suit, CItemSuit )
 
 class CItemBattery : public CItem
 {
+public:
 	void Spawn( void )
 	{
 		Precache();
-		SetMyModel( "models/w_battery.mdl" );
+		SetMyModel( DefaultModel() );
 		CItem::Spawn();
 	}
 	void Precache( void )
 	{
-		PrecacheMyModel( "models/w_battery.mdl" );
+		PrecacheMyModel( DefaultModel() );
 		PRECACHE_SOUND( "items/gunpickup2.wav" );
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
@@ -490,10 +510,7 @@ class CItemBattery : public CItem
 		if( ( pPlayer->pev->armorvalue < MAX_NORMAL_BATTERY ) &&
 			( pPlayer->pev->weapons & ( 1 << WEAPON_SUIT ) ) )
 		{
-			int pct;
-			char szcharge[64];
-
-			pPlayer->pev->armorvalue += gSkillData.batteryCapacity;
+			pPlayer->pev->armorvalue += pev->health > 0 ? pev->health : DefaultCapacity();
 			pPlayer->pev->armorvalue = Q_min( pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY );
 
 			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
@@ -502,24 +519,54 @@ class CItemBattery : public CItem
 				WRITE_STRING( STRING( pev->classname ) );
 			MESSAGE_END();
 
-			// Suit reports new power level
-			// For some reason this wasn't working in release build -- round it.
-			pct = (int)( (float)( pPlayer->pev->armorvalue * 100.0 ) * ( 1.0 / MAX_NORMAL_BATTERY ) + 0.5 );
-			pct = ( pct / 5 );
-			if( pct > 0 )
-				pct--;
+			if (ShouldSetSuitUpdate())
+			{
+				int pct;
+				char szcharge[64];
+				// Suit reports new power level
+				// For some reason this wasn't working in release build -- round it.
+				pct = (int)( (float)( pPlayer->pev->armorvalue * 100.0f ) * ( 1.0f / MAX_NORMAL_BATTERY ) + 0.5f );
+				pct = ( pct / 5 );
+				if( pct > 0 )
+					pct--;
 
-			sprintf( szcharge,"!HEV_%1dP", pct );
+				sprintf( szcharge,"!HEV_%1dP", pct );
 
-			//EMIT_SOUND_SUIT( ENT( pev ), szcharge );
-			pPlayer->SetSuitUpdate( szcharge, FALSE, SUIT_NEXT_IN_30SEC);
+				//EMIT_SOUND_SUIT( ENT( pev ), szcharge );
+				pPlayer->SetSuitUpdate( szcharge, FALSE, SUIT_NEXT_IN_30SEC);
+			}
+
 			return TRUE;
 		}
 		return FALSE;
 	}
+protected:
+	virtual const char* DefaultModel() { return "models/w_battery.mdl"; }
+	virtual bool ShouldSetSuitUpdate() { return true; }
+	virtual int DefaultCapacity() { return gSkillData.batteryCapacity; }
 };
 
 LINK_ENTITY_TO_CLASS( item_battery, CItemBattery )
+
+class CItemArmorVest : public CItemBattery
+{
+protected:
+	const char* DefaultModel() { return "models/barney_vest.mdl"; }
+	bool ShouldSetSuitUpdate() { return false; }
+	int DefaultCapacity() { return 60; }
+};
+
+LINK_ENTITY_TO_CLASS( item_armorvest, CItemArmorVest )
+
+class CItemHelmet : public CItemBattery
+{
+protected:
+	const char* DefaultModel() { return "models/barney_helmet.mdl"; }
+	bool ShouldSetSuitUpdate() { return false; }
+	int DefaultCapacity() { return 40; }
+};
+
+LINK_ENTITY_TO_CLASS( item_helmet, CItemHelmet )
 
 class CItemAntidote : public CItem
 {
@@ -532,6 +579,8 @@ class CItemAntidote : public CItem
 	void Precache( void )
 	{
 		PrecacheMyModel( "models/w_antidote.mdl" );
+		if (!FStringNull(pev->noise))
+			PRECACHE_SOUND( STRING(pev->noise) );
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
@@ -542,6 +591,13 @@ class CItemAntidote : public CItem
 		pPlayer->SetSuitUpdate( "!HEV_DET4", FALSE, SUIT_NEXT_IN_1MIN );
 
 		pPlayer->m_rgItems[ITEM_ANTIDOTE] += 1;
+
+		if (!FStringNull(pev->noise))
+			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, STRING(pev->noise), 1, ATTN_NORM );
+		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
+			WRITE_STRING( STRING( pev->classname ) );
+		MESSAGE_END();
+
 		return TRUE;
 	}
 };
@@ -562,6 +618,17 @@ class CItemSecurity : public CItem
 		if (!FStringNull(pev->noise))
 			PRECACHE_SOUND( STRING(pev->noise) );
 	}
+	void KeyValue(KeyValueData* pkvd)
+	{
+		if (FStrEq(pkvd->szKeyName, "hudname"))
+		{
+			pev->netname = ALLOC_STRING(pkvd->szValue);
+			pkvd->fHandled = TRUE;
+		}
+		else
+			CItem::KeyValue(pkvd);
+	}
+
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
 		if( pPlayer->pev->deadflag != DEAD_NO )
@@ -573,7 +640,7 @@ class CItemSecurity : public CItem
 		if (!FStringNull(pev->noise))
 			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, STRING(pev->noise), 1, ATTN_NORM );
 		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
-			WRITE_STRING( STRING( pev->classname ) );
+			WRITE_STRING( FStringNull(pev->netname) ? STRING( pev->classname ) : STRING(pev->netname) );
 		MESSAGE_END();
 		if (!FStringNull(pev->message))
 			UTIL_ShowMessage( STRING( pev->message ), pPlayer );
@@ -654,6 +721,10 @@ LINK_ENTITY_TO_CLASS(item_flashlight, CItemFlashlight)
 //=========================================================
 // Generic item
 //=========================================================
+#define SF_ITEM_GENERIC_DROP_TO_FLOOR 1
+#define SF_ITEM_GENERIC_DONT_TRANSIT 2
+#define SF_ITEM_GENERIC_APPLY_GRAVITY 4
+
 class CItemGeneric : public CBaseAnimating
 {
 public:
@@ -665,6 +736,9 @@ public:
 	void Spawn(void);
 	void Precache(void);
 	void KeyValue(KeyValueData* pkvd);
+	int	ObjectCaps(void);
+
+	void SetObjectCollisionBox( void );
 
 	void EXPORT StartupThink(void);
 	void EXPORT SequenceThink(void);
@@ -692,16 +766,39 @@ void CItemGeneric::Spawn(void)
 		SET_MODEL(ENT(pev), STRING(pev->model));
 	}
 
+	if (FBitSet(pev->spawnflags, SF_ITEM_GENERIC_APPLY_GRAVITY))
+	{
+		pev->solid = SOLID_BBOX;
+		pev->movetype = MOVETYPE_TOSS;
+	}
+	else
+	{
+		pev->solid = SOLID_NOT;
+		pev->movetype = MOVETYPE_NONE;
+	}
+
 	UTIL_SetOrigin(pev, pev->origin);
-	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 32));
+	UTIL_SetSize(pev, g_vecZero, g_vecZero);
 
 	pev->takedamage	 = DAMAGE_NO;
-	pev->solid		 = SOLID_NOT;
-	pev->sequence	 = -1;
+	pev->sequence	 = 0;
 
 	// Call startup sequence to look for a sequence to play.
-	SetThink(&CItemGeneric::StartupThink);
+	if (!FStringNull(m_iszSequenceName))
+	{
+		SetThink(&CItemGeneric::StartupThink);
+	}
+
 	pev->nextthink = gpGlobals->time + 0.1f;
+
+	if (FBitSet(pev->spawnflags, SF_ITEM_GENERIC_DROP_TO_FLOOR))
+	{
+		if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
+		{
+			ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), pev->origin.x, pev->origin.y, pev->origin.z);
+			UTIL_Remove( this );
+		}
+	}
 }
 
 void CItemGeneric::Precache(void)
@@ -721,11 +818,31 @@ void CItemGeneric::KeyValue(KeyValueData* pkvd)
 		CBaseAnimating::KeyValue(pkvd);
 }
 
+int CItemGeneric::ObjectCaps()
+{
+	if (FBitSet(pev->spawnflags, SF_ITEM_GENERIC_DONT_TRANSIT))
+		return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION;
+	else
+		return CBaseEntity::ObjectCaps();
+}
+
+void CItemGeneric::SetObjectCollisionBox()
+{
+	if (FBitSet(pev->spawnflags, SF_ITEM_GENERIC_APPLY_GRAVITY))
+	{
+		pev->absmin = pev->origin + Vector( -16, -16, 0 );
+		pev->absmax = pev->origin + Vector( 16, 16, 16 );
+	}
+	else
+	{
+		CBaseAnimating::SetObjectCollisionBox();
+	}
+}
+
 void CItemGeneric::StartupThink(void)
 {
 	// Try to look for a sequence to play.
-	int iSequence = -1;
-	iSequence = LookupSequence(STRING(m_iszSequenceName));
+	int iSequence = LookupSequence(STRING(m_iszSequenceName));
 
 	// Validate sequence.
 	if (iSequence != -1)
@@ -780,7 +897,7 @@ public:
 	void PlayBeep();
 	void WaitForSequenceEnd();
 	void Think();
-	int ObjectCaps( void ) { return CBaseAnimating::ObjectCaps() | FCAP_IMPULSE_USE | FCAP_ONLYDIRECT_USE; }
+	int ObjectCaps( void ) { return CBaseAnimating::ObjectCaps() | FCAP_IMPULSE_USE | FCAP_ONLYVISIBLE_USE; }
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	void SetActivity(Activity NewActivity);

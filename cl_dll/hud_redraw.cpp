@@ -15,7 +15,8 @@
 //
 // hud_redraw.cpp
 //
-#include <math.h>
+#include <cmath>
+
 #include "hud.h"
 #include "cl_util.h"
 //#include "triangleapi.h"
@@ -75,7 +76,7 @@ void CHud::Think( void )
 	if( m_iFOV == 0 )
 	{
 		// only let players adjust up in fov,  and only if they are not overriden by something else
-		m_iFOV = max( default_fov->value, 90 );  
+		m_iFOV = Q_max( default_fov->value, 90 );  
 	}
 }
 
@@ -86,8 +87,19 @@ int CHud::Redraw( float flTime, int intermission )
 {
 	m_fOldTime = m_flTime;	// save time of previous redraw
 	m_flTime = flTime;
-	m_flTimeDelta = (double)m_flTime - m_fOldTime;
+	m_flTimeDelta = (double)( m_flTime - m_fOldTime );
 	static float m_flShotTime = 0;
+
+	if (fog.fadeDuration)
+	{
+		double fFraction = m_flTimeDelta/fog.fadeDuration;
+		fog.endDist -= (FOG_LIMIT - fog.finalEndDist)*fFraction;
+
+		if (fog.endDist > FOG_LIMIT)
+			fog.endDist = FOG_LIMIT;
+		if (fog.endDist < fog.finalEndDist)
+			fog.endDist = fog.finalEndDist;
+	}
 
 	// Clock was reset, reset delta
 	if( m_flTimeDelta < 0 )
@@ -97,7 +109,7 @@ int CHud::Redraw( float flTime, int intermission )
 	{
 		// Take a screenshot if the client's got the cvar set
 		if( CVAR_GET_FLOAT( "hud_takesshots" ) != 0 )
-			m_flShotTime = flTime + 1.0;	// Take a screenshot in a second
+			m_flShotTime = flTime + 1.0f;	// Take a screenshot in a second
 	}
 
 	if( m_flShotTime && m_flShotTime < flTime )

@@ -49,7 +49,7 @@ public:
 	void Precache( void );
 	void KeyValue(KeyValueData* pkvd);
 	void SetYawSpeed( void );
-	int ISoundMask( void );
+	int DefaultISoundMask( void );
 	void BarneyFirePistol( const char* shotSound, Bullet bullet );
 	void AlertSound( void );
 	const char* DefaultDisplayName() { return "Barney"; }
@@ -61,8 +61,6 @@ public:
 	void StartTask( Task_t *pTask );
 	int DefaultToleranceLevel() { return TOLERANCE_LOW; }
 	BOOL CheckRangeAttack1( float flDot, float flDist );
-
-	void DeclineFollowing( void );
 
 	// Override these to set behavior
 	Schedule_t *GetScheduleOfType( int Type );
@@ -194,7 +192,7 @@ void CBarney::RunTask( Task_t *pTask )
 // ISoundMask - returns a bit mask indicating which types
 // of sounds this monster regards. 
 //=========================================================
-int CBarney::ISoundMask( void) 
+int CBarney::DefaultISoundMask( void) 
 {
 	return bits_SOUND_WORLD |
 			bits_SOUND_COMBAT |
@@ -223,7 +221,7 @@ void CBarney::AlertSound( void )
 	{
 		if( FOkToSpeak() )
 		{
-			PlaySentence( "BA_ATTACK", RANDOM_FLOAT( 2.8, 3.2 ), VOL_NORM, ATTN_IDLE );
+			PlaySentence( "BA_ATTACK", RANDOM_FLOAT( 2.8f, 3.2f ), VOL_NORM, ATTN_IDLE );
 		}
 	}
 }
@@ -262,22 +260,22 @@ void CBarney::SetYawSpeed( void )
 //=========================================================
 BOOL CBarney::CheckRangeAttack1( float flDot, float flDist )
 {
-	if( flDist <= 1024 && flDot >= 0.5 )
+	if( flDist <= 1024.0f && flDot >= 0.5f )
 	{
 		if( gpGlobals->time > m_checkAttackTime )
 		{
 			TraceResult tr;
 
-			Vector shootOrigin = pev->origin + Vector( 0, 0, 55 );
+			Vector shootOrigin = pev->origin + Vector( 0.0f, 0.0f, 55.0f );
 			CBaseEntity *pEnemy = m_hEnemy;
 			Vector shootTarget = ( ( pEnemy->BodyTarget( shootOrigin ) - pEnemy->pev->origin ) + m_vecEnemyLKP );
 			UTIL_TraceLine( shootOrigin, shootTarget, dont_ignore_monsters, ENT( pev ), &tr );
-			m_checkAttackTime = gpGlobals->time + 1;
-			if( tr.flFraction == 1.0 || ( tr.pHit != NULL && CBaseEntity::Instance( tr.pHit ) == pEnemy ) )
+			m_checkAttackTime = gpGlobals->time + 1.0f;
+			if( tr.flFraction == 1.0f || ( tr.pHit != NULL && CBaseEntity::Instance( tr.pHit ) == pEnemy ) )
 				m_lastAttackCheck = TRUE;
 			else
 				m_lastAttackCheck = FALSE;
-			m_checkAttackTime = gpGlobals->time + 1.5;
+			m_checkAttackTime = gpGlobals->time + 1.5f;
 		}
 		return m_lastAttackCheck;
 	}
@@ -309,9 +307,9 @@ void CBarney::BarneyFirePistol( const char* shotSound, Bullet bullet )
 		pitchShift = 0;
 	else
 		pitchShift -= 5;
-	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, shotSound, 1, ATTN_NORM, 0, 100 + pitchShift );
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, shotSound, 1.0f, ATTN_NORM, 0, 100 + pitchShift );
 
-	CSoundEnt::InsertSound( bits_SOUND_COMBAT, pev->origin, 384, 0.3 );
+	CSoundEnt::InsertSound( bits_SOUND_COMBAT, pev->origin, 384, 0.3f );
 
 	// UNDONE: Reload?
 	m_cAmmoLoaded--;// take away a bullet!
@@ -353,13 +351,13 @@ void CBarney::SpawnImpl(const char* modelName, float health)
 	Precache();
 
 	SetMyModel( modelName );
-	UTIL_SetSize( pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX );
+	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	SetMyBloodColor( BLOOD_COLOR_RED );
 	SetMyHealth( health );
-	pev->view_ofs = Vector ( 0, 0, 50 );// position of the eyes relative to monster's origin.
+	pev->view_ofs = Vector ( 0.0f, 0.0f, 50.0f );// position of the eyes relative to monster's origin.
 	m_flFieldOfView = VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so npc will notice player and say hello
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_HackedGunPos = Vector ( 0, 0, 55 );
@@ -376,15 +374,10 @@ void CBarney::Spawn()
 	if (bodystate == -1) {
 		bodystate = RANDOM_LONG(0,1);
 	}
-	if (bodystate == 1)
-	{
+	SetBodygroup(1, bodystate);
+	m_fGunDrawn = FALSE;
+	if (bodystate == BARNEY_BODY_GUNDRAWN) {
 		m_fGunDrawn = TRUE;
-		pev->body = BARNEY_BODY_GUNDRAWN;
-	}
-	else
-	{
-		pev->body = BARNEY_BODY_GUNHOLSTERED;
-		m_fGunDrawn = FALSE;
 	}
 }
 
@@ -474,18 +467,18 @@ void CBarney::PainSound( void )
 	if( gpGlobals->time < m_painTime )
 		return;
 
-	m_painTime = gpGlobals->time + RANDOM_FLOAT( 0.5, 0.75 );
+	m_painTime = gpGlobals->time + RANDOM_FLOAT( 0.5f, 0.75f );
 
 	switch( RANDOM_LONG( 0, 2 ) )
 	{
 	case 0:
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_pain1.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_pain1.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
 		break;
 	case 1:
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_pain2.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_pain2.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
 		break;
 	case 2:
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_pain3.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_pain3.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
 		break;
 	}
 }
@@ -498,10 +491,10 @@ void CBarney::DeathSound( void )
 	switch( RANDOM_LONG( 0, 2 ) )
 	{
 	case 0:
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_die1.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_die1.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
 		break;
 	case 1:
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_die2.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_die2.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
 		break;
 	case 2:
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_die3.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
@@ -517,17 +510,17 @@ void CBarney::TraceAttackImpl( entvars_t *pevAttacker, float flDamage, Vector ve
 	case HITGROUP_STOMACH:
 		if (bitsDamageType & ( DMG_BULLET | DMG_SLASH | DMG_BLAST ) )
 		{
-			flDamage = flDamage / 2;
+			flDamage = flDamage * 0.5f;
 		}
 		break;
 	case 10:
 		if( (bitsDamageType & ( DMG_BULLET | DMG_SLASH | DMG_CLUB )) && hasHelmet )
 		{
-			flDamage -= 20;
-			if( flDamage <= 0 )
+			flDamage -= 20.0f;
+			if( flDamage <= 0.0f )
 			{
-				UTIL_Ricochet( ptr->vecEndPos, 1.0 );
-				flDamage = 0.01;
+				UTIL_Ricochet( ptr->vecEndPos, 1.0f );
+				flDamage = 0.01f;
 			}
 		}
 
@@ -546,7 +539,7 @@ void CBarney::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir
 
 void CBarney::OnDying()
 {
-	if( g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN) && pev->body < BARNEY_BODY_GUNGONE )
+	if( g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GUN) && pev->body < BARNEY_BODY_GUNGONE )
 	{
 		// drop the gun!
 		Vector vecGunPos;
@@ -630,15 +623,11 @@ Schedule_t *CBarney::GetScheduleImpl(const char *sentenceKill)
 		break;
 	case MONSTERSTATE_ALERT:	
 	case MONSTERSTATE_IDLE:
+	{
 		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 		{
 			// flinch if hurt
 			return GetScheduleOfType( SCHED_SMALL_FLINCH );
-		}
-
-		if ( WantsToCallMedic() )
-		{
-			return GetScheduleOfType( SCHED_FIND_MEDIC );
 		}
 
 		Schedule_t* followingSchedule = GetFollowingSchedule();
@@ -647,6 +636,9 @@ Schedule_t *CBarney::GetScheduleImpl(const char *sentenceKill)
 
 		// try to say something about smells
 		TrySmellTalk();
+	}
+		break;
+	default:
 		break;
 	}
 
@@ -661,11 +653,6 @@ Schedule_t *CBarney :: GetSchedule ( void )
 MONSTERSTATE CBarney::GetIdealState( void )
 {
 	return CTalkMonster::GetIdealState();
-}
-
-void CBarney::DeclineFollowing( void )
-{
-	PlaySentence( m_szGrp[TLK_DECLINE], 2, VOL_NORM, ATTN_NORM );
 }
 
 //=========================================================
@@ -728,8 +715,10 @@ public:
 	
 	void KeyValue( KeyValueData *pkvd );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
+
+	void SetHead(int head);
 	
-	int head;
+	int m_iHead;
 };
 
 LINK_ENTITY_TO_CLASS( monster_otis, COtis )
@@ -738,18 +727,18 @@ void COtis::Spawn()
 {
 	Precache( );
 	SpawnImpl("models/otis.mdl", gSkillData.otisHealth);
-	if ( head == -1 )
+	if ( m_iHead == -1 )
 		SetBodygroup(2, RANDOM_LONG(0, 1));
 	else
-		SetBodygroup(2, head);
+		SetBodygroup(2, m_iHead);
 	if (bodystate == -1) {
 		bodystate = RANDOM_LONG(0,1);
 	}
 	SetBodygroup(1, bodystate);
 	m_fGunDrawn = FALSE;
- 	if (bodystate == OTIS_BODY_GUNDRAWN) {
- 		m_fGunDrawn = TRUE;	
- 	}
+	if (bodystate == OTIS_BODY_GUNDRAWN) {
+		m_fGunDrawn = TRUE;
+	}
 }
 
 void COtis::Precache()
@@ -820,7 +809,7 @@ void COtis::KeyValue( KeyValueData *pkvd )
 {
 	if (FStrEq(pkvd->szKeyName, "head"))
 	{
-		head = atoi(pkvd->szValue);
+		m_iHead = atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -854,7 +843,7 @@ void COtis::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 void COtis::OnDying()
 {
-	if ( g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GRUN) && GetBodygroup(1) != OTIS_BODY_GUNHOLSTERED )
+	if ( g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GUN) && GetBodygroup(1) != OTIS_BODY_GUNHOLSTERED )
 	{
 		Vector vecGunPos;
 		Vector vecGunAngles;
@@ -866,6 +855,11 @@ void COtis::OnDying()
 		DropItem( DESERT_EAGLE_DROP_NAME, vecGunPos, vecGunAngles );
 	}
 	CTalkMonster::OnDying();
+}
+
+void COtis::SetHead(int head)
+{
+	m_iHead = head;
 }
 
 class CDeadOtis : public CDeadBarney

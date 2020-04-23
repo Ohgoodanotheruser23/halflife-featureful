@@ -23,7 +23,7 @@
 // Used for scientists and barneys
 //=========================================================
 
-#define TALKRANGE_MIN 500.0				// don't talk to anyone farther away than this
+#define TALKRANGE_MIN 500.0f				// don't talk to anyone farther away than this
 
 #define TLK_STARE_DIST	128				// anyone closer than this and looking at me is probably staring at me.
 
@@ -36,7 +36,7 @@
 #define bit_saidHeard			(1<<6)
 #define bit_saidSmelled			(1<<7)
 
-#define TLK_CFRIENDS		9
+#define TLK_CFRIENDS		10
 
 enum
 {
@@ -76,7 +76,6 @@ enum
 {
 	SCHED_CANT_FOLLOW = LAST_FOLLOWINGMONSTER_SCHEDULE+1,
 	SCHED_FOLLOW_FALLIBLE,
-	SCHED_FIND_MEDIC,
 
 	LAST_TALKMONSTER_SCHEDULE		// MUST be last
 };
@@ -122,15 +121,15 @@ public:
 	// Base Monster functions
 	void			Precache( void );
 	int 			TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
-	int 			TakeHealth(float flHealth, int bitsDamageType);
+	int 			TakeHealth(CBaseEntity* pHealer, float flHealth, int bitsDamageType);
 	bool			CanBePushedByClient(CBaseEntity *pOther);
-	void			Killed( entvars_t *pevAttacker, int iGib );
+	void			Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	void			OnDying();
 	void			StartMonster( void );
 	int				IRelationship ( CBaseEntity *pTarget );
 	bool			IsFriendWithPlayerBeforeProvoked();
 	virtual int		CanPlaySentence( BOOL fDisregardState );
-	virtual void	PlaySentence( const char *pszSentence, float duration, float volume, float attenuation );
+	virtual bool PlaySentence( const char *pszSentence, float duration, float volume, float attenuation );
 	void			PlayScriptedSentence( const char *pszSentence, float duration, float volume, float attenuation, BOOL bConcurrent, CBaseEntity *pListener );
 	void			KeyValue( KeyValueData *pkvd );
 
@@ -147,7 +146,7 @@ public:
 	// Conversations / communication
 	int				GetVoicePitch( void );
 	virtual void	IdleRespond( void );
-	virtual void	AskQuestion( void );
+	virtual bool AskQuestion( float duration );
 	virtual void	MakeIdleStatement( void );
 	float			RandomSentenceDuraion( void );
 	int				FIdleSpeak( void );
@@ -166,26 +165,34 @@ public:
 	virtual void	StartFollowing( CBaseEntity *pLeader, bool saySentence = true );
 	void			LimitFollowers( CBaseEntity *pPlayer, int maxFollowers );
 	virtual int		TalkFriendCategory() { return TALK_FRIEND_PERSONNEL; }
-	bool	ReadyForUse();
+	bool	InScriptedSentence();
 	virtual void PlayUseSentence();
 	virtual void PlayUnUseSentence();
+	virtual void DeclineFollowing(CBaseEntity* pCaller);
 
 	// Medic related
 	bool			WantsToCallMedic();
-	bool			TryCallForMedic(CBaseEntity* pOther);
+	bool			CanCallThisMedic(CSquadMonster* pOther);
+	bool			FindAndCallMedic();
 	virtual void	PlayCallForMedic();
 	bool			IsWounded();
 	bool			IsHeavilyWounded();
 	
-	virtual void	SetAnswerQuestion( CTalkMonster *pSpeaker );
+	virtual bool	SetAnswerQuestion( CTalkMonster *pSpeaker );
 
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
 	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
+	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
+	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
+
 	virtual int DefaultToleranceLevel() { return TOLERANCE_LOW; }
 	int MyToleranceLevel() { return m_iTolerance ? m_iTolerance : DefaultToleranceLevel(); }
+	static const char* GetRedefinedSentence(string_t sentence);
+
+	void ReportAIState(ALERT_TYPE level);
 
 	struct TalkFriend
 	{

@@ -28,6 +28,8 @@
 #define PLAYER_MIN_BOUNCE_SPEED		200
 #define PLAYER_FALL_PUNCH_THRESHHOLD (float)350 // won't punch player's screen/make scrape noise unless player falling at least this fast.
 
+#define SF_DISPLACER_TARGET_DISABLED 1
+
 //
 // Player PHYSICS FLAGS bits
 //
@@ -107,6 +109,9 @@ enum
 };
 
 class CharacterPhrases;
+
+#define ARMOR_RATIO	0.2	// Armor Takes 80% of the damage
+#define ARMOR_BONUS	0.5	// Each Point of Armor is work 1/x points of health
 
 class CBasePlayer : public CBaseMonster
 {
@@ -231,10 +236,10 @@ public:
 	virtual void PostThink( void );
 	virtual void Touch( CBaseEntity *pOther );
 	virtual Vector GetGunPosition( void );
-	virtual int TakeHealth( float flHealth, int bitsDamageType );
+	virtual int TakeHealth(CBaseEntity *pHealer, float flHealth, int bitsDamageType );
 	virtual void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	virtual int TakeDamage( entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType);
-	virtual void	Killed( entvars_t *pevAttacker, int iGib );
+	virtual void	Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	virtual Vector BodyTarget( const Vector &posSrc ) { return Center( ) + pev->view_ofs * RANDOM_FLOAT( 0.5, 1.1 ); };		// position to shoot at
 	virtual void StartSneaking( void ) { m_tSneaking = gpGlobals->time - 1; }
 	virtual void StopSneaking( void ) { m_tSneaking = gpGlobals->time + 30; }
@@ -254,6 +259,7 @@ public:
 	void PackDeadPlayerItems( void );
 	void RemoveAllItems( BOOL removeSuit );
 	BOOL SwitchWeapon( CBasePlayerWeapon *pWeapon );
+	BOOL SwitchToBestWeapon();
 
 	// JOHN:  sends custom messages if player HUD data has changed  (eg health, ammo)
 	virtual void UpdateClientData( void );
@@ -338,14 +344,12 @@ public:
 
 	void SetMovementMode();
 
-	Vector m_vecLastViewAngles;
-
 	float m_flStartCharge;
 	float m_flAmmoStartCharge;
 	float m_flPlayAftershock;
 	float m_flNextAmmoBurn;// while charging, when to absorb another unit of player's ammo?
 
-	//Player ID
+	// Player ID
 	void InitStatusBar( void );
 	void UpdateStatusBar( void );
 
@@ -387,8 +391,15 @@ public:
 	int m_lastSeenEntityIndex;
 	int m_lastSeenHealth;
 	int m_lastSeenArmor;
+	float m_lastSeenTime;
+
+	void SetPrefsFromUserinfo( char *infobuffer );
 
 	float m_flNextChatTime;
+
+	int m_iAutoWepSwitch;
+
+	Vector m_vecLastViewAngles;
 	float m_flNextRespawnMessageTime;
 #if FEATURE_DISPLACER
 	BOOL	m_fInXen;
@@ -426,6 +437,7 @@ public:
 #if FEATURE_MOVE_MODE
 	short m_movementState; // no need to save
 #endif
+
 	bool m_bSentBhopcap; // If false, the player just joined and needs a bhopcap message.
 
 #if FEATURE_ROPE
@@ -450,6 +462,9 @@ public:
 
 	}
 	CRope* GetRope() { return m_pRope; }
+
+	void LetGoRope(float delay = 2.0f);
+	bool SetClosestOriginOnRope(const Vector& vecPos);
 #endif
 	BOOL m_settingsLoaded;
 	float m_flSemclipTime;

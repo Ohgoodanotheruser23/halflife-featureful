@@ -38,7 +38,7 @@ void CM249::Spawn()
 
 	m_iDefaultAmmo = M249_DEFAULT_GIVE;
 
-	m_fReloadLaunched = FALSE;
+	m_fInSpecialReload = FALSE;
 
 	FallInit();// get ready to fall down.
 }
@@ -75,7 +75,7 @@ int CM249::GetItemInfo(ItemInfo *p)
 	p->pszAmmo2 = NULL;
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = M249_MAX_CLIP;
-#if FEATURE_OPFOR
+#if FEATURE_OPFOR_SPECIFIC
 	p->iSlot = 5;
 	p->iPosition = 0;
 #else
@@ -98,15 +98,15 @@ int CM249::AddToPlayer(CBasePlayer *pPlayer)
 
 BOOL CM249::Deploy()
 {
-	m_fReloadLaunched = FALSE;
+	m_fInSpecialReload = FALSE;
 	UpdateTape();
 	return DefaultDeploy("models/v_saw.mdl", "models/p_saw.mdl", M249_DEPLOY, "mp5", UseDecrement(), pev->body);
 }
 
-void CM249::Holster()
+void CM249::Holster(int skiplocal)
 {
-	m_fReloadLaunched = FALSE;
-	CBasePlayerWeapon::Holster();
+	m_fInSpecialReload = FALSE;
+	CBasePlayerWeapon::Holster(skiplocal);
 }
 
 void CM249::PrimaryAttack()
@@ -169,37 +169,40 @@ void CM249::PrimaryAttack()
 
 
 #ifndef CLIENT_DLL
-        Vector vecVelocity = m_pPlayer->pev->velocity;
-        Vector vecInvPushDir = gpGlobals->v_forward * 35.0;
+	UTIL_MakeVectors( m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle );
+	Vector vecVelocity = m_pPlayer->pev->velocity;
+	Vector vecInvPushDir = gpGlobals->v_forward * 35.0;
 
-        float flNewZVel = CVAR_GET_FLOAT( "sv_maxspeed" );
+	float flNewZVel;
 
-        if( vecInvPushDir.z >= 10.0 )
-            flNewZVel = vecInvPushDir.z;
+	if( vecInvPushDir.z >= 10.0 )
+		flNewZVel = vecInvPushDir.z;
+	else
+		flNewZVel = CVAR_GET_FLOAT( "sv_maxspeed" );
 
-        Vector vecNewVel;
+	Vector vecNewVel;
 
-        if( g_pGameRules->IsDeathmatch() )
-        {
-            vecNewVel = vecVelocity - vecInvPushDir;
-        }
-        else
-        {
-            vecNewVel = vecVelocity;
+	if( g_pGameRules->IsDeathmatch() )
+	{
+		vecNewVel = vecVelocity - vecInvPushDir;
+	}
+	else
+	{
+		vecNewVel = vecVelocity;
 
-            float flZTreshold = -( flNewZVel + 100.0 );
+		float flZTreshold = -( flNewZVel + 100.0 );
 
-            if( vecVelocity.x > flZTreshold )
-            {
-                vecNewVel.x -= vecInvPushDir.x;
-            }
+		if( vecVelocity.x > flZTreshold )
+		{
+			vecNewVel.x -= vecInvPushDir.x;
+		}
 
-            if( vecVelocity.y > flZTreshold )
-            {
-                vecNewVel.y -= vecInvPushDir.y;
-            }
-        }
-        m_pPlayer->pev->velocity = vecNewVel;
+		if( vecVelocity.y > flZTreshold )
+		{
+			vecNewVel.y -= vecInvPushDir.y;
+		}
+	}
+	m_pPlayer->pev->velocity = vecNewVel;
 #endif
 
 	if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
@@ -221,7 +224,7 @@ void CM249::Reload(void)
 		return;
 
 	if (DefaultReload(M249_MAX_CLIP, M249_LAUNCH, 1.33, pev->body)) {
-		m_fReloadLaunched = TRUE;
+		m_fInSpecialReload = TRUE;
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 3.78;
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.78;
 	}
@@ -229,12 +232,12 @@ void CM249::Reload(void)
 
 void CM249::WeaponTick()
 {
-	if ( m_fReloadLaunched )
+	if ( m_fInSpecialReload )
 	{
 		if (m_pPlayer->m_flNextAttack <= UTIL_WeaponTimeBase())
 		{
 			UpdateTape();
-			m_fReloadLaunched = FALSE;
+			m_fInSpecialReload = FALSE;
 			SendWeaponAnim( M249_RELOAD1, UseDecrement(), pev->body );
 			m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 2.4;
 		}

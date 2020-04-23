@@ -41,7 +41,8 @@ CBaseEntity
 #define		FCAP_DIRECTIONAL_USE			0x00000040		// Player sends +/- 1 when using (currently only tracktrains)
 #define		FCAP_MASTER				0x00000080		// Can be used to "master" other entities (like multisource)
 
-#define		FCAP_ONLYDIRECT_USE			0x00000100 // Don't allow using through walls, from sohl
+#define		FCAP_ONLYDIRECT_USE			0x00000100 // Only direct use, from sohl
+#define		FCAP_ONLYVISIBLE_USE		0x00000200 // Don't use through walls
 
 // UNDONE: This will ignore transition volumes (trigger_transition), but not the PVS!!!
 #define		FCAP_FORCE_TRANSITION		0x00000080		// ALWAYS goes across transitions
@@ -105,11 +106,14 @@ enum
 	CLASS_ALIEN_PREDATOR,
 	CLASS_INSECT,
 	CLASS_PLAYER_ALLY,
-	CLASS_PLAYER_BIOWEAPON, // hornets and snarks.launched by players
-	CLASS_ALIEN_BIOWEAPON, // hornets and snarks.launched by the alien menace
+	CLASS_PLAYER_BIOWEAPON, // hornets launched by players
+	CLASS_ALIEN_BIOWEAPON, // hornets launched by the alien menace
 	CLASS_RACEX_PREDATOR,
 	CLASS_RACEX_SHOCK,
 	CLASS_PLAYER_ALLY_MILITARY,
+	CLASS_HUMAN_BLACKOPS,
+	CLASS_SNARK,
+	CLASS_GARGANTUA,
 	CLASS_NUMBER_OF_CLASSES,
 	CLASS_BARNACLE = 99 // special because no one pays attention to it, and it eats a wide cross-section of creatures.
 };
@@ -171,6 +175,10 @@ public:
 	CBaseEntity *m_pGoalEnt;// path corner we are heading towards
 	CBaseEntity *m_pLink;// used for temporary link-list operations. 
 
+	virtual Vector	CalcPosition( CBaseEntity *pLocus )	{ return pev->origin; }
+	virtual Vector	CalcVelocity( CBaseEntity *pLocus )	{ return pev->velocity; }
+	virtual float	CalcRatio( CBaseEntity *pLocus )	{ return 0; }
+
 	// initialization functions
 	virtual void Spawn( void ) { return; }
 	virtual void Precache( void ) { return; }
@@ -193,8 +201,8 @@ public:
 
 	virtual void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	virtual int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
-	virtual int TakeHealth( float flHealth, int bitsDamageType );
-	virtual void Killed( entvars_t *pevAttacker, int iGib );
+	virtual int TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamageType );
+	virtual void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	virtual int BloodColor( void ) { return DONT_BLEED; }
 	virtual void TraceBleed( float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	virtual BOOL IsTriggered( CBaseEntity *pActivator ) {return TRUE; }
@@ -377,6 +385,7 @@ public:
 #define SetTouch( a ) TouchSet( static_cast <void (CBaseEntity::*)(CBaseEntity *)> (a), #a )
 #define SetUse( a ) UseSet( static_cast <void (CBaseEntity::*)(	CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )> (a), #a )
 #define SetBlocked( a ) BlockedSet( static_cast <void (CBaseEntity::*)(CBaseEntity *)> (a), #a )
+#define ResetThink() SetThink(NULL)
 
 #else
 
@@ -453,8 +462,9 @@ class CBaseDelay : public CBaseEntity
 {
 public:
 	float m_flDelay;
-	string_t m_iszKillTarget;
 	float m_flMaxDelay;
+	string_t m_iszKillTarget;
+	EHANDLE m_hActivator;
 
 	virtual void KeyValue( KeyValueData *pkvd );
 	virtual int Save( CSave &save );
@@ -476,7 +486,7 @@ public:
 	// Basic Monster Animation functions
 	float StudioFrameAdvance( float flInterval = 0.0 ); // accumulate animation frame time from last time called until now
 	int GetSequenceFlags( void );
-	int LookupActivity( int activity );
+	virtual int LookupActivity( int activity );
 	int LookupActivityHeaviest( int activity );
 	int LookupSequence( const char *label );
 	void ResetSequenceInfo();
@@ -527,7 +537,6 @@ public:
 
 	int					m_cTriggersLeft;		// trigger_counter only, # of activations remaining
 	float				m_flHeight;
-	EHANDLE				m_hActivator;
 	void (CBaseToggle::*m_pfnCallWhenMoveDone)(void);
 	Vector				m_vecFinalDest;
 	Vector				m_vecFinalAngle;
@@ -672,6 +681,7 @@ public:
 	void EXPORT ButtonReturn( void );
 	void EXPORT ButtonBackHome( void );
 	void EXPORT ButtonUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void EXPORT ButtonUse_IgnorePlayer( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	virtual int TakeDamage( entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType );
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -679,6 +689,7 @@ public:
 	enum BUTTON_CODE { BUTTON_NOTHING, BUTTON_ACTIVATE, BUTTON_RETURN };
 	BUTTON_CODE ButtonResponseToTouch( void );
 	void OnLocked();
+	bool IsSparkingButton();
 	
 	static	TYPEDESCRIPTION m_SaveData[];
 	// Buttons that don't take damage can be IMPULSE used

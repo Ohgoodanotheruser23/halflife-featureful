@@ -29,9 +29,6 @@
 
 extern edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer );
 
-LINK_ENTITY_TO_CLASS(info_displacer_xen_target, CPointEntity)
-LINK_ENTITY_TO_CLASS(info_displacer_earth_target, CPointEntity)
-
 int iPortalSprite = 0;
 int iRingSprite = 0;
 
@@ -297,12 +294,12 @@ int CDisplacer::GetItemInfo(ItemInfo *p)
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iFlags = 0;
-#if FEATURE_OPFOR
+#if FEATURE_OPFOR_SPECIFIC
 	p->iSlot = 5;
 	p->iPosition = 1;
 #else
-	p->iSlot = 1;
-	p->iPosition = 3;
+	p->iSlot = 3;
+	p->iPosition = 6;
 #endif
 	p->iId = m_iId = WEAPON_DISPLACER;
 	p->iWeight = DISPLACER_WEIGHT;
@@ -567,7 +564,17 @@ void CDisplacer::Teleport( void )
 			pszName = "info_displacer_xen_target";
 		else
 			pszName = "info_displacer_earth_target";
-		pTarget = UTIL_FindEntityByClassname( 0, pszName );
+
+		CBaseEntity *pDisplacerTarget = NULL;
+
+		while ((pDisplacerTarget = UTIL_FindEntityByClassname( pDisplacerTarget, pszName )) != NULL)
+		{
+			if (!FBitSet(pDisplacerTarget->pev->spawnflags, SF_DISPLACER_TARGET_DISABLED))
+			{
+				pTarget = pDisplacerTarget;
+				break;
+			}
+		}
 	}
 
 	if( pTarget )

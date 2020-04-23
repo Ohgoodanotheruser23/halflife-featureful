@@ -245,6 +245,12 @@ void CSquadMonster::SquadMakeEnemy( CBaseEntity *pEnemy )
 		return;
 	}
 
+	if ( !pEnemy->IsAlive() )
+	{
+		ALERT( at_console, "ERROR: SquadMakeEnemy() - pEnemy is dead!\n" );
+		return;
+	}
+
 	CSquadMonster *pSquadLeader = MySquadLeader();
 	for( int i = 0; i < MAX_SQUAD_MEMBERS; i++ )
 	{
@@ -348,12 +354,12 @@ int CSquadMonster::SquadRecruit( int searchRadius, int maxMembers )
 			{
 				// Can we recruit this guy?
 				if( !pRecruit->InSquad() && pRecruit->Classify() == iMyClass &&
-				   ( ( iMyClass != CLASS_ALIEN_MONSTER ) || FStrEq( STRING( pev->classname ), STRING( pRecruit->pev->classname ) ) ) &&
+				   ( ( DefaultClassify() != CLASS_ALIEN_MONSTER ) || FStrEq( STRING( pev->classname ), STRING( pRecruit->pev->classname ) ) ) &&
 				    FStringNull( pRecruit->pev->netname ) )
 				{
 					TraceResult tr;
 					UTIL_TraceLine( pev->origin + pev->view_ofs, pRecruit->pev->origin + pev->view_ofs, ignore_monsters, pRecruit->edict(), &tr );// try to hit recruit with a traceline.
-					if( tr.flFraction == 1.0 )
+					if( tr.flFraction == 1.0f )
 					{
 						if( !SquadAdd( pRecruit ) )
 							break;
@@ -381,10 +387,10 @@ int CSquadMonster::CheckEnemy( CBaseEntity *pEnemy )
 {
 	int iUpdatedLKP;
 
-	iUpdatedLKP = CBaseMonster::CheckEnemy( m_hEnemy );
+	iUpdatedLKP = CBaseMonster::CheckEnemy( pEnemy );
 
 	// communicate with squad members about the enemy IF this individual has the same enemy as the squad leader.
-	if( InSquad() && (CBaseEntity *)m_hEnemy == MySquadLeader()->m_hEnemy )
+	if( InSquad() && pEnemy == MySquadLeader()->m_hEnemy )
 	{
 		if( iUpdatedLKP )
 		{
@@ -467,7 +473,7 @@ BOOL CSquadMonster::NoFriendlyFire( void )
 			CBaseMonster* monster = GetMonsterPointer(tr.pHit);
 			if (monster != 0 && FBitSet(monster->pev->flags, FL_MONSTER|FL_CLIENT) && monster->pev->deadflag != DEAD_DEAD && IRelationship(monster) == R_AL)
 			{
-				ALERT(at_aiconsole, "%s: Ally %s at fire line. Don't shoot!\n", STRING(pev->classname), STRING(monster->pev->classname));
+				//ALERT(at_aiconsole, "%s: Ally %s at fire line. Don't shoot!\n", STRING(pev->classname), STRING(monster->pev->classname));
 				return FALSE;
 			}
 		}
@@ -484,18 +490,23 @@ BOOL CSquadMonster::NoFriendlyFire( void )
 	CPlane backPlane;
 	CPlane leftPlane;
 	CPlane rightPlane;
+	CPlane frontPlane;
 
 	Vector vecLeftSide;
 	Vector vecRightSide;
 	Vector v_left;
+	Vector v_dir;
 
-	vecLeftSide = pev->origin - ( gpGlobals->v_right * ( pev->size.x * 1.5 ) );
-	vecRightSide = pev->origin + ( gpGlobals->v_right * ( pev->size.x * 1.5 ) );
-	v_left = gpGlobals->v_right * -1;
+	v_dir = gpGlobals->v_right * ( pev->size.x * 1.5f );
+	vecLeftSide = pev->origin - v_dir;
+		vecRightSide = pev->origin + v_dir;
+
+	v_left = gpGlobals->v_right * -1.0f;
 
 	leftPlane.InitializePlane( gpGlobals->v_right, vecLeftSide );
 	rightPlane.InitializePlane( v_left, vecRightSide );
 	backPlane.InitializePlane( gpGlobals->v_forward, pev->origin );
+	frontPlane.InitializePlane( gpGlobals->v_forward * -1, enemyCenter + gpGlobals->v_forward * m_hEnemy->pev->size.Length2D() );
 /*
 	ALERT( at_console, "LeftPlane: %f %f %f : %f\n", leftPlane.m_vecNormal.x, leftPlane.m_vecNormal.y, leftPlane.m_vecNormal.z, leftPlane.m_flDist );
 	ALERT( at_console, "RightPlane: %f %f %f : %f\n", rightPlane.m_vecNormal.x, rightPlane.m_vecNormal.y, rightPlane.m_vecNormal.z, rightPlane.m_flDist );
@@ -511,7 +522,8 @@ BOOL CSquadMonster::NoFriendlyFire( void )
 			{
 				if( backPlane.PointInFront( pMember->pev->origin ) &&
 					leftPlane.PointInFront( pMember->pev->origin ) &&
-					rightPlane.PointInFront( pMember->pev->origin ) )
+					rightPlane.PointInFront( pMember->pev->origin ) &&
+					frontPlane.PointInFront( pMember->pev->origin ) )
 				{
 					// this guy is in the check volume! Don't shoot!
 					return FALSE;
@@ -519,16 +531,20 @@ BOOL CSquadMonster::NoFriendlyFire( void )
 			}
 		}
 	}
-	if (friendWithPlayer)
+	for( int k = 1; k <= gpGlobals->maxClients; k++ )
 	{
-		// TODO: check all ally players
-		if( backPlane.PointInFront( player->pev->origin ) &&
-			leftPlane.PointInFront( player->pev->origin ) &&
-			rightPlane.PointInFront( player->pev->origin ) )
+		CBaseEntity* pPlayer = UTIL_PlayerByIndex(k);
+		if (pPlayer && pPlayer->IsPlayer() && IRelationship(pPlayer) == R_AL)
 		{
-			ALERT(at_aiconsole, "Player at fire plane!\n");
-			// player is in the check volume! Don't shoot!
-			return FALSE;
+			if( backPlane.PointInFront( pPlayer->pev->origin ) &&
+				leftPlane.PointInFront( pPlayer->pev->origin ) &&
+				rightPlane.PointInFront( pPlayer->pev->origin ) &&
+				frontPlane.PointInFront( pPlayer->pev->origin ) )
+			{
+				//ALERT(at_aiconsole, "%s: Ally player at fire plane!\n", STRING(pev->classname));
+				// player is in the check volume! Don't shoot!
+				return FALSE;
+			}
 		}
 	}
 
@@ -541,8 +557,6 @@ BOOL CSquadMonster::NoFriendlyFire( void )
 //=========================================================
 MONSTERSTATE CSquadMonster::GetIdealState ( void )
 {
-	IScheduleFlags();
-
 	// If no schedule conditions, the new ideal state is probably the reason we're in here.
 	switch( m_MonsterState )
 	{
@@ -663,5 +677,38 @@ void CSquadMonster::StartTask(Task_t *pTask)
 	default:
 		CBaseMonster::StartTask( pTask );
 		break;
+	}
+}
+
+void CSquadMonster::ReportAIState(ALERT_TYPE level)
+{
+	CBaseMonster::ReportAIState(level);
+	ALERT(at_console, "\n");
+	if( !InSquad() )
+	{
+		ALERT( level, "Not In Squad. " );
+	}
+	else
+	{
+		if (pev->netname)
+		{
+			ALERT( level, "In Squad '%s' ", STRING(pev->netname) );
+		}
+		else
+		{
+			ALERT( level, "In Squad " );
+		}
+
+		ALERT( level, "of %d members, ", SquadCount() );
+
+		if( IsLeader() )
+		{
+			ALERT( level, "Squad Leader. " );
+		}
+		else
+		{
+			CSquadMonster* myLeader = MySquadLeader();
+			ALERT( level, "My Squad Leader: '%s'. ", FStringNull(myLeader->pev->targetname) ? STRING(myLeader->pev->classname) : STRING(myLeader->pev->targetname) );
+		}
 	}
 }

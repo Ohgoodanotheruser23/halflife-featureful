@@ -32,6 +32,7 @@
 #define	SF_BUTTON_TOGGLE		32	// button stays pushed until reactivated
 #define	SF_BUTTON_SPARK_IF_OFF		64	// button sparks in OFF state
 #define SF_BUTTON_TOUCH_ONLY		256	// button only fires as a result of USE key.
+#define SF_BUTTON_PLAYER_CANT_USE	512 // Player can't impulse use this button
 
 #define SF_GLOBAL_SET			1	// Set global state to initial state on spawn
 
@@ -175,6 +176,8 @@ public:
 	float		m_fTurnOnTime;
 	float		m_fTurnOffTime;
 	string_t	m_sMaster;
+	string_t	m_fireWhenOn;
+	string_t	m_fireWhenOff;
 };
 
 void CEnvState::Spawn( void )
@@ -183,6 +186,10 @@ void CEnvState::Spawn( void )
 		m_iState = STATE_ON;
 	else
 		m_iState = STATE_OFF;
+	m_fireWhenOn = pev->noise1;
+	pev->noise1 = iStringNull;
+	m_fireWhenOff = pev->noise2;
+	pev->noise2 = iStringNull;
 }
 
 TYPEDESCRIPTION CEnvState::m_SaveData[] =
@@ -191,6 +198,8 @@ TYPEDESCRIPTION CEnvState::m_SaveData[] =
 	DEFINE_FIELD( CEnvState, m_fTurnOnTime, FIELD_FLOAT ),
 	DEFINE_FIELD( CEnvState, m_fTurnOffTime, FIELD_FLOAT ),
 	DEFINE_FIELD( CEnvState, m_sMaster, FIELD_STRING ),
+	DEFINE_FIELD( CEnvState, m_fireWhenOn, FIELD_STRING ),
+	DEFINE_FIELD( CEnvState, m_fireWhenOff, FIELD_STRING ),
 };
 
 IMPLEMENT_SAVERESTORE( CEnvState, CPointEntity )
@@ -259,15 +268,15 @@ void CEnvState::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 				if (pev->target)
 				{
 					ALERT(at_console,": firing \"%s\"",STRING(pev->target));
-					if (pev->noise2)
-						ALERT(at_console," and \"%s\"",STRING(pev->noise2));
+					if (m_fireWhenOff)
+						ALERT(at_console," and \"%s\"",STRING(m_fireWhenOff));
 				}
-				else if (pev->noise2)
-					ALERT(at_console,": firing \"%s\"",STRING(pev->noise2));
+				else if (m_fireWhenOff)
+					ALERT(at_console,": firing \"%s\"",STRING(m_fireWhenOff));
 				ALERT(at_console,".\n");
 			}
 			FireTargets(STRING(pev->target),pActivator,this,USE_OFF,0);
-			FireTargets(STRING(pev->noise2),pActivator,this,USE_TOGGLE,0);
+			FireTargets(STRING(m_fireWhenOff),pActivator,this,USE_TOGGLE,0);
 			pev->nextthink = -1;
 		}
 		break;
@@ -291,15 +300,15 @@ void CEnvState::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 				if (pev->target)
 				{
 					ALERT(at_console,": firing \"%s\"",STRING(pev->target));
-					if (pev->noise1)
-						ALERT(at_console," and \"%s\"",STRING(pev->noise1));
+					if (m_fireWhenOn)
+						ALERT(at_console," and \"%s\"",STRING(m_fireWhenOn));
 				}
-				else if (pev->noise1)
-					ALERT(at_console,": firing \"%s\"", STRING(pev->noise1));
+				else if (m_fireWhenOn)
+					ALERT(at_console,": firing \"%s\"", STRING(m_fireWhenOn));
 				ALERT(at_console,".\n");
 			}
 			FireTargets(STRING(pev->target),pActivator,this,USE_ON,0);
-			FireTargets(STRING(pev->noise1),pActivator,this,USE_TOGGLE,0);
+			FireTargets(STRING(m_fireWhenOn),pActivator,this,USE_TOGGLE,0);
 			pev->nextthink = -1;
 		}
 		break;
@@ -319,15 +328,15 @@ void CEnvState::Think( void )
 			if (pev->target)
 			{
 				ALERT(at_console,": firing %s",STRING(pev->target));
-				if (pev->noise1)
-					ALERT(at_console," and %s",STRING(pev->noise1));
+				if (m_fireWhenOn)
+					ALERT(at_console," and %s",STRING(m_fireWhenOn));
 			}
-			else if (pev->noise1)
-				ALERT(at_console,": firing %s",STRING(pev->noise1));
+			else if (m_fireWhenOn)
+				ALERT(at_console,": firing %s",STRING(m_fireWhenOn));
 			ALERT(at_console,".\n");
 		}
 		FireTargets(STRING(pev->target),this,this,USE_ON,0);
-		FireTargets(STRING(pev->noise1),this,this,USE_TOGGLE,0);
+		FireTargets(STRING(m_fireWhenOn),this,this,USE_TOGGLE,0);
 	}
 	else if (m_iState == STATE_TURN_OFF)
 	{
@@ -337,14 +346,14 @@ void CEnvState::Think( void )
 			ALERT(at_console,"DEBUG: env_state \"%s\" turned itself off",STRING(pev->targetname));
 			if (pev->target)
 				ALERT(at_console,": firing %s",STRING(pev->target));
-				if (pev->noise2)
-					ALERT(at_console," and %s",STRING(pev->noise2));
-			else if (pev->noise2)
-				ALERT(at_console,": firing %s",STRING(pev->noise2));
+				if (m_fireWhenOff)
+					ALERT(at_console," and %s",STRING(m_fireWhenOff));
+			else if (m_fireWhenOff)
+				ALERT(at_console,": firing %s",STRING(m_fireWhenOff));
 			ALERT(at_console,".\n");
 		}
 		FireTargets(STRING(pev->target),this,this,USE_OFF,0);
-		FireTargets(STRING(pev->noise2),this,this,USE_TOGGLE,0);
+		FireTargets(STRING(m_fireWhenOff),this,this,USE_TOGGLE,0);
 	}
 }
 
@@ -391,7 +400,7 @@ void CMultiSource::Spawn()
 
 	pev->solid = SOLID_NOT;
 	pev->movetype = MOVETYPE_NONE;
-	pev->nextthink = gpGlobals->time + 0.1;
+	pev->nextthink = gpGlobals->time + 0.1f;
 	pev->spawnflags |= SF_MULTI_INIT;	// Until it's initialized
 	SetThink( &CMultiSource::Register );
 }
@@ -487,7 +496,7 @@ void CMultiSource::Register( void )
 int CBaseButton::ObjectCaps( void )
 {
 	return (CBaseToggle:: ObjectCaps() & ~FCAP_ACROSS_TRANSITION) |
-			(pev->takedamage?0:FCAP_IMPULSE_USE) |
+			((pev->takedamage || FBitSet(pev->spawnflags,SF_BUTTON_PLAYER_CANT_USE))?0:FCAP_IMPULSE_USE) |
 			(FBitSet(pev->spawnflags, SF_BUTTON_ONLYDIRECT)?FCAP_ONLYDIRECT_USE:0);
 }
 
@@ -514,7 +523,7 @@ void CBaseButton::Precache( void )
 {
 	const char *pszSound;
 
-	if( FBitSet( pev->spawnflags, SF_BUTTON_SPARK_IF_OFF ) )// this button should spark in OFF state
+	if( IsSparkingButton() )// this button should spark in OFF state
 	{
 		PRECACHE_SOUND( "buttons/spark1.wav" );
 		PRECACHE_SOUND( "buttons/spark2.wav" );
@@ -715,10 +724,10 @@ void CBaseButton::Spawn()
 
 	Precache();
 
-	if( FBitSet( pev->spawnflags, SF_BUTTON_SPARK_IF_OFF ) )// this button should spark in OFF state
+	if( IsSparkingButton() )// this button should spark in OFF state
 	{
 		SetThink( &CBaseButton::ButtonSpark );
-		pev->nextthink = gpGlobals->time + 0.5;// no hurry, make sure everything else spawns
+		pev->nextthink = gpGlobals->time + 0.5f;// no hurry, make sure everything else spawns
 	}
 
 	SetMovedir( pev );
@@ -727,29 +736,29 @@ void CBaseButton::Spawn()
 	pev->solid = SOLID_BSP;
 	SET_MODEL( ENT( pev ), STRING( pev->model ) );
 	
-	if( pev->speed == 0 )
-		pev->speed = 40;
+	if( pev->speed == 0.0f )
+		pev->speed = 40.0f;
 
 	if( pev->health > 0 )
 	{
 		pev->takedamage = DAMAGE_YES;
 	}
 
-	if( m_flWait == 0 )
-		m_flWait = 1;
-	if( m_flLip == 0 )
-		m_flLip = 4;
+	if( m_flWait == 0.0f )
+		m_flWait = 1.0f;
+	if( m_flLip == 0.0f )
+		m_flLip = 4.0f;
 
 	m_toggle_state = TS_AT_BOTTOM;
 	m_vecPosition1 = pev->origin;
 	// Subtract 2 from size because the engine expands bboxes by 1 in all directions making the size too big
-	m_vecPosition2	= m_vecPosition1 + ( pev->movedir * ( fabs( pev->movedir.x * ( pev->size.x - 2 ) ) + fabs( pev->movedir.y * ( pev->size.y - 2 ) ) + fabs( pev->movedir.z * ( pev->size.z - 2 ) ) - m_flLip ) );
+	m_vecPosition2	= m_vecPosition1 + ( pev->movedir * ( fabs( pev->movedir.x * ( pev->size.x - 2.0f ) ) + fabs( pev->movedir.y * ( pev->size.y - 2.0f ) ) + fabs( pev->movedir.z * ( pev->size.z - 2.0f ) ) - m_flLip ) );
 
 	// Is this a non-moving button?
-	if( ( ( m_vecPosition2 - m_vecPosition1 ).Length() < 1 ) || ( pev->spawnflags & SF_BUTTON_DONTMOVE ) )
+	if( ( ( m_vecPosition2 - m_vecPosition1 ).Length() < 1.0f ) || ( pev->spawnflags & SF_BUTTON_DONTMOVE ) )
 		m_vecPosition2 = m_vecPosition1;
 
-	m_fStayPushed = m_flWait == -1 ? TRUE : FALSE;
+	m_fStayPushed = m_flWait == -1.0f ? TRUE : FALSE;
 	m_fRotating = FALSE;
 
 	// if the button is flagged for USE button activation only, take away it's touch function and add a use function
@@ -760,7 +769,10 @@ void CBaseButton::Spawn()
 	else 
 	{
 		SetTouch( NULL );
-		SetUse( &CBaseButton::ButtonUse );
+		if (FBitSet(pev->spawnflags, SF_BUTTON_PLAYER_CANT_USE))
+			SetUse( &CBaseButton::ButtonUse_IgnorePlayer );
+		else
+			SetUse( &CBaseButton::ButtonUse );
 	}
 }
 
@@ -849,11 +861,11 @@ const char *ButtonSound( int sound )
 //
 void DoSpark( entvars_t *pev, const Vector &location )
 {
-	Vector tmp = location + pev->size * 0.5;
+	Vector tmp = location + pev->size * 0.5f;
 	UTIL_Sparks( tmp );
 
-	float flVolume = RANDOM_FLOAT( 0.25 , 0.75 ) * 0.4;//random volume range
-	switch( (int)( RANDOM_FLOAT( 0, 1 ) * 6 ) )
+	float flVolume = RANDOM_FLOAT( 0.25f, 0.75f ) * 0.4f;//random volume range
+	switch( (int)( RANDOM_FLOAT( 0.0f, 1.0f ) * 6.0f ) )
 	{
 		case 0:
 			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "buttons/spark1.wav", flVolume, ATTN_NORM );
@@ -879,7 +891,7 @@ void DoSpark( entvars_t *pev, const Vector &location )
 void CBaseButton::ButtonSpark( void )
 {
 	SetThink( &CBaseButton::ButtonSpark );
-	pev->nextthink = gpGlobals->time + 0.1 + RANDOM_FLOAT( 0, 1.5 );// spark again at random interval
+	pev->nextthink = gpGlobals->time + 0.1f + RANDOM_FLOAT( 0.0f, 1.5f );// spark again at random interval
 
 	DoSpark( pev, pev->mins );
 }
@@ -899,7 +911,7 @@ void CBaseButton::ButtonUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	{
 		if( !m_fStayPushed && FBitSet( pev->spawnflags, SF_BUTTON_TOGGLE ) )
 		{
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );
+			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1.0f, ATTN_NORM );
 
 			//SUB_UseTargets( m_eoActivator );
 			ButtonReturn();
@@ -907,6 +919,12 @@ void CBaseButton::ButtonUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	}
 	else
 		ButtonActivate();
+}
+
+void CBaseButton::ButtonUse_IgnorePlayer( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if ( !pCaller || !pCaller->IsPlayer() )
+		ButtonUse( pActivator, pCaller, useType, value );
 }
 
 CBaseButton::BUTTON_CODE CBaseButton::ButtonResponseToTouch( void )
@@ -936,7 +954,7 @@ CBaseButton::BUTTON_CODE CBaseButton::ButtonResponseToTouch( void )
 void CBaseButton::ButtonTouch( CBaseEntity *pOther )
 {
 	// Ignore touches by anything but players
-	if( !FClassnameIs( pOther->pev, "player" ) )
+	if( !pOther->IsPlayer() )
 		return;
 
 	m_hActivator = pOther;
@@ -1051,7 +1069,7 @@ void CBaseButton::ButtonReturn( void )
 {
 	ASSERT( m_toggle_state == TS_AT_TOP );
 	m_toggle_state = TS_GOING_DOWN;
-	
+
 	SetMoveDone( &CBaseButton::ButtonBackHome );
 	if( !m_fRotating )
 		LinearMove( m_vecPosition1, pev->speed );
@@ -1105,11 +1123,17 @@ void CBaseButton::ButtonBackHome( void )
 		SetTouch( &CBaseButton::ButtonTouch );
 
 	// reset think for a sparking button
-	if( FBitSet( pev->spawnflags, SF_BUTTON_SPARK_IF_OFF ) )
+	if( IsSparkingButton() )
 	{
 		SetThink( &CBaseButton::ButtonSpark );
-		pev->nextthink = gpGlobals->time + 0.5;// no hurry.
+		pev->nextthink = gpGlobals->time + 0.5f;// no hurry.
 	}
+}
+
+bool CBaseButton::IsSparkingButton()
+{
+	return FBitSet( pev->spawnflags, SF_BUTTON_SPARK_IF_OFF )
+			&& !FClassnameIs(pev, "func_rot_button"); // there's a clash in flags, don't enable sparking for rotating buttons
 }
 
 //
@@ -1139,7 +1163,7 @@ void CRotButton::Spawn( void )
 
 	// check for clockwise rotation
 	if( FBitSet( pev->spawnflags, SF_DOOR_ROTATE_BACKWARDS ) )
-		pev->movedir = pev->movedir * -1;
+		pev->movedir = pev->movedir * -1.0f;
 
 	pev->movetype = MOVETYPE_PUSH;
 	
@@ -1150,8 +1174,8 @@ void CRotButton::Spawn( void )
 
 	SET_MODEL( ENT( pev ), STRING( pev->model ) );
 	
-	if( pev->speed == 0 )
-		pev->speed = 40;
+	if( pev->speed == 0.0f )
+		pev->speed = 40.0f;
 
 	if( m_flWait == 0 )
 		m_flWait = 1;
@@ -1166,14 +1190,17 @@ void CRotButton::Spawn( void )
 	m_vecAngle2 = pev->angles + pev->movedir * m_flMoveDistance;
 	ASSERTSZ( m_vecAngle1 != m_vecAngle2, "rotating button start/end positions are equal" );
 
-	m_fStayPushed = m_flWait == -1 ? TRUE : FALSE;
+	m_fStayPushed = m_flWait == -1.0f ? TRUE : FALSE;
 	m_fRotating = TRUE;
 
 	// if the button is flagged for USE button activation only, take away it's touch function and add a use function
 	if( !FBitSet( pev->spawnflags, SF_BUTTON_TOUCH_ONLY ) )
 	{
 		SetTouch( NULL );
-		SetUse( &CBaseButton::ButtonUse );
+		if (FBitSet(pev->spawnflags, SF_BUTTON_PLAYER_CANT_USE))
+			SetUse( &CBaseButton::ButtonUse_IgnorePlayer );
+		else
+			SetUse( &CBaseButton::ButtonUse );
 	}
 	else // touchable button
 		SetTouch( &CBaseButton::ButtonTouch );
@@ -1240,10 +1267,10 @@ void CMomentaryRotButton::Spawn( void )
 {
 	CBaseToggle::AxisDir( pev );
 
-	if( pev->speed == 0 )
-		pev->speed = 100;
+	if( pev->speed == 0.0f )
+		pev->speed = 100.0f;
 
-	if( m_flMoveDistance < 0 ) 
+	if( m_flMoveDistance < 0.0f ) 
 	{
 		m_start = pev->angles + pev->movedir * m_flMoveDistance;
 		m_end = pev->angles;
@@ -1298,6 +1325,9 @@ void CMomentaryRotButton::PlaySound( void )
 // current, not future position.
 void CMomentaryRotButton::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
+	if (IsLockedByMaster())
+		return;
+
 	pev->ideal_yaw = CBaseToggle::AxisDelta( pev->spawnflags, pev->angles, m_start ) / m_flMoveDistance;
 
 	UpdateAllButtons( pev->ideal_yaw, 1 );
@@ -1343,14 +1373,14 @@ void CMomentaryRotButton::UpdateSelf( float value )
 	}
 	m_lastUsed = 1;
 
-	pev->nextthink = pev->ltime + 0.1;
-	if( m_direction > 0 && value >= 1.0 )
+	pev->nextthink = pev->ltime + 0.1f;
+	if( m_direction > 0 && value >= 1.0f )
 	{
 		pev->avelocity = g_vecZero;
 		pev->angles = m_end;
 		return;
 	}
-	else if( m_direction < 0 && value <= 0 )
+	else if( m_direction < 0 && value <= 0.0f )
 	{
 		pev->avelocity = g_vecZero;
 		pev->angles = m_start;
@@ -1362,9 +1392,9 @@ void CMomentaryRotButton::UpdateSelf( float value )
 
 	// HACKHACK -- If we're going slow, we'll get multiple player packets per frame, bump nexthink on each one to avoid stalling
 	if( pev->nextthink < pev->ltime )
-		pev->nextthink = pev->ltime + 0.1;
+		pev->nextthink = pev->ltime + 0.1f;
 	else
-		pev->nextthink += 0.1;
+		pev->nextthink += 0.1f;
 	
 	pev->avelocity = m_direction * pev->speed * pev->movedir;
 	SetThink( &CMomentaryRotButton::Off );
@@ -1396,7 +1426,7 @@ void CMomentaryRotButton::Off( void )
 	if( FBitSet( pev->spawnflags, SF_PENDULUM_AUTO_RETURN ) && m_returnSpeed > 0 )
 	{
 		SetThink( &CMomentaryRotButton::Return );
-		pev->nextthink = pev->ltime + 0.1;
+		pev->nextthink = pev->ltime + 0.1f;
 		m_direction = -1;
 	}
 	else
@@ -1408,23 +1438,23 @@ void CMomentaryRotButton::Return( void )
 	float value = CBaseToggle::AxisDelta( pev->spawnflags, pev->angles, m_start ) / m_flMoveDistance;
 
 	UpdateAllButtons( value, 0 );	// This will end up calling UpdateSelfReturn() n times, but it still works right
-	if( value > 0 )
+	if( value > 0.0f )
 		UpdateTarget( value );
 }
 
 void CMomentaryRotButton::UpdateSelfReturn( float value )
 {
-	if( value <= 0 )
+	if( value <= 0.0f )
 	{
 		pev->avelocity = g_vecZero;
 		pev->angles = m_start;
-		pev->nextthink = -1;
+		pev->nextthink = -1.0f;
 		SetThink( NULL );
 	}
 	else
 	{
 		pev->avelocity = -m_returnSpeed * pev->movedir;
-		pev->nextthink = pev->ltime + 0.1;
+		pev->nextthink = pev->ltime + 0.1f;
 	}
 }
 
@@ -1432,12 +1462,18 @@ void CMomentaryRotButton::UpdateSelfReturn( float value )
 // Spark
 //----------------------------------------------------------------
 
+#define SF_SPARK_CYCLIC 16
+#define SF_SPARK_TOGGLE 32
+#define SF_SPARK_START_ON 64
+
 class CEnvSpark : public CBaseEntity
 {
 public:
 	void Spawn( void );
 	void Precache( void );
 	void EXPORT SparkThink( void );
+	void EXPORT SparkWait( void );
+	void EXPORT SparkCyclic(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void EXPORT SparkStart( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void EXPORT SparkStop( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void KeyValue( KeyValueData *pkvd );
@@ -1464,9 +1500,13 @@ void CEnvSpark::Spawn( void )
 	SetThink( NULL );
 	SetUse( NULL );
 
-	if( FBitSet( pev->spawnflags, 32 ) ) // Use for on/off
+	if (FBitSet(pev->spawnflags, SF_SPARK_CYCLIC))
 	{
-		if( FBitSet( pev->spawnflags, 64 ) ) // Start on
+		SetUse(&CEnvSpark::SparkCyclic);
+	}
+	else if( FBitSet( pev->spawnflags, SF_SPARK_TOGGLE ) ) // Use for on/off
+	{
+		if( FBitSet( pev->spawnflags, SF_SPARK_START_ON ) ) // Start on
 		{
 			SetThink( &CEnvSpark::SparkThink );	// start sparking
 			SetUse( &CEnvSpark::SparkStop );		// set up +USE to stop sparking
@@ -1476,11 +1516,14 @@ void CEnvSpark::Spawn( void )
 	}
 	else
 		SetThink( &CEnvSpark::SparkThink );
-		
-	pev->nextthink = gpGlobals->time + 0.1 + RANDOM_FLOAT( 0, 1.5 );
 
-	if( m_flDelay <= 0 )
-		m_flDelay = 1.5;
+	if( this->m_pfnThink )
+	{
+		pev->nextthink = gpGlobals->time + 0.1 + RANDOM_FLOAT( 0.0f, 1.5f );
+
+		if( m_flDelay <= 0 )
+			m_flDelay = 1.5f;
+	}
 
 	Precache();
 }
@@ -1513,17 +1556,43 @@ void CEnvSpark::KeyValue( KeyValueData *pkvd )
 		CBaseEntity::KeyValue( pkvd );
 }
 
+void EXPORT CEnvSpark::SparkCyclic(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if (m_pfnThink == NULL)
+	{
+		DoSpark( pev, pev->origin );
+		SetThink(&CEnvSpark::SparkWait );
+		pev->nextthink = gpGlobals->time + m_flDelay;
+	}
+	else
+	{
+		SetThink(&CEnvSpark::SparkThink ); // if we're on SparkWait, change to actually spark at the specified time.
+	}
+}
+
+void EXPORT CEnvSpark::SparkWait(void)
+{
+	SetThink( NULL );
+}
+
 void EXPORT CEnvSpark::SparkThink( void )
 {
-	pev->nextthink = gpGlobals->time + 0.1 + RANDOM_FLOAT( 0, m_flDelay );
 	DoSpark( pev, pev->origin );
+	if (pev->spawnflags & SF_SPARK_CYCLIC)
+	{
+		SetThink( NULL );
+	}
+	else
+	{
+		pev->nextthink = gpGlobals->time + 0.1f + RANDOM_FLOAT( 0.0f, m_flDelay );
+	}
 }
 
 void EXPORT CEnvSpark::SparkStart( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	SetUse( &CEnvSpark::SparkStop );
 	SetThink( &CEnvSpark::SparkThink );
-	pev->nextthink = gpGlobals->time + 0.1 + RANDOM_FLOAT( 0, m_flDelay );
+	pev->nextthink = gpGlobals->time + 0.1f + RANDOM_FLOAT( 0.0f, m_flDelay );
 }
 
 void EXPORT CEnvSpark::SparkStop( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -1561,7 +1630,7 @@ void CButtonTarget::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 {
 	if( !ShouldToggle( useType, (int)pev->frame ) )
 		return;
-	pev->frame = 1-pev->frame;
+	pev->frame = 1 - pev->frame;
 	if( pev->frame )
 		SUB_UseTargets( pActivator, USE_ON, 0 );
 	else
