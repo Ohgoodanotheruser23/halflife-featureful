@@ -728,7 +728,6 @@ BA_POK2 barney/ba_later
 // if barney can't follow you
 BA_STOP0 barney/stop1
 BA_STOP1 barney/stop2
-BA_STOP2 barney/stop3
 
 //scripted_sentences
 
@@ -1938,6 +1937,8 @@ PRO_WAIT vox/do not move
 
 PRO_HELPME0 vox/help
 PRO_HELPME1 vox/help wanted
+
+PRO_TEAMUP0 vox/be with team
 
 PRO_NICEJOB0 vox/nice
 PRO_NICEJOB1 vox/good

@@ -365,18 +365,13 @@ public:
 		return player->SaySentence("PBA_FF");
 	}
 	bool seeEnemy(CBasePlayer *player, CBaseMonster *enemy) {
-		switch (enemy->Classify()) {
-		case CLASS_ALIEN_MILITARY:
-		case CLASS_ALIEN_MONSTER:
-		case CLASS_ALIEN_PREDATOR:
-		case CLASS_ALIEN_PREY:
-		case CLASS_RACEX_PREDATOR:
+		if (enemy->IsAlienMonster())
+		{
 			return player->SaySentence("PBA_ALIEN");
-		case CLASS_HUMAN_MILITARY:
-		case CLASS_MACHINE:
+		}
+		else
+		{
 			return player->SaySentence("PBA_MIL");
-		default:
-			return false;
 		}
 	}
 	bool seeAlly(CBasePlayer *player, CBaseMonster *ally) {
@@ -537,15 +532,16 @@ public:
 		return player->SaySentence("PSC_FF");
 	}
 	bool seeEnemy(CBasePlayer *player, CBaseMonster *enemy) {
-		switch (enemy->Classify()) {
-		case CLASS_ALIEN_MILITARY:
-		case CLASS_ALIEN_MONSTER:
-		case CLASS_ALIEN_PREDATOR:
-		case CLASS_RACEX_PREDATOR:
-			return player->SaySentence("PSC_ALIEN");
-		case CLASS_ALIEN_PREY:
+		if (enemy->DefaultClassify() == CLASS_ALIEN_PREY)
+		{
 			return player->SaySentence("PSC_CRAB");
-		default:
+		}
+		else if (enemy->IsAlienMonster())
+		{
+			return player->SaySentence("PSC_ALIEN");
+		}
+		else
+		{
 			return false;
 		}
 	}
@@ -656,6 +652,9 @@ public:
 	bool leadOn(CBasePlayer* player) {
 		return player->SaySentence("PRO_LEADON");
 	}
+	bool stayTogether(CBasePlayer* player) {
+		return player->SaySentence("PRO_TEAMUP");
+	}
 	bool wait(CBasePlayer* player) {
 		return player->SaySentence("!PRO_WAIT");
 	}
@@ -693,21 +692,19 @@ public:
 		return player->SaySentence("PRO_FF");
 	}
 	bool seeEnemy(CBasePlayer *player, CBaseMonster *enemy) {
-		switch (enemy->Classify()) {
-		case CLASS_ALIEN_MILITARY:
-		case CLASS_ALIEN_MONSTER:
-		case CLASS_ALIEN_PREDATOR:
-		case CLASS_ALIEN_PREY:
-		case CLASS_RACEX_PREDATOR:
+		if (enemy->IsAlienMonster())
+		{
 			return player->SaySentence("PRO_ALIEN");
+		}
+		switch (enemy->DefaultClassify()) {
 		case CLASS_HUMAN_MILITARY:
-			if (FClassnameIs(enemy->pev, "monster_apache")) {
+			if (FClassnameIs(enemy->pev, "monster_apache") || FClassnameIs(enemy->pev, "monster_blkop_apache")) {
 				return player->SaySentence("!PRO_HELIC");
 			} else {
 				return player->SaySentence("PRO_MIL");
 			}
 		case CLASS_MACHINE:
-			if (FClassnameIs(enemy->pev, "monster_osprey")) {
+			if (FClassnameIs(enemy->pev, "monster_osprey") || FClassnameIs(enemy->pev, "monster_blkop_osprey")) {
 				return player->SaySentence("!PRO_HELIC");
 			} else {
 				return player->SaySentence("!PRO_TURRET");
