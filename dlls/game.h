@@ -64,7 +64,6 @@ extern cvar_t survival;
 extern cvar_t survival_warmup_time;
 extern cvar_t survival_restart_number;
 
-extern cvar_t use_to_take;
 extern cvar_t char_phrases;
 
 extern cvar_t minpanicdelay;

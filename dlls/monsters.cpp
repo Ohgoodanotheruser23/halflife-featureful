@@ -33,7 +33,6 @@
 #include "decals.h"
 #include "soundent.h"
 #include "gamerules.h"
-#include "game.h"
 #include "mod_features.h"
 
 #define MONSTER_CUT_CORNER_DIST		8 // 8 means the monster's bounding box is contained without the box of the node in WC
@@ -3904,7 +3903,9 @@ CBaseEntity *CBaseMonster::DropItem( const char *pszItemName, const Vector &vecP
 		// do we want this behavior to be default?! (sjb)
 		pItem->pev->velocity = pev->velocity;
 		pItem->pev->avelocity = Vector( 0, RANDOM_FLOAT( 0, 100 ), 0 );
-		pItem->pev->spawnflags = pItem->pev->spawnflags | SF_NORESPAWN;
+
+		// Dropped items should never respawn (unless this rule changes in the future). - Solokiller
+		pItem->pev->spawnflags |= SF_NORESPAWN;
 		return pItem;
 	}
 	else

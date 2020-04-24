@@ -1944,7 +1944,6 @@
 	spawnflags(flags) =
 	[
 		128: "Breakable" : 0
-		4096 : "Support players needs" : 0
 	]
 	friction(integer) : "Friction (0-400)" : 50
 	buoyancy(integer) : "Buoyancy" : 20
