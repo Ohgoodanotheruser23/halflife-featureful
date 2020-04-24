@@ -63,6 +63,9 @@
 // enable reverse relationship models, like barnabus
 #define FEATURE_REVERSE_RELATIONSHIP_MODELS 1
 
+// monsters who carry hand grenades will drop one hand grenade upon death
+#define FEATURE_MONSTERS_DROP_HANDGRENADES 1
+
 // New weapons
 #define FEATURE_PIPEWRENCH (1 || FEATURE_OPFOR_WEAPONS)
 #define FEATURE_KNIFE (0 || FEATURE_OPFOR_WEAPONS)
@@ -113,9 +116,13 @@
 #define FEATURE_MOVE_MODE 1
 #define FEATURE_FLASHLIGHT_ITEM 0
 #define FEATURE_SUIT_FLASHLIGHT 1 // whether suit always provides flashlight
+#define FEATURE_CLIENTSIDE_HUDSOUND 1
 
 #define FEATURE_NIGHTVISION (FEATURE_OPFOR_NIGHTVISION || FEATURE_CS_NIGHTVISION)
 
 #define FEATURE_ROPE (0 || FEATURE_OPFOR_SPECIFIC)
+
+// whether items drop instantly when spawned, e.g. from func_breakable (this is default behavior)
+#define FEATURE_ITEM_INSTANT_DROP 1
 
 #endif

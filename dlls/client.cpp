@@ -965,11 +965,13 @@ void ClientPrecache( void )
 	PRECACHE_MODEL( "models/player.mdl" );
 
 	// hud sounds
-//	PRECACHE_SOUND( "common/wpn_hudoff.wav" );
-//	PRECACHE_SOUND( "common/wpn_hudon.wav" );
-//	PRECACHE_SOUND( "common/wpn_moveselect.wav" );
-//	PRECACHE_SOUND( "common/wpn_select.wav" );
-//	PRECACHE_SOUND( "common/wpn_denyselect.wav" );
+#if !FEATURE_CLIENTSIDE_HUDSOUND
+	PRECACHE_SOUND( "common/wpn_hudoff.wav" );
+	PRECACHE_SOUND( "common/wpn_hudon.wav" );
+	PRECACHE_SOUND( "common/wpn_moveselect.wav" );
+	PRECACHE_SOUND( "common/wpn_select.wav" );
+	PRECACHE_SOUND( "common/wpn_denyselect.wav" );
+#endif
 
 	// geiger sounds
 //	PRECACHE_SOUND( "player/geiger6.wav" );

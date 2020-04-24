@@ -88,7 +88,7 @@ void CWorldItem::Spawn( void )
 	REMOVE_ENTITY( edict() );
 }
 
-class CItemRandomProxy : public CBaseEntity
+class CItemRandomProxy : public CPointEntity
 {
 public:
 	void KeyValue( KeyValueData *pkvd );
@@ -155,7 +155,7 @@ void CItemRandomProxy::SpawnItem()
 
 #define ITEM_RANDOM_MAX_COUNT 16
 
-class CItemRandom : public CBaseEntity
+class CItemRandom : public CPointEntity
 {
 public:
 	virtual int Save( CSave &save );
@@ -304,12 +304,14 @@ void CItem::Spawn( void )
 
 	if (pev->movetype != MOVETYPE_NONE)
 	{
+#if FEATURE_ITEM_INSTANT_DROP
 		if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
 		{
 			ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), (double)pev->origin.x, (double)pev->origin.y, (double)pev->origin.z);
 			UTIL_Remove( this );
 			return;
 		}
+#endif
 	}
 }
 

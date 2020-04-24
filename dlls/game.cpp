@@ -1167,7 +1167,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_islave_dmg_zap1 );// {"sk_islave_dmg_zap1","0"};
 	CVAR_REGISTER( &sk_islave_dmg_zap2 );// {"sk_islave_dmg_zap2","0"};
 	CVAR_REGISTER( &sk_islave_dmg_zap3 );// {"sk_islave_dmg_zap3","0"};
-	
+
 	CVAR_REGISTER( &sk_islave_zap_rate1 );
 	CVAR_REGISTER( &sk_islave_zap_rate2 );
 	CVAR_REGISTER( &sk_islave_zap_rate3 );
@@ -1714,13 +1714,13 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_player_leg1 );
 	CVAR_REGISTER( &sk_player_leg2 );
 	CVAR_REGISTER( &sk_player_leg3 );
-	
+
 	// panic delay factor
-	
+
 	CVAR_REGISTER( &sk_panic_delay_factor1 );
 	CVAR_REGISTER( &sk_panic_delay_factor2 );
 	CVAR_REGISTER( &sk_panic_delay_factor3 );
-	
+
 // END REGISTER CVARS FOR SKILL LEVEL STUFF
 
 	SERVER_COMMAND( "exec skill.cfg\n" );

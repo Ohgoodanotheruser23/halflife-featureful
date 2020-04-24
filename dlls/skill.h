@@ -283,7 +283,7 @@ struct skilldata_t
 	float plrStomach;
 	float plrLeg;
 	float plrArm;
-	
+
 	// panic delay factor
 	float panicDelayFactor;
 };
