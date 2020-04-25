@@ -41,8 +41,8 @@ cvar_t item_respawndelay = { "mp_item_respawndelay","-2",FCVAR_SERVER };
 cvar_t healthcharger_rechargetime = { "mp_healthcharger_rechargetime","-2",FCVAR_SERVER };
 cvar_t hevcharger_rechargetime = { "mp_hevcharger_rechargetime","-2",FCVAR_SERVER };
 
-cvar_t selfgauss	= { "mp_selfgauss", "1", FCVAR_SERVER };
-cvar_t satchelfix	= { "mp_satchelfix", "0", FCVAR_SERVER };
+cvar_t selfgauss	= { "mp_selfgauss", "0", FCVAR_SERVER };
+cvar_t satchelfix	= { "mp_satchelfix", "1", FCVAR_SERVER };
 cvar_t allowgaussjump = { "mp_allowgaussjump", "0", FCVAR_SERVER };
 
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
@@ -55,7 +55,7 @@ cvar_t teamoverride	= { "mp_teamoverride","1" };
 cvar_t defaultteam	= { "mp_defaultteam","0" };
 
 cvar_t allowmonsters	= { "mp_allowmonsters","0", FCVAR_SERVER };
-cvar_t allowmonsterinfo = { "mp_allowmonsterinfo","0", FCVAR_SERVER };
+cvar_t allowmonsterinfo = { "mp_allowmonsterinfo","2", FCVAR_SERVER };
 cvar_t npc_dropweapons = { "npc_dropweapons", "1", FCVAR_SERVER };
 cvar_t dmgperscore = { "mp_dmgperscore", "50", FCVAR_SERVER };
 cvar_t allydmgpenalty = { "mp_allydmgpenalty", "2", FCVAR_SERVER };
@@ -87,7 +87,7 @@ cvar_t speed_degradation = { "mp_speed_degradation", "1", FCVAR_SERVER };
 cvar_t barnacle_paralyze  = { "mp_barnacle_paralyze", "1", FCVAR_SERVER };
 
 cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
-cvar_t grenade_jump = { "grenade_jump","1", FCVAR_SERVER };
+cvar_t grenade_jump = { "grenade_jump","0", FCVAR_SERVER };
 
 cvar_t keepinventory	= { "mp_keepinventory","1", FCVAR_SERVER }; // keep inventory across level transitions in multiplayer coop
 
