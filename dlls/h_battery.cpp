@@ -54,6 +54,11 @@ public:
 		}
 		return false;
 	}
+	int ItemCategory() {
+		if (m_iJuice > 0)
+			return ITEM_CATEGORY_BATTERY;
+		return ITEM_CATEGORY_NULL;
+	}
 };
 
 LINK_ENTITY_TO_CLASS( func_recharge, CRecharge )
@@ -111,6 +116,12 @@ public:
 	}
 
 	int ChargerCapacity() { return (int)(pev->health > 0 ? pev->health : gSkillData.suitchargerCapacity); }
+	int ItemCategory() {
+		if (m_iJuice > 0)
+			return ITEM_CATEGORY_BATTERY;
+		return ITEM_CATEGORY_NULL;
+	}
+
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 

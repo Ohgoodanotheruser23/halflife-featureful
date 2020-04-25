@@ -431,6 +431,15 @@ bool CBaseMonster::IsAlienMonster()
 	}
 }
 
+int CBaseMonster::MonsterCategory()
+{
+	if (IsAlienMonster())
+	{
+		return MONSTER_CATEGORY_ALIEN_MONSTER;
+	}
+	return MONSTER_CATEGORY_NULL;
+}
+
 void CBaseMonster::FadeMonster( void )
 {
 	StopAnimation();
@@ -1456,12 +1465,17 @@ BOOL CBaseEntity::FVisible( CBaseEntity *pEntity )
 		return FALSE;
 
 	vecLookerOrigin = pev->origin + pev->view_ofs;//look through the caller's 'eyes'
-	vecTargetOrigin = pEntity->EyePosition();
+	if (pEntity->IsBSPModel())
+		vecTargetOrigin = VecBModelOrigin( pEntity->pev );
+	else
+		vecTargetOrigin = pEntity->EyePosition();
 
 	UTIL_TraceLine( vecLookerOrigin, vecTargetOrigin, ignore_monsters, ignore_glass, ENT( pev )/*pentIgnore*/, &tr );
 
 	if( tr.flFraction != 1.0f )
 	{
+		if (pEntity->IsBSPModel() && tr.pHit == pEntity->edict())
+			return TRUE;
 		return FALSE;// Line of sight is not established
 	}
 	else

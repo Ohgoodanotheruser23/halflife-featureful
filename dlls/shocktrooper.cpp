@@ -114,6 +114,7 @@ public:
 	virtual int SizeForGrapple() { return GRAPPLE_LARGE; }
 	Vector DefaultMinHullSize() { return Vector( -24.0f, -24.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 24.0f, 24.0f, 72.0f ); }
+	int MonsterCategory() { return MONSTER_CATEGORY_ALIEN_MONSTER; }
 
 	BOOL m_bRightClaw;
 	float m_rechargeTime;

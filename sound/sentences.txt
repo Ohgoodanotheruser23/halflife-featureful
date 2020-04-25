@@ -1909,18 +1909,22 @@ PRO_BIOGUN vox/biological weapon
 
 PRO_GRENADE vox/grenade here
 
-PRO_AMMO vox/ammunition
+PRO_AMMO0 vox/ammunition
 
 PRO_LOOK0 vox/attention required
 PRO_LOOK1 vox/over there
 
-PRO_MEDKIT vox/medical kit
-PRO_BATTERY vox/suit armor
+PRO_MEDKIT0 vox/medical kit
+PRO_MEDKIT1 vox/health kit
+
+PRO_BATTERY0 vox/suit armor
+PRO_BATTERY1 vox/suit energy
 
 PRO_DOC0 vox/science personnel
 PRO_DOC1 vox/doctor
 
-PRO_GUARD vox/security guard
+PRO_GUARD0 vox/security guard
+PRO_GUARD1 vox/security personnel
 
 PRO_YES vox/yes
 
@@ -1928,12 +1932,14 @@ PRO_NO vox/no
 
 PRO_SORRY vox/sorry
 
-PRO_LETSGO vox/move
+PRO_LETSGO0 vox/move move move
+PRO_LETSGO1 vox/go go go
 
 PRO_LEADON0 vox/i got your back
 PRO_LEADON1 vox/i with you
 
-PRO_WAIT vox/do not move
+PRO_WAIT0 vox/do not move
+PRO_WAIT1 vox/slow down
 
 PRO_HELPME0 vox/help
 PRO_HELPME1 vox/help wanted
@@ -1991,8 +1997,6 @@ PRO_MIL4 vox/military force detected
 
 PRO_TURRET vox/turret detected
 
-PRO_HELIC vox/the military helicopter detected
-
 PRO_CAREFUL0 vox/warning, danger is inside perimeter
 PRO_CAREFUL1 vox/team, be on guard
 PRO_CAREFUL2 vox/extreme attention required
@@ -2002,7 +2006,7 @@ PRO_RESCUED1 vox/i am back
 
 PRO_RESCUEME0 vox/i want out
 PRO_RESCUEME1 vox/help wanted
-PRO_RESCUEME2 vox/i am locked
+PRO_RESCUEME2 vox/i am locked out
 
 PRO_HEAL0 vox/do not move _comma i am a doctor
 PRO_HEAL1 vox/i have something for you

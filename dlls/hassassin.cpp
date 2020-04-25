@@ -92,6 +92,7 @@ public:
 	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
 	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
 	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
+	int MonsterCategory() { return MONSTER_CATEGORY_MILITARY_HUMAN; }
 
 	float m_flLastShot;
 	float m_flDiviation;

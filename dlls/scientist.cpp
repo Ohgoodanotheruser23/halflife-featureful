@@ -121,6 +121,8 @@ public:
 
 	void TalkInit( void );
 
+	int MonsterCategory() { return MONSTER_CATEGORY_SCIENTIST; }
+
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];

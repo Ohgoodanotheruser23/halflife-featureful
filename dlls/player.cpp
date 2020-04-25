@@ -54,36 +54,6 @@ extern void respawn( entvars_t *pev, BOOL fCopyCorpse );
 extern Vector VecBModelOrigin( entvars_t *pevBModel );
 extern edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer );
 
-static bool isScientistAlly(CBaseMonster* ally)
-{
-	const char* className = STRING(ally->pev->classname);
-	return FStrEq(className, "monster_scientist") || FStrEq(className, "monster_cleansuit_scientist");
-}
-
-static bool isSecurityGuardAlly(CBaseMonster* ally)
-{
-	const char* className = STRING(ally->pev->classname);
-	return FStrEq(className, "monster_barney") || FStrEq(className, "monster_otis");
-}
-
-static bool isHealthItem(CBaseEntity* pObject)
-{
-	const char* className = STRING(pObject->pev->classname);
-	return FStrEq(className, "item_healthkit") || FStrEq(className, "item_healthcharger");
-}
-
-static bool isSomeItem(CBaseEntity* pObject)
-{
-	const char* className = STRING(pObject->pev->classname);
-	return strncmp(className, "item_", 5) == 0 && !FStrEq(className, "item_generic");
-}
-
-static bool isSomeAmmo(CBaseEntity* pObject)
-{
-	const char* className = STRING(pObject->pev->classname);
-	return strncmp(className, "ammo_", 5) == 0;
-}
-
 class CharacterPhrases
 {
 public:
@@ -109,7 +79,7 @@ public:
 		if (pObject) {
 			CBaseMonster* monster = pObject->MyMonsterPointer();
 			if (monster && monster->IsAlive()) {
-				if (monster->IRelationship(player) >= R_DL) {
+				if (player->IRelationship(monster) >= R_DL) {
 					return seeEnemy(player, monster) || lookGeneric(player);
 				} else if (monster->IRelationship(player) == R_AL) {
 					return seeAlly(player, monster);
@@ -375,7 +345,7 @@ public:
 		}
 	}
 	bool seeAlly(CBasePlayer *player, CBaseMonster *ally) {
-		if (isScientistAlly(ally)) {
+		if (ally->MonsterCategory() == MONSTER_CATEGORY_SCIENTIST) {
 			return player->SaySentence("PBA_DOC");
 		}
 		return false;
@@ -463,7 +433,7 @@ public:
 		}
 	}
 	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
-		if (isSomeItem(pObject) || isSomeAmmo(pObject)) {
+		if (pObject->ItemCategory() != ITEM_CATEGORY_NULL) {
 			return player->SaySentence("PSC_SUPPLIES");
 		}
 		return false;
@@ -532,7 +502,7 @@ public:
 		return player->SaySentence("PSC_FF");
 	}
 	bool seeEnemy(CBasePlayer *player, CBaseMonster *enemy) {
-		if (enemy->DefaultClassify() == CLASS_ALIEN_PREY)
+		if (enemy->MonsterCategory() == MONSTER_CATEGORY_HEADCRAB)
 		{
 			return player->SaySentence("PSC_CRAB");
 		}
@@ -546,13 +516,14 @@ public:
 		}
 	}
 	bool seeAlly(CBasePlayer *player, CBaseMonster *ally) {
-		const char* className = STRING(ally->pev->classname);
-		if (isScientistAlly(ally)) {
+		switch (ally->MonsterCategory()) {
+		case MONSTER_CATEGORY_SCIENTIST:
 			return player->SaySentence("PSC_DOC");
-		} else if (isSecurityGuardAlly(ally)) {
+		case MONSTER_CATEGORY_SECURITY_GUARD:
 			return player->SaySentence("PSC_GUARD");
+		default:
+			return false;
 		}
-		return false;
 	}
 	bool beCareful(CBasePlayer *player) {
 		return player->SaySentence("PSC_CAREFUL");
@@ -613,17 +584,18 @@ public:
 		}
 	}
 	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
-		const char* className = STRING(pObject->pev->classname);
-		if (isSomeAmmo(pObject)) {
-			return player->SaySentence("!PRO_AMMO");
-		} else if (isHealthItem(pObject)) {
-			return player->SaySentence("!PRO_MEDKIT");
-		} else if (FStrEq(className, "item_battery")) {
-			return player->SaySentence("!PRO_BATTERY");
-		} else if (FStrEq(className, "monster_miniturret") || FStrEq(className, "monster_turret") || FStrEq(className, "monster_sentry")) {
+		switch (pObject->ItemCategory()) {
+		case ITEM_CATEGORY_AMMO:
+			return player->SaySentence("PRO_AMMO");
+		case ITEM_CATEGORY_HEALTHKIT:
+			return player->SaySentence("PRO_MEDKIT");
+		case ITEM_CATEGORY_BATTERY:
+			return player->SaySentence("PRO_BATTERY");
+		case ITEM_CATEGORY_TURRET:
 			return player->SaySentence("!PRO_TURRET");
+		default:
+			return false;
 		}
-		return false;
 	}
 	bool lookAtPlayer(CBasePlayer *player, CBasePlayer *otherPlayer) {
 		switch(otherPlayer->m_playerCharacter) {
@@ -647,7 +619,7 @@ public:
 		return player->SaySentence("!PRO_SORRY");
 	}
 	bool letsGo(CBasePlayer* player) {
-		return player->SaySentence("!PRO_LETSGO");
+		return player->SaySentence("PRO_LETSGO");
 	}
 	bool leadOn(CBasePlayer* player) {
 		return player->SaySentence("PRO_LEADON");
@@ -656,7 +628,7 @@ public:
 		return player->SaySentence("PRO_TEAMUP");
 	}
 	bool wait(CBasePlayer* player) {
-		return player->SaySentence("!PRO_WAIT");
+		return player->SaySentence("PRO_WAIT");
 	}
 	bool helpMe(CBasePlayer *player) {
 		return player->SaySentence("PRO_HELPME");
@@ -696,30 +668,26 @@ public:
 		{
 			return player->SaySentence("PRO_ALIEN");
 		}
-		switch (enemy->DefaultClassify()) {
-		case CLASS_HUMAN_MILITARY:
-			if (FClassnameIs(enemy->pev, "monster_apache") || FClassnameIs(enemy->pev, "monster_blkop_apache")) {
-				return player->SaySentence("!PRO_HELIC");
-			} else {
-				return player->SaySentence("PRO_MIL");
-			}
-		case CLASS_MACHINE:
-			if (FClassnameIs(enemy->pev, "monster_osprey") || FClassnameIs(enemy->pev, "monster_blkop_osprey")) {
-				return player->SaySentence("!PRO_HELIC");
-			} else {
-				return player->SaySentence("!PRO_TURRET");
-			}
+		else if (enemy->MonsterCategory() == MONSTER_CATEGORY_MILITARY_HUMAN)
+		{
+			return player->SaySentence("PRO_MIL");
+		}
+		else if (enemy->MonsterCategory() == MONSTER_CATEGORY_TURRET)
+		{
+			return player->SaySentence("!PRO_TURRET");
+		}
+		else
+			return false;
+	}
+	bool seeAlly(CBasePlayer *player, CBaseMonster *ally) {
+		switch (ally->MonsterCategory()) {
+		case MONSTER_CATEGORY_SCIENTIST:
+			return player->SaySentence("PRO_DOC");
+		case MONSTER_CATEGORY_SECURITY_GUARD:
+			return player->SaySentence("PRO_GUARD");
 		default:
 			return false;
 		}
-	}
-	bool seeAlly(CBasePlayer *player, CBaseMonster *ally) {
-		if (isScientistAlly(ally)) {
-			return player->SaySentence("PRO_DOC");
-		} else if (isSecurityGuardAlly(ally)) {
-			return player->SaySentence("!PRO_GUARD");
-		}
-		return false;
 	}
 	bool beCareful(CBasePlayer *player) {
 		return player->SaySentence("PRO_CAREFUL");
@@ -782,7 +750,7 @@ class GinaPhrases : public CharacterPhrases
 		}
 	}
 	bool lookAtSomething(CBasePlayer *player, CBaseEntity *pObject) {
-		if (isHealthItem(pObject)) {
+		if (pObject->ItemCategory() == ITEM_CATEGORY_HEALTHKIT) {
 			return player->SaySentence("!PGI_MEDKIT");
 		}
 		return false;
@@ -818,7 +786,7 @@ class GinaPhrases : public CharacterPhrases
 		return player->SaySentence("PGI_ENEMY");
 	}
 	bool seeAlly(CBasePlayer *player, CBaseMonster *ally) {
-		if (isSecurityGuardAlly(ally)) {
+		if (ally->MonsterCategory() == MONSTER_CATEGORY_SECURITY_GUARD) {
 			return player->SaySentence("!PGI_GUARD");
 		}
 		return false;
@@ -6481,13 +6449,7 @@ bool IsSomethingInteresting(CBaseEntity* pObject, CBasePlayer* player)
 		if (weapon && !weapon->m_pPlayer) {
 			return true;
 		}
-		if (FStrEq(className, "weaponbox")) {
-			return true;
-		}
-		if (isSomeItem(pObject)) {
-			return true;
-		}
-		if (isSomeAmmo(pObject)) {
+		if (pObject->ItemCategory() != ITEM_CATEGORY_NULL) {
 			return true;
 		}
 	}
@@ -6505,8 +6467,14 @@ CBaseEntity* CBasePlayer::LookForSomethingToSayAbout()
 	UTIL_MakeVectors( pev->v_angle );
 	while( ( pObject = UTIL_FindEntityInSphere( pObject, pev->origin, 512 ) ) != NULL )
 	{
-		if ( FVisible(pObject) && IsSomethingInteresting(pObject, this) ) {
-			vecLOS = ( pObject->pev->origin + pObject->pev->view_ofs - ( pev->origin + pev->view_ofs ) ).Normalize();
+		if ( IsSomethingInteresting(pObject, this) && FVisible(pObject) ) {
+			Vector vecTargetOrigin;
+			if (pObject->IsBSPModel())
+				vecTargetOrigin = VecBModelOrigin( pObject->pev );
+			else
+				vecTargetOrigin = pObject->EyePosition();
+
+			vecLOS = ( vecTargetOrigin - ( pev->origin + pev->view_ofs ) ).Normalize();
 			flDot = DotProduct( vecLOS , gpGlobals->v_forward );
 			if( flDot > flMaxDot )
 			{
@@ -6594,12 +6562,14 @@ bool CBasePlayer::SaySentence(const char *pszSentence)
 {
 	if( pszSentence && IsAlive() )
 	{
+		bool result = false;
 		if( pszSentence[0] == '!' )
-			EMIT_SOUND_DYN( edict(), CHAN_VOICE, pszSentence, VOL_NORM, ATTN_NORM, 0, GetVoicePitch());
+			result = EMIT_SOUND_DYN( edict(), CHAN_VOICE, pszSentence, VOL_NORM, ATTN_NORM, 0, GetVoicePitch());
 		else
-			SENTENCEG_PlayRndSz( edict(), pszSentence, VOL_NORM, ATTN_NORM, 0, GetVoicePitch() );
-		m_flSayTime = gpGlobals->time + PLAYER_SAY_DEFAULT_DELAY;
-		return true;
+			result = SENTENCEG_PlayRndSz( edict(), pszSentence, VOL_NORM, ATTN_NORM, 0, GetVoicePitch() ) >= 0;
+		if (result)
+			m_flSayTime = gpGlobals->time + PLAYER_SAY_DEFAULT_DELAY;
+		return result;
 	}
 	return false;
 }

@@ -19,6 +19,17 @@
 class CFollowingMonster;
 class CDeadMonster;
 
+enum
+{
+    MONSTER_CATEGORY_NULL = 0,
+    MONSTER_CATEGORY_SCIENTIST,
+    MONSTER_CATEGORY_SECURITY_GUARD,
+    MONSTER_CATEGORY_ALIEN_MONSTER,
+    MONSTER_CATEGORY_HEADCRAB,
+    MONSTER_CATEGORY_MILITARY_HUMAN,
+    MONSTER_CATEGORY_TURRET,
+};
+
 //
 // generic Monster
 //
@@ -371,6 +382,7 @@ public:
 	int GibCount();
 
 	virtual bool IsAlienMonster();
+	virtual int MonsterCategory();
 
 	virtual const char* DefaultDisplayName() { return NULL; }
 	const char* DisplayName();

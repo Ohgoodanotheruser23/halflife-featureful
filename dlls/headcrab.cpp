@@ -110,6 +110,7 @@ public:
 	virtual int SizeForGrapple() { return GRAPPLE_SMALL; }
 	Vector DefaultMinHullSize() { return Vector( -12.0f, -12.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 12.0f, 12.0f, 24.0f ); }
+	int MonsterCategory() { return MONSTER_CATEGORY_HEADCRAB; }
 
 	static const char *pIdleSounds[];
 	static const char *pAlertSounds[];
@@ -599,6 +600,8 @@ public:
 	void MonsterThink(void);
 	void StartTask(Task_t* pTask);
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
+
+	int MonsterCategory() { return MONSTER_CATEGORY_ALIEN_MONSTER; }
 
 	virtual int		Save(CSave &save);
 	virtual int		Restore(CRestore &restore);

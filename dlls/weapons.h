@@ -520,6 +520,8 @@ public:
 	void InsertWeaponById( CBasePlayerWeapon* pItem );
 	CBasePlayerWeapon* WeaponById( int id );
 
+	int ItemCategory() { return ITEM_CATEGORY_AMMO; }
+
 	CBasePlayerWeapon	*m_rgpPlayerWeapons[MAX_WEAPONS];// one slot for each
 
 	string_t m_rgiszAmmo[MAX_AMMO_SLOTS];// ammo names

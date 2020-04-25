@@ -32,6 +32,7 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	BOOL MyTouch( CBasePlayer *pPlayer );
+	int ItemCategory() { return ITEM_CATEGORY_HEALTHKIT; }
 /*
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -378,6 +379,11 @@ public:
 	{
 		return pActivator->TakeHealth( this, 1, DMG_GENERIC ) > 0;
 	}
+	int ItemCategory() {
+		if (m_iJuice > 0)
+			return ITEM_CATEGORY_HEALTHKIT;
+		return ITEM_CATEGORY_NULL;
+	}
 };
 
 LINK_ENTITY_TO_CLASS( func_healthcharger, CWallHealth )
@@ -466,6 +472,11 @@ public:
 	void UpdateOnRemove();
 	void UpdateJar();
 	int ChargerCapacity() { return (int)(pev->health > 0 ? pev->health : gSkillData.healthchargerCapacity); }
+	int ItemCategory() {
+		if (m_iJuice > 0)
+			return ITEM_CATEGORY_HEALTHKIT;
+		return ITEM_CATEGORY_NULL;
+	}
 
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );

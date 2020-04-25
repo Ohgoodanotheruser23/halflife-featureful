@@ -1214,7 +1214,7 @@ typedef struct sentenceg
 	unsigned char rgblru[CSENTENCE_LRU_MAX];
 } SENTENCEG;
 
-#define CSENTENCEG_MAX 256					// max number of sentence groups
+#define CSENTENCEG_MAX 288					// max number of sentence groups
 // globals
 
 SENTENCEG rgsentenceg[CSENTENCEG_MAX];

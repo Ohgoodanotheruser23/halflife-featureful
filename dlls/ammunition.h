@@ -21,6 +21,8 @@ public:
 	virtual const char* MyModel() = 0;
 	virtual int MyAmount() = 0;
 	virtual const char* AmmoName() = 0;
+
+	int ItemCategory() { return ITEM_CATEGORY_AMMO; }
 };
 
 #endif

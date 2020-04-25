@@ -542,6 +542,7 @@ public:
 		}
 		return FALSE;
 	}
+	int ItemCategory() { return ITEM_CATEGORY_BATTERY; }
 protected:
 	virtual const char* DefaultModel() { return "models/w_battery.mdl"; }
 	virtual bool ShouldSetSuitUpdate() { return true; }

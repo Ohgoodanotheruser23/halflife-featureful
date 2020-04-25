@@ -64,6 +64,8 @@ public:
 	virtual int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	virtual int Classify( void );
 	virtual int DefaultClassify();
+	int ItemCategory() { return ITEM_CATEGORY_TURRET; }
+	int MonsterCategory() { return MONSTER_CATEGORY_TURRET; }
 
 	int BloodColor( void ) { return DONT_BLEED; }
 	void GibMonster( void ) {}	// UNDONE: Throw turret gibs?

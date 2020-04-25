@@ -161,6 +161,15 @@ enum GrappleTarget
 	GRAPPLE_FIXED			= 4,
 };
 
+enum
+{
+	ITEM_CATEGORY_NULL = 0,
+	ITEM_CATEGORY_HEALTHKIT,
+	ITEM_CATEGORY_BATTERY,
+	ITEM_CATEGORY_AMMO,
+	ITEM_CATEGORY_TURRET,
+};
+
 //
 // Base Entity.  All entity types derive from this
 //
@@ -373,6 +382,7 @@ public:
 	virtual CBasePlayerWeapon* MyWeaponPointer() {return NULL;}
 
 	virtual bool IsAlienMonster() { return false; }
+	virtual int ItemCategory() { return ITEM_CATEGORY_NULL; }
 };
 
 // Ugly technique to override base member functions
