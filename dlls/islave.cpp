@@ -864,6 +864,12 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 							// TODO: should restore the actual values that the vort had before he died
 							revivedVort->pev->rendermode = kRenderNormal;
 							revivedVort->pev->renderamt = 255;
+							if (revivedVort->ShouldFadeOnDeath())
+							{
+								// Force fading upon death if monster should have faded originally
+								revivedVort->pev->spawnflags |= SF_MONSTER_FADECORPSE;
+							}
+							revivedVort->pev->owner = NULL; // nullify owner to avoid additional DeathNotice calls
 							revivedVort->Spawn();
 							revivedVort->Remember(bits_MEMORY_ISLAVE_REVIVED);
 
@@ -1082,6 +1088,7 @@ void CISlave::StartTask( Task_t *pTask )
 		}
 		else
 		{
+			m_flSpawnFamiliarTime = gpGlobals->time + ISLAVE_SPAWNFAMILIAR_DELAY; // still set delay to avoid constant trying
 			TaskFail("no space to spawn a familiar");
 		}
 		break;
@@ -1205,15 +1212,11 @@ void CISlave::SpawnFamiliar(const char *entityName, const Vector &origin, int hu
 			
 			SetBits( pNew->pev->spawnflags, SF_MONSTER_FALL_TO_GROUND );
 			if (pNewMonster) {
+				if (m_iClass || m_reverseRelationship) {
+					pNewMonster->m_iClass = Classify();
+				}
 				if (m_hEnemy) {
-					pNewMonster->m_hEnemy = m_hEnemy;
-					pNewMonster->m_vecEnemyLKP = m_vecEnemyLKP;
-					pNewMonster->SetConditions( bits_COND_NEW_ENEMY );
-					pNewMonster->m_MonsterState = MONSTERSTATE_COMBAT;
-					pNewMonster->m_IdealMonsterState = MONSTERSTATE_COMBAT;
-					if (m_iClass || m_reverseRelationship) {
-						pNewMonster->m_iClass = Classify();
-					}
+					pNewMonster->PushEnemy(m_hEnemy, m_vecEnemyLKP);
 				}
 			}
 		}
@@ -1441,7 +1444,6 @@ Schedule_t slSlaveCoverAndSummon[] =
 
 Task_t tlSlaveSummon[] =
 {
-	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_RANGE_ATTACK1 },
 	{ TASK_STOP_MOVING, (float)0 },
 	{ TASK_FACE_ENEMY, (float)0 },
 	{ TASK_ISLAVE_SUMMON_FAMILIAR, (float)0 }
@@ -1534,7 +1536,7 @@ Schedule_t *CISlave::GetSchedule( void )
 	{
 	case MONSTERSTATE_COMBAT:
 		// dead enemy
-		if( HasConditions( bits_COND_ENEMY_DEAD ) )
+		if( HasConditions( bits_COND_ENEMY_DEAD|bits_COND_ENEMY_LOST ) )
 		{
 			// call base class, all code to handle dead enemies is centralized there.
 			return CBaseMonster::GetSchedule();
@@ -1545,7 +1547,7 @@ Schedule_t *CISlave::GetSchedule( void )
 			if( !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )
 			{
 				const int sched = CanSpawnFamiliar() ? (int)SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR : (int)SCHED_TAKE_COVER_FROM_ENEMY;
-				if ( HasConditions( bits_COND_CAN_RANGE_ATTACK1 ) && RANDOM_LONG(0,1)) // give chance to use electro attack to restore health
+				if ( HasConditions( bits_COND_CAN_RANGE_ATTACK1 ) && HasConditions( bits_COND_SEE_ENEMY ) && RANDOM_LONG(0,1)) // give chance to use electro attack to restore health
 				{
 					m_failSchedule = SCHED_RANGE_ATTACK1;
 				}

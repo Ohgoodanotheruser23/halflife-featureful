@@ -16,6 +16,8 @@
 #ifndef BASEMONSTER_H
 #define BASEMONSTER_H
 
+#include "cbase.h"
+
 class CFollowingMonster;
 class CDeadMonster;
 
@@ -212,6 +214,7 @@ public:
 	virtual void RunTask( Task_t *pTask );
 	virtual Schedule_t *GetScheduleOfType( int Type );
 	virtual Schedule_t *GetSchedule( void );
+	Schedule_t* GetFreeroamSchedule();
 	virtual void ScheduleChange( void ) {}
 	// virtual int CanPlaySequence( void ) { return ((m_pCine == NULL) && (m_MonsterState == MONSTERSTATE_NONE || m_MonsterState == MONSTERSTATE_IDLE || m_IdealMonsterState == MONSTERSTATE_IDLE)); }
 	virtual int CanPlaySequence( BOOL fDisregardState, int interruptLevel );
@@ -417,9 +420,16 @@ public:
 
 	int m_customSoundMask;
 	short m_prisonerTo;
+	short m_freeRoam;
+
+	float m_flLastTimeObservedEnemy;
 
 	const char* taskFailReason;
 };
+
+#define FREEROAM_MAPDEFAULT 0
+#define FREEROAM_NEVER 1
+#define FREEROAM_ALWAYS 2
 
 class CDeadMonster : public CBaseMonster
 {

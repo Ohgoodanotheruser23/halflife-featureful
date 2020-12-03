@@ -15,6 +15,9 @@
 #pragma once
 #ifndef CBASE_H
 #define CBASE_H
+
+#include "extdll.h"
+#include "util.h"
 /*
 
 Class Hierachy
@@ -720,6 +723,10 @@ public:
 	int m_sounds;
 	string_t m_targetOnLocked;
 	float m_targetOnLockedTime;
+	string_t m_lockedSoundOverride;
+	string_t m_unlockedSoundOverride;
+	string_t m_lockedSentenceOverride;
+	string_t m_unlockedSentenceOverride;
 };
 
 //
@@ -790,6 +797,11 @@ typedef struct _SelAmmo
 //
 // This spawns first when each level begins.
 //=======================
+#define SF_WORLD_DARK		0x0001		// Fade from black at startup
+#define SF_WORLD_TITLE		0x0002		// Display game title at startup
+#define SF_WORLD_FORCETEAM	0x0004		// Force teams
+#define SF_WORLD_FREEROAM	0x0008		// Monsters freeroaming by default
+
 class CWorld : public CBaseEntity
 {
 public:

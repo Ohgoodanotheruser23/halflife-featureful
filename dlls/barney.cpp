@@ -23,7 +23,6 @@
 #include	"monsters.h"
 #include	"talkmonster.h"
 #include	"schedule.h"
-#include	"defaultai.h"
 #include	"scripted.h"
 #include	"weapons.h"
 #include	"soundent.h"
@@ -149,6 +148,7 @@ Schedule_t slBaRangeAttack1[] =
 		ARRAYSIZE( tlBaRangeAttack1 ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_ENEMY_OCCLUDED |
@@ -570,7 +570,6 @@ Schedule_t *CBarney::GetScheduleOfType( int Type )
 			return slBarneyEnemyDraw;
 		}
 		break;
-	// Hook these to make a looping schedule
 	case SCHED_RANGE_ATTACK1:
 		return slBaRangeAttack1;
 	}
@@ -605,7 +604,7 @@ Schedule_t *CBarney::GetScheduleImpl(const char *sentenceKill)
 	case MONSTERSTATE_COMBAT:
 		{
 			// dead enemy
-			if( HasConditions( bits_COND_ENEMY_DEAD ) )
+			if( HasConditions( bits_COND_ENEMY_DEAD|bits_COND_ENEMY_LOST ) )
 			{
 				// call base class, all code to handle dead enemies is centralized there.
 				return CBaseMonster::GetSchedule();

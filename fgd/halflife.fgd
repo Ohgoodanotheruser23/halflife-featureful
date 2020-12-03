@@ -43,6 +43,11 @@
 		0 : "Fewest Players"
 		1 : "First Team"
 	]
+	freeroam(choices) : "Roaming monsters (node graph)" : 0 =
+	[
+		0 : "No"
+		1 : "Yes"
+	]
 ]
 
 //
@@ -306,6 +311,12 @@
 	maxhullsize(string) : "Custom Max Hull Size (X Y Z)"
 	gibmodel(studio) : "Custom gib model"
 	displayname(string) : "In-game Name" : : "Display name when mp_allowmonsterinfo is enabled"
+	freeroam(Choices) : "Monster Roaming (nodes)" =
+	[
+		0 : "Map Default"
+		1 : "Never"
+		2 : "Always"
+	]
 ]
 
 @BaseClass base(Monster) = Repel
@@ -475,6 +486,64 @@
 	randomitem_template(string) : "info_item_random entity"
 ]
 
+@BaseClass = BaseLockable
+[
+	locked_sound(choices) : "Locked Sound" : 0 =
+	[
+		0: "None"
+		2: "Access Denied"
+		8: "Small zap"
+		10: "Buzz"
+		11: "Buzz Off"
+		12: "Latch Locked"
+	]
+	unlocked_sound(choices) : "Unlocked Sound" : 0 =
+	[
+		0: "None"
+		1: "Big zap & Warmup"
+		3: "Access Granted"
+		4: "Quick Combolock"
+		5: "Power Deadbolt 1"
+		6: "Power Deadbolt 2"
+		7: "Plunger"
+		8: "Small zap"
+		9: "Keycard Sound"
+		10: "Buzz"
+		13: "Latch Unlocked"
+		14: "Lightswitch"
+	]
+	locked_sentence(choices) : "Locked Sentence" : 0 =
+	[
+		0: "None"
+		1: "Gen. Access Denied"
+		2: "Security Lockout"
+		3: "Blast Door"
+		4: "Fire Door"
+		5: "Chemical Door"
+		6: "Radiation Door"
+		7: "Gen. Containment"
+		8: "Maintenance Door"
+		9: "Broken Shut Door"
+	]
+	unlocked_sentence(choices) : "Unlocked Sentence" : 0 =
+	[
+		0: "None"
+		1: "Gen. Access Granted"
+		2: "Security Disengaged"
+		3: "Blast Door"
+		4: "Fire Door"
+		5: "Chemical Door"
+		6: "Radiation Door"
+		7: "Gen. Containment"
+		8: "Maintenance area"
+	]
+
+	locked_sound_override(sound) : "Locked Sound Override"
+	unlocked_sound_override(sound) : "Unlocked Sound Override"
+	locked_sentence_override(string) : "Locked Sentence Override"
+	unlocked_sentence_override(string) : "Unlocked Sentence Override"
+]
+
 @BaseClass = SoundRadius
 [
 	soundradius(choices) : "Sound radius" =
@@ -488,7 +557,42 @@
 	]
 ]
 
-@BaseClass base(Appearflags, Targetname, RenderFields, Global, Angles, SoundRadius) = Door
+@BaseClass = OpenClosable
+[
+	fireonopening(target_destination) : "Fire On Open Start"
+	fireonopening_triggerstate(choices) : "Fire On Open Start Trigger State" =
+	[
+		0: "Off"
+		1: "On"
+		2: "Toggle"
+	]
+
+	fireonclosing(target_destination) : "Fire On Close Start"
+	fireonclosing_triggerstate(choices) : "Fire On Close Start Trigger State" =
+	[
+		0: "Off"
+		1: "On"
+		2: "Toggle"
+	]
+
+	fireonopened(target_destination) : "Fire On Open End"
+	fireonopened_triggerstate(choices) : "Fire On Open End Trigger State" =
+	[
+		0: "Off"
+		1: "On"
+		2: "Toggle"
+	]
+
+	fireonclosed(target_destination) : "Fire On Close End"
+	fireonclosed_triggerstate(choices) : "Fire On Close End Trigger State" =
+	[
+		0: "Off"
+		1: "On"
+		2: "Toggle"
+	]
+]
+
+@BaseClass base(Appearflags, Targetname, RenderFields, Global, Angles, SoundRadius, BaseLockable, OpenClosable) = Door
 [
 	killtarget(target_destination) : "KillTarget"
 	speed(integer) : "Speed" : 100
@@ -532,6 +636,12 @@
 		0: "No"
 		1: "Yes"
 	]
+	m_iObeyTriggerMode(choices) : "Obey Trigger Mode" =
+	[
+		0 : "No"
+		1 : "Yes"
+		2 : "Yes, even when currently moving"
+	]
 	spawnflags(flags) =
 	[
 		1 : "Starts Open" : 0
@@ -541,55 +651,6 @@
 		256:"Use Only" : 0
 		512: "Monsters Can't" : 1
 		1024: "Force Touchable" : 0 : "Open door by touching even when it has a name. Spirit compatible. Same as parameter 'Ignore Targetname'."
-	]
-	// NOTE: must be duplicated in BUTTON
-	locked_sound(choices) : "Locked Sound" : 0 =
-	[
-		0: "None"
-		2: "Access Denied"
-		8: "Small zap"
-		10: "Buzz"
-		11: "Buzz Off"
-		12: "Latch Locked"
-	]
-	unlocked_sound(choices) : "Unlocked Sound" : 0 =
-	[
-		0: "None"
-		1: "Big zap & Warmup"
-		3: "Access Granted"
-		4: "Quick Combolock"
-		5: "Power Deadbolt 1"
-		6: "Power Deadbolt 2"
-		7: "Plunger"
-		8: "Small zap"
-		9: "Keycard Sound"
-		10: "Buzz"
-		13: "Latch Unlocked"
-	]
-	locked_sentence(choices) : "Locked Sentence" : 0 =
-	[
-		0: "None"
-		1: "Gen. Access Denied"
-		2: "Security Lockout"
-		3: "Blast Door"
-		4: "Fire Door"
-		5: "Chemical Door"
-		6: "Radiation Door"
-		7: "Gen. Containment"
-		8: "Maintenance Door"
-		9: "Broken Shut Door"
-	]
-	unlocked_sentence(choices) : "Unlocked Sentence" : 0 =
-	[
-		0: "None"
-		1: "Gen. Access Granted"
-		2: "Security Disengaged"
-		3: "Blast Door"
-		4: "Fire Door"
-		5: "Chemical Door"
-		6: "Radiation Door"
-		7: "Gen. Containment"
-		8: "Maintenance area"
 	]
 	noise1(sound) : "Move Sound Override"
 	noise2(sound) : "Stop Sound Override"
@@ -1599,6 +1660,7 @@
 		2: "Play Once" : 0
 		4: "Once + Remove" : 0
 	]
+	impulse(integer) : "Start frame" : : "Start frame for animation, negative value means random frame."
 ]
 
 @BaseClass = BaseTrain
@@ -1718,7 +1780,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Global,Targetname, Target, RenderFields, Angles, ZHLT) = func_button : "Button"
+@SolidClass base(Global, Targetname, Target, RenderFields, Angles, ZHLT, BaseLockable) = func_button : "Button"
 [
 	speed(integer) : "Speed" : 5
 	health(integer) : "Health (shootable if > 0)"
@@ -1740,6 +1802,7 @@
 		11: "Buzz Off"
 		14: "Lightswitch"
 	]
+	noise(sound) : "Sound Override"
 	wait(integer) : "delay before reset (-1 stay)" : 3
 	delay(string) : "Delay before trigger" : "0"
 	spawnflags(flags) =
@@ -1750,55 +1813,6 @@
 		64: "Sparks" : 0
 		256:"Touch Activates": 0
 		512:"Player Can't Use": 0
-	]
-	locked_sound(choices) : "Locked Sound" =
-	[
-		0: "None"
-		2: "Access Denied"
-		8: "Small zap"
-		10: "Buzz"
-		11: "Buzz Off"
-		12: "Latch Locked"
-	]
-	unlocked_sound(choices) : "Unlocked Sound" =
-	[
-		0: "None"
-		1: "Big zap & Warmup"
-		3: "Access Granted"
-		4: "Quick Combolock"
-		5: "Power Deadbolt 1"
-		6: "Power Deadbolt 2"
-		7: "Plunger"
-		8: "Small zap"
-		9: "Keycard Sound"
-		10: "Buzz"
-		13: "Latch Unlocked"
-		14: "Lightswitch"
-	]
-	locked_sentence(choices) : "Locked Sentence" =
-	[
-		0: "None"
-		1: "Gen. Access Denied"
-		2: "Security Lockout"
-		3: "Blast Door"
-		4: "Fire Door"
-		5: "Chemical Door"
-		6: "Radiation Door"
-		7: "Gen. Containment"
-		8: "Maintenance Door"
-		9: "Broken Shut Door"
-	]
-	unlocked_sentence(choices) : "Unlocked Sentence" =
-	[
-		0: "None"
-		1: "Gen. Access Granted"
-		2: "Security Disengaged"
-		3: "Blast Door"
-		4: "Fire Door"
-		5: "Chemical Door"
-		6: "Radiation Door"
-		7: "Gen. Containment"
-		8: "Maintenance area"
 	]
 	_minlight(string) : "Minimum light level"
 	target_on_locked(target_destination) : "Target on locked" : : "Trigger if used when locked"
@@ -1956,7 +1970,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_rot_button : "RotatingButton"
+@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT, BaseLockable) = func_rot_button : "RotatingButton"
 [
 	target(target_destination) : "Targetted object"
 	// changetarget will change the button's target's TARGET field to the button's changetarget.
@@ -1972,6 +1986,7 @@
 		24: "Clean Ratchet"
 		25: "Gas Clunk"
 	]
+	noise(sound) : "Sound Override"
 	wait(choices) : "Delay before reset" : 3 =
 	[
 		-1: "Stays pressed"
@@ -2083,6 +2098,9 @@
 		5: "Rail 6"
 		6: "Rail 7"
 	]
+	noise(sound) : "Move Sound Override"
+	noise1(sound) : "Brake Sound Override"
+	noise2(sound) : "Start Sound Override"
 	wheels(integer) : "Distance between the wheels" : 50
 	height(integer) : "Height above track" : 4
 	startspeed(integer) : "Initial speed" : 0
@@ -2664,6 +2682,8 @@
 	]
 	m_iszTargetName(target_source) : "Name of children"
 	target(target_destination) : "Fire on spawn (locus = child)"
+	m_iStartAttachment(integer) : "Start attachment [1-4]" : : "Used when start is entity"
+	m_iEndAttachment(integer) : "End attachment [1-4]" : : "Used when end is entity"
 	spawnflags(flags) =
 	[
 		8 : "Ring"			: 0
@@ -5627,6 +5647,7 @@
 		64 : "Start Inactive" : 0
 	]
 ]
+@PointClass base(Monster, ScaredGuy) size(-16 -16 0, 16 16 72) studio("models/wheelchair_sci.mdl") = monster_wheelchair : "Dr. Keller" []
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/zombie.mdl") = monster_zombie : "Scientist Zombie"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
@@ -5957,6 +5978,12 @@
 		3 : "Forward my activator"
 	]
 	yawdeviation(integer) : "Max yaw deviation" : : "Maximum value for random yaw deviation, from 0 to the specified value, on both sides."
+	freeroam(Choices) : "Monster Roaming (nodes)" =
+	[
+		0 : "Map Default"
+		1 : "Never"
+		2 : "Always"
+	]
 ]
 @PointClass base(MonsterMaker) = monstermaker : "Monster Maker" []
 @PointClass base(MonsterMaker) = squadmaker : "Squad Maker" []
@@ -6737,7 +6764,7 @@
 	]
 ]
 @PointClass base(Weapon, Targetx) studio("models/w_hgun.mdl") = weapon_hornetgun : "Hornet Gun" []
-@PointClass size(-16 -16 0, 16 16 64) color(0 128 0) studio("models/w_weaponbox.mdl") =  weaponbox : "Weapon/Ammo Container" []
+@PointClass base(Target) size(-16 -16 0, 16 16 64) color(0 128 0) studio("models/w_weaponbox.mdl") =  weaponbox : "Weapon/Ammo Container" []
 @PointClass base(Weapon, Targetx) studio("models/w_desert_eagle.mdl") = weapon_eagle : "Desert Eagle" []
 @PointClass base(Weapon, Targetx) studio("models/w_penguinnest.mdl") = weapon_penguin : "Killer Penguin" []
 @PointClass base(Weapon, Targetx) studio("models/w_pipe_wrench.mdl") = weapon_pipewrench : "Pipe Wrench" []

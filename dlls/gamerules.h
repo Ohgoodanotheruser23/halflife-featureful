@@ -18,6 +18,8 @@
 #pragma once
 #ifndef GAMERULES_H
 #define GAMERULES_H
+
+#include "cbase.h"
 //#include "weapons.h"
 //#include "items.h"
 class CBasePlayerWeapon;
@@ -404,4 +406,12 @@ protected:
 };
 
 extern DLL_GLOBAL CGameRules *g_pGameRules;
+
+int TridepthValue();
+bool AllowUseThroughWalls();
+bool NeedUseToTake();
+bool NpcFollowNearest();
+int NpcForgetEnemyTime();
+bool AllowGrenadeJump();
+
 #endif // GAMERULES_H

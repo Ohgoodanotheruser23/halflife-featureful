@@ -804,6 +804,7 @@ Schedule_t	slPDroneRangeAttack1[] =
 		ARRAYSIZE(tlPDroneRangeAttack1),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_ENEMY_OCCLUDED |
 		bits_COND_NO_AMMO_LOADED,
@@ -815,7 +816,7 @@ Schedule_t	slPDroneRangeAttack1[] =
 // Chase enemy schedule
 Task_t tlPDroneChaseEnemy1[] =
 {
-	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_RANGE_ATTACK1 },// !!!OEM - this will stop nasty PitDrone oscillation.
+	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_CHASE_ENEMY_FAILED },
 	{ TASK_GET_PATH_TO_ENEMY, (float)0 },
 	{ TASK_RUN_PATH, (float)0 },
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
@@ -828,6 +829,7 @@ Schedule_t slPDroneChaseEnemy[] =
 		ARRAYSIZE(tlPDroneChaseEnemy1),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_SMELL_FOOD |
 		bits_COND_CAN_RANGE_ATTACK1 |
 		bits_COND_CAN_MELEE_ATTACK1 |
@@ -846,7 +848,7 @@ Task_t tlPDroneHurtHop[] =
 	{ TASK_STOP_MOVING, (float)0 },
 	{ TASK_SOUND_WAKE, (float)0 },
 	{ TASK_PDRONE_HOPTURN, (float)0 },
-	{ TASK_FACE_ENEMY, (float)0 },// in case squid didn't turn all the way in the air.
+	{ TASK_FACE_ENEMY, (float)0 },// in case pitdrone didn't turn all the way in the air.
 };
 
 Schedule_t slPDroneHurtHop[] =
@@ -964,6 +966,43 @@ Schedule_t slPDroneHideReload[] =
 	}
 };
 
+Task_t tlPDroneVictoryDance[] =
+{
+	{ TASK_STOP_MOVING, (float)0 },
+	{ TASK_EAT, (float)10 },
+	{ TASK_FACE_ENEMY, (float)0 },
+	{ TASK_WAIT, 0.2f },
+	{ TASK_STORE_LASTPOSITION, (float)0 },
+	{ TASK_GET_PATH_TO_ENEMY_CORPSE, 40.0f },
+	{ TASK_WALK_PATH, (float)0 },
+	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
+	{ TASK_FACE_ENEMY, (float)0 },
+	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
+	{ TASK_GET_HEALTH_FROM_FOOD, 0.25f },
+	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
+	{ TASK_GET_HEALTH_FROM_FOOD, 0.25f },
+	{ TASK_PLAY_SEQUENCE, (float)ACT_EAT },
+	{ TASK_GET_HEALTH_FROM_FOOD, 0.25f },
+	{ TASK_EAT, (float)50 },
+	{ TASK_GET_PATH_TO_LASTPOSITION, (float)0 },
+	{ TASK_WALK_PATH, (float)0 },
+	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
+	{ TASK_CLEAR_LASTPOSITION, (float)0 },
+};
+
+Schedule_t slPDroneVictoryDance[] =
+{
+	{
+		tlPDroneVictoryDance,
+		ARRAYSIZE( tlPDroneVictoryDance ),
+		bits_COND_NEW_ENEMY |
+		bits_COND_LIGHT_DAMAGE |
+		bits_COND_HEAVY_DAMAGE,
+		0,
+		"PDroneVictoryDance"
+	},
+};
+
 DEFINE_CUSTOM_SCHEDULES(CPitdrone)
 {
 	slPDroneRangeAttack1,
@@ -971,7 +1010,8 @@ DEFINE_CUSTOM_SCHEDULES(CPitdrone)
 	slPDroneHurtHop,
 	slPDroneEat,
 	slPDroneSniffAndEat,
-	slPDroneHideReload
+	slPDroneHideReload,
+	slPDroneVictoryDance
 };
 
 IMPLEMENT_CUSTOM_SCHEDULES(CPitdrone, CFollowingMonster)
@@ -996,7 +1036,12 @@ Schedule_t *CPitdrone::GetSchedule(void)
 		{
 			return GetScheduleOfType( SCHED_PDRONE_HURTHOP );
 		}
-		
+
+		if( HasConditions( bits_COND_ENEMY_DEAD ) && pev->health < pev->max_health )
+		{
+			return GetScheduleOfType( SCHED_VICTORY_DANCE );
+		}
+
 		if (HasConditions(bits_COND_SMELL_FOOD))
 		{
 			CSound		*pSound;
@@ -1022,7 +1067,7 @@ Schedule_t *CPitdrone::GetSchedule(void)
 	case MONSTERSTATE_COMBAT:
 	{
 		// dead enemy
-		if (HasConditions(bits_COND_ENEMY_DEAD))
+		if (HasConditions(bits_COND_ENEMY_DEAD|bits_COND_ENEMY_LOST))
 		{
 			// call base class, all code to handle dead enemies is centralized there.
 			return CFollowingMonster::GetSchedule();
@@ -1104,6 +1149,9 @@ Schedule_t* CPitdrone::GetScheduleOfType(int Type)
 		break;
 	case SCHED_PDRONE_COVER_AND_RELOAD:
 		return &slPDroneHideReload[0];
+		break;
+	case SCHED_VICTORY_DANCE:
+		return slPDroneVictoryDance;
 		break;
 	}
 

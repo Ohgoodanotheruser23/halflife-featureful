@@ -70,9 +70,18 @@ cvar_t bhopcap		= { "mp_bhopcap", "1", FCVAR_SERVER };
 cvar_t allow_spectators = { "allow_spectators", "0", FCVAR_SERVER };	// 0 prevents players from being spectators
 cvar_t multibyte_only = { "mp_multibyte_only", "0", FCVAR_SERVER };
 
+#if FEATURE_USE_THROUGH_WALLS_CVAR
 cvar_t use_through_walls = { "use_through_walls", "1", FCVAR_SERVER };
+#endif
+#if FEATURE_TRIDEPTH_CVAR
 cvar_t tridepth = { "tridepth", "1", FCVAR_SERVER };
+#endif
+#if FEATURE_NPC_NEAREST_CVAR
 cvar_t npc_nearest = { "npc_nearest", "0", FCVAR_SERVER };
+#endif
+#if FEATURE_NPC_FORGET_ENEMY_CVAR
+cvar_t npc_forget_enemy_time = { "npc_forget_enemy_time", "10", FCVAR_SERVER };
+#endif
 cvar_t npc_patrol = { "npc_patrol", "1", FCVAR_SERVER };
 
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
@@ -86,8 +95,12 @@ cvar_t l4m_weapon_system = { "mp_l4m_weapon_system", "1", FCVAR_SERVER };
 cvar_t speed_degradation = { "mp_speed_degradation", "1", FCVAR_SERVER };
 cvar_t barnacle_paralyze  = { "mp_barnacle_paralyze", "1", FCVAR_SERVER };
 
+#if FEATURE_USE_TO_TAKE_CVAR
 cvar_t use_to_take = { "use_to_take","1", FCVAR_SERVER };
+#endif
+#if FEATURE_GRENADE_JUMP_CVAR
 cvar_t grenade_jump = { "grenade_jump","0", FCVAR_SERVER };
+#endif
 
 cvar_t keepinventory	= { "mp_keepinventory","1", FCVAR_SERVER }; // keep inventory across level transitions in multiplayer coop
 
@@ -869,6 +882,16 @@ cvar_t	sk_player_leg1	= { "sk_player_leg1","1" };
 cvar_t	sk_player_leg2	= { "sk_player_leg2","1" };
 cvar_t	sk_player_leg3	= { "sk_player_leg3","1" };
 
+// flashlight settings
+
+cvar_t	sk_flashlight_drain_time1	= { "sk_flashlight_drain_time1","120" };
+cvar_t	sk_flashlight_drain_time2	= { "sk_flashlight_drain_time2","1020" };
+cvar_t	sk_flashlight_drain_time3	= { "sk_flashlight_drain_time3","120" };
+
+cvar_t	sk_flashlight_charge_time1	= { "sk_flashlight_charge_time1","20" };
+cvar_t	sk_flashlight_charge_time2	= { "sk_flashlight_charge_time2","20" };
+cvar_t	sk_flashlight_charge_time3	= { "sk_flashlight_charge_time3","20" };
+
 // panic cvars that depend on skill level
 
 cvar_t sk_panic_delay_factor1 = {"sk_panic_delay_factor1","1.2"};
@@ -891,9 +914,18 @@ void GameDLLInit( void )
 
 	CVAR_REGISTER( &displaysoundlist );
 	CVAR_REGISTER( &allow_spectators );
+#if FEATURE_USE_THROUGH_WALLS_CVAR
 	CVAR_REGISTER( &use_through_walls );
+#endif
+#if FEATURE_TRIDEPTH_CVAR
 	CVAR_REGISTER( &tridepth );
+#endif
+#if FEATURE_NPC_NEAREST_CVAR
 	CVAR_REGISTER( &npc_nearest );
+#endif
+#if FEATURE_NPC_FORGET_ENEMY_CVAR
+	CVAR_REGISTER( &npc_forget_enemy_time );
+#endif
 	CVAR_REGISTER( &npc_patrol );
 
 	CVAR_REGISTER( &teamplay );
@@ -953,8 +985,12 @@ void GameDLLInit( void )
 
 	CVAR_REGISTER( &mp_semclip );
 
+#if FEATURE_USE_TO_TAKE_CVAR
 	CVAR_REGISTER( &use_to_take );
+#endif
+#if FEATURE_GRENADE_JUMP_CVAR
 	CVAR_REGISTER( &grenade_jump );
+#endif
 
 	CVAR_REGISTER( &keepinventory );
 
@@ -1719,8 +1755,15 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_player_leg2 );
 	CVAR_REGISTER( &sk_player_leg3 );
 
-	// panic delay factor
+	CVAR_REGISTER( &sk_flashlight_drain_time1 );
+	CVAR_REGISTER( &sk_flashlight_drain_time2 );
+	CVAR_REGISTER( &sk_flashlight_drain_time3 );
 
+	CVAR_REGISTER( &sk_flashlight_charge_time1 );
+	CVAR_REGISTER( &sk_flashlight_charge_time2 );
+	CVAR_REGISTER( &sk_flashlight_charge_time3 );
+
+	// panic delay factor
 	CVAR_REGISTER( &sk_panic_delay_factor1 );
 	CVAR_REGISTER( &sk_panic_delay_factor2 );
 	CVAR_REGISTER( &sk_panic_delay_factor3 );
@@ -1728,7 +1771,7 @@ void GameDLLInit( void )
 // END REGISTER CVARS FOR SKILL LEVEL STUFF
 
 	SERVER_COMMAND( "exec skill.cfg\n" );
-#if FEATURE_OPFOR_SPECIFIC
+#if FEATURE_OPFOR_SKILL
 	SERVER_COMMAND( "exec skillopfor.cfg\n" );
 #endif
 }

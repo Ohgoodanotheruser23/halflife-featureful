@@ -42,7 +42,6 @@
 #include	"gamerules.h"
 #include	"hgrunt.h"
 #include	"mod_features.h"
-#include	"gamerules.h"
 
 extern DLL_GLOBAL int		g_iSkillLevel;
 
@@ -1335,6 +1334,7 @@ Schedule_t slGruntEstablishLineOfFire[] =
 		ARRAYSIZE( tlGruntEstablishLineOfFire ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_CAN_RANGE_ATTACK1 |
 		bits_COND_CAN_MELEE_ATTACK1 |
 		bits_COND_CAN_RANGE_ATTACK2 |
@@ -1386,6 +1386,7 @@ Schedule_t slGruntCombatFace[] =
 		ARRAYSIZE( tlGruntCombatFace1 ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_CAN_RANGE_ATTACK1 |
 		bits_COND_CAN_RANGE_ATTACK2,
 		0,
@@ -1425,6 +1426,7 @@ Schedule_t slGruntSignalSuppress[] =
 		tlGruntSignalSuppress,
 		ARRAYSIZE( tlGruntSignalSuppress ),
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_HEAR_SOUND |
@@ -1461,6 +1463,7 @@ Schedule_t slGruntSuppress[] =
 		tlGruntSuppress,
 		ARRAYSIZE( tlGruntSuppress ),
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_HEAR_SOUND |
@@ -1683,6 +1686,7 @@ Schedule_t slGruntRangeAttack1A[] =
 		ARRAYSIZE( tlGruntRangeAttack1A ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_ENEMY_OCCLUDED |
 		bits_COND_HEAR_SOUND |
@@ -1721,6 +1725,7 @@ Schedule_t slGruntRangeAttack1B[] =
 		ARRAYSIZE( tlGruntRangeAttack1B ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_ENEMY_OCCLUDED |
 		bits_COND_NO_AMMO_LOADED |
@@ -1968,7 +1973,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 	case MONSTERSTATE_COMBAT:
 		{
 			// dead enemy
-			if( HasConditions( bits_COND_ENEMY_DEAD ) )
+			if( HasConditions( bits_COND_ENEMY_DEAD|bits_COND_ENEMY_LOST ) )
 			{
 				// call base class, all code to handle dead enemies is centralized there.
 				return CBaseMonster::GetSchedule();

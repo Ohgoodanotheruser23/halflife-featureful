@@ -125,6 +125,8 @@ TYPEDESCRIPTION	CBaseMonster::m_SaveData[] =
 
 	DEFINE_FIELD( CBaseMonster, m_customSoundMask, FIELD_INTEGER ),
 	DEFINE_FIELD( CBaseMonster, m_prisonerTo, FIELD_SHORT ),
+	DEFINE_FIELD( CBaseMonster, m_freeRoam, FIELD_SHORT ),
+	DEFINE_FIELD( CBaseMonster, m_flLastTimeObservedEnemy, FIELD_TIME ),
 };
 
 //IMPLEMENT_SAVERESTORE( CBaseMonster, CBaseToggle )
@@ -1097,7 +1099,7 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 	int	iUpdatedLKP;// set this to TRUE if you update the EnemyLKP in this function.
 
 	iUpdatedLKP = FALSE;
-	ClearConditions( bits_COND_ENEMY_FACING_ME );
+	ClearConditions( bits_COND_ENEMY_FACING_ME | bits_COND_ENEMY_LOST );
 
 	if( !FVisible( pEnemy ) )
 	{
@@ -1139,6 +1141,7 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 
 		iUpdatedLKP = TRUE;
 		m_vecEnemyLKP = pEnemy->pev->origin;
+		m_flLastTimeObservedEnemy = gpGlobals->time;
 
 		pEnemyMonster = pEnemy->MyMonsterPointer();
 
@@ -1169,6 +1172,15 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 		// enemy is. 
 		iUpdatedLKP = TRUE;
 		m_vecEnemyLKP = pEnemy->pev->origin;
+		m_flLastTimeObservedEnemy = gpGlobals->time;
+	}
+	else
+	{
+		const int forgetEnemyTime = NpcForgetEnemyTime();
+		if (forgetEnemyTime > 0 && m_flLastTimeObservedEnemy + forgetEnemyTime <= gpGlobals->time)
+		{
+			SetConditions( bits_COND_ENEMY_LOST );
+		}
 	}
 
 	if( flDistToEnemy >= m_flDistTooFar )
@@ -1243,6 +1255,7 @@ BOOL CBaseMonster::PopEnemy()
 			{
 				m_hEnemy = m_hOldEnemy[i];
 				m_vecEnemyLKP = m_vecOldEnemy[i];
+				m_flLastTimeObservedEnemy = gpGlobals->time;
 				// ALERT( at_console, "remembering\n" );
 				return TRUE;
 			}
@@ -1573,16 +1586,13 @@ int CBaseMonster::RouteClassify( int iMoveFlag )
 //=========================================================
 // BuildRoute
 //=========================================================
-extern cvar_t tridepth;
-extern cvar_t npc_nearest;
-
 BOOL CBaseMonster::BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget )
 {
 	float flDist;
 	Vector vecApexes[3];
 	int iLocalMove;
 
-	int triangDepth = (int)tridepth.value;
+	int triangDepth = TridepthValue();
 	if (triangDepth < 1)
 		triangDepth = 1;
 	if (triangDepth > ARRAYSIZE(vecApexes))
@@ -1644,7 +1654,7 @@ BOOL CBaseMonster::BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity
 
 	if (nearest)
 	{
-		if (npc_nearest.value)
+		if (NpcFollowNearest())
 		{
 			SetBits(iMoveFlag, bits_MF_NEAREST_PATH);
 
@@ -2624,7 +2634,6 @@ BOOL CBaseMonster::FindCover( Vector vecThreat, Vector vecViewOffset, float flMi
 		int nodeNumber = ( i + WorldGraph.m_iLastCoverSearch ) % WorldGraph.m_cNodes;
 
 		CNode &node = WorldGraph.Node( nodeNumber );
-		WorldGraph.m_iLastCoverSearch = nodeNumber + 1; // next monster that searches for cover node will start where we left off here.
 
 		// could use an optimization here!!
 		flDist = ( pev->origin - node.m_vecOrigin ).Length();
@@ -2657,6 +2666,7 @@ BOOL CBaseMonster::FindCover( Vector vecThreat, Vector vecViewOffset, float flMi
 						MESSAGE_END();
 						*/
 
+						WorldGraph.m_iLastCoverSearch = nodeNumber + 1; // next monster that searches for cover node will start where we left off here.
 						return TRUE;
 					}
 				}
@@ -2716,7 +2726,6 @@ BOOL CBaseMonster::FindRunAway( Vector vecThreat, float flMinDist, float flMaxDi
 		int nodeNumber = ( i + WorldGraph.m_iLastCoverSearch ) % WorldGraph.m_cNodes;
 
 		CNode &node = WorldGraph.Node( nodeNumber );
-		WorldGraph.m_iLastCoverSearch = nodeNumber + 1; // next monster that searches for cover node will start where we left off here.
 
 		// could use an optimization here!!
 		flDist = ( pev->origin - node.m_vecOrigin ).Length();
@@ -2730,6 +2739,7 @@ BOOL CBaseMonster::FindRunAway( Vector vecThreat, float flMinDist, float flMaxDi
 			{
 				if( FValidateCover( node.m_vecOrigin ) && MoveToLocation( ACT_RUN, 0, node.m_vecOrigin ) )
 				{
+					WorldGraph.m_iLastCoverSearch = nodeNumber + 1; // next monster that searches for cover node will start where we left off here.
 					return TRUE;
 				}
 			}
@@ -2793,7 +2803,6 @@ BOOL CBaseMonster::BuildNearestRoute( Vector vecThreat, Vector vecViewOffset, fl
 		int nodeNumber = ( i + WorldGraph.m_iLastCoverSearch ) % WorldGraph.m_cNodes;
 
 		CNode &node = WorldGraph.Node( nodeNumber );
-		WorldGraph.m_iLastCoverSearch = nodeNumber + 1; // next monster that searches for cover node will start where we left off here.
 
 		// can I get there?
 		if( WorldGraph.NextNodeInRoute( iMyNode, nodeNumber, iMyHullIndex, 0 ) != iMyNode )
@@ -2813,6 +2822,7 @@ BOOL CBaseMonster::BuildNearestRoute( Vector vecThreat, Vector vecViewOffset, fl
 					{
 						// flMaxDist = flDist;
 						m_vecMoveGoal = node.m_vecOrigin;
+						WorldGraph.m_iLastCoverSearch = nodeNumber + 1; // next monster that searches for cover node will start where we left off here.
 						return TRUE; // UNDONE: keep looking for something closer!
 					}
 				}
@@ -3455,6 +3465,11 @@ void CBaseMonster::KeyValue( KeyValueData *pkvd )
 		m_prisonerTo = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if ( FStrEq( pkvd->szKeyName, "freeroam" ) )
+	{
+		m_freeRoam = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 	{
 		CBaseToggle::KeyValue( pkvd );
@@ -3858,6 +3873,7 @@ BOOL CBaseMonster::GetEnemy( void )
 					SetConditions( bits_COND_NEW_ENEMY );
 					m_hEnemy = pNewEnemy;
 					m_vecEnemyLKP = m_hEnemy->pev->origin;
+					m_flLastTimeObservedEnemy = gpGlobals->time;
 				}
 				// if the new enemy has an owner, take that one as well
 				if( pNewEnemy->pev->owner != NULL )

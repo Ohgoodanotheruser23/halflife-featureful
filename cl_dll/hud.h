@@ -468,8 +468,6 @@ public:
 	int Draw( float flTime );
 	void Reset( void );
 	int MsgFunc_Nightvision( const char *pszName, int iSize, void *pbuf );
-	int MsgFunc_Flashlight( const char *pszName, int iSize, void *pbuf );
-	int MsgImpl(const char *pszName, int iSize, void *pbuf);
 	void DrawCSNVG(float flTime);
 	void DrawOpforNVG(float flTime);
 	void RemoveCSdlight();
@@ -559,7 +557,7 @@ private:
 
 	int m_HUD_title_life;
 	int m_HUD_title_half;
-#if FEATURE_OPFOR_SPECIFIC
+#if FEATURE_OPFOR_TITLE
 	int m_HUD_title_opposing;
 	int m_HUD_title_force;
 #endif

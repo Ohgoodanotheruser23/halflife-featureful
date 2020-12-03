@@ -101,7 +101,7 @@ void CSquidSpit::SpawnHelper(const char *className)
 
 	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
 
-	m_maxFrame = (float)MODEL_FRAMES( pev->modelindex ) - 1;
+	m_maxFrame = MODEL_FRAMES( pev->modelindex ) - 1;
 }
 
 void CSquidSpit::Animate( void )
@@ -237,7 +237,7 @@ void CBigSquidSpit::Spawn( void )
 
 	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
 
-	m_maxFrame = (float)MODEL_FRAMES( pev->modelindex ) - 1;
+	m_maxFrame = MODEL_FRAMES( pev->modelindex ) - 1;
 }
 
 void CBigSquidSpit::Precache()
@@ -1032,6 +1032,7 @@ Schedule_t slSquidRangeAttack1[] =
 		ARRAYSIZE( tlSquidRangeAttack1 ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_ENEMY_OCCLUDED |
 		bits_COND_NO_AMMO_LOADED,
@@ -1056,6 +1057,7 @@ Schedule_t slSquidChaseEnemy[] =
 		ARRAYSIZE( tlSquidChaseEnemy1 ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST |
 		bits_COND_SMELL_FOOD |
 		bits_COND_CAN_RANGE_ATTACK1 |
 		bits_COND_CAN_MELEE_ATTACK1 |
@@ -1277,14 +1279,14 @@ Schedule_t *CBullsquid::GetSchedule( void )
 	{
 	case MONSTERSTATE_ALERT:
 		{
-			if( HasConditions( bits_COND_ENEMY_DEAD ) && pev->health < pev->max_health )
-			{
-				return GetScheduleOfType( SCHED_VICTORY_DANCE );
-			}
-			
 			if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 			{
 				return GetScheduleOfType( SCHED_SQUID_HURTHOP );
+			}
+
+			if( HasConditions( bits_COND_ENEMY_DEAD ) && pev->health < pev->max_health )
+			{
+				return GetScheduleOfType( SCHED_VICTORY_DANCE );
 			}
 
 			if( HasConditions( bits_COND_SMELL_FOOD ) )
@@ -1317,7 +1319,7 @@ Schedule_t *CBullsquid::GetSchedule( void )
 	case MONSTERSTATE_COMBAT:
 		{
 			// dead enemy
-			if( HasConditions( bits_COND_ENEMY_DEAD ) )
+			if( HasConditions( bits_COND_ENEMY_DEAD|bits_COND_ENEMY_LOST ) )
 			{
 				// call base class, all code to handle dead enemies is centralized there.
 				return CBaseMonster::GetSchedule();

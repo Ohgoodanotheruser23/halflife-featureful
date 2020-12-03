@@ -932,9 +932,6 @@ extern CGraph WorldGraph;
 #define TRAIN_FAST		0x04
 #define TRAIN_BACK		0x05
 
-#define	FLASH_DRAIN_TIME	 1.2f //100 units/3 minutes
-#define	FLASH_CHARGE_TIME	 0.2f // 100 units/20 seconds  (seconds per unit)
-
 // Global Savedata for player
 TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 {
@@ -1296,7 +1293,7 @@ int CBasePlayer::TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamag
 	RefreshMaxSpeed(this);
 #if FEATURE_MEDKIT
 	CBasePlayerWeapon* pPlayerMedkit = WeaponById(WEAPON_MEDKIT);
-	if (pPlayerMedkit) {
+	if ((bitsDamageType & HEAL_CHARGE) != 0 && pPlayerMedkit) {
 		const int rest = (int)flHealth - healed;
 		if (rest > 0) {
 			const int medAmmoIndex = GetAmmoIndex(pPlayerMedkit->pszAmmo1());
@@ -2443,8 +2440,6 @@ void CBasePlayer::StartObserver( Vector vecPosition, Vector vecViewAngle )
 //
 #define	PLAYER_SEARCH_RADIUS	(float)64
 
-extern cvar_t use_through_walls;
-
 void CBasePlayer::PlayerUse( void )
 {
 	if( IsObserver() )
@@ -2527,7 +2522,7 @@ void CBasePlayer::PlayerUse( void )
 				// if it's "hull" is in the view cone
 				vecLOS = UTIL_ClampVectorToBox( vecLOS, pObject->pev->size * 0.5 );
 
-				if (!use_through_walls.value || (caps & FCAP_ONLYVISIBLE_USE) )
+				if (!AllowUseThroughWalls() || (caps & FCAP_ONLYVISIBLE_USE) )
 				{
 					UTIL_TraceLine(pev->origin + pev->view_ofs, pObject->Center(), dont_ignore_monsters, edict(), &tr);
 					if (tr.flFraction < 1.0f && tr.pHit != pObject->edict())
@@ -4736,7 +4731,7 @@ void CBasePlayer::GiveNamedItem(const char *pszName , int spawnFlags)
 
 	DispatchSpawn( pent );
 
-	if (use_to_take.value) {
+	if (NeedUseToTake()) {
 		CBaseEntity* entity = (CBaseEntity *)GET_PRIVATE( pent );
 		if (entity) {
 			entity->Use(this, this, USE_TOGGLE, 0.0f);
@@ -4809,7 +4804,7 @@ void CBasePlayer::FlashlightTurnOn( void )
 		MESSAGE_END();
 #endif
 
-		m_flFlashLightTime = FLASH_DRAIN_TIME + gpGlobals->time;
+		m_flFlashLightTime = gSkillData.flashlightDrainTime/100 + gpGlobals->time;
 	}
 }
 
@@ -4837,7 +4832,7 @@ void CBasePlayer::FlashlightTurnOff( bool playOffSound )
 	MESSAGE_END();
 #endif
 
-	m_flFlashLightTime = FLASH_CHARGE_TIME + gpGlobals->time;
+	m_flFlashLightTime = gSkillData.flashlightChargeTime/100 + gpGlobals->time;
 }
 
 /*
@@ -5497,6 +5492,13 @@ void CBasePlayer::UpdateClientData( void )
 			WRITE_BYTE( m_iFlashBattery );
 		MESSAGE_END();
 
+#if FEATURE_NIGHTVISION
+		// Send Nightvision Off message.
+		MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
+			WRITE_BYTE( FlashlightIsOn() ? 1 : 0 );
+		MESSAGE_END();
+#endif
+
 		// Vit_amiN: the geiger state could run out of sync, too
 		MESSAGE_BEGIN( MSG_ONE, gmsgGeigerRange, NULL, pev );
 			WRITE_BYTE( 0 );
@@ -5600,7 +5602,7 @@ void CBasePlayer::UpdateClientData( void )
 		{
 			if( m_iFlashBattery )
 			{
-				m_flFlashLightTime = FLASH_DRAIN_TIME + gpGlobals->time;
+				m_flFlashLightTime = gSkillData.flashlightDrainTime/100 + gpGlobals->time;
 				m_iFlashBattery--;
 
 				if( !m_iFlashBattery )
@@ -5611,7 +5613,7 @@ void CBasePlayer::UpdateClientData( void )
 		{
 			if( m_iFlashBattery < 100 )
 			{
-				m_flFlashLightTime = FLASH_CHARGE_TIME + gpGlobals->time;
+				m_flFlashLightTime = gSkillData.flashlightChargeTime/100 + gpGlobals->time;
 				m_iFlashBattery++;
 			}
 			else

@@ -26,6 +26,9 @@
 #include	"weapons.h"
 #include	"soundent.h"
 #include	"game.h"
+#include	"gamerules.h"
+
+#define FEATURE_HASSSASSIN_DROP_AMMO 0
 
 extern DLL_GLOBAL int  g_iSkillLevel;
 
@@ -83,6 +86,7 @@ public:
 	void PlayUnUseSentence();
 	void DeathSound( void );
 	void IdleSound( void );
+	void OnDying();
 	CUSTOM_SCHEDULES
 
 	int Save( CSave &save ); 
@@ -153,6 +157,33 @@ void CHAssassin::DeathSound( void )
 //=========================================================
 void CHAssassin::IdleSound( void )
 {
+}
+
+void CHAssassin::OnDying()
+{
+#if FEATURE_HASSSASSIN_DROP_AMMO || FEATURE_MONSTERS_DROP_HANDGRENADES
+	if( g_pGameRules->FMonsterCanDropWeapons(this) && !FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GUN) )
+	{
+		// drop the gun!
+		Vector vecGunPos;
+		Vector vecGunAngles;
+
+		GetAttachment( 0, vecGunPos, vecGunAngles );
+#if FEATURE_HASSSASSIN_DROP_AMMO
+		DropItem( "ammo_9mmclip", vecGunPos, vecGunAngles );
+#endif
+#if FEATURE_MONSTERS_DROP_HANDGRENADES
+		CBaseEntity* pGrenadeEnt = DropItem( "weapon_handgrenade", BodyTarget( pev->origin ), vecGunAngles );
+		if (pGrenadeEnt)
+		{
+			CBasePlayerWeapon* pGrenadeWeap = pGrenadeEnt->MyWeaponPointer();
+			if (pGrenadeWeap)
+				pGrenadeWeap->m_iDefaultAmmo = 1;
+		}
+#endif
+	}
+#endif
+	CFollowingMonster::OnDying();
 }
 
 //=========================================================
@@ -837,13 +868,9 @@ Schedule_t *CHAssassin::GetSchedule( void )
 	case MONSTERSTATE_IDLE:
 	case MONSTERSTATE_ALERT:
 		{
-			Schedule_t* followingSchedule = GetFollowingSchedule();
-			if (followingSchedule)
-				return followingSchedule;
-
+			CSound *pSound = NULL;
 			if( HasConditions( bits_COND_HEAR_SOUND ) )
 			{
-				CSound *pSound;
 				pSound = PBestSound();
 
 				ASSERT( pSound != NULL );
@@ -851,17 +878,22 @@ Schedule_t *CHAssassin::GetSchedule( void )
 				{
 					return GetScheduleOfType( SCHED_TAKE_COVER_FROM_BEST_SOUND );
 				}
-				if( pSound &&( pSound->m_iType & bits_SOUND_COMBAT ) )
-				{
-					return GetScheduleOfType( SCHED_INVESTIGATE_SOUND );
-				}
+			}
+
+			Schedule_t* followingSchedule = GetFollowingSchedule();
+			if (followingSchedule)
+				return followingSchedule;
+
+			if( pSound &&( pSound->m_iType & bits_SOUND_COMBAT ) )
+			{
+				return GetScheduleOfType( SCHED_INVESTIGATE_SOUND );
 			}
 		}
 		break;
 	case MONSTERSTATE_COMBAT:
 		{
 			// dead enemy
-			if( HasConditions( bits_COND_ENEMY_DEAD ) )
+			if( HasConditions( bits_COND_ENEMY_DEAD|bits_COND_ENEMY_LOST ) )
 			{
 				// call base class, all code to handle dead enemies is centralized there.
 				return CFollowingMonster::GetSchedule();

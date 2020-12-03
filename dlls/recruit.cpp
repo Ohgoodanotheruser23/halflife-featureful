@@ -4,7 +4,6 @@
 #include	"monsters.h"
 #include	"talkmonster.h"
 #include	"schedule.h"
-#include	"defaultai.h"
 #include	"scripted.h"
 #include	"soundent.h"
 #include	"mod_features.h"
@@ -199,7 +198,7 @@ Schedule_t* CRecruit::GetSchedule()
 		break;
 	case MONSTERSTATE_COMBAT:
 	{
-		if( HasConditions( bits_COND_ENEMY_DEAD ) )
+		if( HasConditions( bits_COND_ENEMY_DEAD|bits_COND_ENEMY_LOST ) )
 		{
 			// call base class, all code to handle dead enemies is centralized there.
 			return CBaseMonster::GetSchedule();

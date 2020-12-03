@@ -16,6 +16,8 @@
 #ifndef EFFECTS_H
 #define EFFECTS_H
 
+#include "cbase.h"
+
 #define SF_BEAM_STARTON			0x0001
 #define SF_BEAM_TOGGLE			0x0002
 #define SF_BEAM_RANDOM			0x0004
@@ -281,8 +283,8 @@ public:
 	// Init after BeamCreate()
 	void		BeamInit( const char *pSpriteName, int width );
 	void		PointsInit( const Vector &start, const Vector &end );
-	void		PointEntInit( const Vector &start, int endIndex );
-	void		EntsInit( int startIndex, int endIndex );
+	void		PointEntInit( const Vector &start, int endIndex, int endAttachment = 0 );
+	void		EntsInit(int startIndex, int endIndex, int startAttachment = 0, int endAttachment = 0 );
 	void		HoseInit( const Vector &start, const Vector &direction );
 
 	static CBeam *BeamCreate( const char *pSpriteName, int width );

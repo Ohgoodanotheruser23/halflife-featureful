@@ -51,8 +51,8 @@
 #ifndef TRUE
 #define TRUE (!FALSE)
 #endif
-#include <limits.h>
-#include <stdarg.h>
+#include <climits>
+#include <cstdarg>
 typedef unsigned int ULONG;
 typedef unsigned char BYTE;
 typedef int BOOL;
@@ -64,12 +64,12 @@ typedef int BOOL;
 
 // Misc C-runtime library headers
 #include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
+#include <cstdlib>
+#include <cstddef>
 #if HAVE_CMATH
 #include <cmath>
 #else
-#include <math.h>
+#include <cmath>
 #endif
 
 #ifndef M_PI_F

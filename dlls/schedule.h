@@ -19,6 +19,8 @@
 #ifndef	SCHEDULE_H
 #define	SCHEDULE_H
 
+#include "vector.h"
+
 #define	TASKSTATUS_NEW				0			// Just started
 #define TASKSTATUS_RUNNING			1			// Running task & movement
 #define TASKSTATUS_RUNNING_MOVEMENT	2			// Just running movement
@@ -74,6 +76,8 @@ typedef enum
 		SCHED_BARNACLE_VICTIM_CHOMP,
 		SCHED_AISCRIPT,
 		SCHED_FAIL,
+		SCHED_FREEROAM,
+		SCHED_MOVE_TO_ENEMY_LKP,
 
 		LAST_COMMON_SCHEDULE			// Leave this at the bottom
 } SCHEDULE_TYPE;
@@ -178,6 +182,7 @@ typedef enum
 		TASK_GET_HEALTH_FROM_FOOD,
 		TASK_CHECK_FIRE, // check friendly fire
 		TASK_CATCH_WITH_TARGET_RANGE,
+		TASK_GET_PATH_TO_FREEROAM_NODE,
 		LAST_COMMON_TASK // LEAVE THIS AT THE BOTTOM!! (sjb)
 } SHARED_TASKS;
 
@@ -283,9 +288,10 @@ struct WayPoint_t
 #define bits_COND_ENEMY_DEAD			( 1 << 20) // enemy was killed. If you get this in combat, try to find another enemy. If you get it in alert, victory dance.
 #define bits_COND_SEE_CLIENT			( 1 << 21) // see a client
 #define bits_COND_SEE_NEMESIS			( 1 << 22) // see my nemesis
+#define bits_COND_ENEMY_LOST			( 1 << 23 ) // did not observe an enemy for a while
 
 #define bits_COND_CLIENT_PUSH			( 1 << 26 ) // Clients can push ally monsters out of their way
-#define bits_COND_NOFIRE				( 1 << 27) // no friendly fire
+#define bits_COND_NOFIRE				( 1 << 27) // better stop firing (usually as friendly fire is possible)
 #define bits_COND_SPECIAL1				( 1 << 28) // Defined by individual monster
 #define bits_COND_SPECIAL2				( 1 << 29) // Defined by individual monster
 

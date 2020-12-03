@@ -840,6 +840,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
 					TaskComplete();
 				}
+
 				// The point is to just run away from danger. Try to find a node without actual cover.
 				else if (FindRunAway( pBestSound->m_vecOrigin, pBestSound->m_iVolume, CoverRadius() ))
 				{
@@ -856,7 +857,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					dir.z = 0;
 					Vector targetLocation = pev->origin + dir.Normalize() * distance;
 
-					if( MoveToLocation( ACT_RUN, 2, targetLocation ) )
+					if( MoveToLocation( ACT_RUN, 0, targetLocation ) )
 					{
 						//ALERT(at_aiconsole, "Using the last resort to run away\n");
 						TaskComplete();
@@ -1153,18 +1154,27 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_GET_PATH_TO_BESTSOUND:
 		{
-			CSound *pSound;
+			CSound *pSound = PBestSound();
 
-			pSound = PBestSound();
-
-			if( pSound && MoveToLocation( m_movementActivity, 2, pSound->m_vecOrigin ) )
+			if(pSound)
 			{
-				TaskComplete();
+				if( MoveToLocation( m_movementActivity, 2, pSound->m_vecOrigin ) )
+				{
+					TaskComplete();
+				}
+				else if( BuildNearestRoute( pSound->m_vecOrigin, pev->view_ofs, 0, pSound->m_iVolume ) )
+				{
+					TaskComplete();
+				}
+				else
+				{
+					// no way to get there =(
+					TaskFail("can't build path to best sound");
+				}
 			}
 			else
 			{
-				// no way to get there =(
-				TaskFail("can't build path to best sound");
+				TaskFail("no sound detected");
 			}
 			break;
 		}
@@ -1376,6 +1386,41 @@ void CBaseMonster::StartTask( Task_t *pTask )
 #endif
 		TaskComplete();
 		break;
+	case TASK_GET_PATH_TO_FREEROAM_NODE:
+		{
+			if( !WorldGraph.m_fGraphPresent || !WorldGraph.m_fGraphPointersSet )
+			{
+				TaskFail("graph not ready for freeroam");
+			}
+			else
+			{
+				for( int i = 0; i < WorldGraph.m_cNodes; i++ )
+				{
+					int nodeNumber = ( i + WorldGraph.m_iLastFreeroamNode ) % WorldGraph.m_cNodes;
+
+					CNode &node = WorldGraph.Node( nodeNumber );
+
+					// Don't go to the node if already is close enough
+					if ((node.m_vecOrigin - pev->origin).Length() < 16.0f)
+						continue;
+
+					TraceResult tr;
+					UTIL_TraceLine( pev->origin + pev->view_ofs, node.m_vecOrigin + pev->view_ofs, dont_ignore_monsters, ENT( pev ), &tr );
+
+					if (tr.flFraction == 1.0f && MoveToLocation( ACT_WALK, 2, node.m_vecOrigin ))
+					{
+						TaskComplete();
+						WorldGraph.m_iLastFreeroamNode = nodeNumber + 1;
+						break;
+					}
+				}
+				if (!TaskIsComplete())
+				{
+					TaskFail("Could not find node to freeroam");
+				}
+			}
+		}
+		break;
 	default:
 		{
 			ALERT( at_aiconsole, "No StartTask entry for %d\n", (SHARED_TASKS)pTask->iTask );
@@ -1399,6 +1444,20 @@ Task_t *CBaseMonster::GetTask( void )
 	{
 		return &m_pSchedule->pTasklist[m_iScheduleIndex];
 	}
+}
+
+Schedule_t* CBaseMonster::GetFreeroamSchedule()
+{
+	if (m_freeRoam == FREEROAM_ALWAYS)
+		return GetScheduleOfType( SCHED_FREEROAM );
+	else if (m_freeRoam == FREEROAM_MAPDEFAULT)
+	{
+		entvars_t *pevWorld = VARS( INDEXENT( 0 ) );
+		if (pevWorld->spawnflags & SF_WORLD_FREEROAM) {
+			return  GetScheduleOfType( SCHED_FREEROAM );
+		}
+	}
+	return NULL;
 }
 
 //=========================================================
@@ -1443,6 +1502,9 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 					}
 				}
 				// no valid route!
+				Schedule_t* freeroamSchedule = GetFreeroamSchedule();
+				if (freeroamSchedule)
+					return freeroamSchedule;
 				return GetScheduleOfType( SCHED_IDLE_STAND );
 			}
 			else
@@ -1458,6 +1520,10 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 			{
 				return GetScheduleOfType( SCHED_VICTORY_DANCE );
 			}
+			if ( HasConditions( bits_COND_ENEMY_LOST ) )
+			{
+				return GetScheduleOfType( SCHED_MOVE_TO_ENEMY_LKP );
+			}
 
 			if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 			{
@@ -1470,12 +1536,39 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 					return GetScheduleOfType( SCHED_ALERT_SMALL_FLINCH );
 				}
 			}
-			else if( HasConditions ( bits_COND_HEAR_SOUND ) )
+			if( HasConditions ( bits_COND_HEAR_SOUND ) )
 			{
+				if (HasMemory(bits_MEMORY_ALERT_AFTER_COMBAT))
+				{
+					CSound *pSound = PBestSound();
+					if (pSound)
+					{
+						const int type = pSound->m_iType;
+						const bool isCombat = (type & bits_SOUND_COMBAT);
+						const bool isDanger = (type & bits_SOUND_DANGER);
+						const bool isPlayer = (type & bits_SOUND_PLAYER);
+						if (isCombat && // it's combat sound
+								!isDanger && // but not danger
+								( !isPlayer || IDefaultRelationship(CLASS_PLAYER) != R_AL )) // and it's not combat sound produced by ally player
+						{
+							ALERT(at_aiconsole, "%s trying to investigate sound after combat\n", STRING(pev->classname));
+							return GetScheduleOfType( SCHED_INVESTIGATE_SOUND );
+						}
+					}
+				}
 				return GetScheduleOfType( SCHED_ALERT_FACE );
+			}
+			else if (!HasMemory(bits_MEMORY_DID_ROAM_IN_ALERT) && HasMemory(bits_MEMORY_ALERT_AFTER_COMBAT))
+			{
+				ALERT(at_aiconsole, "%s trying to freeroam after combat\n", STRING(pev->classname));
+				Remember(bits_MEMORY_DID_ROAM_IN_ALERT);
+				return GetScheduleOfType( SCHED_FREEROAM );
 			}
 			else
 			{
+				Schedule_t* freeroamSchedule = GetFreeroamSchedule();
+				if (freeroamSchedule)
+					return freeroamSchedule;
 				return GetScheduleOfType( SCHED_ALERT_STAND );
 			}
 			break;
@@ -1490,6 +1583,23 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 				if( GetEnemy() )
 				{
 					ClearConditions( bits_COND_ENEMY_DEAD );
+					return GetSchedule();
+				}
+				else
+				{
+					SetState( MONSTERSTATE_ALERT );
+					return GetSchedule();
+				}
+			}
+
+			if ( HasConditions( bits_COND_ENEMY_LOST ) )
+			{
+				ALERT(at_aiconsole, "%s did not see an enemy for a while. Just forget about it\n", STRING(pev->classname));
+				m_hEnemy = NULL;
+
+				if( GetEnemy() )
+				{
+					ClearConditions( bits_COND_ENEMY_LOST );
 					return GetSchedule();
 				}
 				else

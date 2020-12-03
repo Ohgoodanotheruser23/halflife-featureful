@@ -258,6 +258,7 @@ class CGargantua : public CFollowingMonster
 public:
 	void Spawn( void );
 	void Precache( void );
+	void PrecacheImpl();
 	void UpdateOnRemove();
 	void SetYawSpeed( void );
 	int DefaultClassify( void );
@@ -536,7 +537,8 @@ Schedule_t slGargStomp[] =
 		tlGargStomp,
 		ARRAYSIZE( tlGargStomp ),
 		bits_COND_NEW_ENEMY |
-		bits_COND_ENEMY_DEAD,
+		bits_COND_ENEMY_DEAD |
+		bits_COND_ENEMY_LOST,
 		0,
 		"GargStomp"
 	},
@@ -876,13 +878,18 @@ void CGargantua::Spawn()
 //=========================================================
 void CGargantua::Precache()
 {
+	PrecacheImpl();
+	m_GargGibModel = PRECACHE_MODEL( GibModel() );
+}
+
+void CGargantua::PrecacheImpl()
+{
 	PrecacheMyModel( DefaultModel() );
 	PRECACHE_MODEL( EyeSprite() );
 
 	PRECACHE_MODEL( GARG_BEAM_SPRITE_NAME );
 	PRECACHE_MODEL( GARG_BEAM_SPRITE2 );
 	m_stompSprite = PRECACHE_MODEL( StompSprite() );
-	m_GargGibModel = PRECACHE_MODEL( GibModel() );
 	PRECACHE_SOUND( GARG_STOMP_BUZZ_SOUND );
 
 	PrecacheSounds();
@@ -1562,6 +1569,7 @@ void SpawnExplosion( Vector center, float randomRange, float time, int magnitude
 class CBabyGargantua : public CGargantua
 {
 public:
+	void Precache() { PrecacheImpl(); }
 	void SetYawSpeed( void );
 	const char* ReverseRelationshipModel() { return "models/babygargf.mdl"; }
 	const char* DefaultDisplayName() { return "Baby Gargantua"; }

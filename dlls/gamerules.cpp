@@ -457,7 +457,10 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.plrStomach = GetSkillCvar( "sk_player_stomach" );
 	gSkillData.plrLeg = GetSkillCvar( "sk_player_leg" );
 	gSkillData.plrArm = GetSkillCvar( "sk_player_arm" );
-	
+
+	gSkillData.flashlightDrainTime = GetSkillCvar( "sk_flashlight_drain_time" );
+	gSkillData.flashlightChargeTime = GetSkillCvar( "sk_flashlight_charge_time" );
+
 	// panic delay factor
 	gSkillData.panicDelayFactor = GetSkillCvar( "sk_panic_delay_factor" );
 }
@@ -503,4 +506,64 @@ CGameRules *InstallGameRules( void )
 			return new CHalfLifeMultiplay;
 		}
 	}
+}
+
+int TridepthValue()
+{
+#if FEATURE_TRIDEPTH_CVAR
+	extern cvar_t tridepth;
+	return (int)tridepth.value;
+#else
+	return 1;
+#endif
+}
+
+bool AllowUseThroughWalls()
+{
+#if FEATURE_USE_THROUGH_WALLS_CVAR
+	extern cvar_t use_through_walls;
+	return use_through_walls.value != 0;
+#else
+	return true;
+#endif
+}
+
+bool NeedUseToTake()
+{
+#if FEATURE_USE_TO_TAKE_CVAR
+	extern cvar_t use_to_take;
+	return use_to_take.value != 0;
+#else
+	return false;
+#endif
+}
+
+bool NpcFollowNearest()
+{
+#if FEATURE_NPC_NEAREST_CVAR
+	extern cvar_t npc_nearest;
+	return npc_nearest.value != 0;
+#else
+	return false;
+#endif
+}
+
+int NpcForgetEnemyTime()
+{
+#if FEATURE_NPC_FORGET_ENEMY_CVAR
+	extern cvar_t npc_forget_enemy_time;
+	return (int)npc_forget_enemy_time.value;
+#else
+	return false;
+#endif
+}
+
+bool AllowGrenadeJump()
+{
+#if FEATURE_GRENADE_JUMP_CVAR
+	extern cvar_t grenade_jump;
+	return grenade_jump.value != 0;
+#else
+	return true;
+#endif
 }

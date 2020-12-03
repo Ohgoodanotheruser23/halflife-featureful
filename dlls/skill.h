@@ -20,6 +20,7 @@
 #define SKILL_H
 
 #include "mod_features.h"
+#include "util.h"
 
 struct skilldata_t
 {
@@ -283,6 +284,9 @@ struct skilldata_t
 	float plrStomach;
 	float plrLeg;
 	float plrArm;
+
+	float flashlightDrainTime;
+	float flashlightChargeTime;
 
 	// panic delay factor
 	float panicDelayFactor;

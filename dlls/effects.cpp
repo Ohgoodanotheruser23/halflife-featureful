@@ -28,6 +28,9 @@
 #include "locus.h"
 #include "mod_features.h"
 
+#define FEATURE_ENV_WARPBALL 1
+#define FEATURE_ENV_XENMAKER 1
+
 #define	SF_GIBSHOOTER_REPEATABLE		1 // allows a gibshooter to be refired
 
 #define SF_FUNNEL_REVERSE			1 // funnel effect repels particles instead of attracting them.
@@ -261,23 +264,23 @@ void CBeam::HoseInit( const Vector &start, const Vector &direction )
 	RelinkBeam();
 }
 
-void CBeam::PointEntInit( const Vector &start, int endIndex )
+void CBeam::PointEntInit(const Vector &start, int endIndex , int endAttachment)
 {
 	SetType( BEAM_ENTPOINT );
 	SetStartPos( start );
 	SetEndEntity( endIndex );
 	SetStartAttachment( 0 );
-	SetEndAttachment( 0 );
+	SetEndAttachment( endAttachment );
 	RelinkBeam();
 }
 
-void CBeam::EntsInit( int startIndex, int endIndex )
+void CBeam::EntsInit(int startIndex, int endIndex , int startAttachment, int endAttachment)
 {
 	SetType( BEAM_ENTS );
 	SetStartEntity( startIndex );
 	SetEndEntity( endIndex );
-	SetStartAttachment( 0 );
-	SetEndAttachment( 0 );
+	SetStartAttachment( startAttachment );
+	SetEndAttachment( endAttachment );
 	RelinkBeam();
 }
 
@@ -1291,7 +1294,12 @@ void CSprite::TurnOn( void )
 		pev->nextthink = gpGlobals->time;
 		m_lastTime = gpGlobals->time;
 	}
-	pev->frame = 0;
+	if ( pev->impulse == 0 )
+		pev->frame = 0;
+	else if ( pev->impulse < 0 )
+		pev->frame = RANDOM_LONG(0, (int)m_maxFrame-1);
+	else
+		pev->frame = Q_min((int)m_maxFrame-1, pev->impulse);
 }
 
 void CSprite::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -1872,7 +1880,7 @@ CGib *CEnvShooter::CreateGib( float lifeTime )
 	/*
 	 * Some env_shooters in Half-Life maps have a custom scale value.
 	 * It did not have any effect in original Half-Life because models did not get scaled.
-	 * Not we have spirit-like scaling which may cause visual issues.
+	 * Now we have spirit-like scaling which may cause visual issues.
 	 * To avoid unintended scaling we allow model scaling only when the corresponding flag is set.
 	*/
 	const char* model = STRING(pev->model);
@@ -2665,47 +2673,65 @@ struct BeamParams
 	int red, green, blue, alpha;
 };
 
-void DrawChaoticBeams(Vector vecOrigin, edict_t* pentIgnore, int radius, const BeamParams& params, int iBeams)
+static void DrawChaoticBeam(Vector vecOrigin, Vector vecDest, const BeamParams& params)
+{
+	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
+		WRITE_BYTE( TE_BEAMPOINTS );
+		WRITE_COORD( vecOrigin.x );
+		WRITE_COORD( vecOrigin.y );
+		WRITE_COORD( vecOrigin.z );
+		WRITE_COORD( vecDest.x );
+		WRITE_COORD( vecDest.y );
+		WRITE_COORD( vecDest.z );
+		WRITE_SHORT( params.texture );
+		WRITE_BYTE( 0 ); // framestart
+		WRITE_BYTE( 10 ); // framerate
+		WRITE_BYTE( RANDOM_LONG(params.lifeMin, params.lifeMax) ); // life
+		WRITE_BYTE( params.width );  // width
+		WRITE_BYTE( params.noise );   // noise
+		WRITE_BYTE( params.red );   // r, g, b
+		WRITE_BYTE( params.green );   // r, g, b
+		WRITE_BYTE( params.blue );   // r, g, b
+		WRITE_BYTE( params.alpha );	// brightness
+		WRITE_BYTE( 35 );		// speed
+	MESSAGE_END();
+}
+
+static void DrawChaoticBeams(Vector vecOrigin, edict_t* pentIgnore, int radius, const BeamParams& params, int iBeams)
 {
 	int iTimes = 0;
 	int iDrawn = 0;
-	while( iDrawn < iBeams && iTimes < ( iBeams * 3 ) )
+	while( iDrawn < iBeams && iTimes < ( iBeams * 2 ) )
 	{
 		TraceResult tr;
-		Vector vecDest = radius * ( Vector( RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ) ).Normalize() );
-		UTIL_TraceLine( vecOrigin, vecOrigin + vecDest, ignore_monsters, pentIgnore, &tr );
+		Vector vecDest = vecOrigin + radius * ( Vector( RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ) ).Normalize() );
+		UTIL_TraceLine( vecOrigin, vecDest, ignore_monsters, pentIgnore, &tr );
 		if( tr.flFraction != 1.0 )
 		{
 			// we hit something.
 			iDrawn++;
-			MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
-				WRITE_BYTE( TE_BEAMPOINTS );
-				WRITE_COORD( vecOrigin.x );
-				WRITE_COORD( vecOrigin.y );
-				WRITE_COORD( vecOrigin.z );
-				WRITE_COORD( tr.vecEndPos.x );
-				WRITE_COORD( tr.vecEndPos.y );
-				WRITE_COORD( tr.vecEndPos.z );
-				WRITE_SHORT( params.texture );
-				WRITE_BYTE( 0 ); // framestart
-				WRITE_BYTE( 10 ); // framerate
-				WRITE_BYTE( RANDOM_LONG(params.lifeMin, params.lifeMax) ); // life
-				WRITE_BYTE( params.width );  // width
-				WRITE_BYTE( params.noise );   // noise
-				WRITE_BYTE( params.red );   // r, g, b
-				WRITE_BYTE( params.green );   // r, g, b
-				WRITE_BYTE( params.blue );   // r, g, b
-				WRITE_BYTE( params.alpha );	// brightness
-				WRITE_BYTE( 35 );		// speed
-			MESSAGE_END();
+			DrawChaoticBeam(vecOrigin, tr.vecEndPos, params);
 		}
 		iTimes++;
+	}
+
+	// If drew less than half of requested beams, just draw beams without respect to the walls, but with smaller radius.
+	if ( iDrawn < iBeams/2 )
+	{
+		iBeams = Q_min(iBeams-iDrawn, iBeams/2);
+		for (int i=0; i<iBeams; ++i)
+		{
+			Vector vecDest = vecOrigin + radius*0.5f * Vector( RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ), RANDOM_FLOAT( -1, 1 ) );
+			DrawChaoticBeam(vecOrigin, vecDest, params);
+		}
 	}
 }
 
 //=========================================================
 // env_warpball
 //=========================================================
+#if FEATURE_ENV_WARPBALL
+
 #define SF_REMOVE_ON_FIRE	0x0001
 #define SF_KILL_CENTER		0x0002
 #define SF_WARPBALL_NOSHAKE	0x0004
@@ -2977,10 +3003,11 @@ void CEnvWarpBall::Think( void )
 	if( pev->spawnflags & SF_REMOVE_ON_FIRE )
 		UTIL_Remove( this );
 }
-
+#endif
 //=========================================================
 // env_xenmaker
 //=========================================================
+#if FEATURE_ENV_XENMAKER
 
 #define SF_XENMAKER_TRYONCE 1
 #define SF_XENMAKER_NOSPAWN 2
@@ -3001,8 +3028,10 @@ public:
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	virtual int ObjectCaps( void ) { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
+	void PlaySecondSound( edict_t* posEnt );
+
 	void EXPORT TrySpawn();
-	void EXPORT PlaySecondSound();
+	void EXPORT PlaySecondSoundThink();
 
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -3029,7 +3058,9 @@ public:
 	Vector m_vEndSpriteColor;
 
 	float m_flGround;
-	EOFFSET m_posEntOffset;
+
+	Vector m_defaultMinHullSize;
+	Vector m_defaultMaxHullSize;
 
 	int m_beamTexture;
 };
@@ -3054,6 +3085,8 @@ TYPEDESCRIPTION	CEnvXenMaker::m_SaveData[] =
 	DEFINE_FIELD(CEnvXenMaker, m_iEndSpriteAlpha, FIELD_INTEGER),
 	DEFINE_FIELD(CEnvXenMaker, m_vEndSpriteColor, FIELD_VECTOR),
 	DEFINE_FIELD(CEnvXenMaker, m_flGround, FIELD_FLOAT ),
+	DEFINE_FIELD(CEnvXenMaker, m_defaultMinHullSize, FIELD_VECTOR),
+	DEFINE_FIELD(CEnvXenMaker, m_defaultMaxHullSize, FIELD_VECTOR),
 };
 IMPLEMENT_SAVERESTORE( CEnvXenMaker, CBaseEntity )
 
@@ -3062,7 +3095,7 @@ void CEnvXenMaker::Precache()
 	m_beamTexture = PRECACHE_MODEL(XENMAKER_BEAM);
 	if (!FBitSet(pev->spawnflags, SF_XENMAKER_NOSPAWN) && !FStringNull(m_iszMonsterClassname))
 	{
-		UTIL_PrecacheOther(STRING(m_iszMonsterClassname));
+		UTIL_PrecacheMonster(STRING(m_iszMonsterClassname), FALSE, &m_defaultMinHullSize, &m_defaultMaxHullSize);
 	}
 	PRECACHE_SOUND(XENMAKER_SOUND1);
 	PRECACHE_SOUND(XENMAKER_SOUND2);
@@ -3171,8 +3204,6 @@ void CEnvXenMaker::TrySpawn()
 		vecOrigin = pev->vuser1;
 	}
 
-	m_posEntOffset = OFFSET(posEnt);
-
 	if (!FBitSet(pev->spawnflags, SF_XENMAKER_NOSPAWN)
 			&& !asTemplate) // never spawn if xenmaker is used as a template for monstermaker
 	{
@@ -3184,8 +3215,21 @@ void CEnvXenMaker::TrySpawn()
 			UTIL_TraceLine( pev->origin, pev->origin - Vector( 0, 0, 2048 ), ignore_monsters, ENT( pev ), &tr );
 			m_flGround = tr.vecEndPos.z;
 		}
-		Vector mins = pev->origin - Vector( 34, 34, 0 );
-		Vector maxs = pev->origin + Vector( 34, 34, 0 );
+
+		Vector minHullSize = Vector( -34, -34, 0 );
+		Vector maxHullSize = Vector( 34, 34, 0 );
+
+		if (m_defaultMinHullSize != g_vecZero)
+		{
+			minHullSize = Vector( m_defaultMinHullSize.x, m_defaultMinHullSize.y, 0 );
+		}
+		if (m_defaultMaxHullSize != g_vecZero)
+		{
+			maxHullSize = Vector( m_defaultMaxHullSize.x, m_defaultMaxHullSize.y, 0 );
+		}
+
+		Vector mins = pev->origin + minHullSize;
+		Vector maxs = pev->origin + maxHullSize;
 		maxs.z = pev->origin.z;
 		mins.z = m_flGround;
 
@@ -3263,21 +3307,25 @@ void CEnvXenMaker::TrySpawn()
 
 	if (asTemplate)
 	{
-		PlaySecondSound();
+		PlaySecondSound(posEnt);
 	}
 	else
 	{
-		SetThink(&CEnvXenMaker::PlaySecondSound);
+		SetThink(&CEnvXenMaker::PlaySecondSoundThink);
 		pev->nextthink = gpGlobals->time + 0.8;
 	}
 }
 
-void CEnvXenMaker::PlaySecondSound()
+void CEnvXenMaker::PlaySecondSoundThink()
 {
-	edict_t* posEnt = ENT(m_posEntOffset);
-	if (posEnt)
-		EMIT_SOUND( posEnt, CHAN_BODY, XENMAKER_SOUND2, 1, ATTN_NORM );
+	PlaySecondSound(edict());
 }
+
+void CEnvXenMaker::PlaySecondSound(edict_t* posEnt)
+{
+	EMIT_SOUND( posEnt, CHAN_BODY, XENMAKER_SOUND2, 1, ATTN_NORM );
+}
+#endif
 
 #if FEATURE_DISPLACER || FEATURE_SHOCKBEAM || FEATURE_SPOREGRENADE
 

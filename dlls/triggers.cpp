@@ -33,6 +33,16 @@
 #include "followingmonster.h"
 #include "locus.h"
 
+#define FEATURE_TRIGGER_RANDOM 1
+#define FEATURE_TRIGGER_RESPAWN 1
+#define FEATURE_TRIGGER_KILL_MONSTER 1
+#define FEATURE_TRIGGER_TIMER 1
+#define FEATURE_TRIGGER_CHANGE_VALUE 1
+#define FEATURE_TRIGGER_COMMAND 1
+#define FEATURE_TRIGGER_MOTION 1
+#define FEATURE_TRIGGER_HURT_REMOTE 1
+#define FEATURE_TRIGGER_ENTITY_ITERATOR 1
+
 #define SF_TRIGGER_PUSH_ONCE		1
 #define SF_TRIGGER_PUSH_START_OFF	2//spawnflag that makes trigger_push spawn turned OFF
 #define SF_TRIGGER_PUSH_NO_CLIENTS	8
@@ -2809,6 +2819,8 @@ void CTriggerCamera::Move()
 	pev->velocity = ( ( pev->movedir * pev->speed ) * fraction ) + ( pev->velocity * ( 1 - fraction ) );
 }
 
+#if FEATURE_TRIGGER_RANDOM
+
 #define TRIGGER_RANDOM_MAX_COUNT 16
 
 #define SF_TRIGGER_RANDOM_START_ON 1
@@ -3062,6 +3074,9 @@ int CTriggerRandom::TargetCount()
 	}
 	return 0;
 }
+#endif
+
+#if FEATURE_TRIGGER_RESPAWN
 
 #define SF_TRIGGERRESPAWN_DONT_MOVE_LIVING_PLAYERS 4
 
@@ -3106,6 +3121,7 @@ void CTriggerRespawn::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 }
 
 LINK_ENTITY_TO_CLASS(trigger_respawn, CTriggerRespawn)
+#endif
 
 #if FEATURE_DISPLACER
 class CDisplacerTarget : public CPointEntity
@@ -3210,6 +3226,8 @@ void CTriggerPlayerFreeze::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, U
 	else
 		( (CBasePlayer *)( (CBaseEntity *)pActivator ) )->EnableControl( FALSE );
 }
+
+#if FEATURE_TRIGGER_KILL_MONSTER
 
 #define SF_KILLMONSTER_FIREONCE 1
 #define SF_KILLMONSTER_KILL_BY_TARGETNAME 2
@@ -3366,6 +3384,9 @@ void CTriggerKillMonster::OldUse()
 		}
 	}
 }
+#endif
+
+#if FEATURE_TRIGGER_TIMER
 
 #define SF_TRIGGER_TIMER_START_ON 1
 #define SF_TRIGGER_TIMER_NO_FIRST_DELAY 32
@@ -3497,6 +3518,7 @@ void CTriggerTimer::SetActive(BOOL active)
 		m_triggerCounter = 0;
 	}
 }
+#endif
 
 #if FEATURE_GENEWORM
 //=========================================================
@@ -3747,6 +3769,7 @@ void CTriggerSetPatrol::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	}
 }
 
+#if FEATURE_TRIGGER_MOTION
 //===========================================================
 //LRC- trigger_motion
 //===========================================================
@@ -4257,7 +4280,9 @@ void CMotionManager::RemoveThreads()
 		}
 	}
 }
+#endif
 
+#if FEATURE_TRIGGER_COMMAND
 //=====================================================
 // trigger_command: activate a console command
 //=====================================================
@@ -4279,6 +4304,9 @@ void CTriggerCommand::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 		SERVER_COMMAND( szCommand );
 	}
 }
+#endif
+
+#if FEATURE_TRIGGER_HURT_REMOTE
 
 #define SF_TRIGGER_HURT_REMOTE_INSTANT_KILL 1
 #define SF_TRIGGER_HURT_REMOTE_CONSTANT 2
@@ -4444,7 +4472,9 @@ void CTriggerHurtRemote::DoDamage(CBaseEntity* pTarget)
 		}
 	}
 }
+#endif
 
+#if FEATURE_TRIGGER_ENTITY_ITERATOR
 class CTriggerEntityIterator : public CPointEntity
 {
 public:
@@ -4586,3 +4616,4 @@ void CTriggerEntityIterator::Iterate(CBaseEntity *pEntity)
 	}
 	SUB_UseTargets(pEntity, useType, 0.0f);
 }
+#endif

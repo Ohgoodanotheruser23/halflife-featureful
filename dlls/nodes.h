@@ -18,6 +18,9 @@
 #pragma once
 #ifndef		NODES_H
 #define		NODES_H
+
+#include "cbase.h"
+
 //=========================================================
 // DEFINE
 //=========================================================
@@ -166,6 +169,8 @@ public:
 
 	// another such system used to track the search for cover nodes, helps greatly with two monsters trying to get to the same node.
 	int		m_iLastCoverSearch;
+
+	int		m_iLastFreeroamNode;
 
 	// functions to create the graph
 	int		LinkVisibleNodes ( CLink *pLinkPool, FILE *file, int *piBadNode );
