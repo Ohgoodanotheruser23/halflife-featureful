@@ -64,7 +64,6 @@ public:
 	// Override these to set behavior
 	Schedule_t *GetScheduleOfType( int Type );
 	Schedule_t *GetSchedule( void );
-	MONSTERSTATE GetIdealState( void );
 
 	void DeathSound( void );
 	void PainSound( void );
@@ -221,7 +220,7 @@ void CBarney::AlertSound( void )
 {
 	if( m_hEnemy != 0 )
 	{
-		if( FOkToSpeak() )
+		if( FOkToSpeak(SPEAK_DISREGARD_ENEMY) )
 		{
 			PlaySentence( "BA_ATTACK", RANDOM_FLOAT( 2.8f, 3.2f ), VOL_NORM, ATTN_IDLE );
 		}
@@ -277,7 +276,6 @@ BOOL CBarney::CheckRangeAttack1( float flDot, float flDist )
 				m_lastAttackCheck = TRUE;
 			else
 				m_lastAttackCheck = FALSE;
-			m_checkAttackTime = gpGlobals->time + 1.5f;
 		}
 		return m_lastAttackCheck;
 	}
@@ -594,7 +592,7 @@ Schedule_t *CBarney::GetScheduleImpl(const char *sentenceKill)
 		if( pSound && (pSound->m_iType & bits_SOUND_DANGER) )
 			return GetScheduleOfType( SCHED_TAKE_COVER_FROM_BEST_SOUND );
 	}
-	if( HasConditions( bits_COND_ENEMY_DEAD ) && FOkToSpeak() )
+	if( HasConditions( bits_COND_ENEMY_DEAD ) && FOkToSpeak(SPEAK_DISREGARD_ENEMY) )
 	{
 		PlaySentence( sentenceKill, 4, VOL_NORM, ATTN_NORM );
 	}
@@ -649,11 +647,6 @@ Schedule_t *CBarney::GetScheduleImpl(const char *sentenceKill)
 Schedule_t *CBarney :: GetSchedule ( void )
 {
 	return GetScheduleImpl("BA_KILL");
-}
-
-MONSTERSTATE CBarney::GetIdealState( void )
-{
-	return CTalkMonster::GetIdealState();
 }
 
 //=========================================================
@@ -789,7 +782,7 @@ void COtis :: AlertSound( void )
 {
 	if ( m_hEnemy != 0 )
 	{
-		if ( FOkToSpeak() )
+		if ( FOkToSpeak(SPEAK_DISREGARD_ENEMY) )
 		{
 			PlaySentence( "OT_ATTACK", RANDOM_FLOAT(2.8, 3.2), VOL_NORM, ATTN_IDLE );
 		}

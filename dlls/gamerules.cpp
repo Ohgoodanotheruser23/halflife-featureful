@@ -176,21 +176,21 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.headcrabDmgBite = GetSkillCvar( "sk_headcrab_dmg_bite" );
 #if FEATURE_OPFOR_GRUNT
 	// Hgrunt
-	gSkillData.fgruntHealth = GetSkillCvar( "sk_hgrunt_ally_health" );
-	gSkillData.fgruntDmgKick = GetSkillCvar( "sk_hgrunt_ally_kick" );
-	gSkillData.fgruntShotgunPellets = GetSkillCvar( "sk_hgrunt_ally_pellets" );
-	gSkillData.fgruntGrenadeSpeed = GetSkillCvar( "sk_hgrunt_ally_gspeed" );
+	gSkillData.fgruntHealth = GetSkillCvar( "sk_hgrunt_ally_health", "sk_hgrunt_health" );
+	gSkillData.fgruntDmgKick = GetSkillCvar( "sk_hgrunt_ally_kick", "sk_hgrunt_kick" );
+	gSkillData.fgruntShotgunPellets = GetSkillCvar( "sk_hgrunt_ally_pellets", "sk_hgrunt_pellets" );
+	gSkillData.fgruntGrenadeSpeed = GetSkillCvar( "sk_hgrunt_ally_gspeed", "sk_hgrunt_gspeed" );
 
 	// Medic
-	gSkillData.medicHealth = GetSkillCvar( "sk_medic_ally_health" );
-	gSkillData.medicDmgKick = GetSkillCvar( "sk_medic_ally_kick" );
-	gSkillData.medicGrenadeSpeed = GetSkillCvar( "sk_medic_ally_gspeed" );
+	gSkillData.medicHealth = GetSkillCvar( "sk_medic_ally_health", "sk_hgrunt_health" );
+	gSkillData.medicDmgKick = GetSkillCvar( "sk_medic_ally_kick", "sk_hgrunt_kick" );
+	gSkillData.medicGrenadeSpeed = GetSkillCvar( "sk_medic_ally_gspeed", "sk_hgrunt_gspeed" );
 	gSkillData.medicHeal = GetSkillCvar( "sk_medic_ally_heal" );
 
 	// Torch
-	gSkillData.torchHealth = GetSkillCvar( "sk_torch_ally_health" );
-	gSkillData.torchDmgKick = GetSkillCvar( "sk_torch_ally_kick" );
-	gSkillData.torchGrenadeSpeed = GetSkillCvar( "sk_torch_ally_gspeed" );
+	gSkillData.torchHealth = GetSkillCvar( "sk_torch_ally_health", "sk_hgrunt_health" );
+	gSkillData.torchDmgKick = GetSkillCvar( "sk_torch_ally_kick", "sk_hgrunt_kick" );
+	gSkillData.torchGrenadeSpeed = GetSkillCvar( "sk_torch_ally_gspeed", "sk_hgrunt_gspeed" );
 #endif
 	// Hgrunt 
 	gSkillData.hgruntHealth = GetSkillCvar( "sk_hgrunt_health" );
@@ -256,6 +256,12 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.gwormDmgSpit = GetSkillCvar( "sk_geneworm_dmg_spit" );
 	gSkillData.gwormDmgHit = GetSkillCvar( "sk_geneworm_dmg_hit" );
 #endif
+
+	gSkillData.ospreyHealth = GetSkillCvar( "sk_osprey" );
+#if FEATURE_BLACK_OSPREY
+	gSkillData.blackopsOspreyHealth = GetSkillCvar( "sk_blkopsosprey", "sk_osprey" );
+#endif
+
 #if FEATURE_OTIS
 	// Otis
 	gSkillData.otisHealth = GetSkillCvar( "sk_otis_health", "sk_barney_health" );
@@ -548,13 +554,13 @@ bool NpcFollowNearest()
 #endif
 }
 
-int NpcForgetEnemyTime()
+float NpcForgetEnemyTime()
 {
 #if FEATURE_NPC_FORGET_ENEMY_CVAR
 	extern cvar_t npc_forget_enemy_time;
-	return (int)npc_forget_enemy_time.value;
+	return npc_forget_enemy_time.value;
 #else
-	return false;
+	return 0.0f;
 #endif
 }
 

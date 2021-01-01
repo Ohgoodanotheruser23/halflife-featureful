@@ -899,7 +899,20 @@ BOOL CHalfLifeMultiplay::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBasePlayerW
 		return FALSE;
 	}
 
-	if (l4m_weapon_system.value) {
+	if( pPlayer->m_iAutoWepSwitch == 2
+	    && pPlayer->m_afButtonLast & ( IN_ATTACK | IN_ATTACK2 ) )
+	{
+		return FALSE;
+	}
+
+	if( !pPlayer->m_pActiveItem->CanHolster() )
+	{
+		// can't put away the active item.
+		return FALSE;
+	}
+
+	if( l4m_weapon_system.value )
+	{
 		return TRUE;
 	} else {
 		if( pWeapon->iWeight() > pPlayer->m_pActiveItem->iWeight() )
@@ -1158,6 +1171,10 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 	BOOL		addDefault = TRUE;
 	bool giveSuit = true;
 	CBaseEntity	*pWeaponEntity = NULL;
+	int 		iOldAutoWepSwitch;
+
+	iOldAutoWepSwitch = pPlayer->m_iAutoWepSwitch;
+	pPlayer->m_iAutoWepSwitch = 1;
 
 	if (survival.value && m_survivalState == SurvivalEnabled && !pPlayer->m_iRespawnPoint) {
 		UTIL_BecomeSpectator(pPlayer);
@@ -1232,6 +1249,8 @@ void CHalfLifeMultiplay::PlayerSpawn( CBasePlayer *pPlayer )
 		pPlayer->GiveNamedItem( "weapon_9mmhandgun" );
 		pPlayer->GiveAmmo( 68, "9mm" );// 4 full reloads
 	}
+
+	pPlayer->m_iAutoWepSwitch = iOldAutoWepSwitch;
 }
 
 //=========================================================

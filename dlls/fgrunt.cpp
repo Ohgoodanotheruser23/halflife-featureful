@@ -112,6 +112,7 @@ enum
 	SCHED_HGRUNT_ALLY_WAIT_FACE_ENEMY,
 	SCHED_HGRUNT_ALLY_TAKECOVER_FAILED,// special schedule type that forces analysis of conditions and picks the best possible schedule to recover from this type of failure.
 	SCHED_HGRUNT_ALLY_ELOF_FAIL,
+	SCHED_HGRUNT_ALLY_RELOAD_NOT_EMPTY,
 	LAST_HGRUNT_ALLY_SCHEDULE,
 };
 
@@ -153,7 +154,7 @@ public:
 	Schedule_t *GetScheduleOfType ( int Type );
 	Schedule_t *GetSchedule ( void );
 	Schedule_t *PrioritizedSchedule();
-	MONSTERSTATE GetIdealState ( void );
+	Schedule_t *GetReloadSchedule();
 
 	void AlertSound( void );
 	void DeathSound( void );
@@ -819,6 +820,25 @@ Schedule_t slFGruntHideReload[] =
 	}
 };
 
+Task_t	tlFGruntReloadNotEmpty[] =
+{
+	{ TASK_STOP_MOVING, 0 },
+	{ TASK_PLAY_SEQUENCE, float(ACT_RELOAD) },
+};
+
+Schedule_t slFGruntReloadNotEmpty[] =
+{
+	{
+		tlFGruntReloadNotEmpty,
+		ARRAYSIZE( tlFGruntReloadNotEmpty ),
+		bits_COND_HEAVY_DAMAGE |
+		bits_COND_NEW_ENEMY |
+		bits_COND_HEAR_SOUND,
+		bits_SOUND_DANGER,
+		"FGruntReloadNotEmpty"
+	}
+};
+
 //=========================================================
 // Do a turning sweep of the area
 //=========================================================
@@ -1060,6 +1080,7 @@ DEFINE_CUSTOM_SCHEDULES( CHFGrunt )
 	slFGruntRepel,
 	slFGruntRepelAttack,
 	slFGruntRepelLand,
+	slFGruntReloadNotEmpty,
 };
 
 
@@ -1911,8 +1932,6 @@ void CHFGrunt :: Precache()
 
 	PRECACHE_SOUND("weapons/sbarrel1.wav");
 
-	PRECACHE_SOUND("zombie/claw_miss2.wav");// because we use the basemonster SWIPE animation event
-
 	m_iShotgunShell = PRECACHE_MODEL ("models/shotgunshell.mdl");// shotgun shell
 	m_iM249Shell = PRECACHE_MODEL ("models/saw_shell.mdl");// saw shell
 	m_iM249Link = PRECACHE_MODEL ("models/saw_link.mdl");// saw link
@@ -1938,6 +1957,7 @@ void CHFGrunt::PrecacheHelper()
 	PRECACHE_SOUND_ARRAY(pDeathSounds);
 
 	PRECACHE_SOUND("fgrunt/medic.wav");
+	PRECACHE_SOUND("zombie/claw_miss2.wav");// because we use the basemonster SWIPE animation event
 
 	m_iBrassShell = PRECACHE_MODEL ("models/shell.mdl");// brass shell
 }
@@ -2176,6 +2196,9 @@ Schedule_t* CHFGrunt :: GetScheduleOfType ( int Type )
 			{
 				return &slFGruntVictoryDance[ 0 ];
 			}
+			Schedule_t* reloadSched = GetReloadSchedule();
+			if (reloadSched)
+				return reloadSched;
 			return GetScheduleOfType(SCHED_IDLE_STAND);
 		}
 		break;
@@ -2222,6 +2245,10 @@ Schedule_t* CHFGrunt :: GetScheduleOfType ( int Type )
 			return &slFGruntRepelLand[ 0 ];
 		}
 		break;
+	case SCHED_HGRUNT_ALLY_RELOAD_NOT_EMPTY:
+		{
+			return &slFGruntReloadNotEmpty[ 0 ];
+		}
 	default:
 		{
 			return CTalkMonster :: GetScheduleOfType ( Type );
@@ -2374,6 +2401,19 @@ Schedule_t* CHFGrunt::PrioritizedSchedule()
 				return GetScheduleOfType( SCHED_TAKE_COVER_FROM_BEST_SOUND );
 			}
 		}
+	}
+	return NULL;
+}
+
+Schedule_t *CHFGrunt::GetReloadSchedule()
+{
+	if ( HasConditions ( bits_COND_NO_AMMO_LOADED ) )
+	{
+		return GetScheduleOfType ( SCHED_RELOAD );
+	}
+	else if ( m_cAmmoLoaded <= m_cClipSize/2 )
+	{
+		return GetScheduleOfType( SCHED_HGRUNT_ALLY_RELOAD_NOT_EMPTY );
 	}
 	return NULL;
 }
@@ -2571,10 +2611,9 @@ Schedule_t *CHFGrunt :: GetSchedule ( void )
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
 	{
-		if ( HasConditions ( bits_COND_NO_AMMO_LOADED ) )
-		{
-			return GetScheduleOfType ( SCHED_RELOAD );
-		}
+		Schedule_t* reloadSched = GetReloadSchedule();
+		if (reloadSched)
+			return reloadSched;
 
 		Schedule_t* followingSchedule = GetFollowingSchedule();
 		if (followingSchedule)
@@ -2589,10 +2628,6 @@ Schedule_t *CHFGrunt :: GetSchedule ( void )
 	}
 
 	return CTalkMonster :: GetSchedule();
-}
-MONSTERSTATE CHFGrunt :: GetIdealState ( void )
-{
-	return CTalkMonster::GetIdealState();
 }
 
 //=========================================================
@@ -2647,10 +2682,17 @@ void CTalkMonsterRepel::KeyValue(KeyValueData *pkvd)
 
 void CTalkMonsterRepel::PrepareBeforeSpawn(CBaseEntity *pEntity)
 {
-	CTalkMonster* monster = (CTalkMonster*)pEntity;
-	monster->m_iszUse = m_iszUse;
-	monster->m_iszUnUse = m_iszUnUse;
-	monster->m_iszDecline = m_iszDecline;
+	CBaseMonster* pMonster = pEntity->MyMonsterPointer();
+	if (pMonster)
+	{
+		CTalkMonster* pTalkMonster = pMonster->MyTalkMonsterPointer();
+		if (pTalkMonster)
+		{
+			pTalkMonster->m_iszUse = m_iszUse;
+			pTalkMonster->m_iszUnUse = m_iszUnUse;
+			pTalkMonster->m_iszDecline = m_iszDecline;
+		}
+	}
 }
 
 class CHFGruntRepel : public CTalkMonsterRepel
@@ -3322,13 +3364,20 @@ void CMedic::StartTask(Task_t *pTask)
 		m_IdealActivity = ACT_MELEE_ATTACK2;
 		break;
 	case TASK_MEDIC_SAY_HEAL:
-		if (!m_fSaidHeal && !InScriptedSentence())
+		if (m_hTargetEnt == 0)
+			TaskFail("no target ent");
+		else if (!m_hTargetEnt->IsAlive())
+			TaskFail("target ent is dead");
+		else
 		{
-			m_hTalkTarget = m_hTargetEnt;
-			PlaySentence( "MG_HEAL", 2, VOL_NORM, ATTN_IDLE );
-			m_fSaidHeal = TRUE;
+			if (!m_fSaidHeal && !InScriptedSentence())
+			{
+				m_hTalkTarget = m_hTargetEnt;
+				PlaySentence( "MG_HEAL", 2, VOL_NORM, ATTN_IDLE );
+				m_fSaidHeal = TRUE;
+			}
+			TaskComplete();
 		}
-		TaskComplete();
 		break;
 	case TASK_MEDIC_RESTORE_TARGET_ENT:
 		TaskComplete();
@@ -3549,6 +3598,7 @@ void CMedic::Precache()
 	PrecacheMyModel("models/hgrunt_medic.mdl");
 	PRECACHE_SOUND("weapons/desert_eagle_fire.wav");
 	PRECACHE_SOUND("weapons/desert_eagle_reload.wav");
+	PRECACHE_SOUND("hgrunt/gr_reload1.wav");
 	PRECACHE_SOUND("weapons/pl_gun3.wav");
 	PRECACHE_SOUND("fgrunt/medic_give_shot.wav");
 	PRECACHE_SOUND("fgrunt/medical.wav");
@@ -3592,7 +3642,10 @@ void CMedic::HandleAnimEvent(MonsterEvent_t *pEvent)
 		}
 		break;
 	case HGRUNT_ALLY_AE_RELOAD:
-		EMIT_SOUND( ENT(pev), CHAN_WEAPON, "weapons/desert_eagle_reload.wav", 1, ATTN_NORM );
+		if ( FBitSet( pev->weapons, MEDIC_EAGLE ) )
+			EMIT_SOUND( ENT(pev), CHAN_WEAPON, "weapons/desert_eagle_reload.wav", 1, ATTN_NORM );
+		else
+			EMIT_SOUND( ENT(pev), CHAN_WEAPON, "hgrunt/gr_reload1.wav", 1, ATTN_NORM );
 		m_cAmmoLoaded = m_cClipSize;
 		ClearConditions(bits_COND_NO_AMMO_LOADED);
 		break;

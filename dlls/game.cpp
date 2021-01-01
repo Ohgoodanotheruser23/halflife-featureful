@@ -44,7 +44,7 @@ cvar_t hevcharger_rechargetime = { "mp_hevcharger_rechargetime","-2",FCVAR_SERVE
 cvar_t selfgauss	= { "mp_selfgauss", "0", FCVAR_SERVER };
 cvar_t satchelfix	= { "mp_satchelfix", "1", FCVAR_SERVER };
 cvar_t allowgaussjump = { "mp_allowgaussjump", "0", FCVAR_SERVER };
-
+cvar_t monsteryawspeedfix	= { "monsteryawspeedfix", "0", FCVAR_SERVER };
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
 cvar_t respawndelay	= { "mp_respawndelay","5", FCVAR_SERVER };
 cvar_t flashlight	= { "mp_flashlight","1", FCVAR_SERVER };
@@ -108,6 +108,8 @@ cvar_t keepinventory	= { "mp_keepinventory","1", FCVAR_SERVER }; // keep invento
 cvar_t *g_psv_gravity = NULL;
 cvar_t *g_psv_aim = NULL;
 cvar_t *g_footsteps = NULL;
+
+cvar_t *g_psv_developer;
 
 //CVARS FOR SKILL LEVEL SETTINGS
 // Agrunt
@@ -390,6 +392,18 @@ cvar_t	sk_nihilanth_health3 = {"sk_nihilanth_health3","0"};
 cvar_t	sk_nihilanth_zap1 = {"sk_nihilanth_zap1","0"};
 cvar_t	sk_nihilanth_zap2 = {"sk_nihilanth_zap2","0"};
 cvar_t	sk_nihilanth_zap3 = {"sk_nihilanth_zap3","0"};
+
+// Osprey
+cvar_t	sk_osprey1	= {"sk_osprey1","400"};
+cvar_t	sk_osprey2	= {"sk_osprey2","400"};
+cvar_t	sk_osprey3	= {"sk_osprey3","400"};
+
+// Blackops Osprey
+#if FEATURE_BLACK_OSPREY
+cvar_t	sk_blkopsosprey1	= {"sk_blkopsosprey1"};
+cvar_t	sk_blkopsosprey2	= {"sk_blkopsosprey2"};
+cvar_t	sk_blkopsosprey3	= {"sk_blkopsosprey3"};
+#endif
 
 #if FEATURE_OTIS
 // Otis
@@ -912,6 +926,8 @@ void GameDLLInit( void )
 	g_psv_aim = CVAR_GET_POINTER( "sv_aim" );
 	g_footsteps = CVAR_GET_POINTER( "mp_footsteps" );
 
+	g_psv_developer = CVAR_GET_POINTER( "developer" );
+
 	CVAR_REGISTER( &displaysoundlist );
 	CVAR_REGISTER( &allow_spectators );
 #if FEATURE_USE_THROUGH_WALLS_CVAR
@@ -950,6 +966,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &satchelfix );
 	CVAR_REGISTER( &allowgaussjump );
 
+	CVAR_REGISTER( &monsteryawspeedfix );
 	CVAR_REGISTER( &forcerespawn );
 	CVAR_REGISTER( &respawndelay );
 	CVAR_REGISTER( &flashlight );
@@ -1270,6 +1287,16 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_nihilanth_zap1 );
 	CVAR_REGISTER( &sk_nihilanth_zap2 );
 	CVAR_REGISTER( &sk_nihilanth_zap3 );
+
+	CVAR_REGISTER ( &sk_osprey1 );
+	CVAR_REGISTER ( &sk_osprey2 );
+	CVAR_REGISTER ( &sk_osprey3 );
+
+#if FEATURE_BLACK_OSPREY
+	CVAR_REGISTER ( &sk_blkopsosprey1 );
+	CVAR_REGISTER ( &sk_blkopsosprey2 );
+	CVAR_REGISTER ( &sk_blkopsosprey3 );
+#endif
 
 #if FEATURE_OTIS
 	// Otis

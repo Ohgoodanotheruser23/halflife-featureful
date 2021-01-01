@@ -223,7 +223,7 @@ Task_t tlHeal[] =
 	{ TASK_DRAW_NEEDLE, 0.0f },			// Whip out the needle
 	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_HEAL },	// If you fail, catch up with that guy! (change this to put syringe away and then chase)
 	{ TASK_HEAL, 0.0f },	// Put it in the target
-	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_FAIL },
+	{ TASK_CLEAR_FAIL_SCHEDULE, 0.0f },
 	{ TASK_PUTAWAY_NEEDLE, 0.0f },			// Put away the needle
 };
 
@@ -277,8 +277,8 @@ Schedule_t slSciPanic[] =
 	{
 		tlSciPanic,
 		ARRAYSIZE( tlSciPanic ),
-		0,
-		0,
+		bits_COND_HEAR_SOUND,
+		bits_SOUND_DANGER,
 		"SciPanic"
 	},
 };
@@ -319,7 +319,7 @@ Task_t tlScientistCover[] =
 {
 	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_PANIC },		// If you fail, just panic!
 	{ TASK_STOP_MOVING, 0.0f },
-	{ TASK_FIND_COVER_FROM_ENEMY, 0.0f },
+	{ TASK_FIND_RUN_AWAY_FROM_ENEMY, 0.0f },
 	{ TASK_RUN_PATH_SCARED, 0.0f },
 	{ TASK_TURN_LEFT, 179.0f },
 	{ TASK_SET_SCHEDULE, (float)SCHED_HIDE },
@@ -330,8 +330,9 @@ Schedule_t slScientistCover[] =
 	{
 		tlScientistCover,
 		ARRAYSIZE( tlScientistCover ),
-		bits_COND_NEW_ENEMY,
-		0,
+		bits_COND_NEW_ENEMY|
+		bits_COND_HEAR_SOUND,
+		bits_SOUND_DANGER,
 		"ScientistCover"
 	},
 };
@@ -381,8 +382,9 @@ Schedule_t slScientistStartle[] =
 		bits_COND_SEE_ENEMY |
 		bits_COND_SEE_HATE |
 		bits_COND_SEE_FEAR |
-		bits_COND_SEE_DISLIKE,
-		0,
+		bits_COND_SEE_DISLIKE|
+		bits_COND_HEAR_SOUND,
+		bits_SOUND_DANGER,
 		"ScientistStartle"
 	},
 };
@@ -447,9 +449,8 @@ void CScientist::DeclineFollowing(CBaseEntity *pCaller )
 
 void CScientist::Scream( void )
 {
-	if( FOkToSpeak() )
+	if( FOkToSpeak(SPEAK_DISREGARD_ENEMY|SPEAK_DISREGARD_OTHER_SPEAKING) )
 	{
-		Talk( 10 );
 		m_hTalkTarget = m_hEnemy;
 		PlaySentence( ScreamSentence(), RANDOM_FLOAT( 3.0f, 6.0f ), VOL_NORM, ATTN_NORM );
 	}
@@ -467,12 +468,22 @@ void CScientist::StartTask( Task_t *pTask )
 	switch( pTask->iTask )
 	{
 	case TASK_SAY_HEAL:
-		if (!InScriptedSentence())
+		if (m_hTargetEnt == 0)
+			TaskFail("no target ent");
+		else if (m_hTargetEnt->pev->deadflag != DEAD_NO)
 		{
-			m_hTalkTarget = m_hTargetEnt;
-			PlaySentence( HealSentence(), 2, VOL_NORM, ATTN_IDLE );
+			// The guy we wanted to heal is dying or just died. Probably a good place for some scared sentence?
+			TaskFail("target ent is dead");
 		}
-		TaskComplete();
+		else
+		{
+			if (!InScriptedSentence())
+			{
+				m_hTalkTarget = m_hTargetEnt;
+				PlaySentence( HealSentence(), 2, VOL_NORM, ATTN_IDLE );
+			}
+			TaskComplete();
+		}
 		break;
 	case TASK_SCREAM:
 		Scream();
@@ -484,7 +495,7 @@ void CScientist::StartTask( Task_t *pTask )
 		TaskComplete();
 		break;
 	case TASK_SAY_FEAR:
-		if( FOkToSpeak() )
+		if( FOkToSpeak(SPEAK_DISREGARD_ENEMY) )
 		{
 			Talk( 2 );
 			m_hTalkTarget = m_hEnemy;
@@ -506,15 +517,20 @@ void CScientist::StartTask( Task_t *pTask )
 		break;
 	case TASK_MOVE_TO_TARGET_RANGE_SCARED:
 		{
-			if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < 1.0f )
-			{
-				TaskComplete();
-			}
+			if( m_hTargetEnt == 0 )
+				TaskFail("no target ent");
 			else
 			{
-				m_vecMoveGoal = m_hTargetEnt->pev->origin;
-				if( !MoveToTarget( ACT_WALK_SCARED, 0.5 ) )
-					TaskFail("can't build path to target");
+				if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < 1.0f )
+				{
+					TaskComplete();
+				}
+				else
+				{
+					m_vecMoveGoal = m_hTargetEnt->pev->origin;
+					if( !MoveToTarget( ACT_WALK_SCARED, 0.5 ) )
+						TaskFail("can't build path to target");
+				}
 			}
 		}
 		break;
@@ -559,7 +575,11 @@ void CScientist::RunTask( Task_t *pTask )
 			if( RANDOM_LONG( 0, 63 ) < 8 )
 				Scream();
 
-			if( m_hEnemy == 0 )
+			if( m_hTargetEnt == 0 )
+			{
+				TaskFail("no target ent");
+			}
+			else if( m_hEnemy == 0 )
 			{
 				TaskFail("no enemy");
 			}
@@ -912,11 +932,6 @@ Schedule_t *CScientist::GetScheduleOfType( int Type )
 			return slHeal;
 		else
 			return slDisarmNeedle;
-	case SCHED_FAIL:
-		if (pev->body >= NUM_SCIENTIST_BODIES)
-			return slDisarmNeedle;
-		else
-			return CTalkMonster::GetScheduleOfType(Type);
 	}
 
 	return CTalkMonster::GetScheduleOfType( Type );
@@ -927,18 +942,20 @@ Schedule_t *CScientist::GetSchedule( void )
 	// so we don't keep calling through the EHANDLE stuff
 	CBaseEntity *pEnemy = m_hEnemy;
 
+	CSound *pSound = NULL;
 	if( HasConditions( bits_COND_HEAR_SOUND ) )
 	{
-		CSound *pSound;
 		pSound = PBestSound();
 
 		ASSERT( pSound != NULL );
 		if( pSound && ( pSound->m_iType & bits_SOUND_DANGER ) )
+		{
+			Scream();
 			return GetScheduleOfType( SCHED_TAKE_COVER_FROM_BEST_SOUND );
+		}
 	}
 
-	if (pev->body >= NUM_SCIENTIST_BODIES)
-		return slDisarmNeedle;
+	const bool wantsToDisarm = (pev->body >= NUM_SCIENTIST_BODIES);
 
 	switch( m_MonsterState )
 	{
@@ -964,10 +981,6 @@ Schedule_t *CScientist::GetSchedule( void )
 		// Cower when you hear something scary
 		if( HasConditions( bits_COND_HEAR_SOUND ) )
 		{
-			CSound *pSound;
-			pSound = PBestSound();
-
-			ASSERT( pSound != NULL );
 			if( pSound )
 			{
 				if( pSound->m_iType & ( bits_SOUND_DANGER | bits_SOUND_COMBAT ) )
@@ -1008,6 +1021,8 @@ Schedule_t *CScientist::GetSchedule( void )
 					if( HasConditions( bits_COND_CLIENT_PUSH ) )	// Player wants me to move
 						return GetScheduleOfType( SCHED_MOVE_AWAY_FOLLOW );
 				}
+				if (wantsToDisarm)
+					return slDisarmNeedle;
 				return GetScheduleOfType( SCHED_TARGET_FACE );	// Just face and follow.
 			}
 			else	// UNDONE: When afraid, scientist won't move out of your way.  Keep This?  If not, write move away scared
@@ -1025,6 +1040,9 @@ Schedule_t *CScientist::GetSchedule( void )
 
 		if( HasConditions( bits_COND_CLIENT_PUSH ) )	// Player wants me to move
 			return GetScheduleOfType( SCHED_MOVE_AWAY );
+
+		if (wantsToDisarm)
+			return slDisarmNeedle;
 
 		// try to say something about smells
 		TrySmellTalk();
@@ -1088,7 +1106,7 @@ MONSTERSTATE CScientist::GetIdealState( void )
 				}
 
 				// Follow if only scared a little
-				if( m_hTargetEnt != 0 )
+				if( m_hTargetEnt != 0 && FollowedPlayer() == m_hTargetEnt )
 				{
 					m_IdealMonsterState = MONSTERSTATE_ALERT;
 					return m_IdealMonsterState;
@@ -1228,7 +1246,7 @@ public:
 
 	virtual bool SetAnswerQuestion( CTalkMonster *pSpeaker );
 
-	virtual int SizeForGrapple() { return GRAPPLE_FIXED; }
+	virtual int DefaultSizeForGrapple() { return GRAPPLE_FIXED; }
 	Vector DefaultMinHullSize() { return Vector(-14.0f, -14.0f, 0.0f); }
 	Vector DefaultMaxHullSize() { return Vector(14.0f, 14.0f, 36.0f); }
 
@@ -1457,17 +1475,20 @@ int CSittingScientist::FIdleSpeak( void )
 	// if there is a friend nearby to speak to, play sentence, set friend's response time, return
 
 	// try to talk to any standing or sitting scientists nearby
-	CBaseEntity *pentFriend = FindNearestFriend( FALSE );
+	CBaseEntity *pFriend = FindNearestFriend( FALSE );
 
-	if( pentFriend && RANDOM_LONG( 0, 1 ) )
+	if( pFriend && RANDOM_LONG( 0, 1 ) )
 	{
 		PlaySentence( m_szGrp[TLK_PQUESTION], RANDOM_FLOAT( 4.8, 5.2 ), VOL_NORM, ATTN_IDLE);
 
-		CTalkMonster *pTalkMonster = GetClassPtr( (CTalkMonster *)pentFriend->pev );
-		pTalkMonster->SetAnswerQuestion( this );
-		pTalkMonster->m_flStopTalkTime = m_flStopTalkTime;
-
-		IdleHeadTurn( pentFriend->pev->origin );
+		CBaseMonster* pMonster = pFriend->MyMonsterPointer();
+		if (pMonster)
+		{
+			CTalkMonster *pTalkMonster = pMonster->MyTalkMonsterPointer();
+			if (pTalkMonster && pTalkMonster->SetAnswerQuestion( this ))
+				pTalkMonster->m_flStopTalkTime = m_flStopTalkTime;
+		}
+		IdleHeadTurn( pFriend->pev->origin );
 		return TRUE;
 	}
 

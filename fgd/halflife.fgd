@@ -43,7 +43,7 @@
 		0 : "Fewest Players"
 		1 : "First Team"
 	]
-	freeroam(choices) : "Roaming monsters (node graph)" : 0 =
+	freeroam(choices) : "Roaming monsters (node graph)" =
 	[
 		0 : "No"
 		1 : "Yes"
@@ -194,6 +194,7 @@
 [
 	classify(choices) : "Classification" : : "Relationship class of monster" =
 	[
+		-1 : "None"
 		0 : "Default"
 		1 : "Machine"
 		3 : "Human passive"
@@ -316,6 +317,15 @@
 		0 : "Map Default"
 		1 : "Never"
 		2 : "Always"
+	]
+	size_for_grapple(Choices) : "Size For Grapple" =
+	[
+		-1 : "Not a Target"
+		0 : "Monster's Default"
+		1 : "Small"
+		2 : "Medium"
+		3 : "Large"
+		4 : "Fixed"
 	]
 ]
 
@@ -1209,6 +1219,20 @@
 	]
 ]
 
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_beamtrail : "Beam trail effect"
+[
+	target(target_destination) : "Entity to trail [LE]"
+	netname(sprite) : "Sprite Name" : "sprites/smoke.spr"
+	renderamt(integer) : "Brightness (1 - 255)" : 255
+	rendercolor(color255) : "Color (R G B)" : "255 255 255"
+	armorvalue(integer) : "Width" : 5
+	health(string) : "Fade time (secs)" : "4.0"
+	spawnflags(flags) =
+	[
+		1: "Start off" : 0
+	]
+]
+
 @PointClass base(Targetname, Angles) size(-4 -4 -4, 4 4 4) = env_beverage : "Beverage Dispenser"
 [
 	target(string) : "Initial position (blank = here) [LP]"
@@ -1918,7 +1942,7 @@
 		64: "X Axis" : 0
 		128: "Y Axis" : 0
 	]
-	_minlight(integer) : "_minlight"
+	_minlight(string) : "Minimum light level"
 ]
 
 @SolidClass base(Targetname,Global,RenderFields, PlatSounds, ZHLT) = func_plat : "Elevator"
@@ -2004,7 +2028,7 @@
 		256:"Touch Activates": 0
 		512:"Player Can't Use": 0
 	]
-	_minlight(integer) : "_minlight"
+	_minlight(string) : "Minimum light level"
 ]
 
 @SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_rotating : "Rotating Object"
@@ -2035,7 +2059,7 @@
 		256: "Medium Radius" : 0
 		512: "Large Radius" : 1
 	]
-	_minlight(integer) : "_minlight"
+	_minlight(integer) : "Minimum light level"
 	spawnorigin(string) : "X Y Z - Move here after lighting" : "0 0 0"
 	dmg(integer) : "Damage inflicted when blocked" : 0
 ]
@@ -5984,6 +6008,15 @@
 		1 : "Never"
 		2 : "Always"
 	]
+	size_for_grapple(Choices) : "Size For Grapple" =
+	[
+		-1 : "Not a Target"
+		0 : "Monster's Default"
+		1 : "Small"
+		2 : "Medium"
+		3 : "Large"
+		4 : "Fixed"
+	]
 ]
 @PointClass base(MonsterMaker) = monstermaker : "Monster Maker" []
 @PointClass base(MonsterMaker) = squadmaker : "Squad Maker" []
@@ -6352,6 +6385,8 @@
 	]
 ]
 
+@PointClass base(Targetname, Target, Classification) color(128 96 2) = trigger_change_class : "Trigger Change Class" []
+
 @SolidClass = trigger_changelevel : "Trigger: Change level"
 [
 	targetname(target_source) : "Name"
@@ -6383,6 +6418,115 @@
 @PointClass base(Targetname) = trigger_command : "Console Command"
 [
 	netname(string) : "Command String"
+]
+
+@PointClass base(Targetname, Target, CustomSentences) = trigger_configure_monster : "Change some monster's parameters and flags"
+[
+	gag_flag(choices) : "Gag flag" =
+	[
+		-1 : "Remove flag"
+		0 : "No change"
+		1 : "Add flag"
+	]
+	monsterclip_flag(choices) : "Monsterclip flag" =
+	[
+		-1 : "Remove flag"
+		0 : "No change"
+		1 : "Add flag"
+	]
+	predisaster_flag(choices) : "Pre-Disaster flag" =
+	[
+		-1 : "Remove flag"
+		0 : "No change"
+		1 : "Add flag"
+	]
+	dont_drop_gun_flag(choices) : "Don't Drop Gun flag" =
+	[
+		-1 : "Remove flag"
+		0 : "No change"
+		1 : "Add flag"
+	]
+	classify(choices) : "Classification" : : "Relationship class of monster" =
+	[
+		-2 : "Reset to default"
+		-1 : "None"
+		0 : "No change"
+		1 : "Machine"
+		3 : "Human passive"
+		4 : "Human military"
+		5 : "Alien military"
+		6 : "Alien passive"
+		7 : "Alien monster"
+		8 : "Alien prey"
+		9 : "Alien predator"
+		10 : "Insect"
+		11 : "Player ally"
+		12 : "Player bioweapon"
+		13 : "Alien bioweapon"
+		14 : "Race X predator"
+		15 : "Race X shock"
+		16 : "Opfor ally"
+		17 : "Blackops"
+		18 : "Snark"
+		19 : "Gargantua"
+	]
+	soundmask(choices) : "Sound Mask" : : "Types of sound the monster regards" =
+	[
+		-2 : "Reset to default"
+		-1 : "No sounds (Deaf)"
+		0 : "No change"
+		32 : "Only Danger"
+		33 : "Only Combat and Danger"
+		37 : "Combat, Danger and Player"
+		127 : "Every sound and scent"
+		1028 : "Default, except Player"
+	]
+	TriggerTarget(String) : "TriggerTarget" : : "The event to trigger when the TriggerCondition is met. Setting 'null' means clearing the trigger target."
+	TriggerCondition(Choices) : "Trigger Condition" : : "This controls the condition under which a monster will trigger its TriggerTarget. The options are:" =
+	[
+		-1 : "Remove condition"
+		0 : "No change"
+		1 : "See Player, Mad at Player"
+		2 : "Take Damage"
+		3 : "50% Health Remaining"
+		4 : "Death"
+		7 : "Hear World"
+		8 : "Hear Player"
+		9 : "Hear Combat"
+		10: "See Player Unconditional"
+		11: "See Player, Not In Combat"
+	]
+	TriggerAltCondition(Choices) : "Trigger Alternative Condition" : : "Alternative condition to fire TriggerTarget (useful to make an important ally fire the same target both when either provoked or dead which is usually a load game condition)" =
+	[
+		-1 : "Remove condition"
+		0 : "No change"
+		1 : "See Player, Mad at Player"
+		2 : "Take Damage"
+		3 : "50% Health Remaining"
+		4 : "Death"
+		7 : "Hear World"
+		8 : "Hear Player"
+		9 : "Hear Combat"
+		10: "See Player Unconditional"
+		11: "See Player, Not In Combat"
+	]
+	provoked_state(choices) : "Provoked state" =
+	[
+		-1 : "Stop being provoked"
+		0 : "No change"
+		1 : "Provoke"
+	]
+	tolerance(choices) : "Tolerance level" : : "Tolerance to player's hits" =
+	[
+		-1 : "Default for monster" : "Monster-specific behavior"
+		0 : "No change"
+		1 : "Zero" : "Get provoked on any hit"
+		2 : "Low" : "Get provoked by direct hit or on second hit"
+		3 : "Average" : "Get provoked by some hits"
+		4 : "High" : "Get provoked by some hits, but tends to forgive after some time"
+		5 : "Absolute" : "Never get provoked"
+		6 : "Absolute, don't alert friends" : "Never get provoked, don't alert friends upon death"
+	]
 ]
 
 @SolidClass base(Trigger, Targetname) = trigger_counter : "Trigger counter"

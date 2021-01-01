@@ -1396,7 +1396,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			{
 				for( int i = 0; i < WorldGraph.m_cNodes; i++ )
 				{
-					int nodeNumber = ( i + WorldGraph.m_iLastFreeroamNode ) % WorldGraph.m_cNodes;
+					int nodeNumber = ( i + WorldGraph.m_iLastActiveIdleSearch ) % WorldGraph.m_cNodes;
 
 					CNode &node = WorldGraph.Node( nodeNumber );
 
@@ -1410,7 +1410,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					if (tr.flFraction == 1.0f && MoveToLocation( ACT_WALK, 2, node.m_vecOrigin ))
 					{
 						TaskComplete();
-						WorldGraph.m_iLastFreeroamNode = nodeNumber + 1;
+						WorldGraph.m_iLastActiveIdleSearch = nodeNumber + 1;
 						break;
 					}
 				}
@@ -1418,6 +1418,41 @@ void CBaseMonster::StartTask( Task_t *pTask )
 				{
 					TaskFail("Could not find node to freeroam");
 				}
+			}
+		}
+		break;
+	case TASK_FIND_RUN_AWAY_FROM_ENEMY:
+		{
+			entvars_t *pevThreat;
+			if( m_hEnemy == 0 )
+			{
+				// Find cover from self if no enemy available
+				pevThreat = pev;
+			}
+			else
+				pevThreat = m_hEnemy->pev;
+
+			if( FindLateralCover( pevThreat->origin, pevThreat->view_ofs ) )
+			{
+				// try lateral first
+				m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+				TaskComplete();
+			}
+			else if( FindCover( pevThreat->origin, pevThreat->view_ofs, 0, CoverRadius() ) )
+			{
+				// then try for plain ole cover
+				m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+				TaskComplete();
+			}
+			else if (FindRunAway( pevThreat->origin, 128, CoverRadius() ))
+			{
+				m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+				TaskComplete();
+			}
+			else
+			{
+				// no coverwhatsoever.
+				TaskFail("no cover found");
 			}
 		}
 		break;
@@ -1558,10 +1593,10 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 				}
 				return GetScheduleOfType( SCHED_ALERT_FACE );
 			}
-			else if (!HasMemory(bits_MEMORY_DID_ROAM_IN_ALERT) && HasMemory(bits_MEMORY_ALERT_AFTER_COMBAT))
+			else if (HasMemory(bits_MEMORY_SHOULD_ROAM_IN_ALERT))
 			{
 				ALERT(at_aiconsole, "%s trying to freeroam after combat\n", STRING(pev->classname));
-				Remember(bits_MEMORY_DID_ROAM_IN_ALERT);
+				Forget(bits_MEMORY_SHOULD_ROAM_IN_ALERT);
 				return GetScheduleOfType( SCHED_FREEROAM );
 			}
 			else
@@ -1580,7 +1615,7 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 				// clear the current (dead) enemy and try to find another.
 				m_hEnemy = NULL;
 
-				if( GetEnemy() )
+				if( GetEnemy(true) )
 				{
 					ClearConditions( bits_COND_ENEMY_DEAD );
 					return GetSchedule();
@@ -1597,7 +1632,7 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 				ALERT(at_aiconsole, "%s did not see an enemy for a while. Just forget about it\n", STRING(pev->classname));
 				m_hEnemy = NULL;
 
-				if( GetEnemy() )
+				if( GetEnemy(true) )
 				{
 					ClearConditions( bits_COND_ENEMY_LOST );
 					return GetSchedule();

@@ -33,8 +33,6 @@
 
 #define ICHTHYOSAUR_SPEED 150.0f
 
-extern CGraph WorldGraph;
-
 #define EYE_MAD		0
 #define EYE_BASE	1
 #define EYE_CLOSED	2
@@ -90,7 +88,7 @@ public:
 	float FlPitchDiff( void );
 	float ChangePitch( int speed );
 
-	virtual int SizeForGrapple() { return GRAPPLE_LARGE; }
+	virtual int DefaultSizeForGrapple() { return GRAPPLE_LARGE; }
 	Vector DefaultMinHullSize() { return Vector( -32.0f, -32.0f, -32.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 32.0f, 32.0f, 32.0f ); }
 

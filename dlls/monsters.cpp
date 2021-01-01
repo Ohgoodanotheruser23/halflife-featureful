@@ -34,6 +34,7 @@
 #include "soundent.h"
 #include "gamerules.h"
 #include "mod_features.h"
+#include "game.h"
 
 #define MONSTER_CUT_CORNER_DIST		8 // 8 means the monster's bounding box is contained without the box of the node in WC
 
@@ -1116,6 +1117,14 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 		return FALSE;
 	}
 
+	// The classify of enemy has been changed to an ally or neutral. Pretend to lose the enemy.
+	if (IRelationship(pEnemy) < R_DL)
+	{
+		SetConditions(bits_COND_ENEMY_LOST);
+		ClearConditions( bits_COND_SEE_ENEMY | bits_COND_ENEMY_OCCLUDED );
+		return FALSE;
+	}
+
 	Vector vecEnemyPos = pEnemy->pev->origin;
 
 	// distance to enemy's origin
@@ -1176,10 +1185,12 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 	}
 	else
 	{
-		const int forgetEnemyTime = NpcForgetEnemyTime();
+		const float forgetEnemyTime = NpcForgetEnemyTime();
 		if (forgetEnemyTime > 0 && m_flLastTimeObservedEnemy + forgetEnemyTime <= gpGlobals->time)
 		{
 			SetConditions( bits_COND_ENEMY_LOST );
+			ClearConditions( bits_COND_ENEMY_OCCLUDED );
+			return FALSE;
 		}
 	}
 
@@ -1216,10 +1227,36 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 	return iUpdatedLKP;
 }
 
+// SetEnemy - set main enemy
+void CBaseMonster::SetEnemy(CBaseEntity *pNewEnemy)
+{
+	if (!pNewEnemy || pNewEnemy == m_hEnemy)
+		return;
+
+	CBaseEntity* pPreviousEnemy = m_hEnemy;
+	Vector previousEnemyLKP = m_vecEnemyLKP;
+
+	m_hEnemy = pNewEnemy;
+	m_vecEnemyLKP = pNewEnemy->pev->origin;
+	m_flLastTimeObservedEnemy = gpGlobals->time;
+	//ALERT(at_aiconsole, "%s got %s as new enemy\n", STRING(pev->classname), STRING(pNewEnemy->pev->classname));
+
+	// Don't keep the new enemy in the list of old enemies
+	for( int i = 0; i < MAX_OLD_ENEMIES; i++ )
+	{
+		if( m_hOldEnemy[i] == pNewEnemy )
+		{
+			m_hOldEnemy[i] = NULL;
+			break;
+		}
+	}
+	PushEnemy(pPreviousEnemy, previousEnemyLKP);
+}
+
 //=========================================================
-// PushEnemy - remember the last few enemies, always remember the player
+// PushEnemy - remember the last few enemies
 //=========================================================
-void CBaseMonster::PushEnemy( CBaseEntity *pEnemy, Vector &vecLastKnownPos )
+void CBaseMonster::PushEnemy( CBaseEntity *pEnemy, const Vector &vecLastKnownPos )
 {
 	int i;
 
@@ -1230,8 +1267,12 @@ void CBaseMonster::PushEnemy( CBaseEntity *pEnemy, Vector &vecLastKnownPos )
 	for( i = 0; i < MAX_OLD_ENEMIES; i++ )
 	{
 		if( m_hOldEnemy[i] == pEnemy )
+		{
+			// we already have this enemy, just update LKP
+			m_vecOldEnemy[i] = vecLastKnownPos;
 			return;
-		if( m_hOldEnemy[i] == 0 ) // someone died, reuse their slot
+		}
+		if( m_hOldEnemy[i] == 0 || !m_hOldEnemy[i]->IsAlive() ) // someone died, reuse their slot
 			break;
 	}
 	if( i >= MAX_OLD_ENEMIES )
@@ -1239,6 +1280,7 @@ void CBaseMonster::PushEnemy( CBaseEntity *pEnemy, Vector &vecLastKnownPos )
 
 	m_hOldEnemy[i] = pEnemy;
 	m_vecOldEnemy[i] = vecLastKnownPos;
+	//ALERT(at_aiconsole, "%s pushed %s to its enemy queue\n", STRING(pev->classname), STRING(pEnemy->pev->classname));
 }
 
 //=========================================================
@@ -1256,7 +1298,8 @@ BOOL CBaseMonster::PopEnemy()
 				m_hEnemy = m_hOldEnemy[i];
 				m_vecEnemyLKP = m_vecOldEnemy[i];
 				m_flLastTimeObservedEnemy = gpGlobals->time;
-				// ALERT( at_console, "remembering\n" );
+				ALERT( at_aiconsole, "%s remembering old enemy %s\n", STRING(pev->classname), STRING(m_hEnemy->pev->classname) );
+				m_hOldEnemy[i] = NULL;
 				return TRUE;
 			}
 			else
@@ -2329,6 +2372,8 @@ void CBaseMonster::MonsterInit( void )
 	SetThink( &CBaseMonster::MonsterInitThink );
 	pev->nextthink = gpGlobals->time + 0.1f;
 	SetUse( &CBaseMonster::MonsterUse );
+
+	m_flLastYawTime = gpGlobals->time;
 }
 
 //=========================================================
@@ -2424,7 +2469,8 @@ void CBaseMonster::StartMonster( void )
 			if( !WALK_MOVE( ENT( pev ), 0, 0, WALKMOVE_NORMAL ) )
 			{
 				ALERT( at_error, "Monster %s stuck in wall--level design error\n", STRING( pev->classname ) );
-				pev->effects = EF_BRIGHTFIELD;
+				if( g_psv_developer && g_psv_developer->value )
+					pev->effects = EF_BRIGHTFIELD;
 			}
 		}
 	}
@@ -2945,7 +2991,17 @@ float CBaseMonster::ChangeYaw( int yawSpeed )
 	ideal = pev->ideal_yaw;
 	if( current != ideal )
 	{
-		speed = (float)yawSpeed * gpGlobals->frametime * 10;
+		if( monsteryawspeedfix.value )
+		{
+			float delta;
+
+			delta = Q_min( gpGlobals->time - m_flLastYawTime, 0.25f );
+
+			speed = (float)yawSpeed * delta * 2;
+		}
+		else
+			speed = (float)yawSpeed * gpGlobals->frametime * 10;
+
 		move = ideal - current;
 
 		if( ideal > current )
@@ -2988,6 +3044,8 @@ float CBaseMonster::ChangeYaw( int yawSpeed )
 	}
 	else
 		move = 0;
+
+	m_flLastYawTime = gpGlobals->time;
 
 	return move;
 }
@@ -3374,19 +3432,29 @@ void CBaseMonster::ReportAIState( ALERT_TYPE level )
 	else
 		ALERT( level, "No enemy. " );
 
+	for (i=0; i<MAX_OLD_ENEMIES; ++i)
+	{
+		if (m_hOldEnemy[i] != 0)
+		{
+			ALERT( level, "Old enemy is %s (%s). ", STRING( m_hOldEnemy[i]->pev->classname ), m_hOldEnemy[i]->IsAlive() ? "alive" : "dead" );
+		}
+	}
+
 	if ( m_hTargetEnt != 0 )
 		ALERT( level, "Target ent: %s. ", STRING( m_hTargetEnt->pev->classname ) );
 
 	if( IsMoving() )
 	{
-		ALERT( level, " Moving " );
+		ALERT( level, "Moving" );
 		if( m_flMoveWaitFinished > gpGlobals->time )
-			ALERT( level, ": Stopped for %.2f. ", (double)(m_flMoveWaitFinished - gpGlobals->time) );
+			ALERT( level, ": Stopped for %.2f", (double)(m_flMoveWaitFinished - gpGlobals->time) );
 		else if( m_IdealActivity == GetStoppedActivity() )
-			ALERT( level, ": In stopped anim. " );
+			ALERT( level, ": In stopped anim" );
+		ALERT( level, ". " );
 	}
 
-	ALERT( level, "Yaw speed: %3.1f, Health: %3.1f / %3.1f. ", (double)pev->yaw_speed, (double)pev->health, (double)pev->max_health );
+	ALERT( level, "Yaw speed: %3.1f, Current Yaw: %3.1f, Ideal Yaw: %3.1f, Health: %3.1f / %3.1f. ",
+		   (double)pev->yaw_speed, (double)UTIL_AngleMod( pev->angles.y ), (double)pev->ideal_yaw, (double)pev->health, (double)pev->max_health );
 	if( pev->spawnflags & SF_MONSTER_PRISONER )
 		ALERT( level, " PRISONER! " );
 	if( pev->spawnflags & SF_MONSTER_PREDISASTER )
@@ -3468,6 +3536,11 @@ void CBaseMonster::KeyValue( KeyValueData *pkvd )
 	else if ( FStrEq( pkvd->szKeyName, "freeroam" ) )
 	{
 		m_freeRoam = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "size_for_grapple" ) )
+	{
+		m_sizeForGrapple = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -3851,7 +3924,7 @@ BOOL CBaseMonster::BBoxFlat( void )
 //=========================================================
 // Get Enemy - tries to find the best suitable enemy for the monster.
 //=========================================================
-BOOL CBaseMonster::GetEnemy( void )
+BOOL CBaseMonster::GetEnemy( bool forcePopping )
 {
 	CBaseEntity *pNewEnemy;
 
@@ -3869,17 +3942,14 @@ BOOL CBaseMonster::GetEnemy( void )
 			{
 				if( m_pSchedule->iInterruptMask & bits_COND_NEW_ENEMY )
 				{
-					PushEnemy( m_hEnemy, m_vecEnemyLKP );
+					SetEnemy(pNewEnemy);
 					SetConditions( bits_COND_NEW_ENEMY );
-					m_hEnemy = pNewEnemy;
-					m_vecEnemyLKP = m_hEnemy->pev->origin;
-					m_flLastTimeObservedEnemy = gpGlobals->time;
 				}
 				// if the new enemy has an owner, take that one as well
 				if( pNewEnemy->pev->owner != NULL )
 				{
 					CBaseEntity *pOwner = GetMonsterPointer( pNewEnemy->pev->owner );
-					if( pOwner && ( pOwner->pev->flags & FL_MONSTER ) && IRelationship( pOwner ) != R_NO )
+					if( pOwner && ( pOwner->pev->flags & FL_MONSTER ) && IRelationship( pOwner ) >= R_DL )
 						PushEnemy( pOwner, m_vecEnemyLKP );
 				}
 			}
@@ -3887,14 +3957,19 @@ BOOL CBaseMonster::GetEnemy( void )
 	}
 
 	// remember old enemies
-	if( m_hEnemy == 0 && PopEnemy() )
+	if( m_hEnemy == 0 )
 	{
-		if( m_pSchedule )
+		if (forcePopping)
 		{
-			if( m_pSchedule->iInterruptMask & bits_COND_NEW_ENEMY )
+			if (PopEnemy() && m_pSchedule != NULL && (m_pSchedule->iInterruptMask & bits_COND_NEW_ENEMY))
 			{
 				SetConditions( bits_COND_NEW_ENEMY );
 			}
+		}
+		else if (m_pSchedule != NULL && (m_pSchedule->iInterruptMask & bits_COND_NEW_ENEMY))
+		{
+			if (PopEnemy())
+				SetConditions( bits_COND_NEW_ENEMY );
 		}
 	}
 
@@ -3993,6 +4068,8 @@ void CBaseMonster::SetMyBloodColor(int bloodColor)
 
 int CBaseMonster::Classify()
 {
+	if (m_iClass == -1)
+		return CLASS_NONE;
 	if (m_iClass)
 		return m_iClass;
 	const int defaultClassify = DefaultClassify();
@@ -4031,6 +4108,15 @@ Vector CBaseMonster::DefaultMinHullSize()
 Vector CBaseMonster::DefaultMaxHullSize()
 {
 	return g_vecZero;
+}
+
+int CBaseMonster::SizeForGrapple()
+{
+	if (m_sizeForGrapple < 0)
+		return GRAPPLE_NOT_A_TARGET;
+	else if (m_sizeForGrapple > 0 && m_sizeForGrapple <= GRAPPLE_FIXED)
+		return m_sizeForGrapple;
+	return DefaultSizeForGrapple();
 }
 
 void CBaseMonster::GlowShellOn( Vector color, float flDuration )

@@ -145,7 +145,8 @@ BOOL CBaseMonster::CheckMeleeAttack2( float flDot, float flDist ) { return FALSE
 void CBaseMonster::CheckAttacks( CBaseEntity *pTarget, float flDist ) { }
 BOOL CBaseMonster::FCanCheckAttacks( void ) { return FALSE; }
 int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy ) { return 0; }
-void CBaseMonster::PushEnemy( CBaseEntity *pEnemy, Vector &vecLastKnownPos ) { }
+void CBaseMonster::SetEnemy(CBaseEntity *pEnemy) {}
+void CBaseMonster::PushEnemy( CBaseEntity *pEnemy, const Vector &vecLastKnownPos ) { }
 BOOL CBaseMonster::PopEnemy() { return FALSE; }
 void CBaseMonster::SetActivity( Activity NewActivity ) { }
 void CBaseMonster::SetSequenceByName( const char *szSequence ) { }
@@ -218,7 +219,7 @@ void CBaseMonster::SentenceStop( void ) { }
 void CBaseMonster::CorpseFallThink( void ) { }
 void CBaseMonster::MonsterInitDead( void ) { }
 BOOL CBaseMonster::BBoxFlat( void ) { return TRUE; }
-BOOL CBaseMonster::GetEnemy( void ) { return FALSE; }
+BOOL CBaseMonster::GetEnemy( bool forcePopping ) { return FALSE; }
 void CBaseMonster::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType) { }
 CBaseEntity* CBaseMonster::DropItem( const char *pszItemName, const Vector &vecPos, const Vector &vecAng ) { return NULL; }
 BOOL CBaseMonster::ShouldFadeOnDeath( void ) { return FALSE; }
@@ -254,6 +255,7 @@ bool CBaseMonster::IsAlienMonster() {return false;}
 const char* CBaseMonster::DisplayName() { return NULL; }
 Vector CBaseMonster::DefaultMinHullSize() {return Vector(0,0,0); }
 Vector CBaseMonster::DefaultMaxHullSize() {return Vector(0,0,0); }
+int CBaseMonster::SizeForGrapple() { return GRAPPLE_NOT_A_TARGET; }
 int CBaseMonster::MonsterCategory() { return 0; }
 
 int TrainSpeed( int iSpeed, int iMax ) { return 0; }

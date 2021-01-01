@@ -463,7 +463,7 @@ void CTalkMonster::StartTask( Task_t *pTask )
 		TaskComplete();
 		break;
 	case TASK_CANT_FOLLOW:
-		StopFollowing( FALSE );
+		StopFollowing( FALSE, false );
 		PlaySentence( m_szGrp[TLK_STOP], RANDOM_FLOAT( 2, 2.5 ), VOL_NORM, ATTN_NORM );
 		TaskComplete();
 		break;
@@ -712,16 +712,21 @@ void CTalkMonster::LimitFollowers( CBaseEntity *pPlayer, int maxFollowers )
 		CBaseEntity *pFriend = NULL;
 		while( ( pFriend = EnumFriends( pFriend, talkFriend.name, FALSE ) ) )
 		{
-			CTalkMonster *pMonster = (CTalkMonster*)pFriend->MyMonsterPointer();
-			if( pMonster )
+			CBaseMonster* pMonster = pFriend->MyMonsterPointer();
+			if (pMonster)
 			{
-				if( pMonster->FollowedPlayer() == pPlayer )
+				CTalkMonster *pTalkMonster = pMonster->MyTalkMonsterPointer();
+				if( pTalkMonster )
 				{
-					count++;
-					if( count > maxFollowers )
-						pMonster->StopFollowing( TRUE );
+					if( pTalkMonster->FollowedPlayer() == pPlayer )
+					{
+						count++;
+						if( count > maxFollowers )
+							pTalkMonster->StopFollowing( TRUE );
+					}
 				}
 			}
+
 		}
 	}
 }
@@ -932,7 +937,7 @@ float CTalkMonster::RandomSentenceDuraion()
 		return RANDOM_FLOAT( 2.8f, 3.2f );
 }
 
-int CTalkMonster::FOkToSpeak( void )
+int CTalkMonster::FOkToSpeak(int speakFlags )
 {
 	// if in the grip of a barnacle, don't speak
 	if( m_MonsterState == MONSTERSTATE_PRONE || m_IdealMonsterState == MONSTERSTATE_PRONE )
@@ -946,11 +951,16 @@ int CTalkMonster::FOkToSpeak( void )
 		return FALSE;
 	}
 
-	// if someone else is talking, don't speak
-	if( gpGlobals->time <= CTalkMonster::g_talkWaitTime )
+	if( pev->spawnflags & SF_MONSTER_GAG )
 		return FALSE;
 
-	if( pev->spawnflags & SF_MONSTER_GAG )
+	// if someone else is talking, don't speak
+	if ( FBitSet(speakFlags, SPEAK_DISREGARD_OTHER_SPEAKING) )
+	{
+		if (IsTalking())
+			return FALSE;
+	}
+	else if( CTalkMonster::SomeoneIsTalking() )
 		return FALSE;
 
 	// if player is not in pvs, don't speak
@@ -958,7 +968,7 @@ int CTalkMonster::FOkToSpeak( void )
 		return FALSE;
 
 	// don't talk if you're in combat
-	if( m_hEnemy != 0 && FVisible( m_hEnemy ) )
+	if( !FBitSet(speakFlags, SPEAK_DISREGARD_ENEMY) && m_hEnemy != 0 && FVisible( m_hEnemy ) )
 		return FALSE;
 
 	return TRUE;
@@ -1088,17 +1098,21 @@ int CTalkMonster::FIdleSpeak( void )
 	{
 		float duration = RandomSentenceDuraion();
 		// force friend to answer
-		CTalkMonster *pTalkMonster = (CTalkMonster *)pFriend;
-		if (pTalkMonster->m_flStopTalkTime <= gpGlobals->time + duration &&
-				AskQuestion(duration))
+		CBaseMonster* pMonster = pFriend->MyMonsterPointer();
+		if (pMonster)
 		{
-			if (pTalkMonster->SetAnswerQuestion( this )) // UNDONE: This is EVIL!!!
-				pTalkMonster->m_flStopTalkTime = m_flStopTalkTime;
+			CTalkMonster *pTalkMonster = pMonster->MyTalkMonsterPointer();
+			if (pTalkMonster && pTalkMonster->m_flStopTalkTime <= gpGlobals->time + duration &&
+					AskQuestion(duration))
+			{
+				if (pTalkMonster->SetAnswerQuestion( this )) // UNDONE: This is EVIL!!!
+					pTalkMonster->m_flStopTalkTime = m_flStopTalkTime;
 
-			m_hTalkTarget = pFriend;
+				m_hTalkTarget = pFriend;
 
-			m_nSpeak++;
-			return TRUE;
+				m_nSpeak++;
+				return TRUE;
+			}
 		}
 	}
 
@@ -1196,12 +1210,16 @@ int CTalkMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 		{
 			CBaseEntity *pFriend = FindNearestFriend( FALSE );
 
+			// only if not dead or dying!
 			if( pFriend && pFriend->IsAlive() )
 			{
-				// only if not dead or dying!
-				CTalkMonster *pTalkMonster = (CTalkMonster *)pFriend;
-				if (!pTalkMonster->IsTalking())
-					pTalkMonster->PlaySentence( pTalkMonster->m_szGrp[TLK_NOSHOOT], RANDOM_FLOAT( 2.8, 3.2 ), VOL_NORM, ATTN_NORM );
+				CBaseMonster* pMonster = pFriend->MyMonsterPointer();
+				if (pMonster)
+				{
+					CTalkMonster* pTalkMonster = pMonster->MyTalkMonsterPointer();
+					if (pTalkMonster && !pTalkMonster->IsTalking())
+						pTalkMonster->PlaySentence( pTalkMonster->m_szGrp[TLK_NOSHOOT], RANDOM_FLOAT( 2.8, 3.2 ), VOL_NORM, ATTN_NORM );
+				}
 			}
 			ReactToPlayerHit(pevInflictor, pevAttacker, flDamage, bitsDamageType);
 		}
@@ -1606,4 +1624,9 @@ void CTalkMonster::ReportAIState(ALERT_TYPE level)
 		ALERT( level, "Speaking to: %s. ", STRING( m_hTalkTarget->pev->classname ) );
 	if (m_fStartSuspicious)
 		ALERT( level, "Start pre-provoked. " );
+}
+
+bool CTalkMonster::SomeoneIsTalking()
+{
+	return gpGlobals->time <= CTalkMonster::g_talkWaitTime;
 }

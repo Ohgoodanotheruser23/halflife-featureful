@@ -19,6 +19,7 @@
 #include "cbase.h"
 
 class CFollowingMonster;
+class CTalkMonster;
 class CDeadMonster;
 
 enum
@@ -145,6 +146,7 @@ public:
 
 	virtual CBaseMonster *MyMonsterPointer( void ) { return this; }
 	virtual CFollowingMonster* MyFollowingMonsterPointer() { return NULL; }
+	virtual CTalkMonster* MyTalkMonsterPointer() { return NULL; }
 	virtual void Look( int iDistance );// basic sight function for monsters
 	virtual void RunAI( void );// core ai function!	
 	void Listen( void );
@@ -233,7 +235,8 @@ public:
 
 	void CheckAttacks( CBaseEntity *pTarget, float flDist );
 	virtual int CheckEnemy( CBaseEntity *pEnemy );
-	void PushEnemy( CBaseEntity *pEnemy, Vector &vecLastKnownPos );
+	void SetEnemy( CBaseEntity* pEnemy );
+	void PushEnemy(CBaseEntity *pEnemy, const Vector &vecLastKnownPos );
 	BOOL PopEnemy( void );
 
 	BOOL FGetNodeRoute( Vector vecDest );
@@ -316,7 +319,7 @@ public:
 	// PrescheduleThink 
 	virtual void PrescheduleThink( void ) { return; };
 
-	BOOL GetEnemy( void );
+	BOOL GetEnemy( bool forcePopping );
 	void MakeDamageBloodDecal( int cCount, float flNoise, TraceResult *ptr, const Vector &vecDir );
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
@@ -393,6 +396,8 @@ public:
 	virtual Vector DefaultMinHullSize();
 	virtual Vector DefaultMaxHullSize();
 
+	virtual int SizeForGrapple();
+
 	// Allows to set a head via monstermaker before spawn
 	virtual void SetHead(int head) {}
 
@@ -423,6 +428,10 @@ public:
 	short m_freeRoam;
 
 	float m_flLastTimeObservedEnemy;
+
+	short m_sizeForGrapple;
+
+	float m_flLastYawTime;
 
 	const char* taskFailReason;
 };

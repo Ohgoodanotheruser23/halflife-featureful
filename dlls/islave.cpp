@@ -396,7 +396,7 @@ public:
 	void RunTask( Task_t *pTask );
 	void PrescheduleThink();
 	int LookupActivity(int activity);
-	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
+	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
 	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
 	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
 
@@ -1212,9 +1212,8 @@ void CISlave::SpawnFamiliar(const char *entityName, const Vector &origin, int hu
 			
 			SetBits( pNew->pev->spawnflags, SF_MONSTER_FALL_TO_GROUND );
 			if (pNewMonster) {
-				if (m_iClass || m_reverseRelationship) {
-					pNewMonster->m_iClass = Classify();
-				}
+				pNewMonster->m_iClass = m_iClass;
+				pNewMonster->m_reverseRelationship = m_reverseRelationship;
 				if (m_hEnemy) {
 					pNewMonster->PushEnemy(m_hEnemy, m_vecEnemyLKP);
 				}

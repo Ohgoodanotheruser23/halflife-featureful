@@ -25,6 +25,7 @@
 #include "animation.h"
 #include "saverestore.h"
 #include "soundent.h"
+#include "followingmonster.h"
 
 //=========================================================
 // SetState
@@ -52,10 +53,16 @@ void CBaseMonster::SetState( MONSTERSTATE State )
 		if (m_MonsterState == MONSTERSTATE_COMBAT)
 		{
 			Remember(bits_MEMORY_ALERT_AFTER_COMBAT);
+			// Don't roam after fight if was following the player
+			CFollowingMonster* pFollowingMonster = MyFollowingMonsterPointer();
+			if (!pFollowingMonster || !pFollowingMonster->IsFollowingPlayer())
+			{
+				Remember(bits_MEMORY_SHOULD_ROAM_IN_ALERT);
+			}
 		}
 		break;
 	case MONSTERSTATE_COMBAT:
-		Forget(bits_MEMORY_DID_ROAM_IN_ALERT|bits_MEMORY_ALERT_AFTER_COMBAT);
+		Forget(bits_MEMORY_SHOULD_ROAM_IN_ALERT|bits_MEMORY_ALERT_AFTER_COMBAT);
 		break;
 	default:
 		break;
@@ -75,7 +82,7 @@ void CBaseMonster::RunAI( void )
 
 	// IDLE sound permitted in ALERT state is because monsters were silent in ALERT state. Only play IDLE sound in IDLE state
 	// once we have sounds for that state.
-	if( ( m_MonsterState == MONSTERSTATE_IDLE || m_MonsterState == MONSTERSTATE_ALERT ) && RANDOM_LONG( 0, 99 ) == 0 && !( pev->flags & SF_MONSTER_GAG ) )
+	if( ( m_MonsterState == MONSTERSTATE_IDLE || m_MonsterState == MONSTERSTATE_ALERT ) && RANDOM_LONG( 0, 99 ) == 0 && !( pev->spawnflags & SF_MONSTER_GAG ) )
 	{
 		IdleSound();
 	}
@@ -97,7 +104,7 @@ void CBaseMonster::RunAI( void )
 			// now filter conditions.
 			ClearConditions( IgnoreConditions() );
 
-			GetEnemy();
+			GetEnemy(false);
 		}
 
 		// do these calculations if monster has an enemy.

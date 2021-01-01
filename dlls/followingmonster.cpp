@@ -275,7 +275,7 @@ void CFollowingMonster::RunTask( Task_t *pTask )
 
 void CFollowingMonster::PrescheduleThink()
 {
-	if (IsFollowingPlayer() && IsLockedByMaster())
+	if (IsFollowingPlayer() && ShouldDeclineFollowing())
 	{
 		StopFollowing(TRUE, false);
 	}
@@ -333,9 +333,6 @@ void CFollowingMonster::StartFollowing(CBaseEntity *pLeader , bool saySentence)
 	if( m_pCine )
 		m_pCine->CancelScript();
 
-	if( m_hEnemy != 0 )
-		m_IdealMonsterState = MONSTERSTATE_ALERT;
-
 	m_hTargetEnt = pLeader;
 	if (saySentence)
 	{
@@ -343,7 +340,8 @@ void CFollowingMonster::StartFollowing(CBaseEntity *pLeader , bool saySentence)
 	}
 
 	ClearConditions( bits_COND_CLIENT_PUSH );
-	ClearSchedule();
+	if (!HasConditions(bits_COND_SEE_ENEMY))
+		ClearSchedule();
 }
 
 void CFollowingMonster::LimitFollowers( CBaseEntity *pPlayer, int maxFollowers )
@@ -430,6 +428,11 @@ void CFollowingMonster::FollowerUse( CBaseEntity *pActivator, CBaseEntity *pCall
 	DoFollowerUse(pCaller, true, USE_TOGGLE);
 }
 
+bool CFollowingMonster::ShouldDeclineFollowing()
+{
+	return IsLockedByMaster() || (pev->spawnflags & SF_MONSTER_PREDISASTER && !m_sMaster);
+}
+
 int CFollowingMonster::DoFollowerUse(CBaseEntity *pCaller, bool saySentence, USE_TYPE useType, bool ignoreScriptedSentence)
 {
 	if( pCaller != NULL && pCaller->IsPlayer() )
@@ -441,46 +444,45 @@ int CFollowingMonster::DoFollowerUse(CBaseEntity *pCaller, bool saySentence, USE
 		if (rel >= R_DL || rel == R_FR)
 			return FOLLOWING_DISCARDED;
 
+		if (!AbleToFollow())
+			return FOLLOWING_NOTALLOWED;
+
 		// Pre-disaster followers can't be used unless they've got a master to override their behaviour...
-		if (IsLockedByMaster() || (pev->spawnflags & SF_MONSTER_PREDISASTER && !m_sMaster))
+		if (ShouldDeclineFollowing())
 		{
 			if (saySentence)
 				DeclineFollowing(pCaller);
 			return FOLLOWING_DECLINED;
 		}
-		if( AbleToFollow() )
+
+		const bool isFollowing = IsFollowingPlayer();
+		if (isFollowing && useType == USE_ON)
 		{
-			const bool isFollowing = IsFollowingPlayer();
+			return FOLLOWING_NOCHANGE;
+		}
+		if (!isFollowing && useType == USE_OFF)
+		{
+			return FOLLOWING_NOCHANGE;
+		}
+		if (!isFollowing && (useType == USE_TOGGLE || useType == USE_ON))
+		{
+			LimitFollowers( pCaller, MaxFollowers() );
 
-			if (isFollowing && useType == USE_ON)
+			if( m_afMemory & bits_MEMORY_PROVOKED )
 			{
-				return FOLLOWING_NOCHANGE;
+				ALERT( at_console, "I'm not following you, you evil person!\n" );
+				return FOLLOWING_DISCARDED;
 			}
-			if (!isFollowing && useType == USE_OFF)
+			else
 			{
-				return FOLLOWING_NOCHANGE;
+				StartFollowing( pCaller, saySentence );
+				return FOLLOWING_STARTED;
 			}
-
-			if (!isFollowing && (useType == USE_TOGGLE || useType == USE_ON))
-			{
-				LimitFollowers( pCaller, MaxFollowers() );
-
-				if( m_afMemory & bits_MEMORY_PROVOKED )
-				{
-					ALERT( at_console, "I'm not following you, you evil person!\n" );
-					return FOLLOWING_DISCARDED;
-				}
-				else
-				{
-					StartFollowing( pCaller, saySentence );
-					return FOLLOWING_STARTED;
-				}
-			}
-			if (isFollowing && (useType == USE_TOGGLE || useType == USE_OFF))
-			{
-				StopFollowing( TRUE, saySentence );
-				return FOLLOWING_STOPPED;
-			}
+		}
+		if (isFollowing && (useType == USE_TOGGLE || useType == USE_OFF))
+		{
+			StopFollowing( TRUE, saySentence );
+			return FOLLOWING_STOPPED;
 		}
 	}
 	return FOLLOWING_NOTALLOWED;
