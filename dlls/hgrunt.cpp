@@ -2136,6 +2136,11 @@ Schedule_t *CHGrunt::GetSchedule( void )
 	return CFollowingMonster::GetSchedule();
 }
 
+bool CHGrunt::CanDropGrenade() const
+{
+	return FBitSet(pev->weapons, HGRUNT_HANDGRENADE);
+}
+
 //=========================================================
 //=========================================================
 Schedule_t *CHGrunt::GetScheduleOfType( int Type ) 
@@ -2162,14 +2167,19 @@ Schedule_t *CHGrunt::GetScheduleOfType( int Type )
 			}
 			else
 			{
-				if( RANDOM_LONG( 0, 1 ) )
+				if (CanDropGrenade())
 				{
-					return &slGruntTakeCover[0];
+					if( RANDOM_LONG( 0, 1 ) )
+					{
+						return &slGruntTakeCover[0];
+					}
+					else
+					{
+						return &slGruntGrenadeCover[0];
+					}
 				}
 				else
-				{
-					return &slGruntGrenadeCover[0];
-				}
+					return &slGruntTakeCover[0];
 			}
 		}
 	case SCHED_TAKE_COVER_FROM_BEST_SOUND:
@@ -2381,6 +2391,8 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	pGrunt->m_displayName = m_displayName;
 	pGrunt->m_customSoundMask = m_customSoundMask;
 	pGrunt->m_prisonerTo = m_prisonerTo;
+	pGrunt->m_freeRoam = m_freeRoam;
+	pGrunt->m_sizeForGrapple = m_sizeForGrapple;
 	PrepareBeforeSpawn(pEntity);
 	DispatchSpawn(pEntity->edict());
 	pGrunt->pev->movetype = MOVETYPE_FLY;

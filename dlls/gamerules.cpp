@@ -294,6 +294,7 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.voltigoreHealth = GetSkillCvar( "sk_voltigore_health" );
 	gSkillData.voltigoreDmgPunch = GetSkillCvar( "sk_voltigore_dmg_punch" );
 	gSkillData.voltigoreDmgBeam = GetSkillCvar( "sk_voltigore_dmg_beam" );
+	gSkillData.voltigoreDmgExplode = GetSkillCvar( "sk_voltigore_dmg_explode", "sk_voltigore_dmg_beam" );
 
 	// Baby Voltigore
 	gSkillData.babyVoltigoreHealth = GetSkillCvar( "sk_babyvoltigore_health" );
@@ -441,6 +442,9 @@ void CGameRules::RefreshSkillData ( void )
 
 	gSkillData.plrDmgHornet = GetSkillCvar( "sk_plr_hornet_dmg" );
 
+	// MORTAR
+	gSkillData.mortarDmg = GetSkillCvar( "sk_mortar" );
+
 	// HEALTH/CHARGE
 	gSkillData.suitchargerCapacity = GetSkillCvar( "sk_suitcharger" );
 	gSkillData.batteryCapacity = GetSkillCvar( "sk_battery" );
@@ -561,6 +565,16 @@ float NpcForgetEnemyTime()
 	return npc_forget_enemy_time.value;
 #else
 	return 0.0f;
+#endif
+}
+
+bool NpcFixMeleeDistance()
+{
+#if FEATURE_NPC_FIX_MELEE_DISTANCE_CVAR
+	extern cvar_t npc_fix_melee_distance;
+	return npc_fix_melee_distance.value != 0;
+#else
+	return false;
 #endif
 }
 

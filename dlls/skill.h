@@ -176,6 +176,7 @@ struct skilldata_t
 	float voltigoreHealth;
 	float voltigoreDmgPunch;
 	float voltigoreDmgBeam;
+	float voltigoreDmgExplode;
 
 	float babyVoltigoreHealth;
 	float babyVoltigoreDmgPunch;
@@ -267,6 +268,9 @@ struct skilldata_t
 	float monDmg357;
 	float monDmg556;
 	float monDmg762;
+
+	// mortar
+	float mortarDmg;
 
 	// health/suit charge
 	float suitchargerCapacity;

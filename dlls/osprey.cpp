@@ -38,6 +38,9 @@ typedef struct
 
 #define MAX_CARRY	24
 
+#define OSPREY_GRUNT_TYPE_HL 0
+#define OSPREY_GRUNT_TYPE_OPFOR 1
+
 class COsprey : public CBaseMonster
 {
 public:
@@ -107,7 +110,12 @@ public:
 
 	int m_iDoLeftSmokePuff;
 	int m_iDoRightSmokePuff;
-	
+
+	short m_gruntType;
+	short m_gruntNumber;
+
+	float m_soundAttenuation;
+
 protected:
 	void SpawnImpl(const char* modelName, const float defaultHealth);
 	void PrecacheImpl(const char* modelName, const char* tailGibs, const char* bodyGibs, const char* engineGibs);
@@ -118,6 +126,9 @@ protected:
 			return pev->armorvalue;
 		}
 		return VOL_NORM;
+	}
+	float RotorAttenuation() const {
+		return m_soundAttenuation > 0.0f ? m_soundAttenuation : 0.15f;
 	}
 };
 
@@ -154,6 +165,10 @@ TYPEDESCRIPTION	COsprey::m_SaveData[] =
 
 	DEFINE_FIELD( COsprey, m_iDoLeftSmokePuff, FIELD_INTEGER ),
 	DEFINE_FIELD( COsprey, m_iDoRightSmokePuff, FIELD_INTEGER ),
+
+	DEFINE_FIELD( COsprey, m_gruntType, FIELD_SHORT ),
+	DEFINE_FIELD( COsprey, m_gruntNumber, FIELD_SHORT ),
+	DEFINE_FIELD( COsprey, m_soundAttenuation, FIELD_FLOAT ),
 };
 
 IMPLEMENT_SAVERESTORE( COsprey, CBaseMonster )
@@ -231,9 +246,19 @@ void COsprey::KeyValue(KeyValueData *pkvd)
 		pev->armorvalue = atof( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
-	if( FStrEq(pkvd->szKeyName, "grunttype" ) )
+	else if( FStrEq(pkvd->szKeyName, "grunttype" ) )
 	{
-		pev->oldbuttons = atoi( pkvd->szValue );
+		m_gruntType = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq(pkvd->szKeyName, "num" ) )
+	{
+		m_gruntNumber = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq(pkvd->szKeyName, "attenuation" ) )
+	{
+		m_soundAttenuation = atof( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -292,14 +317,23 @@ void COsprey::DeployThink( void )
 	vecSrc = pev->origin + vecForward *  32 + vecRight *  100 + vecUp * -96;
 	m_hRepel[0] = MakeGrunt( vecSrc );
 
-	vecSrc = pev->origin + vecForward * -64 + vecRight *  100 + vecUp * -96;
-	m_hRepel[1] = MakeGrunt( vecSrc );
+	if (m_gruntNumber <= 0 || m_gruntNumber >= 2)
+	{
+		vecSrc = pev->origin + vecForward * -64 + vecRight *  100 + vecUp * -96;
+		m_hRepel[1] = MakeGrunt( vecSrc );
+	}
 
-	vecSrc = pev->origin + vecForward *  32 + vecRight * -100 + vecUp * -96;
-	m_hRepel[2] = MakeGrunt( vecSrc );
+	if (m_gruntNumber <= 0 || m_gruntNumber >= 3)
+	{
+		vecSrc = pev->origin + vecForward *  32 + vecRight * -100 + vecUp * -96;
+		m_hRepel[2] = MakeGrunt( vecSrc );
+	}
 
-	vecSrc = pev->origin + vecForward * -64 + vecRight * -100 + vecUp * -96;
-	m_hRepel[3] = MakeGrunt( vecSrc );
+	if (m_gruntNumber <= 0 || m_gruntNumber >= 4)
+	{
+		vecSrc = pev->origin + vecForward * -64 + vecRight * -100 + vecUp * -96;
+		m_hRepel[3] = MakeGrunt( vecSrc );
+	}
 
 	SetThink( &COsprey::HoverThink );
 	pev->nextthink = gpGlobals->time + 0.1f;
@@ -324,7 +358,7 @@ BOOL COsprey::HasDead()
 const char* COsprey::TrooperName()
 {
 #if FEATURE_OPFOR_GRUNT
-	if (pev->oldbuttons == 1)
+	if (m_gruntType == OSPREY_GRUNT_TYPE_OPFOR)
 		return "monster_human_grunt_ally";
 	else
 #endif
@@ -386,14 +420,13 @@ CBaseMonster *COsprey::MakeGrunt( Vector vecSrc )
 
 void COsprey::PrepareGruntBeforeSpawn(CBaseEntity *pGrunt)
 {
-	if (pev->oldbuttons == 1)
+	if (m_gruntType == OSPREY_GRUNT_TYPE_OPFOR)
 	{
-		KeyValueData kvd;
-		char buf[128] = {0};
-		sprintf(buf, "%d", -1);
-		kvd.szKeyName = "head";
-		kvd.szValue = buf;
-		pGrunt->KeyValue(&kvd);
+		CBaseMonster* pMonster = pGrunt->MyMonsterPointer();
+		if (pMonster)
+		{
+			pMonster->SetHead(-1);
+		}
 	}
 }
 
@@ -529,7 +562,7 @@ void COsprey::Flight()
 
 	if( m_iSoundState == 0 )
 	{
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, "apache/ap_rotor4.wav", RotorVolume(), 0.15, 0, 110 );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, "apache/ap_rotor4.wav", RotorVolume(), RotorAttenuation(), 0, 110 );
 		// EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, "apache/ap_whine1.wav", 0.5, 0.2, 0, 110 );
 
 		m_iSoundState = SND_CHANGE_PITCH; // hack for going through level transitions
@@ -557,7 +590,7 @@ void COsprey::Flight()
 			if( pitch != m_iPitch )
 			{
 				m_iPitch = pitch;
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, "apache/ap_rotor4.wav", RotorVolume(), 0.15, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, "apache/ap_rotor4.wav", RotorVolume(), RotorAttenuation(), SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch );
 				// ALERT( at_console, "%.0f\n", pitch );
 			}
 		}

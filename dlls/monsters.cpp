@@ -1034,7 +1034,7 @@ BOOL CBaseMonster::CheckMeleeAttack2( float flDot, float flDist )
 // CheckAttacks - sets all of the bits for attacks that the
 // monster is capable of carrying out on the passed entity.
 //=========================================================
-void CBaseMonster::CheckAttacks( CBaseEntity *pTarget, float flDist )
+void CBaseMonster::CheckAttacks(CBaseEntity *pTarget, float flDist, float flMeleeDist)
 {
 	Vector2D vec2LOS;
 	float flDot;
@@ -1053,6 +1053,9 @@ void CBaseMonster::CheckAttacks( CBaseEntity *pTarget, float flDist )
 	// Clear all attack conditions
 	ClearConditions( bits_COND_CAN_RANGE_ATTACK1 | bits_COND_CAN_RANGE_ATTACK2 | bits_COND_CAN_MELEE_ATTACK1 |bits_COND_CAN_MELEE_ATTACK2 );
 
+	if (!NpcFixMeleeDistance())
+		flMeleeDist = flDist;
+
 	if( m_afCapability & bits_CAP_RANGE_ATTACK1 )
 	{
 		if( CheckRangeAttack1( flDot, flDist ) )
@@ -1065,12 +1068,12 @@ void CBaseMonster::CheckAttacks( CBaseEntity *pTarget, float flDist )
 	}
 	if( m_afCapability & bits_CAP_MELEE_ATTACK1 )
 	{
-		if( CheckMeleeAttack1( flDot, flDist ) )
+		if( CheckMeleeAttack1( flDot, flMeleeDist ) )
 			SetConditions( bits_COND_CAN_MELEE_ATTACK1 );
 	}
 	if( m_afCapability & bits_CAP_MELEE_ATTACK2 )
 	{
-		if( CheckMeleeAttack2( flDot, flDist ) )
+		if( CheckMeleeAttack2( flDot, flMeleeDist ) )
 			SetConditions( bits_COND_CAN_MELEE_ATTACK2 );
 	}
 }
@@ -1144,6 +1147,21 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 			flDistToEnemy = flDistToEnemy2;
 	}
 
+	float maxSideSize;
+	float minSideSize;
+
+	if (pEnemy->pev->size.x >= pev->size.x)
+	{
+		maxSideSize = pEnemy->pev->size.x;
+		minSideSize = pev->size.x;
+	}
+	else
+	{
+		maxSideSize = pev->size.x;
+		minSideSize = pEnemy->pev->size.x;
+	}
+	const float flMeleeDist = flDistToEnemy - maxSideSize/2 + minSideSize/2;
+
 	if( HasConditions( bits_COND_SEE_ENEMY ) )
 	{
 		CBaseMonster *pEnemyMonster;
@@ -1204,7 +1222,7 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 
 	if( FCanCheckAttacks() )	
 	{
-		CheckAttacks( m_hEnemy, flDistToEnemy );
+		CheckAttacks( m_hEnemy, flDistToEnemy, flMeleeDist );
 	}
 
 	if( m_movementGoal == MOVEGOAL_ENEMY )
@@ -1697,41 +1715,38 @@ BOOL CBaseMonster::BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity
 
 	if (nearest)
 	{
-		if (NpcFollowNearest())
+		SetBits(iMoveFlag, bits_MF_NEAREST_PATH);
+
+		const Vector localMoveNearest = pev->origin + (vecGoal - pev->origin).Normalize() * flDist;
+
+		m_Route[0].vecLocation = localMoveNearest;
+		m_Route[0].iType = iMoveFlag | bits_MF_IS_GOAL;
+
+		m_vecMoveGoal = localMoveNearest;
+
+		Vector apex;
+		const Vector triangulatedNearest = FTriangulateToNearest(pev->origin, vecGoal, flDist, pTarget, apex);
+
+		if ((vecGoal - triangulatedNearest).Length2D() < (vecGoal - localMoveNearest).Length2D())
 		{
-			SetBits(iMoveFlag, bits_MF_NEAREST_PATH);
-
-			const Vector localMoveNearest = pev->origin + (vecGoal - pev->origin).Normalize() * flDist;
-
-			m_Route[0].vecLocation = localMoveNearest;
-			m_Route[0].iType = iMoveFlag | bits_MF_IS_GOAL;
-
-			m_vecMoveGoal = localMoveNearest;
-
-			Vector apex;
-			const Vector triangulatedNearest = FTriangulateToNearest(pev->origin, vecGoal, flDist, pTarget, apex);
-
-			if ((vecGoal - triangulatedNearest).Length2D() < (vecGoal - localMoveNearest).Length2D())
+			if ((apex - triangulatedNearest).Length2D() < 1)
 			{
-				if ((apex - triangulatedNearest).Length2D() < 1)
-				{
-					m_Route[0].vecLocation = triangulatedNearest;
-					m_Route[0].iType = iMoveFlag | bits_MF_IS_GOAL;
-				}
-				else
-				{
-					m_Route[0].vecLocation = apex;
-					m_Route[0].iType = (iMoveFlag | bits_MF_TO_DETOUR);
-
-					m_Route[1].vecLocation = triangulatedNearest;
-					m_Route[1].iType = iMoveFlag | bits_MF_IS_GOAL;
-
-					RouteSimplify( pTarget );
-				}
-				m_vecMoveGoal = triangulatedNearest;
+				m_Route[0].vecLocation = triangulatedNearest;
+				m_Route[0].iType = iMoveFlag | bits_MF_IS_GOAL;
 			}
-			return TRUE;
+			else
+			{
+				m_Route[0].vecLocation = apex;
+				m_Route[0].iType = (iMoveFlag | bits_MF_TO_DETOUR);
+
+				m_Route[1].vecLocation = triangulatedNearest;
+				m_Route[1].iType = iMoveFlag | bits_MF_IS_GOAL;
+
+				RouteSimplify( pTarget );
+			}
+			m_vecMoveGoal = triangulatedNearest;
 		}
+		return TRUE;
 	}
 
 	// b0rk
@@ -3459,6 +3474,19 @@ void CBaseMonster::ReportAIState( ALERT_TYPE level )
 		ALERT( level, " PRISONER! " );
 	if( pev->spawnflags & SF_MONSTER_PREDISASTER )
 		ALERT( level, " Pre-Disaster! " );
+	if ( pev->flags & FL_MONSTERCLIP )
+		ALERT( level, "Monsterclip " );
+
+	if (HasConditions(bits_COND_CAN_MELEE_ATTACK1))
+		ALERT( level, "Can melee attack 1; " );
+	if (HasConditions(bits_COND_CAN_MELEE_ATTACK2))
+		ALERT( level, "Can melee attack 2; " );
+	if (HasConditions(bits_COND_CAN_RANGE_ATTACK1))
+		ALERT( level, "Can range attack 1; " );
+	if (HasConditions(bits_COND_CAN_RANGE_ATTACK2))
+		ALERT( level, "Can range attack 2; " );
+	if (HasConditions(bits_COND_SEE_ENEMY))
+		ALERT(level, "Sees enemy; ");
 }
 
 //=========================================================
@@ -3845,7 +3873,7 @@ void CBaseMonster::MonsterInitDead( void )
 	InitBoneControllers();
 
 	pev->solid		= SOLID_BBOX;
-	pev->movetype		= MOVETYPE_TOSS;// so he'll fall to ground
+	pev->movetype = MOVETYPE_TOSS;// so he'll fall to ground
 
 	pev->frame = 0;
 	ResetSequenceInfo();
@@ -3860,8 +3888,20 @@ void CBaseMonster::MonsterInitDead( void )
 
 	// Setup health counters, etc.
 	BecomeDead();
-	SetThink( &CBaseMonster::CorpseFallThink );
-	pev->nextthink = gpGlobals->time + 0.5f;
+
+	if (FBitSet(pev->spawnflags, SF_DEADMONSTER_DONT_DROP))
+	{
+		pev->movetype = MOVETYPE_FLY;
+		pev->effects |= EF_INVLIGHT;
+		SetThink(NULL);
+		SetSequenceBox();
+		UTIL_SetOrigin( pev, pev->origin );
+	}
+	else
+	{
+		SetThink( &CBaseMonster::CorpseFallThink );
+		pev->nextthink = gpGlobals->time + 0.5f;
+	}
 }
 
 //=========================================================

@@ -82,6 +82,9 @@ cvar_t npc_nearest = { "npc_nearest", "0", FCVAR_SERVER };
 #if FEATURE_NPC_FORGET_ENEMY_CVAR
 cvar_t npc_forget_enemy_time = { "npc_forget_enemy_time", "10", FCVAR_SERVER };
 #endif
+#if FEATURE_NPC_FIX_MELEE_DISTANCE_CVAR
+cvar_t npc_fix_melee_distance = { "npc_fix_melee_distance", "0", FCVAR_SERVER };
+#endif
 cvar_t npc_patrol = { "npc_patrol", "1", FCVAR_SERVER };
 
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
@@ -535,6 +538,10 @@ cvar_t	sk_voltigore_dmg_beam1 = { "sk_voltigore_dmg_beam1", "0" };
 cvar_t	sk_voltigore_dmg_beam2 = { "sk_voltigore_dmg_beam2", "0" };
 cvar_t	sk_voltigore_dmg_beam3 = { "sk_voltigore_dmg_beam3", "0" };
 
+cvar_t	sk_voltigore_dmg_explode1 = { "sk_voltigore_dmg_explode1", "0" };
+cvar_t	sk_voltigore_dmg_explode2 = { "sk_voltigore_dmg_explode2", "0" };
+cvar_t	sk_voltigore_dmg_explode3 = { "sk_voltigore_dmg_explode3", "0" };
+
 // Baby Voltigore
 cvar_t	sk_babyvoltigore_health1 = { "sk_babyvoltigore_health1", "0" };
 cvar_t	sk_babyvoltigore_health2 = { "sk_babyvoltigore_health2", "0" };
@@ -825,6 +832,11 @@ cvar_t	sk_plr_hornet_dmg1 = {"sk_plr_hornet_dmg1","7"};
 cvar_t	sk_plr_hornet_dmg2 = {"sk_plr_hornet_dmg2","7"};
 cvar_t	sk_plr_hornet_dmg3 = {"sk_plr_hornet_dmg3","7"};
 
+// MORTAR
+cvar_t	sk_mortar1 = {"sk_mortar1","200"};
+cvar_t	sk_mortar2 = {"sk_mortar2","200"};
+cvar_t	sk_mortar3 = {"sk_mortar3","200"};
+
 // HEALTH/CHARGE
 cvar_t	sk_suitcharger1	= { "sk_suitcharger1","0" };
 cvar_t	sk_suitcharger2	= { "sk_suitcharger2","0" };		
@@ -941,6 +953,9 @@ void GameDLLInit( void )
 #endif
 #if FEATURE_NPC_FORGET_ENEMY_CVAR
 	CVAR_REGISTER( &npc_forget_enemy_time );
+#endif
+#if FEATURE_NPC_FIX_MELEE_DISTANCE_CVAR
+	CVAR_REGISTER( &npc_fix_melee_distance );
 #endif
 	CVAR_REGISTER( &npc_patrol );
 
@@ -1428,6 +1443,10 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_voltigore_dmg_beam2 );// { "sk_voltigore_dmg_beam2", "0" };
 	CVAR_REGISTER( &sk_voltigore_dmg_beam3 );// { "sk_voltigore_dmg_beam3", "0" };
 
+	CVAR_REGISTER( &sk_voltigore_dmg_explode1 );
+	CVAR_REGISTER( &sk_voltigore_dmg_explode2 );
+	CVAR_REGISTER( &sk_voltigore_dmg_explode3 );
+
 	// Baby Voltigore
 	CVAR_REGISTER( &sk_babyvoltigore_health1 );// { "sk_babyvoltigore_health1", "0" };
 	CVAR_REGISTER( &sk_babyvoltigore_health2 );// { "sk_babyvoltigore_health2", "0" };
@@ -1710,6 +1729,11 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_plr_hornet_dmg1 );
 	CVAR_REGISTER( &sk_plr_hornet_dmg2 );
 	CVAR_REGISTER( &sk_plr_hornet_dmg3 );
+
+	// MORTAR
+	CVAR_REGISTER( &sk_mortar1 );
+	CVAR_REGISTER( &sk_mortar2 );
+	CVAR_REGISTER( &sk_mortar3 );
 
 	// HEALTH/SUIT CHARGE DISTRIBUTION
 	CVAR_REGISTER( &sk_suitcharger1 );

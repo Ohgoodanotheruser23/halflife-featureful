@@ -32,8 +32,19 @@
 #define SF_SCRIPT_NOSCRIPTMOVEMENT	128
 #define SF_SCRIPT_CONTINUOUS		256
 #define SF_SCRIPT_APPLYNEWANGLES		512
+#define SF_SCRIPT_FORCE_IDLE_LOOPING 2048
 
 #define SCRIPT_BREAK_CONDITIONS		(bits_COND_LIGHT_DAMAGE|bits_COND_HEAVY_DAMAGE)
+
+enum SCRIPT_MOVE_TYPE
+{
+	SCRIPT_MOVE_NO = 0,
+	SCRIPT_MOVE_WALK = 1,
+	SCRIPT_MOVE_RUN = 2,
+	SCRIPT_MOVE_INSTANT = 4,
+	SCRIPT_MOVE_FACE = 5,
+	SCRIPT_MOVE_TELEPORT = 7,
+};
 
 enum SS_INTERRUPT
 {
@@ -101,6 +112,9 @@ public:
 	BOOL m_interruptable;
 	string_t m_iszFireOnAnimStart;
 	short m_targetActivator;
+	short m_fTurnType;
+	float m_flMoveToRadius;
+
 	bool m_cantFindReported; // no need to save
 	bool m_cantPlayReported;
 };

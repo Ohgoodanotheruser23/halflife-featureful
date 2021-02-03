@@ -188,6 +188,10 @@
 	health(string) : "Custom Health"
 	model(studio) : "Custom Model"
 	gibmodel(studio) : "Custom gib model"
+	spawnflags(Flags) =
+	[
+		2 : "Don't drop to ground" : 0
+	]
 ]
 
 @BaseClass = Classification
@@ -379,6 +383,28 @@
 	]
 ]
 
+@BaseClass base(Monster) = Apache
+[
+	spawnflags(Flags) =
+	[
+		8 : "NoWreckage"	: 0
+		64 : "Start Inactive" : 0
+	]
+	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
+]
+
+@BaseClass base(Monster) = Osprey
+[
+	spawnflags(Flags) =
+	[
+		64 : "Start Inactive" : 0
+		32768 : "No deploy, just fly" : 0
+	]
+	num(integer) : "(Override) Number of Grunts"
+	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
+	attenuation(string) : "Rotor attenuation"
+]
+
 @BaseClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = gibshooterbase
 [
 	// how many pieces to create
@@ -430,6 +456,7 @@
 @BaseClass base(Targetname,Global) = Breakable
 [
 	target(target_destination) : "Target on break"
+	killtarget(target_destination) : "Kill Target on break"
 	health(integer) : "Strength" : 1
 	material(choices) :"Material type" : 0 =
 	[
@@ -814,35 +841,60 @@
 	]
 ]
 
-//
-// Entities
-//
-
-@PointClass base(Targetname, Targetx, Angles) flags(Angle) size(-16 -16 0, 16 16 72) color(255 0 255)=aiscripted_sequence:"AI Scripted Sequence"
+@BaseClass base(Targetname, Targetx, Angles) flags(Angle) size(-16 -16 0, 16 16 72) color(255 0 255) = ScriptedSequence
 [
-	m_iszEntity(string) : "Target Monster"
-	m_iszPlay(string) : "Action Animation" : ""
+	m_iszEntity(string) : "Target Monster [LE]"
+	m_iszPlay(string) : "Action Animation"
+	m_iszIdle(string) : "Idle Animation"
+	m_iszFireOnAnimStart(target_destination) : "Fire on Animation start" : : "Fire at the beginning of Action Animation"
 	m_flRadius(integer) : "Search Radius" : 512
 	m_flRepeat(integer) : "Repeat Rate ms" : 0
-	m_fMoveTo(Choices) : "Move to Position" : 0 =
+	m_fMoveTo(choices) : "Move to Position" : 0 =
 	[
 		0 : "No"
 		1 : "Walk"
 		2 : "Run"
 		4 : "Instantaneous"
 		5 : "No - Turn to Face"
+		7 : "Teleport"
 	]
-	m_iFinishSchedule(Choices) : "AI Schedule when done" : 0 =
+	m_iFinishSchedule(Choices) : "AI Schedule when done" =
 	[
 		0 : "Default AI"
 		1 : "Ambush"
 	]
 	spawnflags(Flags) =
 	[
-		4 : "Repeatable"		: 0
+		4 : "Repeatable"	: 0
 		8 : "Leave Corpse"	: 0
+		32: "No Interruptions"	: 0
+		64: "Override AI"	: 0
+		128: "No Script Movement" : 0
+		256: "Continuous animation" : 0 : "Don't reset to idle between animations"
+		512: "Apply new angles" : 0 : "If the animation includes changing of monster's angles, set them after it finished. For smoother transition and better looks."
+		2048: "Force idle looping" : 0 : "Force idle animation looping. Use it when you want to loop an animation that does not have a loop flag"
+	]
+	m_targetActivator(choices) : "Target's Activator" =
+	[
+		0 : "No (Default)"
+		1 : "This script"
+		2 : "Possessed Monster"
+		3 : "Forward my activator"
+	]
+	moveto_radius(string) : "Move to radius"
+	m_fTurnType(choices) : "Turn mode" =
+	[
+		0 : "Match Angle"
+		1 : "Turn to face"
+		2 : "Don't Turn"
 	]
 ]
+
+//
+// Entities
+//
+
+@PointClass base(ScriptedSequence) = aiscripted_sequence:"AI Scripted Sequence" []
 
 @BaseClass iconsprite("sprites/ambient_generic.spr") base(Targetname) = Ambient
 [
@@ -1508,6 +1560,7 @@
 	bodymodel(studio) : "Body Model" : "models/wire_black16.mdl"
 	spawnflags(flags) =
 	[
+		2: "No map transition" : 0
 		4: "Obey Trigger Mode" : 0
 	]
 ]
@@ -1522,6 +1575,10 @@
 	]
 	endingmodel(studio) : "Ending Model" : "models/rope16.mdl"
 	bodymodel(studio) : "Body Model" : "models/rope16.mdl"
+	spawnflags(flags) =
+	[
+		2: "No map transition" : 0
+	]
 ]
 
 @PointClass base(Targetname) = env_shake : "Screen Shake"
@@ -1745,7 +1802,7 @@
 	radius(integer) : "Shake and Beam Radius" : 192
 	scale(string) : "Sprite Scale"
 	framerate(string) : "Sprite Framerate"
-	warp_target(target_destination) : "Warp target"
+	warp_target(target_destination) : "Warp target [LE]"
 	damage_delay(string) : "Damage delay"
 	beamcolor(color255) : "Beam color"
 	beamcount(integer) : "Max beam count" : 20
@@ -1759,6 +1816,7 @@
 	]
 	noise1(sound) : "Custom sound 1"
 	noise2(sound) : "Custom sound 2"
+	volume(string) : "Sound volume (1.0 is max)"
 ]
 
 @PointClass base(Target, Targetname) size(-24 -24 -24,24 24 24) = env_xenmaker :"Xen Portal. This entity is present just for compatibility with Sven Co-op"
@@ -2985,15 +3043,7 @@
         4 : "On Stomach (hands backward)"
 	]
 ]
-@PointClass base(Monster, Sequence) size(-360 -360 -172, 360 360 8) studio("models/apache.mdl") = monster_apache : "Apache" 
-[
-	spawnflags(Flags) =
-	[
-		8 : "NoWreckage"	: 0
-		64 : "Start Inactive" : 0
-	]
-	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
-]
+@PointClass base(Apache) size(-360 -360 -172, 360 360 8) studio("models/apache.mdl") = monster_apache : "Apache" []
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/baby_headcrab.mdl") = monster_babycrab : "Baby Headcrab"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
@@ -3240,25 +3290,8 @@
 	]
 ]
 
-@PointClass base(Monster, Sequence) size(-360 -360 -172, 360 360 8) studio("models/blkop_apache.mdl") = monster_blkop_apache : "Black Ops Apache" 
-[
-	spawnflags(Flags) = 
-	[
-		8 : "NoWreckage"  : 0
-		64 : "Start Inactive" : 0
-	]
-	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
-]
-
-@PointClass base(Monster, Sequence) size(-480 -480 -112, 480 480 24) studio("models/blkop_osprey.mdl") = monster_blkop_osprey : "Black Ops Osprey"
-[
-	spawnflags(Flags) = 
-	[
-		64 : "Start Inactive" : 0
-		32768 : "No deploy, just fly" : 0
-	]
-	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
-]
+@PointClass base(Apache) size(-360 -360 -172, 360 360 8) studio("models/blkop_apache.mdl") = monster_blkop_apache : "Black Ops Apache" []
+@PointClass base(Osprey) size(-480 -480 -112, 480 480 24) studio("models/blkop_osprey.mdl") = monster_blkop_osprey : "Black Ops Osprey" []
 
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/floater.mdl") = monster_bloater : "Bloater"
 [
@@ -4700,26 +4733,29 @@
 	]
 ]
 
-@PointClass base(Monster, Sequence) size(-480 -480 -112, 480 480 24) studio("models/osprey.mdl") = monster_osprey : "Osprey"
+@PointClass base(Osprey) size(-480 -480 -112, 480 480 24) studio("models/osprey.mdl") = monster_osprey : "Osprey"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
 	[
 		0 : "rotor"
-	]
-	spawnflags(Flags) =
-	[
-		64 : "Start Inactive" : 0
-		32768 : "No deploy, just fly" : 0
 	]
 	grunttype(Choices) : "Grunt Type" : : "Note: you need to set an appropriate relationship for osprey to spawn ally grunts" =
 	[
 		0 : "Human Grunts (default)"
 		1 : "Opposing Force Grunts"
 	]
-	rotorvolume(string) : "Rotor volume (0.0 - 1.0)"
 ]
 
-@PointClass base(Monster,TalkMonster, Sequence) size(-16 -16 0, 16 16 72) studio("models/otis.mdl") = monster_otis : "Otis"
+@BaseClass = OtisHead
+[
+	head(Choices) : "Head" : -1 =
+	[
+		-1 : "Random"
+		0 : "Head with hair"
+		1 : "Bald Head"
+	]
+]
+@PointClass base(Monster, TalkMonster, OtisHead, Sequence) size(-16 -16 0, 16 16 72) studio("models/otis.mdl") = monster_otis : "Otis"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
 	[
@@ -4792,19 +4828,12 @@
 		1 : "Gun Drawn"
 		2 : "Donut"
 	]
-	head(Choices) : "head" : -1 =
-	[
-		-1 : "Random"
-		0 : "Head with hair"
-		1 : "Bald Head"
-	]
 	spawnflags(Flags) =
 	[
 		1024: "Don't Drop Gun" : 0
 	]
 ]
-
-@PointClass base(DeadMonster) size(-16 -16 0, 16 16 72) studio("models/otis.mdl") = monster_otis_dead : "Dead Otis"
+@PointClass base(DeadMonster, OtisHead) size(-16 -16 0, 16 16 72) studio("models/otis.mdl") = monster_otis_dead : "Dead Otis"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 35 =
 	[
@@ -5892,7 +5921,7 @@
 @BaseClass base(Targetname, Angles, Classification, BloodColor, PrisonerTo, MonsterSoundMask) flags(Angle) size(-16 -16 -16, 16 16 16) = MonsterMaker
 [
 	target(target_destination) : "Target On Release" : : "Targets which are fired whenever a monster is spawned."
-	monstertype(string) : "Monster Type" : : "Spawned monster's classname"
+	monstertype(string) : "Monster Type" : "monster_headcrab" : "Spawned monster's classname"
 	netname(target_source) : "Childrens' Name" : : "The spawned monster will receive it as its targetname."
 	spawnflags(Flags) =
 	[
@@ -5914,7 +5943,7 @@
 		65536 : "Non-solid corpse" : 0 : "The spawned monster will become non-solid upon dying. Helps preventing dead corpses get into the way of moving entities like doors"
 	]
 
-	monstercount(integer) : "Number of Monsters" : -1 : "How many monsters the monstermaker can create (-1 = unlimited)"
+	monstercount(integer) : "Number of Monsters" : 1 : "How many monsters the monstermaker can create (-1 = unlimited)"
 
 	delay(string) : "Frequency" : "5" : "How often (seconds) a new monster will be made"
 	maxdelay(string) : "Max delay before respawn"
@@ -6047,7 +6076,7 @@
 	]
 ]
 
-@PointClass base(Targetname) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager"
+@PointClass base(Targetname) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager. Use type of targets can be configured by adding #0 (Off), #1 (On) or #2 (Kill) to their delay values."
 [
 	spawnflags(Flags) =
 	[
@@ -6163,6 +6192,7 @@
 		2 : "Followers Only"	: 0
 		4 : "Interrupt Speech"	: 1
 		8 : "Concurrent"	: 0
+		16 : "Require listener"	: 0 : "Play sentence only if listener is present"
 	]
 	sentence(string) : "Sentence Name" : ""
 	entity(string) : "Speaker Type [LE]"
@@ -6170,6 +6200,7 @@
 	radius(integer) : "Search Radius" : 512
 	refire(string) : "Delay Before Refire" : "3"
 	listener(string) : "Listener Type"
+	listener_radius(integer) : "Listener Search Radius" : : "If not present, it uses Search Radius"
 	volume(string) : "Volume 0-10" : "10"
 	attenuation(Choices) : "Sound Radius" : 0 =
 	[
@@ -6203,43 +6234,11 @@
 	]
 ]
 
-@PointClass base(Targetname, Targetx, Angles) flags(Angle) size(-16 -16 0, 16 16 72) color(255 0 255) = scripted_sequence : "Scripted Sequence"
+@PointClass base(ScriptedSequence) = scripted_sequence : "Scripted Sequence"
 [
-	m_iszEntity(string) : "Target Monster [LE]"
-	m_iszPlay(string) : "Action Animation"
-	m_iszIdle(string) : "Idle Animation"
-	m_iszFireOnAnimStart(target_destination) : "Fire on Animation start" : : "Fire at the beginning of Action Animation"
-	m_flRadius(integer) : "Search Radius" : 512
-	m_flRepeat(integer) : "Repeat Rate ms" : 0
-	m_fMoveTo(choices) : "Move to Position" : 0 =
-	[
-		0 : "No"
-		1 : "Walk"
-		2 : "Run"
-		4 : "Instantaneous"
-		5 : "No - Turn to Face"
-	]
-	m_iFinishSchedule(Choices) : "AI Schedule when done" =
-	[
-		0 : "Default AI"
-		1 : "Ambush"
-	]
 	spawnflags(Flags) =
 	[
-		4 : "Repeatable"	: 0
-		8 : "Leave Corpse"	: 0
-		32: "No Interruptions"	: 0
 		64: "Override AI"	: 0
-		128: "No Script Movement" : 0
-		256: "Continuous animation" : 0 : "Don't reset to idle between animations"
-		512: "Apply new angles" : 0 : "If the animation includes changing of monster's angles, set them after it finished. For smoother transition and better looks."
-	]
-	m_targetActivator(choices) : "Target's Activator" =
-	[
-		0 : "No (Default)"
-		1 : "This script"
-		2 : "Possessed Monster"
-		3 : "Forward my activator"
 	]
 ]
 

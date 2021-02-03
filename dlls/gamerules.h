@@ -412,6 +412,7 @@ bool AllowUseThroughWalls();
 bool NeedUseToTake();
 bool NpcFollowNearest();
 float NpcForgetEnemyTime();
+bool NpcFixMeleeDistance();
 bool AllowGrenadeJump();
 
 #endif // GAMERULES_H

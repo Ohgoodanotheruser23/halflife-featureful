@@ -27,6 +27,7 @@
 #include "defaultai.h"
 #include "soundent.h"
 #include "mod_features.h"
+#include "gamerules.h"
 
 extern CGraph WorldGraph;
 
@@ -561,6 +562,11 @@ void CBaseMonster::RunTask( Task_t *pTask )
 				pev->framerate = 1.0;
 				//ALERT( at_aiconsole, "Script %s has begun for %s\n", STRING( m_pCine->m_iszPlay ), STRING( pev->classname ) );
 			}
+			else if ( FBitSet(m_pCine->pev->spawnflags, SF_SCRIPT_FORCE_IDLE_LOOPING) && !FStringNull( m_pCine->m_iszIdle) )
+			{
+				if ( m_fSequenceFinished )
+					m_pCine->StartSequence( this, m_pCine->m_iszIdle, FALSE );
+			}
 			break;
 		}
 	case TASK_PLAY_SCRIPT:
@@ -568,6 +574,38 @@ void CBaseMonster::RunTask( Task_t *pTask )
 			if( m_fSequenceFinished )
 			{
 				m_pCine->SequenceDone( this );
+			}
+			break;
+		}
+	case TASK_RUN_TO_TARGET_RADIUS:
+	case TASK_WALK_TO_TARGET_RADIUS:
+		{
+			if( m_hTargetEnt == 0 )
+				TaskFail("no target ent");
+			else
+			{
+				float checkDistance = pTask->flData;
+				if (m_pCine != 0 && m_pCine->m_flMoveToRadius >= 1.0f)
+				{
+					checkDistance = m_pCine->m_flMoveToRadius;
+				}
+
+				float distance = ( m_hTargetEnt->pev->origin - pev->origin ).Length2D();
+
+				if( distance <= checkDistance )
+				{
+					TaskComplete();
+					RouteClear();		// Stop moving
+				}
+				else if (MovementIsComplete())
+				{
+					TaskFail("completed movement before reaching the radius");
+					RouteClear();
+				}
+				else if ( pTask->iTask == TASK_RUN_TO_TARGET_RADIUS )
+					m_movementActivity = ACT_RUN;
+				else
+					m_movementActivity = ACT_WALK;
 			}
 			break;
 		}
@@ -952,7 +990,8 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			else
 			{
 				m_vecMoveGoal = m_hTargetEnt->pev->origin;
-				if( !MoveToTarget( pTask->iTask == TASK_CATCH_WITH_TARGET_RANGE ? ACT_RUN : ACT_WALK, 2, pTask->iTask == TASK_MOVE_NEAREST_TO_TARGET_RANGE ) )
+				const bool closest = pTask->iTask == TASK_MOVE_NEAREST_TO_TARGET_RANGE && NpcFollowNearest();
+				if( !MoveToTarget( pTask->iTask == TASK_CATCH_WITH_TARGET_RANGE ? ACT_RUN : ACT_WALK, 2, closest ) )
 					TaskFail("failed to reach target ent");
 			}
 			break;
@@ -986,6 +1025,44 @@ void CBaseMonster::StartTask( Task_t *pTask )
 				}
 			}
 			TaskComplete();
+			break;
+		}
+	case TASK_RUN_TO_TARGET_RADIUS:
+	case TASK_WALK_TO_TARGET_RADIUS:
+		{
+			float radius = pTask->flData;
+			if (m_pCine != 0 && m_pCine->m_flMoveToRadius >= 1.0f)
+			{
+				radius = m_pCine->m_flMoveToRadius;
+			}
+			if (radius < 1.0f)
+				radius = 1.0f;
+
+			Activity newActivity;
+
+			if ( m_hTargetEnt == 0 )
+				TaskFail("no target ent");
+			else if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < radius )
+				TaskComplete();
+			else
+			{
+				if( pTask->iTask == TASK_RUN_TO_TARGET_RADIUS )
+					newActivity = ACT_WALK;
+				else
+					newActivity = ACT_RUN;
+
+				// This monster can't do this!
+				if( LookupActivity( newActivity ) == ACTIVITY_NOT_AVAILABLE )
+					TaskComplete();
+				else
+				{
+					if( m_hTargetEnt == 0 || !MoveToTarget( newActivity, 2, true ) )
+					{
+						TaskFail("failed to reach target ent");
+						RouteClear();
+					}
+				}
+			}
 			break;
 		}
 	case TASK_CLEAR_MOVE_WAIT:
@@ -1344,6 +1421,23 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_PLANT_ON_SCRIPT:
 		{
+			if (m_pCine != NULL)
+			{
+				if (m_pCine->m_fMoveTo == SCRIPT_MOVE_TELEPORT)
+				{
+					if (m_hTargetEnt != 0)
+					{
+						if (m_pCine->m_fTurnType == 0)
+							pev->angles.y = m_hTargetEnt->pev->angles.y;
+						else if (m_pCine->m_fTurnType == 1)
+							pev->angles.y = UTIL_VecToYaw(m_hTargetEnt->pev->origin - pev->origin);
+						pev->ideal_yaw = pev->angles.y;
+					}
+					pev->avelocity = Vector( 0, 0, 0 );
+					pev->velocity = Vector( 0, 0, 0 );
+					pev->effects |= EF_NOINTERP;
+				}
+			}
 			if( m_hTargetEnt != 0 )
 			{
 				pev->origin = m_hTargetEnt->pev->origin;	// Plant on target
@@ -1354,9 +1448,17 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_FACE_SCRIPT:
 		{
-			if( m_hTargetEnt != 0 )
+			if ( m_pCine != 0 && m_pCine->m_fMoveTo != 0)
 			{
-				pev->ideal_yaw = UTIL_AngleMod( m_hTargetEnt->pev->angles.y );
+				switch (m_pCine->m_fTurnType)
+				{
+				case 0:
+					pev->ideal_yaw = UTIL_AngleMod( m_pCine->pev->angles.y );
+					break;
+				case 1:
+					MakeIdealYaw ( m_pCine->pev->origin );
+					break;
+				}
 			}
 
 			TaskComplete();

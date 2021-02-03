@@ -99,6 +99,16 @@ void CCineMonster::KeyValue( KeyValueData *pkvd )
 		m_targetActivator = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if ( FStrEq( pkvd->szKeyName, "moveto_radius" ) )
+	{
+		m_flMoveToRadius = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "m_fTurnType" ) )
+	{
+		m_fTurnType = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 	{
 		CBaseMonster::KeyValue( pkvd );
@@ -124,6 +134,8 @@ TYPEDESCRIPTION	CCineMonster::m_SaveData[] =
 	DEFINE_FIELD( CCineMonster, m_interruptable, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CCineMonster, m_iszFireOnAnimStart, FIELD_STRING ),
 	DEFINE_FIELD( CCineMonster, m_targetActivator, FIELD_SHORT ),
+	DEFINE_FIELD( CCineMonster, m_fTurnType, FIELD_SHORT ),
+	DEFINE_FIELD( CCineMonster, m_flMoveToRadius, FIELD_FLOAT ),
 };
 
 IMPLEMENT_SAVERESTORE( CCineMonster, CBaseMonster )
@@ -378,18 +390,18 @@ void CCineMonster::PossessEntity( void )
 
 		switch( m_fMoveTo )
 		{
-		case 0: 
+		case SCRIPT_MOVE_NO:
 			pTarget->m_scriptState = SCRIPT_WAIT; 
 			break;
-		case 1: 
+		case SCRIPT_MOVE_WALK:
 			pTarget->m_scriptState = SCRIPT_WALK_TO_MARK; 
 			DelayStart( 1 ); 
 			break;
-		case 2: 
+		case SCRIPT_MOVE_RUN:
 			pTarget->m_scriptState = SCRIPT_RUN_TO_MARK; 
 			DelayStart( 1 ); 
 			break;
-		case 4: 
+		case SCRIPT_MOVE_INSTANT:
 			UTIL_SetOrigin( pTarget->pev, pev->origin );
 			pTarget->pev->ideal_yaw = pev->angles.y;
 			pTarget->pev->avelocity = Vector( 0, 0, 0 );
@@ -399,6 +411,11 @@ void CCineMonster::PossessEntity( void )
 			pTarget->m_scriptState = SCRIPT_WAIT;
 			m_startTime = gpGlobals->time + (float)1E6;
 			// UNDONE: Add a flag to do this so people can fixup physics after teleporting monsters
+			if (ShouldResetOnGroundFlag())
+				pTarget->pev->flags &= ~FL_ONGROUND;
+			break;
+		case SCRIPT_MOVE_TELEPORT:
+			pTarget->m_scriptState = SCRIPT_WAIT;
 			if (ShouldResetOnGroundFlag())
 				pTarget->pev->flags &= ~FL_ONGROUND;
 			break;
@@ -872,7 +889,7 @@ BOOL CBaseMonster::CineCleanup()
 	return TRUE;
 }
 
-class CScriptedSentence : public CBaseToggle
+class CScriptedSentence : public CBaseDelay
 {
 public:
 	void Spawn( void );
@@ -880,7 +897,7 @@ public:
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void EXPORT FindThink( void );
 	void EXPORT DelayThink( void );
-	int ObjectCaps( void ) { return ( CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION ); }
+	int ObjectCaps( void ) { return ( CBaseDelay::ObjectCaps() & ~FCAP_ACROSS_TRANSITION ); }
 
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -890,6 +907,13 @@ public:
 	CBaseMonster *FindEntity( void );
 	BOOL AcceptableSpeaker( CBaseMonster *pMonster );
 	BOOL StartSentence( CBaseMonster *pTarget );
+
+	float SpeakerSearchRadius() const {
+		return m_flRadius;
+	}
+	float ListenerSearchRadius() const {
+		return m_flListenerRadius > 0.0f ? m_flListenerRadius : m_flRadius;
+	}
 
 private:
 	string_t m_iszSentence;		// string index for idle animation
@@ -904,12 +928,14 @@ private:
 	short m_requiredState;
 	short m_followAction;
 	short m_targetActivator;
+	float m_flListenerRadius;
 };
 
 #define SF_SENTENCE_ONCE	0x0001
 #define SF_SENTENCE_FOLLOWERS	0x0002	// only say if following player
 #define SF_SENTENCE_INTERRUPT	0x0004	// force talking except when dead
 #define SF_SENTENCE_CONCURRENT	0x0008	// allow other people to keep talking
+#define SF_SENTENCE_REQUIRE_LISTENER 0x0010 // require presense of the listener
 
 enum
 {
@@ -932,9 +958,10 @@ TYPEDESCRIPTION	CScriptedSentence::m_SaveData[] =
 	DEFINE_FIELD( CScriptedSentence, m_requiredState, FIELD_SHORT ),
 	DEFINE_FIELD( CScriptedSentence, m_followAction, FIELD_SHORT ),
 	DEFINE_FIELD( CScriptedSentence, m_targetActivator, FIELD_SHORT ),
+	DEFINE_FIELD( CScriptedSentence, m_flListenerRadius, FIELD_FLOAT ),
 };
 
-IMPLEMENT_SAVERESTORE( CScriptedSentence, CBaseToggle )
+IMPLEMENT_SAVERESTORE( CScriptedSentence, CBaseDelay )
 
 LINK_ENTITY_TO_CLASS( scripted_sentence, CScriptedSentence )
 
@@ -995,8 +1022,13 @@ void CScriptedSentence::KeyValue( KeyValueData *pkvd )
 		m_targetActivator = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq( pkvd->szKeyName, "listener_radius" ) )
+	{
+		m_flListenerRadius = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
-		CBaseToggle::KeyValue( pkvd );
+		CBaseDelay::KeyValue( pkvd );
 }
 
 void CScriptedSentence::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -1057,9 +1089,8 @@ void CScriptedSentence::Spawn( void )
 void CScriptedSentence::FindThink( void )
 {
 	CBaseMonster *pMonster = FindEntity();
-	if( pMonster )
+	if( pMonster && StartSentence( pMonster ) )
 	{
-		StartSentence( pMonster );
 		if( pev->spawnflags & SF_SENTENCE_ONCE )
 			UTIL_Remove( this );
 		SetThink( &CScriptedSentence::DelayThink );
@@ -1165,7 +1196,7 @@ CBaseMonster *CScriptedSentence::FindEntity( void )
 	}
 
 	CBaseEntity *pEntity = NULL;
-	while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, m_flRadius ) ) != NULL )
+	while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, SpeakerSearchRadius() ) ) != NULL )
 	{
 		if( FClassnameIs( pEntity->pev, STRING( m_iszEntity ) ) )
 		{
@@ -1196,12 +1227,17 @@ BOOL CScriptedSentence::StartSentence( CBaseMonster *pTarget )
 	CBaseEntity *pListener = NULL;
 	if( !FStringNull( m_iszListener ) )
 	{
-		float radius = m_flRadius;
+		float radius = ListenerSearchRadius();
 
 		if( FStrEq( STRING( m_iszListener ), "player" ) )
 			radius = 4096;	// Always find the player
 
 		pListener = UTIL_FindEntityGeneric( STRING( m_iszListener ), pTarget->pev->origin, radius );
+
+		if (!pListener && FBitSet(pev->spawnflags, SF_SENTENCE_REQUIRE_LISTENER))
+		{
+			return FALSE;
+		}
 	}
 
 	pTarget->PlayScriptedSentence( STRING( m_iszSentence ), m_flDuration,  m_flVolume, m_flAttenuation, bConcurrent, pListener );

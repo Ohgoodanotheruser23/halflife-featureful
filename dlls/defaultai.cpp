@@ -874,6 +874,27 @@ Schedule_t slWalkToScript[] =
 	},
 };
 
+Task_t tlScriptedWalkToRadius[] =
+{
+	{ TASK_WALK_TO_TARGET_RADIUS, (float)0 },
+	{ TASK_FACE_SCRIPT, (float)0 },
+	{ TASK_FACE_IDEAL, (float)0 },
+	{ TASK_ENABLE_SCRIPT, (float)0 },
+	{ TASK_WAIT_FOR_SCRIPT, (float)0 },
+	{ TASK_PLAY_SCRIPT, (float)0 },
+};
+
+Schedule_t slWalkToScriptRadius[] =
+{
+	{
+		tlScriptedWalkToRadius,
+		ARRAYSIZE( tlScriptedWalkToRadius ),
+		SCRIPT_BREAK_CONDITIONS,
+		0,
+		"WalkToScriptRadius"
+	},
+};
+
 Task_t tlScriptedRun[] =
 {
 	{ TASK_RUN_TO_TARGET, (float)TARGET_MOVE_SCRIPTED },
@@ -894,6 +915,27 @@ Schedule_t slRunToScript[] =
 		SCRIPT_BREAK_CONDITIONS,
 		0,
 		"RunToScript"
+	},
+};
+
+Task_t tlScriptedRunToRadius[] =
+{
+	{ TASK_RUN_TO_TARGET_RADIUS, (float)0 },
+	{ TASK_FACE_SCRIPT, (float)0 },
+	{ TASK_FACE_IDEAL, (float)0 },
+	{ TASK_ENABLE_SCRIPT, (float)0 },
+	{ TASK_WAIT_FOR_SCRIPT, (float)0 },
+	{ TASK_PLAY_SCRIPT, (float)0 },
+};
+
+Schedule_t slRunToScriptRadius[] =
+{
+	{
+		tlScriptedRunToRadius,
+		ARRAYSIZE( tlScriptedRunToRadius ),
+		SCRIPT_BREAK_CONDITIONS,
+		0,
+		"RunToScriptRadius"
 	},
 };
 
@@ -932,6 +974,27 @@ Schedule_t slFaceScript[] =
 		SCRIPT_BREAK_CONDITIONS,
 		0,
 		"FaceScript"
+	},
+};
+
+//LRC
+Task_t tlScriptedTeleport[] =
+{
+	{ TASK_PLANT_ON_SCRIPT,		(float)0		},
+	{ TASK_WAIT_FOR_SCRIPT,		(float)0		},
+	{ TASK_PLAY_SCRIPT,			(float)0		},
+	//{ TASK_END_SCRIPT,			(float)0		},
+};
+
+//LRC
+Schedule_t slTeleportToScript[] =
+{
+	{
+		tlScriptedTeleport,
+		ARRAYSIZE ( tlScriptedTeleport ),
+		SCRIPT_BREAK_CONDITIONS,
+		0,
+		"TeleportToScript"
 	},
 };
 
@@ -1028,7 +1091,29 @@ Schedule_t slTakeCoverFromEnemy[] =
 		ARRAYSIZE( tlTakeCoverFromEnemy ),
 		bits_COND_NEW_ENEMY,
 		0,
-		"tlTakeCoverFromEnemy"
+		"Take Cover From Enemy"
+	},
+};
+Task_t tlRunAwayFromEnemy[] =
+{
+	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_RUN_AWAY_FROM_ENEMY_FAILED },
+	{ TASK_STOP_MOVING, (float)0 },
+	{ TASK_WAIT, (float)0.2 },
+	{ TASK_FIND_RUN_AWAY_FROM_ENEMY, (float)0 },
+	{ TASK_RUN_PATH, (float)0 },
+	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
+	{ TASK_FACE_ENEMY, (float)0 },
+	{ TASK_WAIT, (float)1 },
+};
+
+Schedule_t slRunAwayFromEnemy[] =
+{
+	{
+		tlRunAwayFromEnemy,
+		ARRAYSIZE( tlRunAwayFromEnemy ),
+		bits_COND_NEW_ENEMY,
+		0,
+		"Run Away From Enemy"
 	},
 };
 
@@ -1114,6 +1199,7 @@ Schedule_t *CBaseMonster::m_scheduleList[] =
 	slRunToScript,
 	slWaitScript,
 	slFaceScript,
+	slTeleportToScript,
 	slCower,
 	slTakeCoverFromOrigin,
 	slTakeCoverFromBestSound,
@@ -1175,15 +1261,25 @@ Schedule_t* CBaseMonster::GetScheduleOfType( int Type )
 
 			switch( m_pCine->m_fMoveTo )
 			{
-				case 0:
-				case 4:
+				case SCRIPT_MOVE_NO:
+				case SCRIPT_MOVE_INSTANT:
 					return slWaitScript;
-				case 1:
+				case SCRIPT_MOVE_WALK:
+				{
+					if (m_pCine->m_flMoveToRadius >= 1.0f)
+						return slWalkToScriptRadius;
 					return slWalkToScript;
-				case 2:
+				}
+				case SCRIPT_MOVE_RUN:
+				{
+					if (m_pCine->m_flMoveToRadius >= 1.0f)
+						return slRunToScriptRadius;
 					return slRunToScript;
-				case 5:
+				}
+				case SCRIPT_MOVE_FACE:
 					return slFaceScript;
+				case SCRIPT_MOVE_TELEPORT:
+					return slTeleportToScript;
 			}
 			break;
 		}
@@ -1238,7 +1334,7 @@ Schedule_t* CBaseMonster::GetScheduleOfType( int Type )
 		}
 	case SCHED_CHASE_ENEMY_FAILED:
 		{
-			return &slFail[0];
+			return GetScheduleOfType(SCHED_FAIL);
 		}
 	case SCHED_SMALL_FLINCH:
 		{
@@ -1335,6 +1431,14 @@ Schedule_t* CBaseMonster::GetScheduleOfType( int Type )
 	case SCHED_MOVE_TO_ENEMY_LKP:
 		{
 			return slMoveToEnemyLKP;
+		}
+	case SCHED_RUN_AWAY_FROM_ENEMY:
+		{
+			return slRunAwayFromEnemy;
+		}
+	case SCHED_RUN_AWAY_FROM_ENEMY_FAILED:
+		{
+			return GetScheduleOfType(SCHED_FAIL);
 		}
 	default:
 		{
