@@ -6010,7 +6010,6 @@
 	]
 	displayname(string) : "In-game Name" : : "Display name when mp_allowmonsterinfo is enabled"
 	yawdeviation(integer) : "Max random angle deviation"
-	spawnorigin(target_destination) : "Spawn origin entity" : : "Other entity to spawn at its origin with its angles. If there're many entities with this name, the random one will be chosen"
 	impulse(choices) : "Warp at monster's..." : : "If using warpball template, spawn warpball at this monster position" =
 	[
 		0 : "Origin (default)"
