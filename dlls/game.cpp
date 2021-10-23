@@ -44,7 +44,7 @@ cvar_t hevcharger_rechargetime = { "mp_hevcharger_rechargetime","-2",FCVAR_SERVE
 cvar_t selfgauss	= { "mp_selfgauss", "0", FCVAR_SERVER };
 cvar_t satchelfix	= { "mp_satchelfix", "1", FCVAR_SERVER };
 cvar_t allowgaussjump = { "mp_allowgaussjump", "0", FCVAR_SERVER };
-cvar_t monsteryawspeedfix	= { "monsteryawspeedfix", "0", FCVAR_SERVER };
+cvar_t monsteryawspeedfix	= { "monsteryawspeedfix", "1", FCVAR_SERVER };
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
 cvar_t respawndelay	= { "mp_respawndelay","5", FCVAR_SERVER };
 cvar_t flashlight	= { "mp_flashlight","1", FCVAR_SERVER };
@@ -84,6 +84,9 @@ cvar_t npc_forget_enemy_time = { "npc_forget_enemy_time", "10", FCVAR_SERVER };
 #endif
 #if FEATURE_NPC_FIX_MELEE_DISTANCE_CVAR
 cvar_t npc_fix_melee_distance = { "npc_fix_melee_distance", "0", FCVAR_SERVER };
+#endif
+#if FEATURE_NPC_ACTIVE_AFTER_COMBAT_CVAR
+cvar_t npc_active_after_combat = { "npc_active_after_combat", "0", FCVAR_SERVER };
 #endif
 cvar_t npc_patrol = { "npc_patrol", "1", FCVAR_SERVER };
 
@@ -403,9 +406,9 @@ cvar_t	sk_osprey3	= {"sk_osprey3","400"};
 
 // Blackops Osprey
 #if FEATURE_BLACK_OSPREY
-cvar_t	sk_blkopsosprey1	= {"sk_blkopsosprey1"};
-cvar_t	sk_blkopsosprey2	= {"sk_blkopsosprey2"};
-cvar_t	sk_blkopsosprey3	= {"sk_blkopsosprey3"};
+cvar_t	sk_blkopsosprey1	= {"sk_blkopsosprey1","0"};
+cvar_t	sk_blkopsosprey2	= {"sk_blkopsosprey2","0"};
+cvar_t	sk_blkopsosprey3	= {"sk_blkopsosprey3","0"};
 #endif
 
 #if FEATURE_OTIS
@@ -956,6 +959,9 @@ void GameDLLInit( void )
 #endif
 #if FEATURE_NPC_FIX_MELEE_DISTANCE_CVAR
 	CVAR_REGISTER( &npc_fix_melee_distance );
+#endif
+#if FEATURE_NPC_ACTIVE_AFTER_COMBAT_CVAR
+	CVAR_REGISTER( &npc_active_after_combat );
 #endif
 	CVAR_REGISTER( &npc_patrol );
 

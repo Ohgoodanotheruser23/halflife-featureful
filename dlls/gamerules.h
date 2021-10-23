@@ -16,7 +16,7 @@
 // GameRules
 //=========================================================
 #pragma once
-#ifndef GAMERULES_H
+#if !defined(GAMERULES_H)
 #define GAMERULES_H
 
 #include "cbase.h"
@@ -172,6 +172,7 @@ public:
 	virtual void DelayPanic( float delay ) {}
 
 	virtual void BeforeChangeLevel(const char* nextMap) {}
+	virtual CBasePlayer* EffectivePlayer( CBaseEntity* pActivator );
 };
 
 extern CGameRules *InstallGameRules( void );
@@ -263,6 +264,8 @@ public:
 	// Teamplay stuff	
 	virtual const char *GetTeamID( CBaseEntity *pEntity ) {return "";};
 	virtual int PlayerRelationship( CBaseEntity *pPlayer, CBaseEntity *pTarget );
+
+	CBasePlayer* EffectivePlayer( CBaseEntity* pActivator );
 };
 
 enum SurvivalState
@@ -412,6 +415,7 @@ bool AllowUseThroughWalls();
 bool NeedUseToTake();
 bool NpcFollowNearest();
 float NpcForgetEnemyTime();
+bool NpcActiveAfterCombat();
 bool NpcFixMeleeDistance();
 bool AllowGrenadeJump();
 

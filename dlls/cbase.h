@@ -13,7 +13,7 @@
 *
 ****/
 #pragma once
-#ifndef CBASE_H
+#if !defined(CBASE_H)
 #define CBASE_H
 
 #include "extdll.h"
@@ -53,7 +53,7 @@ CBaseEntity
 #include "saverestore.h"
 #include "schedule.h"
 
-#ifndef MONSTEREVENT_H
+#if !defined(MONSTEREVENT_H)
 #include "monsterevent.h"
 #endif
 
@@ -187,9 +187,9 @@ public:
 	CBaseEntity *m_pGoalEnt;// path corner we are heading towards
 	CBaseEntity *m_pLink;// used for temporary link-list operations. 
 
-	virtual Vector	CalcPosition( CBaseEntity *pLocus )	{ return pev->origin; }
-	virtual Vector	CalcVelocity( CBaseEntity *pLocus )	{ return pev->velocity; }
-	virtual float	CalcRatio( CBaseEntity *pLocus )	{ return 0; }
+	virtual bool	CalcPosition( CBaseEntity *pLocus, Vector* outResult )	{ *outResult = pev->origin; return true; }
+	virtual bool	CalcVelocity( CBaseEntity *pLocus, Vector* outResult )	{ *outResult = pev->velocity; return true; }
+	virtual bool	CalcRatio( CBaseEntity *pLocus, float* outResult )	{ *outResult = 0; return true; }
 
 	// initialization functions
 	virtual void Spawn( void ) { return; }
@@ -239,7 +239,7 @@ public:
 	virtual BOOL IsAlive( void ) { return (pev->deadflag == DEAD_NO) && pev->health > 0; }
 	virtual BOOL IsBSPModel( void ) { return pev->solid == SOLID_BSP || pev->movetype == MOVETYPE_PUSHSTEP; }
 	virtual BOOL ReflectGauss( void ) { return ( IsBSPModel() && !pev->takedamage ); }
-	virtual BOOL HasTarget( string_t targetname ) { return FStrEq(STRING(targetname), STRING(pev->targetname) ); }
+	virtual BOOL HasTarget( string_t targetname ) { return FStrEq(STRING(targetname), STRING(pev->target) ); }
 	virtual BOOL IsInWorld( void );
 	virtual	BOOL IsPlayer( void ) { return FALSE; }
 	virtual BOOL IsNetClient( void ) { return FALSE; }
@@ -325,7 +325,7 @@ public:
 	}
 
 	// Ugly code to lookup all functions to make sure they are exported when set.
-#ifdef _DEBUG
+#if _DEBUG
 	void FunctionCheck( void *pFunction, char *name ) 
 	{ 
 		if( pFunction && !NAME_FOR_FUNCTION( pFunction ) )
@@ -393,7 +393,7 @@ public:
 // Normally it's illegal to cast a pointer to a member function of a derived class to a pointer to a 
 // member function of a base class.  static_cast is a sleezy way around that problem.
 
-#ifdef _DEBUG
+#if _DEBUG
 
 #define SetThink( a ) ThinkSet( static_cast <void (CBaseEntity::*)(void)> (a), #a )
 #define SetTouch( a ) TouchSet( static_cast <void (CBaseEntity::*)(CBaseEntity *)> (a), #a )

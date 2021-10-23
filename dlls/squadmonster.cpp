@@ -25,6 +25,7 @@
 #include "saverestore.h"
 #include "squadmonster.h"
 #include "plane.h"
+#include "mod_features.h"
 
 //=========================================================
 // Save/Restore
@@ -123,7 +124,26 @@ void CSquadMonster::OnDying()
 
 	if( InSquad() )
 	{
-		MySquadLeader()->SquadRemove( this );
+		CSquadMonster* pSquadLeader = MySquadLeader();
+
+		for( int i = 0; i < MAX_SQUAD_MEMBERS; i++ )
+		{
+			CSquadMonster* pSquadMember = pSquadLeader->MySquadMember( i );
+			if( pSquadMember && pSquadMember != this )
+			{
+				if (pSquadMember->m_IdealMonsterState == pSquadMember->m_MonsterState &&
+						pSquadMember->IsAlive() &&
+						pSquadMember->m_hEnemy == 0 && (pSquadMember->m_MonsterState == MONSTERSTATE_IDLE ||
+									   pSquadMember->m_MonsterState == MONSTERSTATE_ALERT))
+				{
+					pSquadMember->m_IdealMonsterState = MONSTERSTATE_HUNT;
+					pSquadMember->m_vecEnemyLKP = pev->origin;
+					pSquadMember->Remember(bits_MEMORY_SHOULD_GO_TO_LKP);
+				}
+			}
+		}
+
+		pSquadLeader->SquadRemove( this );
 	}
 	CBaseMonster::OnDying();
 }
@@ -146,13 +166,50 @@ void CSquadMonster::SquadRemove( CSquadMonster *pRemove )
 	// If I'm the leader, get rid of my squad
 	if( pRemove == MySquadLeader() )
 	{
+		int squadCountLeft = 0;
+		CSquadMonster* newLeader = NULL;
+
+#if FEATURE_DELEGATE_SQUAD_LEADERSHIP
 		for( int i = 0; i < MAX_SQUAD_MEMBERS - 1; i++ )
 		{
 			CSquadMonster *pMember = MySquadMember( i );
-			if( pMember )
+			if (pMember && pMember->IsAlive())
 			{
-				pMember->m_hSquadLeader = NULL;
+				squadCountLeft++;
+
+				// choose the healthiest member as a new leader
+				if (!newLeader || pMember->pev->health > newLeader->pev->health)
+					newLeader = pMember;
+			}
+		}
+#endif
+
+		if (newLeader && squadCountLeft > 1)
+		{
+			newLeader->m_hSquadLeader = newLeader;
+
+			for( int i = 0; i < MAX_SQUAD_MEMBERS - 1; i++ )
+			{
+				CSquadMonster *pMember = MySquadMember( i );
+				if ( pMember && pMember != newLeader )
+				{
+					pMember->m_hSquadLeader = newLeader;
+					if (pMember->IsAlive())
+						newLeader->SquadAdd(pMember);
+				}
 				m_hSquadMember[i] = NULL;
+			}
+		}
+		else
+		{
+			for( int i = 0; i < MAX_SQUAD_MEMBERS - 1; i++ )
+			{
+				CSquadMonster *pMember = MySquadMember( i );
+				if( pMember )
+				{
+					pMember->m_hSquadLeader = NULL;
+					m_hSquadMember[i] = NULL;
+				}
 			}
 		}
 	}
@@ -163,7 +220,7 @@ void CSquadMonster::SquadRemove( CSquadMonster *pRemove )
 		{
 			for( int i = 0; i < MAX_SQUAD_MEMBERS - 1; i++ )
 			{
-				if( pSquadLeader->m_hSquadMember[i] == this )
+				if( pSquadLeader->m_hSquadMember[i] == pRemove )
 				{
 					pSquadLeader->m_hSquadMember[i] = NULL;
 					break;
@@ -265,6 +322,7 @@ void CSquadMonster::SquadMakeEnemy( CBaseEntity *pEnemy )
 		{
 			// reset members who aren't activly engaged in fighting
 			if( pMember->m_hEnemy != pEnemy && !pMember->HasConditions( bits_COND_SEE_ENEMY )
+					&& ( pMember->m_pSchedule && (pMember->m_pSchedule->iInterruptMask & bits_COND_NEW_ENEMY) )
 					// My enemy might be not an enemy for member of my squad, e.g. if I was provoked by player.
 					&& pMember->IRelationship(pEnemy) >= R_DL )
 			{
@@ -562,6 +620,7 @@ MONSTERSTATE CSquadMonster::GetIdealState ( void )
 	{
 	case MONSTERSTATE_IDLE:
 	case MONSTERSTATE_ALERT:
+	case MONSTERSTATE_HUNT:
 		if( HasConditions( bits_COND_NEW_ENEMY ) && InSquad() )
 		{
 			SquadMakeEnemy( m_hEnemy );

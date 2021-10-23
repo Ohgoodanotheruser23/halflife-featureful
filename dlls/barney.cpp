@@ -220,7 +220,7 @@ void CBarney::AlertSound( void )
 {
 	if( m_hEnemy != 0 )
 	{
-		if( FOkToSpeak(SPEAK_DISREGARD_ENEMY) )
+		if( FOkToSpeak(SPEAK_DISREGARD_ENEMY) && !m_hEnemy->IsPlayer() )
 		{
 			PlaySentence( "BA_ATTACK", RANDOM_FLOAT( 2.8f, 3.2f ), VOL_NORM, ATTN_IDLE );
 		}
@@ -326,7 +326,18 @@ void CBarney::HandleAnimEvent( MonsterEvent_t *pEvent )
 	switch( pEvent->event )
 	{
 	case BARNEY_AE_SHOOT:
-		BarneyFirePistol("barney/ba_attack2.wav", BULLET_MONSTER_9MM);
+		if (pev->frags)
+		{
+			if (RANDOM_LONG(0, 1))
+				BarneyFirePistol("weapons/357_shot1.wav", BULLET_MONSTER_357);
+			else
+				BarneyFirePistol("weapons/357_shot2.wav", BULLET_MONSTER_357);
+		}
+		else
+		{
+			BarneyFirePistol("barney/ba_attack2.wav", BULLET_MONSTER_9MM);
+		}
+
 		break;
 	case BARNEY_AE_DRAW:
 		// barney's bodygroup switches here so he can pull gun from holster
@@ -549,7 +560,10 @@ void CBarney::OnDying()
 
 		GetAttachment( 0, vecGunPos, vecGunAngles );
 
-		DropItem( "weapon_9mmhandgun", vecGunPos, vecGunAngles );
+		if (pev->frags)
+			DropItem( "weapon_357", vecGunPos, vecGunAngles );
+		else
+			DropItem( "weapon_9mmhandgun", vecGunPos, vecGunAngles );
 	}
 	CTalkMonster::OnDying();
 }
@@ -622,6 +636,7 @@ Schedule_t *CBarney::GetScheduleImpl(const char *sentenceKill)
 		break;
 	case MONSTERSTATE_ALERT:	
 	case MONSTERSTATE_IDLE:
+	case MONSTERSTATE_HUNT:
 	{
 		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 		{
@@ -782,7 +797,7 @@ void COtis :: AlertSound( void )
 {
 	if ( m_hEnemy != 0 )
 	{
-		if ( FOkToSpeak(SPEAK_DISREGARD_ENEMY) )
+		if ( FOkToSpeak(SPEAK_DISREGARD_ENEMY) && !m_hEnemy->IsPlayer() )
 		{
 			PlaySentence( "OT_ATTACK", RANDOM_FLOAT(2.8, 3.2), VOL_NORM, ATTN_IDLE );
 		}

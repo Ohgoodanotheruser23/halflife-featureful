@@ -20,7 +20,7 @@
 # SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 2.6.0)
+cmake_minimum_required(VERSION 2.8.12)
 project (SVDLL)
 
 set (SVDLL_LIBRARY server)
@@ -186,6 +186,12 @@ endif()
 
 include_directories (. wpn_shared ../common ../engine ../pm_shared ../game_shared ../public)
 
+if(MSVC)
+	set(SVDLL_SOURCES
+		${SVDLL_SOURCES}
+		hl.def)
+endif()
+
 if(USE_VOICEMGR)
 	set(SVDLL_SOURCES
 		${SVDLL_SOURCES}
@@ -205,6 +211,10 @@ if(APPLE OR WIN32 OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 	set_target_properties(${SVDLL_LIBRARY} PROPERTIES
 		OUTPUT_NAME ${SVDLL_NAME}
 		PREFIX "")
+endif()
+
+if(MSVC)
+	set_property(TARGET ${SVDLL_LIBRARY} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 install( TARGETS ${SVDLL_LIBRARY}

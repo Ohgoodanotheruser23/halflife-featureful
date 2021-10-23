@@ -20,7 +20,7 @@
 #include <stdlib.h> // atoi
 #include <ctype.h>  // isspace
 #include "mathlib.h"
-#ifdef HAVE_TGMATH_H
+#if HAVE_TGMATH_H
 #include <tgmath.h>
 #endif
 
@@ -36,7 +36,7 @@
 
 int g_bhopcap = 1;
 
-#ifdef CLIENT_DLL
+#if CLIENT_DLL
 // Spectator Mode
 int iJumpSpectator;
 extern float vJumpOrigin[3];
@@ -45,7 +45,7 @@ extern float vJumpAngles[3];
 
 static int pm_shared_initialized = 0;
 
-#ifdef _MSC_VER
+#if _MSC_VER
 #pragma warning( disable : 4305 )
 #endif
 
@@ -66,6 +66,7 @@ playermove_t *pmove = NULL;
 #define	STOP_EPSILON		0.1f
 
 #define CTEXTURESMAX		512			// max number of textures loaded
+#include "pm_materials.h"
 
 #define STEP_CONCRETE		0		// default step sound
 #define STEP_METAL		1		// metal floor
@@ -88,7 +89,7 @@ playermove_t *pmove = NULL;
 #define PLAYER_DUCKING_MULTIPLIER	0.333f
 
 // double to float warning
-#ifdef _MSC_VER
+#if _MSC_VER
 #pragma warning(disable : 4244)
 #endif
 
@@ -1802,7 +1803,7 @@ void PM_SpectatorMove( void )
 	
 	if( pmove->iuser1 == OBS_ROAMING )
 	{
-#ifdef CLIENT_DLL
+#if CLIENT_DLL
 		// jump only in roaming mode
 		if( iJumpSpectator )
 		{
@@ -2480,6 +2481,9 @@ void PM_Jump( void )
 		pmove->oldbuttons |= IN_JUMP;	// don't jump again until released
 		return;
 	}
+
+	if( pmove->flags & FL_FROZEN )
+		return;
 
 	tfc = atoi( pmove->PM_Info_ValueForKey( pmove->physinfo, "tfc" ) ) == 1 ? true : false;
 

@@ -23,6 +23,7 @@ void Game_AddObjects( void );
 extern vec3_t v_origin;
 
 int g_iAlive = 1;
+int g_iLaserDot = 0;
 
 extern "C"
 {
@@ -93,6 +94,8 @@ void DLLEXPORT HUD_TxferLocalOverrides( struct entity_state_s *state, const stru
 
 	// Fire prevention
 	state->iuser4 = client->iuser4;
+
+	g_iLaserDot = (client->flags & FL_LASERDOT) ? 1 : 0;
 }
 
 /*
@@ -224,8 +227,8 @@ void DLLEXPORT HUD_TxferPredictionData( struct entity_state_s *ps, const struct 
 }
 
 /*
-//#define TEST_IT
-#if defined( TEST_IT )
+//#define TEST_IT	1
+#if TEST_IT
 
 cl_entity_t mymodel[9];
 
@@ -267,8 +270,8 @@ void MoveModel( void )
 }
 #endif
 
-//#define TRACE_TEST
-#if defined( TRACE_TEST )
+//#define TRACE_TEST	1
+#if TRACE_TEST
 
 extern int hitent;
 
@@ -424,7 +427,7 @@ void TempEnts( void )
 }
 */
 
-#if defined( BEAM_TEST )
+#if BEAM_TEST
 // Note can't index beam[0] in Beam callback, so don't use that index
 // Room for 1 beam ( 0 can't be used )
 static cl_entity_t beams[2];
@@ -495,6 +498,65 @@ void Beams( void )
 }
 #endif
 
+extern cvar_t *cl_lw;
+
+TEMPENTITY *g_pLaserSpot = NULL;
+
+void CL_UpdateLaserSpot( void )
+{
+	cl_entity_t *player = gEngfuncs.GetLocalPlayer();
+
+	if( !player ) return;
+
+	if(( g_iLaserDot && cl_lw->value ) && !g_pLaserSpot )
+	{
+		// create laserspot
+		int m_iSpotModel = gEngfuncs.pEventAPI->EV_FindModelIndex( "sprites/laserdot.spr" );
+
+		g_pLaserSpot = gEngfuncs.pEfxAPI->R_TempSprite( Vector( 0, 0, 0), Vector( 0, 0, 0), 1.0, m_iSpotModel, kRenderGlow, kRenderFxNoDissipation, 1.0, 9999, FTENT_SPRCYCLE );
+		if( !g_pLaserSpot ) return;
+
+		g_pLaserSpot->entity.curstate.rendercolor.r = 200;
+		g_pLaserSpot->entity.curstate.rendercolor.g = 12;
+		g_pLaserSpot->entity.curstate.rendercolor.b = 12;
+
+		//		gEngfuncs.Con_Printf( "CLaserSpot::Create()\n" );
+	}
+
+	else if(( !g_iLaserDot || !cl_lw->value ) && g_pLaserSpot )
+	{
+		// destroy laserspot
+		//		gEngfuncs.Con_Printf( "CLaserSpot::Killed()\n" );
+		g_pLaserSpot->die = 0.0f;
+		g_pLaserSpot = NULL;
+		return;
+	}
+	else if( !g_pLaserSpot )
+	{
+		// inactive
+		return;
+	}
+
+	//assert( m_pLaserSpot != NULL );
+
+	Vector forward, vecSrc, vecEnd, origin, angles, view_ofs;
+
+	gEngfuncs.GetViewAngles( (float *)angles );
+
+	AngleVectors( angles, forward, NULL, NULL );
+	gEngfuncs.pEventAPI->EV_LocalPlayerViewheight( view_ofs );
+
+	vecSrc = player->origin + view_ofs;
+	vecEnd = vecSrc + forward * 8192.0f;
+
+	pmtrace_t *trace = gEngfuncs.PM_TraceLine( vecSrc, vecEnd, PM_TRACELINE_ANYVISIBLE, 2, -1 );
+	// update laserspot endpos
+
+	g_pLaserSpot->entity.origin = trace->endpos;
+	g_pLaserSpot->die = gEngfuncs.GetClientTime() + 0.1f;
+}
+
+
 /*
 =========================
 HUD_CreateEntities
@@ -508,10 +570,10 @@ void DLLEXPORT HUD_CreateEntities( void )
 	// Load an appropriate model into it ( gEngfuncs.CL_LoadModel )
 	// Call gEngfuncs.CL_CreateVisibleEntity to add it to the visedicts list
 /*
-#if defined( TEST_IT )
+#if TEST_IT
 	MoveModel();
 #endif
-#if defined( TRACE_TEST )
+#if TRACE_TEST
 	TraceModel();
 #endif
 */
@@ -521,11 +583,12 @@ void DLLEXPORT HUD_CreateEntities( void )
 /*
 	TempEnts();
 */
-#if defined( BEAM_TEST )
+#if BEAM_TEST
 	Beams();
 #endif
 	// Add in any game specific objects
 	Game_AddObjects();
+	CL_UpdateLaserSpot();
 }
 
 /*
@@ -940,7 +1003,7 @@ Indices must start at 1, not zero.
 */
 cl_entity_t DLLEXPORT *HUD_GetUserEntity( int index )
 {
-#if defined( BEAM_TEST )
+#if BEAM_TEST
 	// None by default, you would return a valic pointer if you create a client side
 	//  beam and attach it to a client side entity.
 	if( index > 0 && index <= 1 )

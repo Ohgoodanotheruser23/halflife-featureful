@@ -428,9 +428,7 @@ int CMonsterMaker::MakeMonster( void )
 		}
 		else
 		{
-			bool evaluated;
-			placePosition = CalcLocus_Position(this, m_hActivator, placeIdentifier, &evaluated);
-			if (!evaluated)
+			if (!TryCalcLocus_Position(this, m_hActivator, placeIdentifier, placePosition))
 				return MONSTERMAKER_BADPLACE;
 			CBaseEntity* tempPosEnt = CBaseEntity::Create("info_target", placePosition, pev->angles);
 			if (tempPosEnt)
@@ -560,6 +558,7 @@ int CMonsterMaker::MakeMonster( void )
 		createdMonster->m_customSoundMask = m_customSoundMask;
 		createdMonster->m_prisonerTo = m_prisonerTo;
 		createdMonster->m_freeRoam = m_freeRoam;
+		createdMonster->m_activeAfterCombat = m_activeAfterCombat;
 		createdMonster->m_sizeForGrapple = m_sizeForGrapple;
 
 		createdMonster->SetHead(m_iHead);

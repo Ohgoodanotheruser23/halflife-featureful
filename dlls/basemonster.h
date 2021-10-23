@@ -13,7 +13,7 @@
 *
 ****/
 #pragma once
-#ifndef BASEMONSTER_H
+#if !defined(BASEMONSTER_H)
 #define BASEMONSTER_H
 
 #include "cbase.h"
@@ -401,6 +401,8 @@ public:
 	// Allows to set a head via monstermaker before spawn
 	virtual void SetHead(int head) {}
 
+	bool IsFreeToManipulate();
+
 	//
 	// Glowshell effects
 	//
@@ -426,6 +428,8 @@ public:
 	int m_customSoundMask;
 	short m_prisonerTo;
 	short m_freeRoam;
+	short m_activeAfterCombat;
+	short m_huntActivitiesCount;
 
 	float m_flLastTimeObservedEnemy;
 
@@ -439,6 +443,12 @@ public:
 #define FREEROAM_MAPDEFAULT 0
 #define FREEROAM_NEVER 1
 #define FREEROAM_ALWAYS 2
+
+#define ACTIVE_ALERT_DEFAULT 0
+#define ACTIVE_ALERT_NEVER 1
+#define ACTIVE_ALERT_ALWAYS 2
+
+#define SF_DEADMONSTER_NOTSOLID 4
 
 class CDeadMonster : public CBaseMonster
 {

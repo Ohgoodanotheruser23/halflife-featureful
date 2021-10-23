@@ -13,7 +13,7 @@
 *
 ****/
 #pragma once
-#ifndef WEAPONS_H
+#if !defined(WEAPONS_H)
 #define WEAPONS_H
 
 #include "effects.h"
@@ -400,7 +400,6 @@ public:
 	virtual void PrimaryAttack( void ) { return; }				// do "+ATTACK"
 	virtual void SecondaryAttack( void ) { return; }			// do "+ATTACK2"
 	virtual void Reload( void ) { return; }						// do "+RELOAD"
-	virtual void WeaponTick() {}				// Always called at beginning of ItemPostFrame. - Solokiller
 	virtual void WeaponIdle( void ) { return; }					// called when no buttons pressed
 	virtual int UpdateClientData( CBasePlayer *pPlayer );		// sends hud info to client dll, if things have changed
 	virtual void RetireWeapon( void );
@@ -532,7 +531,7 @@ public:
 	int m_cAmmoTypes;// how many ammo types packed into this box (if packed by a level designer)
 };
 
-#ifdef CLIENT_DLL
+#if CLIENT_DLL
 bool bIsMultiplayer ( void );
 void LoadVModel ( const char *szViewModel, CBasePlayer *m_pPlayer );
 #endif
@@ -554,7 +553,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -593,7 +592,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -627,7 +626,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -655,13 +654,12 @@ public:
 	BOOL Deploy( void );
 	void Reload( void );
 	void WeaponIdle( void );
-	BOOL IsUseable();
 	float m_flNextAnimTime;
 	int m_iShell;
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -697,7 +695,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -715,7 +713,7 @@ private:
 class CShotgun : public CBasePlayerWeapon
 {
 public:
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	int		Save( CSave &save );
 	int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
@@ -729,15 +727,16 @@ public:
 	void SecondaryAttack( void );
 	BOOL Deploy( );
 	void Reload( void );
-	void WeaponTick();
 	void WeaponIdle( void );
+
+	void ItemPostFrame( void );
 	float m_flPumpTime;
 	float m_flNextReload;
 	int m_iShell;
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -754,22 +753,23 @@ private:
 
 class CLaserSpot : public CBaseEntity
 {
+public:
 	void Spawn( void );
 	void Precache( void );
 
 	int	ObjectCaps( void ) { return FCAP_DONT_SAVE; }
 
-public:
 	void Suspend( float flSuspendTime );
 	void EXPORT Revive( void );
+	void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 
-	static CLaserSpot *CreateSpot( void );
+	static CLaserSpot *CreateSpot( edict_t* pOwner = 0 );
 };
 
 class CRpg : public CBasePlayerWeapon
 {
 public:
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	int		Save( CSave &save );
 	int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
@@ -797,7 +797,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -832,7 +832,7 @@ public:
 class CGauss : public CBasePlayerWeapon
 {
 public:
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	int		Save( CSave &save );
 	int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
@@ -841,7 +841,7 @@ public:
 	void Precache( void );
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
-	BOOL IsUseable();
+
 	BOOL Deploy( void );
 	void Holster( int skiplocal = 0  );
 
@@ -863,7 +863,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -881,7 +881,7 @@ private:
 class CEgon : public CBasePlayerWeapon
 {
 public:
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	int		Save( CSave &save );
 	int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
@@ -923,7 +923,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -936,7 +936,7 @@ public:
 	unsigned short m_usEgonStop;
 
 private:
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	float				m_shootTime;
 #endif
 	EGON_FIREMODE		m_fireMode;
@@ -949,7 +949,7 @@ private:
 class CHgun : public CBasePlayerWeapon
 {
 public:
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	int		Save( CSave &save );
 	int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
@@ -974,7 +974,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1001,7 +1001,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1014,7 +1014,7 @@ public:
 class CSatchel : public CBasePlayerWeapon
 {
 public:
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	int		Save( CSave &save );
 	int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
@@ -1036,7 +1036,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1065,8 +1065,8 @@ public:
 	void WeaponIdle( void );
 
 	virtual BOOL UseDecrement( void )
-	{
-#if defined( CLIENT_WEAPONS )
+	{ 
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1094,7 +1094,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1144,7 +1144,7 @@ public:
 	int m_fEagleLaserActive;
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1192,7 +1192,7 @@ public:
 
 	virtual BOOL UseDecrement(void)
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1228,11 +1228,11 @@ public:
 	void WeaponIdle(void);
 	BOOL PlayEmptySound(void);
 	BOOL ShouldWeaponIdle(void) { return TRUE; }
-	CBaseEntity* FindHealTarget();
+	CBaseEntity* FindHealTarget(bool increasedRadius = false);
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1284,7 +1284,7 @@ public:
 	void DestroyEffect( void );
 	virtual BOOL UseDecrement(void)
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1327,9 +1327,8 @@ public:
 	BOOL Deploy(void);
 	void Holster(int skiplocal = 0);
 	void Reload(void);
-	void WeaponTick();
+	void ItemPostFrame();
 	void WeaponIdle(void);
-	virtual BOOL ShouldWeaponIdle(void) { return TRUE; }
 
 	int m_iShell;
 
@@ -1345,6 +1344,9 @@ public:
 	const char* MyWModel() { return "models/w_saw.mdl"; }
 
 	void UpdateTape();
+	void UpdateTape(int clip);
+
+	int m_iVisibleClip;
 
 private:
 	unsigned short m_usM249;
@@ -1375,13 +1377,11 @@ public:
 	void WeaponIdle(void);
 	//void ItemPostFrame(void);
 
-	BOOL ShouldWeaponIdle(void) { return TRUE; }
-
 	BOOL m_fInZoom;// don't save this.
 
 	virtual BOOL UseDecrement(void)
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1420,7 +1420,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1467,7 +1467,7 @@ public:
 	void EXPORT ClearBeams(void);
 	virtual BOOL UseDecrement(void)
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1514,7 +1514,7 @@ public:
 
 	virtual BOOL UseDecrement(void)
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1568,7 +1568,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;
@@ -1601,7 +1601,7 @@ public:
 
 	virtual BOOL UseDecrement( void )
 	{
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 		return TRUE;
 #else
 		return FALSE;

@@ -127,6 +127,8 @@ TYPEDESCRIPTION	CBaseMonster::m_SaveData[] =
 	DEFINE_FIELD( CBaseMonster, m_customSoundMask, FIELD_INTEGER ),
 	DEFINE_FIELD( CBaseMonster, m_prisonerTo, FIELD_SHORT ),
 	DEFINE_FIELD( CBaseMonster, m_freeRoam, FIELD_SHORT ),
+	DEFINE_FIELD( CBaseMonster, m_activeAfterCombat, FIELD_SHORT ),
+	DEFINE_FIELD( CBaseMonster, m_huntActivitiesCount, FIELD_SHORT ),
 	DEFINE_FIELD( CBaseMonster, m_flLastTimeObservedEnemy, FIELD_TIME ),
 };
 
@@ -612,7 +614,8 @@ void CBaseMonster::MonsterThink( void )
 //=========================================================
 void CBaseMonster::MonsterUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	m_IdealMonsterState = MONSTERSTATE_ALERT;
+	if (m_MonsterState == MONSTERSTATE_IDLE)
+		m_IdealMonsterState = MONSTERSTATE_ALERT;
 }
 
 //=========================================================
@@ -782,7 +785,7 @@ BOOL CBaseMonster::MoveToNode( Activity movementAct, float waitTime, const Vecto
 	return FRefreshRoute();
 }
 
-#ifdef _DEBUG
+#if _DEBUG
 void DrawRoute( entvars_t *pev, WayPoint_t *m_Route, int m_iRouteIndex, int r, int g, int b )
 {
 	int i;
@@ -3526,7 +3529,7 @@ void CBaseMonster::KeyValue( KeyValueData *pkvd )
 		m_iClass = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
-	else if ( FStrEq( pkvd->szKeyName , "gibmodel" ) )
+	else if ( FStrEq( pkvd->szKeyName , "gibmodel" ) || FStrEq( pkvd->szKeyName, "m_iszGibModel" ) )
 	{
 		m_gibModel = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
@@ -3564,6 +3567,11 @@ void CBaseMonster::KeyValue( KeyValueData *pkvd )
 	else if ( FStrEq( pkvd->szKeyName, "freeroam" ) )
 	{
 		m_freeRoam = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "active_alert" ) )
+	{
+		m_activeAfterCombat = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else if ( FStrEq( pkvd->szKeyName, "size_for_grapple" ) )
@@ -3719,7 +3727,7 @@ int CBaseMonster::CanPlaySequence( BOOL fDisregardMonsterState, int interruptLev
 		return TRUE;
 	}
 	
-	if( m_MonsterState == MONSTERSTATE_ALERT && interruptLevel >= SS_INTERRUPT_BY_NAME )
+	if( (m_MonsterState == MONSTERSTATE_ALERT || m_MonsterState == MONSTERSTATE_HUNT) && interruptLevel >= SS_INTERRUPT_BY_NAME )
 		return TRUE;
 
 	// unknown situation
@@ -3901,6 +3909,12 @@ void CBaseMonster::MonsterInitDead( void )
 	{
 		SetThink( &CBaseMonster::CorpseFallThink );
 		pev->nextthink = gpGlobals->time + 0.5f;
+	}
+
+	if ((pev->spawnflags & SF_DEADMONSTER_NOTSOLID) && MyDeadMonsterPointer() != NULL)
+	{
+		pev->solid = SOLID_NOT;
+		pev->takedamage = DAMAGE_NO;
 	}
 }
 
@@ -4157,6 +4171,14 @@ int CBaseMonster::SizeForGrapple()
 	else if (m_sizeForGrapple > 0 && m_sizeForGrapple <= GRAPPLE_FIXED)
 		return m_sizeForGrapple;
 	return DefaultSizeForGrapple();
+}
+
+bool CBaseMonster::IsFreeToManipulate()
+{
+	return m_IdealMonsterState != MONSTERSTATE_SCRIPT &&
+				 (m_MonsterState == MONSTERSTATE_ALERT ||
+				  m_MonsterState == MONSTERSTATE_IDLE ||
+				  m_MonsterState == MONSTERSTATE_HUNT);
 }
 
 void CBaseMonster::GlowShellOn( Vector color, float flDuration )

@@ -24,11 +24,11 @@
 #include "cbase.h"
 #include "monsters.h"
 
-#ifndef ANIMATION_H
+#if !defined(ANIMATION_H)
 #include "animation.h"
 #endif
 
-#ifndef SAVERESTORE_H
+#if !defined(SAVERESTORE_H)
 #include "saverestore.h"
 #endif
 
@@ -109,6 +109,16 @@ void CCineMonster::KeyValue( KeyValueData *pkvd )
 		m_fTurnType = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if ( FStrEq( pkvd->szKeyName, "m_requiredFollowerState" ) )
+	{
+		m_requiredFollowerState = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "m_applySearchRadius" ) )
+	{
+		m_applySearchRadius = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 	{
 		CBaseMonster::KeyValue( pkvd );
@@ -136,6 +146,8 @@ TYPEDESCRIPTION	CCineMonster::m_SaveData[] =
 	DEFINE_FIELD( CCineMonster, m_targetActivator, FIELD_SHORT ),
 	DEFINE_FIELD( CCineMonster, m_fTurnType, FIELD_SHORT ),
 	DEFINE_FIELD( CCineMonster, m_flMoveToRadius, FIELD_FLOAT ),
+	DEFINE_FIELD( CCineMonster, m_requiredFollowerState, FIELD_SHORT ),
+	DEFINE_FIELD( CCineMonster, m_applySearchRadius, FIELD_SHORT ),
 };
 
 IMPLEMENT_SAVERESTORE( CCineMonster, CBaseMonster )
@@ -225,8 +237,16 @@ void CCineMonster::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		// if not, try finding them
 		m_cantFindReported = false;
 		m_hActivator = pActivator;
-		SetThink( &CCineMonster::CineThink );
-		pev->nextthink = gpGlobals->time;
+
+		if (FBitSet(pev->spawnflags, SF_SCRIPT_TRY_ONCE))
+		{
+			TryFindAndPossessEntity();
+		}
+		else
+		{
+			SetThink( &CCineMonster::CineThink );
+			pev->nextthink = gpGlobals->time;
+		}
 	}
 }
 
@@ -295,7 +315,7 @@ void CCineMonster::Pain( void )
 //
 
 // find a viable entity
-BOOL CCineMonster::FindEntity( void )
+CBaseMonster *CCineMonster::FindEntity( void )
 {
 	edict_t *pentTarget;
 	CBaseMonster *pTarget = NULL;
@@ -304,33 +324,28 @@ BOOL CCineMonster::FindEntity( void )
 	{
 		if (m_hActivator != 0 && FBitSet(m_hActivator->pev->flags, FL_MONSTER) && (pTarget = m_hActivator->MyMonsterPointer()) != 0 )
 		{
-			if (pTarget->CanPlaySequence( FCanOverrideState(), SS_INTERRUPT_AI ))
-			{
-				m_hTargetEnt = m_hActivator;
-				return TRUE;
-			}
+			if (IsAppropriateTarget(pTarget, SS_INTERRUPT_AI, m_applySearchRadius == SCRIPT_APPLY_SEARCH_RADIUS_ALWAYS))
+				return pTarget;
 		}
-		m_hTargetEnt = 0;
-		return FALSE;
+		return NULL;
 	}
 
 	pentTarget = FIND_ENTITY_BY_TARGETNAME( NULL, STRING( m_iszEntity ) );
-	m_hTargetEnt = NULL;
+	pTarget = NULL;
 
 	while( !FNullEnt( pentTarget ) )
 	{
 		if( FBitSet( VARS( pentTarget )->flags, FL_MONSTER ) )
 		{
 			pTarget = GetMonsterPointer( pentTarget );
-			if( pTarget && pTarget->CanPlaySequence( FCanOverrideState(), SS_INTERRUPT_BY_NAME ) )
-			{
-				m_hTargetEnt = pTarget;
-				return TRUE;
-			}
+
+			if (IsAppropriateTarget(pTarget, SS_INTERRUPT_BY_NAME, m_applySearchRadius == SCRIPT_APPLY_SEARCH_RADIUS_ALWAYS))
+				return pTarget;
 			if (!m_cantPlayReported)
 			{
-				ALERT( at_console, "Found %s, but can't play!\n", STRING( m_iszEntity ) );
-				m_cantPlayReported = true;
+				ALERT( at_console, "Found %s, but can't play! (busy or too far)\n", STRING( m_iszEntity ) );
+				if (!FBitSet(pev->spawnflags, SF_SCRIPT_TRY_ONCE))
+					m_cantPlayReported = true;
 			}
 		}
 		pentTarget = FIND_ENTITY_BY_TARGETNAME( pentTarget, STRING( m_iszEntity ) );
@@ -347,18 +362,32 @@ BOOL CCineMonster::FindEntity( void )
 				if( FBitSet( pEntity->pev->flags, FL_MONSTER ) )
 				{
 					pTarget = pEntity->MyMonsterPointer();
-					if( pTarget && pTarget->CanPlaySequence( FCanOverrideState(), SS_INTERRUPT_IDLE ) )
+					if (IsAppropriateTarget(pTarget, SS_INTERRUPT_IDLE, false))
 					{
-						m_hTargetEnt = pTarget;
-						return TRUE;
+						return pTarget;
 					}
 				}
 			}
 		}
 	}
-	pTarget = NULL;
-	m_hTargetEnt = NULL;
-	return FALSE;
+	return NULL;
+}
+
+bool CCineMonster::AcceptedFollowingState(CBaseMonster *pMonster)
+{
+	if (m_requiredFollowerState == SCRIPT_REQUIRED_FOLLOWER_STATE_UNSPECIFIED)
+		return true;
+	CFollowingMonster* pFollowingMonster = pMonster->MyFollowingMonsterPointer();
+	if (pFollowingMonster)
+	{
+		if (m_requiredFollowerState == SCRIPT_REQUIRED_FOLLOWER_STATE_FOLLOWING) {
+			return pFollowingMonster->IsFollowingPlayer();
+		}
+		if (m_requiredFollowerState == SCRIPT_REQUIRED_FOLLOWER_STATE_NOT_FOLLOWING) {
+			return !pFollowingMonster->IsFollowingPlayer();
+		}
+	}
+	return true;
 }
 
 // make the entity enter a scripted sequence
@@ -436,21 +465,37 @@ void CCineMonster::PossessEntity( void )
 
 void CCineMonster::CineThink( void )
 {
-	if( FindEntity() )
+	if (!TryFindAndPossessEntity())
+	{
+		pev->nextthink = gpGlobals->time + 1.0f;
+	}
+}
+
+bool CCineMonster::TryFindAndPossessEntity()
+{
+	if( (m_hTargetEnt = FindEntity()) != 0 )
 	{
 		PossessEntity();
 		ALERT( at_aiconsole, "script \"%s\" using monster \"%s\"\n", STRING( pev->targetname ), STRING( m_iszEntity ) );
+		return true;
 	}
 	else
 	{
 		CancelScript();
 		if (!m_cantFindReported && pev->targetname)
 		{
-			ALERT( at_aiconsole, "script \"%s\" can't find monster \"%s\"\n", STRING( pev->targetname ), STRING( m_iszEntity ) );
+			ALERT( at_aiconsole, "script \"%s\" can't find appropriate monster \"%s\" (busy or too far)\n", STRING( pev->targetname ), STRING( m_iszEntity ) );
 			m_cantFindReported = true;
 		}
-		pev->nextthink = gpGlobals->time + 1.0f;
+		return false;
 	}
+}
+
+bool CCineMonster::IsAppropriateTarget(CBaseMonster *pTarget, int interruptLevel, bool shouldCheckRadius)
+{
+	return pTarget && pTarget->CanPlaySequence( FCanOverrideState(), interruptLevel ) &&
+			AcceptedFollowingState(pTarget) &&
+			(!shouldCheckRadius || (pev->origin - pTarget->pev->origin).Length() <= m_flRadius);
 }
 
 typedef enum
@@ -651,7 +696,7 @@ void ScriptEntityCancel( edict_t *pentCine )
 		if( pTarget )
 		{
 			// make sure their monster is actually playing a script
-			if( pTarget->m_MonsterState == MONSTERSTATE_SCRIPT )
+			if( pTarget->m_MonsterState == MONSTERSTATE_SCRIPT || pTarget->m_IdealMonsterState == MONSTERSTATE_SCRIPT )
 			{
 				// tell them do die
 				pTarget->m_scriptState = CCineMonster::SCRIPT_CLEANUP;
@@ -1136,11 +1181,11 @@ BOOL CScriptedSentence::AcceptableSpeaker( CBaseMonster *pMonster )
 				return FALSE;
 			break;
 		case REQUIRED_STATE_ALERT:
-			if (pMonster->m_MonsterState != MONSTERSTATE_ALERT)
+			if (pMonster->m_MonsterState != MONSTERSTATE_ALERT && pMonster->m_MonsterState != MONSTERSTATE_HUNT)
 				return FALSE;
 			break;
 		case REQUIRED_STATE_IDLE_OR_ALERT:
-			if (pMonster->m_MonsterState != MONSTERSTATE_IDLE && pMonster->m_MonsterState != MONSTERSTATE_ALERT)
+			if (pMonster->m_MonsterState != MONSTERSTATE_IDLE && pMonster->m_MonsterState != MONSTERSTATE_ALERT && pMonster->m_MonsterState != MONSTERSTATE_HUNT)
 				return FALSE;
 			break;
 		default:

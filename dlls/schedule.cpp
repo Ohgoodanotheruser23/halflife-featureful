@@ -82,6 +82,10 @@ void CBaseMonster::ChangeSchedule( Schedule_t *pNewSchedule )
 	ASSERT( pNewSchedule != NULL );
 
 	OnChangeSchedule( pNewSchedule );
+	if (m_MonsterState == MONSTERSTATE_HUNT)
+	{
+		m_huntActivitiesCount++;
+	}
 
 	m_pSchedule = pNewSchedule;
 	m_iScheduleIndex = 0;
@@ -187,7 +191,7 @@ BOOL CBaseMonster::FScheduleValid( void )
 
 	if( HasConditions( bits_COND_SCHEDULE_DONE | bits_COND_TASK_FAILED ) )
 	{
-#ifdef DEBUG
+#if DEBUG
 		if( HasConditions( bits_COND_TASK_FAILED ) && m_failSchedule == SCHED_NONE )
 		{
 			// fail! Send a visual indicator.
@@ -250,7 +254,8 @@ void CBaseMonster::MaintainSchedule( void )
 			{
 				if( (m_afConditions && !HasConditions( bits_COND_SCHEDULE_DONE ) ) ||
 						( m_pSchedule && (m_pSchedule->iInterruptMask & bits_COND_SCHEDULE_DONE ) ) ||
-						( ( m_MonsterState == MONSTERSTATE_COMBAT ) && ( m_hEnemy == 0 ) )	)
+						( ( m_MonsterState == MONSTERSTATE_COMBAT ) && ( m_hEnemy == 0 ) ) ||
+						m_MonsterState == MONSTERSTATE_HUNT )
 				{
 					GetIdealState();
 				}
@@ -1673,39 +1678,48 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 					return GetScheduleOfType( SCHED_ALERT_SMALL_FLINCH );
 				}
 			}
-			if( HasConditions ( bits_COND_HEAR_SOUND ) )
+			if (m_activeAfterCombat == ACTIVE_ALERT_ALWAYS || (m_activeAfterCombat == ACTIVE_ALERT_DEFAULT && NpcActiveAfterCombat()))
 			{
-				if (HasMemory(bits_MEMORY_ALERT_AFTER_COMBAT))
+				if( HasConditions ( bits_COND_HEAR_SOUND ) )
 				{
-					CSound *pSound = PBestSound();
-					if (pSound)
+					if (HasMemory(bits_MEMORY_ALERT_AFTER_COMBAT))
 					{
-						const int type = pSound->m_iType;
-						const bool isCombat = (type & bits_SOUND_COMBAT);
-						const bool isDanger = (type & bits_SOUND_DANGER);
-						const bool isPlayer = (type & bits_SOUND_PLAYER);
-						if (isCombat && // it's combat sound
-								!isDanger && // but not danger
-								( !isPlayer || IDefaultRelationship(CLASS_PLAYER) != R_AL )) // and it's not combat sound produced by ally player
+						CSound *pSound = PBestSound();
+						if (pSound)
 						{
-							ALERT(at_aiconsole, "%s trying to investigate sound after combat\n", STRING(pev->classname));
-							return GetScheduleOfType( SCHED_INVESTIGATE_SOUND );
+							const int type = pSound->m_iType;
+							const bool isCombat = (type & bits_SOUND_COMBAT);
+							const bool isDanger = (type & bits_SOUND_DANGER);
+							const bool isPlayer = (type & bits_SOUND_PLAYER);
+							if (isCombat && // it's combat sound
+									!isDanger && // but not danger
+									( !isPlayer || IDefaultRelationship(CLASS_PLAYER) != R_AL )) // and it's not combat sound produced by ally player
+							{
+								ALERT(at_aiconsole, "%s trying to investigate sound after combat\n", STRING(pev->classname));
+								return GetScheduleOfType( SCHED_INVESTIGATE_SOUND );
+							}
 						}
 					}
+					return GetScheduleOfType( SCHED_ALERT_FACE );
 				}
-				return GetScheduleOfType( SCHED_ALERT_FACE );
+				else if (HasMemory(bits_MEMORY_SHOULD_ROAM_IN_ALERT))
+				{
+					ALERT(at_aiconsole, "%s trying to freeroam after combat\n", STRING(pev->classname));
+					Forget(bits_MEMORY_SHOULD_ROAM_IN_ALERT);
+					return GetScheduleOfType( SCHED_FREEROAM_ALERT );
+				}
 			}
-			else if (HasMemory(bits_MEMORY_SHOULD_ROAM_IN_ALERT))
+
+			Schedule_t* freeroamSchedule = GetFreeroamSchedule();
+			if (freeroamSchedule)
+				return freeroamSchedule;
+
+			if( HasConditions ( bits_COND_HEAR_SOUND ) )
 			{
-				ALERT(at_aiconsole, "%s trying to freeroam after combat\n", STRING(pev->classname));
-				Forget(bits_MEMORY_SHOULD_ROAM_IN_ALERT);
-				return GetScheduleOfType( SCHED_FREEROAM );
+				return GetScheduleOfType( SCHED_ALERT_FACE );
 			}
 			else
 			{
-				Schedule_t* freeroamSchedule = GetFreeroamSchedule();
-				if (freeroamSchedule)
-					return freeroamSchedule;
 				return GetScheduleOfType( SCHED_ALERT_STAND );
 			}
 			break;
@@ -1821,6 +1835,32 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 			}
 
 			return GetScheduleOfType( SCHED_AISCRIPT );
+		}
+	case MONSTERSTATE_HUNT:
+		{
+			if( HasConditions ( bits_COND_HEAR_SOUND ) )
+			{
+				CSound *pSound = PBestSound();
+				if (pSound)
+				{
+					const int type = pSound->m_iType;
+					const bool isCombat = (type & bits_SOUND_COMBAT);
+					const bool isDanger = (type & bits_SOUND_DANGER);
+					const bool isPlayer = (type & bits_SOUND_PLAYER);
+					if (isCombat && // it's combat sound
+							!isDanger && // but not danger
+							( !isPlayer || IDefaultRelationship(CLASS_PLAYER) != R_AL )) // and it's not combat sound produced by ally player
+					{
+						return GetScheduleOfType( SCHED_INVESTIGATE_SOUND );
+					}
+				}
+			}
+			if (HasMemory(bits_MEMORY_SHOULD_GO_TO_LKP))
+			{
+				Forget(bits_MEMORY_SHOULD_GO_TO_LKP);
+				return GetScheduleOfType( SCHED_MOVE_TO_ENEMY_LKP );
+			}
+			return GetScheduleOfType( SCHED_FREEROAM_ALERT );
 		}
 	default:
 		{

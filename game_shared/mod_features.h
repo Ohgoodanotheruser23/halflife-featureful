@@ -75,6 +75,10 @@
 
 #define FEATURE_DYING_MONSTERS_DONT_COLLIDE_WITH_PLAYER 0
 
+/* Whether a new squad leader gets chosen if the original one dies.
+ * This prevents squad dissolving */
+#define FEATURE_DELEGATE_SQUAD_LEADERSHIP 1
+
 // New weapons
 #define FEATURE_PIPEWRENCH (1 || FEATURE_OPFOR_WEAPONS)
 #define FEATURE_KNIFE (0 || FEATURE_OPFOR_WEAPONS)
@@ -92,6 +96,7 @@
 // Weapon features
 #define FEATURE_CROWBAR_IDLE_ANIM 1
 #define FEATURE_TRIPMINE_NONSOLID (1 || FEATURE_OPFOR_SPECIFIC)
+#define FEATURE_PREDICTABLE_LASER_SPOT 0
 
 // Dependent features
 #define FEATURE_SHOCKBEAM (FEATURE_SHOCKTROOPER || FEATURE_SHOCKRIFLE)
@@ -116,8 +121,11 @@
 #define DEADHAZMODEL "models/player.mdl"
 #endif
 
+// Brush entities features
+// Open func_door_rotating in the direction of player's movement, not facing
+#define FEATURE_OPEN_ROTATING_DOOR_IN_MOVE_DIRECTION 0
+
 // Misc features
-#define FEATURE_STRAFE_BOBBING 0
 #define FEATURE_SUIT_NO_SOUNDS (0 || FEATURE_OPFOR_SPECIFIC)
 #define FEATURE_OPFOR_DECALS (0 || FEATURE_OPFOR_SPECIFIC)
 #define FEATURE_OPFOR_NIGHTVISION (0 || FEATURE_OPFOR_SPECIFIC)
@@ -134,6 +142,9 @@
 // whether items drop instantly when spawned, e.g. from func_breakable (this is default behavior)
 #define FEATURE_ITEM_INSTANT_DROP 1
 
+// enable/disable opengl fog and env_fog
+#define FEATURE_FOG 0
+
 // Experimental Cvars
 #define FEATURE_EXPERIMENTAL_CVARS 1
 
@@ -144,5 +155,6 @@
 #define FEATURE_GRENADE_JUMP_CVAR (0 || FEATURE_EXPERIMENTAL_CVARS)
 #define FEATURE_NPC_FORGET_ENEMY_CVAR (0 || FEATURE_EXPERIMENTAL_CVARS)
 #define FEATURE_NPC_FIX_MELEE_DISTANCE_CVAR (0 || FEATURE_EXPERIMENTAL_CVARS)
+#define FEATURE_NPC_ACTIVE_AFTER_COMBAT_CVAR (0 || FEATURE_EXPERIMENTAL_CVARS)
 
 #endif

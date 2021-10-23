@@ -36,6 +36,7 @@
 #include "game.h"
 #include "pm_shared.h"
 #include "hltv.h"
+#include "talkmonster.h"
 
 // #define DUCKFIX
 
@@ -979,6 +980,7 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 	DEFINE_FIELD( CBasePlayer, m_tbdPrev, FIELD_TIME ),
 
 	DEFINE_FIELD( CBasePlayer, m_pTank, FIELD_EHANDLE ),
+	DEFINE_FIELD( CBasePlayer, m_hViewEntity, FIELD_EHANDLE ),
 	DEFINE_FIELD( CBasePlayer, m_iHideHUD, FIELD_INTEGER ),
 	DEFINE_FIELD( CBasePlayer, m_iFOV, FIELD_INTEGER ),
 #if FEATURE_DISPLACER
@@ -1615,6 +1617,39 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 			SetSuitUpdate( "!HEV_HLTH1", FALSE, SUIT_NEXT_IN_10MIN );	// health dropping
 	}
 
+	if (fTookDamage > 0 && pAttacker != NULL)
+	{
+		CBaseMonster* pAttackerMonster = pAttacker->MyMonsterPointer();
+		if (pAttackerMonster &&
+				pAttackerMonster->IRelationship(this) >= R_DL) // that was intentional attack
+		{
+			for (int i=0; i<TLK_CFRIENDS; ++i)
+			{
+				CTalkMonster::TalkFriend friendClass = CTalkMonster::m_szFriends[i];
+				if (friendClass.category == TALK_FRIEND_SOLDIER)
+				{
+					CBaseEntity* pEntity = NULL;
+					while((pEntity = UTIL_FindEntityByClassname(pEntity, friendClass.name)) != NULL)
+					{
+						CSquadMonster* pSquadMonster = pEntity->MySquadMonsterPointer();
+						if (pSquadMonster)
+						{
+							CFollowingMonster* pFollowingMonster = pSquadMonster->MyFollowingMonsterPointer();
+							if (pFollowingMonster && pFollowingMonster->m_hEnemy == 0 &&
+									pFollowingMonster->m_pSchedule && (pFollowingMonster->m_pSchedule->iInterruptMask & bits_COND_NEW_ENEMY) &&
+									pFollowingMonster->IsFollowingPlayer(this) && pFollowingMonster->IRelationship(pAttacker) >= R_DL)
+							{
+								ALERT(at_aiconsole, "%s is gonna attack player's attacker %s\n", STRING(pFollowingMonster->pev->classname), STRING(pAttacker->pev->classname));
+								pFollowingMonster->SetEnemy(pAttacker);
+								pFollowingMonster->SetConditions( bits_COND_NEW_ENEMY );
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return fTookDamage;
 }
 
@@ -2150,23 +2185,26 @@ void CBasePlayer::WaterMove()
 	}
 
 	// make bubbles
-	air = (int)( pev->air_finished - gpGlobals->time );
-	if( !RANDOM_LONG( 0, 0x1f ) && RANDOM_LONG( 0, AIRTIME - 1 ) >= air )
+	if( pev->waterlevel == 3 )
 	{
-		switch( RANDOM_LONG( 0, 3 ) )
+		air = (int)( pev->air_finished - gpGlobals->time );
+		if( !RANDOM_LONG( 0, 0x1f ) && RANDOM_LONG( 0, AIRTIME - 1 ) >= air )
 		{
-			case 0:
-				EMIT_SOUND( ENT( pev ), CHAN_BODY, "player/pl_swim1.wav", 0.8, ATTN_NORM );
-				break;
-			case 1:
-				EMIT_SOUND( ENT( pev ), CHAN_BODY, "player/pl_swim2.wav", 0.8, ATTN_NORM );
-				break;
-			case 2:
-				EMIT_SOUND( ENT( pev ), CHAN_BODY, "player/pl_swim3.wav", 0.8, ATTN_NORM );
-				break;
-			case 3:
-				EMIT_SOUND( ENT( pev ), CHAN_BODY, "player/pl_swim4.wav", 0.8, ATTN_NORM );
-				break;
+			switch( RANDOM_LONG( 0, 3 ) )
+			{
+				case 0:
+					EMIT_SOUND( ENT( pev ), CHAN_BODY, "player/pl_swim1.wav", 0.8, ATTN_NORM );
+					break;
+				case 1:
+					EMIT_SOUND( ENT( pev ), CHAN_BODY, "player/pl_swim2.wav", 0.8, ATTN_NORM );
+					break;
+				case 2:
+					EMIT_SOUND( ENT( pev ), CHAN_BODY, "player/pl_swim3.wav", 0.8, ATTN_NORM );
+					break;
+				case 3:
+					EMIT_SOUND( ENT( pev ), CHAN_BODY, "player/pl_swim4.wav", 0.8, ATTN_NORM );
+					break;
+			}
 		}
 	}
 
@@ -3041,6 +3079,18 @@ void CBasePlayer::PreThink( void )
 		m_iHideHUD &= ~HIDEHUD_FLASHLIGHT;
 	else
 		m_iHideHUD |= HIDEHUD_FLASHLIGHT;
+
+	if (m_bResetViewEntity)
+	{
+		m_bResetViewEntity = false;
+
+		CBaseEntity* viewEntity = m_hViewEntity;
+
+		if (viewEntity)
+		{
+			SET_VIEW(edict(), viewEntity->edict());
+		}
+	}
 
 	// JOHN: checks if new client data (for HUD and view control) needs to be sent to the client
 	UpdateClientData();
@@ -4077,7 +4127,7 @@ pt_end:
 	// Track button info so we can detect 'pressed' and 'released' buttons next frame
 	m_afButtonLast = pev->button;
 
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	// Decay timers on weapons
 	// go through all of the weapons and make a list of the ones to pack
 	for( int i = 0; i < MAX_WEAPONS; i++ )
@@ -4516,12 +4566,15 @@ int CBasePlayer::Restore( CRestore &restore )
 
 	RenewItems();
 
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	// HACK:	This variable is saved/restored in CBaseMonster as a time variable, but we're using it
 	//			as just a counter.  Ideally, this needs its own variable that's saved as a plain float.
 	//			Barring that, we clear it out here instead of using the incorrect restored time value.
 	m_flNextAttack = UTIL_WeaponTimeBase();
 #endif
+
+	m_bResetViewEntity = true;
+
 	return status;
 }
 
@@ -4952,7 +5005,7 @@ void CBasePlayer::ImpulseCommands()
 //=========================================================
 void CBasePlayer::CheatImpulseCommands( int iImpulse )
 {
-#if !defined( HLDEMO_BUILD )
+#if !HLDEMO_BUILD
 	if( g_flWeaponCheat == 0.0f )
 	{
 		return;
@@ -5348,7 +5401,7 @@ Called every frame by the player PreThink
 */
 void CBasePlayer::ItemPreFrame()
 {
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	if( m_flNextAttack > 0 )
 #else
 	if( gpGlobals->time < m_flNextAttack )
@@ -5378,7 +5431,7 @@ void CBasePlayer::ItemPostFrame()
 	if( m_pTank != 0 )
 		return;
 
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	if( m_flNextAttack > 0 )
 #else
 	if( gpGlobals->time < m_flNextAttack )
@@ -6864,16 +6917,7 @@ LINK_ENTITY_TO_CLASS( player_weaponstrip, CStripWeapons )
 
 void CStripWeapons::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	CBasePlayer *pPlayer = NULL;
-
-	if( pActivator && pActivator->IsPlayer() )
-	{
-		pPlayer = (CBasePlayer *)pActivator;
-	}
-	else if( !g_pGameRules->IsMultiplayer() )
-	{
-		pPlayer = (CBasePlayer *)CBaseEntity::Instance( g_engfuncs.pfnPEntityOfEntIndex( 1 ) );
-	}
+	CBasePlayer *pPlayer = g_pGameRules->EffectivePlayer(pActivator);
 
 	if( pPlayer ) {
 		const bool removeSuit = (pev->spawnflags & STRIP_SUIT) ? true : false;
@@ -6885,10 +6929,15 @@ void CStripWeapons::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	}
 }
 
+#define SF_PLAYER_LOAD_SAVED_FREEZE 1
+#define SF_PLAYER_LOAD_SAVED_WEAPONSTRIP 2
+#define SF_PLAYER_LOAD_SAVED_RETURN_TO_MENU 128
+
 class CRevertSaved : public CPointEntity
 {
 public:
-	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void Spawn();
+	void EXPORT LoadSavedUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	void EXPORT MessageThink( void );
 	void EXPORT LoadThink( void );
 	void KeyValue( KeyValueData *pkvd );
@@ -6948,10 +6997,31 @@ void CRevertSaved::KeyValue( KeyValueData *pkvd )
 		CPointEntity::KeyValue( pkvd );
 }
 
-void CRevertSaved::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+void CRevertSaved::Spawn()
 {
+	CPointEntity::Spawn();
+	SetUse(&CRevertSaved::LoadSavedUse);
+}
+
+void CRevertSaved::LoadSavedUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if (FBitSet(pev->spawnflags, SF_PLAYER_LOAD_SAVED_WEAPONSTRIP|SF_PLAYER_LOAD_SAVED_FREEZE))
+	{
+		CBasePlayer *pPlayer = g_pGameRules->EffectivePlayer(pActivator);
+		if (pPlayer) {
+			if (FBitSet(pev->spawnflags, SF_PLAYER_LOAD_SAVED_WEAPONSTRIP)) {
+				pPlayer->RemoveAllItems(FALSE);
+			}
+
+			if (FBitSet(pev->spawnflags, SF_PLAYER_LOAD_SAVED_FREEZE)) {
+				pPlayer->EnableControl(FALSE);
+			}
+		}
+	}
+
 	UTIL_ScreenFadeAll( pev->rendercolor, Duration(), HoldTime(), (int)pev->renderamt, FFADE_OUT );
 	pev->nextthink = gpGlobals->time + MessageTime();
+	SetUse( NULL );
 	SetThink( &CRevertSaved::MessageThink );
 }
 
@@ -6970,9 +7040,15 @@ void CRevertSaved::MessageThink( void )
 
 void CRevertSaved::LoadThink( void )
 {
-	if( !gpGlobals->deathmatch )
+	if( !g_pGameRules->IsMultiplayer() )
 	{
-		SERVER_COMMAND( "reload\n" );
+		if (FBitSet(pev->spawnflags, SF_PLAYER_LOAD_SAVED_RETURN_TO_MENU))
+		{
+			g_engfuncs.pfnEndSection( "_oem_end_training" );
+		} else
+		{
+			SERVER_COMMAND( "reload\n" );
+		}
 	}
 }
 

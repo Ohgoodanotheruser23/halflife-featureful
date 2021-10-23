@@ -2122,6 +2122,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 		break;
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
+	case MONSTERSTATE_HUNT:
 	{
 		Schedule_t* followingSchedule = GetFollowingSchedule();
 		if (followingSchedule)
@@ -2392,6 +2393,7 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	pGrunt->m_customSoundMask = m_customSoundMask;
 	pGrunt->m_prisonerTo = m_prisonerTo;
 	pGrunt->m_freeRoam = m_freeRoam;
+	pGrunt->m_activeAfterCombat = m_activeAfterCombat;
 	pGrunt->m_sizeForGrapple = m_sizeForGrapple;
 	PrepareBeforeSpawn(pEntity);
 	DispatchSpawn(pEntity->edict());

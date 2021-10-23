@@ -2610,6 +2610,7 @@ Schedule_t *CHFGrunt :: GetSchedule ( void )
 		break;
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
+	case MONSTERSTATE_HUNT:
 	{
 		Schedule_t* reloadSched = GetReloadSchedule();
 		if (reloadSched)
@@ -3472,6 +3473,7 @@ Schedule_t *CMedic::GetSchedule()
 	{
 	case MONSTERSTATE_IDLE:
 	case MONSTERSTATE_ALERT:
+	case MONSTERSTATE_HUNT:
 		if ( m_hEnemy == 0 || !m_hEnemy->IsAlive() )
 		{
 			if (m_hTargetEnt != 0 && FollowedPlayer() == m_hTargetEnt)
@@ -3744,11 +3746,7 @@ void CMedic::StartFollowingHealTarget(CBaseEntity *pTarget)
 
 	m_fSaidHeal = FALSE;
 
-	if( m_pCine )
-		m_pCine->CancelScript();
-
-	if( m_hEnemy != 0 )
-		m_IdealMonsterState = MONSTERSTATE_ALERT;
+	StopScript();
 
 	m_hTargetEnt = pTarget;
 	ClearConditions( bits_COND_CLIENT_PUSH );
@@ -3765,11 +3763,7 @@ void CMedic::RestoreTargetEnt()
 		ALERT(at_aiconsole, "Medic restoring old target\n");
 		m_hTargetEnt = m_hLeadingPlayer;
 		m_hLeadingPlayer = 0;
-		if( m_pCine )
-			m_pCine->CancelScript();
 
-		if( m_hEnemy != 0 )
-			m_IdealMonsterState = MONSTERSTATE_ALERT;
 		ClearConditions( bits_COND_CLIENT_PUSH );
 	}
 }

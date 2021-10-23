@@ -728,6 +728,8 @@ public:
 
 	inline BOOL HitLimit( void ) { return CountValue() == LimitValue(); }
 
+	bool CalcRatio( CBaseEntity *pLocus, float* outResult );
+
 private:
 
 	inline void SetCountValue( int value ) { pev->frags = value; }
@@ -775,6 +777,12 @@ void CGameCounter::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 			ResetCount();
 		}
 	}
+}
+
+bool CGameCounter::CalcRatio( CBaseEntity *pLocus, float* outResult )
+{
+	*outResult = pev->frags;
+	return true;
 }
 
 //
@@ -987,12 +995,7 @@ public:
 	void KeyValue( KeyValueData *pkvd );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 	{
-		if (!pActivator || !pActivator->IsPlayer())
-		{
-			if (!g_pGameRules->IsMultiplayer())
-				pActivator = CBaseEntity::Instance(g_engfuncs.pfnPEntityOfEntIndex( 1 ));
-		}
-		EquipPlayer(pActivator);
+		EquipPlayer(g_pGameRules->EffectivePlayer(pActivator));
 	}
 	void Touch( CBaseEntity *pOther )
 	{

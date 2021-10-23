@@ -480,6 +480,14 @@ void CGameRules::ClientUserInfoChanged( CBasePlayer *pPlayer, char *infobuffer )
 	pPlayer->SetPrefsFromUserinfo( infobuffer );
 }
 
+CBasePlayer *CGameRules::EffectivePlayer(CBaseEntity *pActivator)
+{
+	if (pActivator && pActivator->IsPlayer()) {
+		return (CBasePlayer*)pActivator;
+	}
+	return NULL;
+}
+
 //=========================================================
 // instantiate the proper game rules object
 //=========================================================
@@ -565,6 +573,16 @@ float NpcForgetEnemyTime()
 	return npc_forget_enemy_time.value;
 #else
 	return 0.0f;
+#endif
+}
+
+bool NpcActiveAfterCombat()
+{
+#if FEATURE_NPC_ACTIVE_AFTER_COMBAT_CVAR
+	extern cvar_t npc_active_after_combat;
+	return npc_active_after_combat.value != 0;
+#else
+	return false;
 #endif
 }
 

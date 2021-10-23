@@ -13,10 +13,10 @@
 *
 ****/
 #pragma once
-#ifndef SCRIPTED_H
+#if !defined(SCRIPTED_H)
 #define SCRIPTED_H
 
-#ifndef SCRIPTEVENT_H
+#if !defined(SCRIPTEVENT_H)
 #include "scriptevent.h"
 #endif
 
@@ -33,6 +33,7 @@
 #define SF_SCRIPT_CONTINUOUS		256
 #define SF_SCRIPT_APPLYNEWANGLES		512
 #define SF_SCRIPT_FORCE_IDLE_LOOPING 2048
+#define SF_SCRIPT_TRY_ONCE	4096
 
 #define SCRIPT_BREAK_CONDITIONS		(bits_COND_LIGHT_DAMAGE|bits_COND_HEAVY_DAMAGE)
 
@@ -51,6 +52,16 @@ enum SS_INTERRUPT
 	SS_INTERRUPT_IDLE = 0,
 	SS_INTERRUPT_BY_NAME,
 	SS_INTERRUPT_AI
+};
+
+#define SCRIPT_REQUIRED_FOLLOWER_STATE_UNSPECIFIED 0
+#define SCRIPT_REQUIRED_FOLLOWER_STATE_FOLLOWING 1
+#define SCRIPT_REQUIRED_FOLLOWER_STATE_NOT_FOLLOWING 2
+
+enum
+{
+	SCRIPT_APPLY_SEARCH_RADIUS_TO_CLASSNAME = 0,
+	SCRIPT_APPLY_SEARCH_RADIUS_ALWAYS = 1
 };
 
 // when a monster finishes an AI scripted sequence, we can choose
@@ -80,7 +91,10 @@ public:
 	void Pain( void );
 	void Die( void );
 	void DelayStart( int state );
-	BOOL FindEntity( void );
+	CBaseMonster *FindEntity( void );
+	bool TryFindAndPossessEntity();
+	bool IsAppropriateTarget(CBaseMonster* pTarget, int interruptLevel, bool shouldCheckRadius);
+	bool AcceptedFollowingState(CBaseMonster* pMonster);
 	virtual void PossessEntity( void );
 
 	void ReleaseEntity( CBaseMonster *pEntity );
@@ -114,6 +128,8 @@ public:
 	short m_targetActivator;
 	short m_fTurnType;
 	float m_flMoveToRadius;
+	short m_requiredFollowerState;
+	short m_applySearchRadius;
 
 	bool m_cantFindReported; // no need to save
 	bool m_cantPlayReported;

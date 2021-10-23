@@ -217,7 +217,7 @@ void ClientPutInServer( edict_t *pEntity )
 	pPlayer->pev->iuser2 = 0;
 }
 
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 #include "voice_gamemgr.h"
 extern CVoiceGameMgr g_VoiceGameMgr;
 #endif
@@ -279,7 +279,7 @@ decodeError:
 	uValueOut = '?';
 	bErrorOut = true;
 	return nBytes;
-
+#if 0
 decodeFinishedMaybeCESU8:
 	// Do we have a full UTF-16 surrogate pair that's been UTF-8 encoded afterwards?
 	// That is, do we have 0xD800-0xDBFF followed by 0xDC00-0xDFFF? If so, decode it all.
@@ -290,6 +290,7 @@ decodeFinishedMaybeCESU8:
 		uMinValue = 0x10000;
 	}
 	goto decodeFinished;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -326,7 +327,7 @@ void Host_Say( edict_t *pEntity, int teamonly )
 {
 	CBasePlayer *client;
 	int		j;
-	char	*p, *pc;
+	char	*p; //, *pc;
 	char	text[128];
 	char    szTemp[256];
 	const char *cpSay = "say";
@@ -413,7 +414,7 @@ void Host_Say( edict_t *pEntity, int teamonly )
 
 		if( !( client->IsNetClient() ) )	// Not a client ? (should never be true)
 			continue;
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 		// can the receiver hear the sender? or has he muted him?
 		if( g_VoiceGameMgr.PlayerHasBlockedPlayer( client, player ) )
 			continue;
@@ -1706,7 +1707,7 @@ void RegisterEncoders( void )
 
 int GetWeaponData( struct edict_s *player, struct weapon_data_s *info )
 {
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	int i;
 	weapon_data_t *item;
 	entvars_t *pev = &player->v;
@@ -1829,7 +1830,7 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 		cd->iuser1		= pev->iuser1;
 		cd->iuser2		= pev->iuser2;
 	}
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	if( sendweapons )
 	{
 		if( pl )
@@ -1874,6 +1875,12 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 					else if( pl->m_pActiveItem->m_iId == WEAPON_KNIFE )
 					{
 						cd->vuser2.y = ( (CKnife *)pl->m_pActiveItem )->m_iSwingMode;
+					}
+#endif
+#if FEATURE_M249
+					else if( pl->m_pActiveItem->m_iId == WEAPON_M249 )
+					{
+						cd->vuser2.y = ( (CM249 *)pl->m_pActiveItem )->m_iVisibleClip;
 					}
 #endif
 				}

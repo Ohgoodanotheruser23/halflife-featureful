@@ -1,4 +1,4 @@
-# Half-Life SDK for Xash3D and GoldSource [![Build Status](https://travis-ci.org/FreeSlave/hlsdk-xash3d.svg)](https://travis-ci.org/FreeSlave/hlsdk-xash3d) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/FreeSlave/hlsdk-xash3d?svg=true)](https://ci.appveyor.com/project/FreeSlave/hlsdk-xash3d)
+# Half-Life SDK for Xash3D [![Build Status](https://github.com/FreeSlave/hlsdk-xash3d/actions/workflows/.github.yml/badge.svg?branch=modbase)](https://github.com/FreeSlave/hlsdk-xash3d/actions/workflows/.github.yml) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/FreeSlave/hlsdk-xash3d?svg=true)](https://ci.appveyor.com/project/FreeSlave/hlsdk-xash3d)
 
 Half-Life SDK for Xash3D & GoldSource with some fixes and features that can be useful for mod makers. Read the [wiki](https://github.com/FreeSlave/hlsdk-xash3d/wiki) to see what's implemented.
 
@@ -36,8 +36,6 @@ These scripts also can be ran via wine:
     MSVCDir="z:\home\$USER\.wine\drive_c\Program Files\Microsoft Visual Studio" wine cmd /c compile.bat
 
 The libraries built this way are always GoldSource compatible.
-
-There're dsp projects for Visual Studio 6 in `cl_dll` and `dlls` directories, but we don't keep them up-to-date. You're free to adapt them for yourself and try to import into the newer Visual Studio versions.
 
 #### Using mingw
 

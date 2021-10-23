@@ -29,7 +29,7 @@
 #include	"skill.h"
 #include	"game.h"
 #include	"items.h"
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 #include	"voice_gamemgr.h"
 #endif
 #include	"hltv.h"
@@ -51,7 +51,7 @@ extern int g_teamplay;
 
 float g_flIntermissionStartTime = 0;
 
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 CVoiceGameMgr	g_VoiceGameMgr;
 
 class CMultiplayGameMgrHelper : public IVoiceGameMgrHelper
@@ -269,7 +269,7 @@ const char *GetAuthID( CBaseEntity *pPlayer )
 		{
 			char *pUid;
 
-			snprintf( uid, 32, "IP_%s", ip );
+			_snprintf( uid, 32, "IP_%s", ip );
 
 			for( pUid = uid; *pUid; pUid++ )
 				if( *pUid == '.' ) *pUid = '_';
@@ -518,7 +518,7 @@ bool ReadMapConfig(const char* mapName)
 //*********************************************************
 CHalfLifeMultiplay::CHalfLifeMultiplay()
 {
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 	g_VoiceGameMgr.Init( &g_GameMgrHelper, gpGlobals->maxClients );
 #endif
 	RefreshSkillData();
@@ -593,7 +593,7 @@ CHalfLifeMultiplay::CHalfLifeMultiplay()
 
 BOOL CHalfLifeMultiplay::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 {
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 	if( g_VoiceGameMgr.ClientCommand( pPlayer, pcmd ) )
 		return TRUE;
 #endif
@@ -706,7 +706,7 @@ int CHalfLifeMultiplay::m_numberOfTries = 0;
 //=========================================================
 void CHalfLifeMultiplay::Think( void )
 {
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 	g_VoiceGameMgr.Update( gpGlobals->frametime );
 #endif
 
@@ -991,7 +991,7 @@ BOOL CHalfLifeMultiplay::GetNextBestWeapon( CBasePlayer *pPlayer, CBasePlayerWea
 //=========================================================
 BOOL CHalfLifeMultiplay::ClientConnected( edict_t *pEntity, const char *pszName, const char *pszAddress, char szRejectReason[128] )
 {
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 	g_VoiceGameMgr.ClientConnected( pEntity );
 #endif
 	return TRUE;
@@ -1372,12 +1372,12 @@ void CHalfLifeMultiplay::DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, 
 	const char *tau = "tau_cannon";
 	const char *gluon = "gluon gun";
 
-	if( pKiller->flags & FL_CLIENT )
+	if( pevInflictor )
 	{
-		killer_index = ENTINDEX( ENT( pKiller ) );
-
-		if( pevInflictor )
+		if( pKiller->flags & FL_CLIENT )
 		{
+			killer_index = ENTINDEX( ENT( pKiller ) );
+
 			if( pevInflictor == pKiller )
 			{
 				// If the inflictor is the killer,  then it must be their current weapon doing the damage
@@ -1393,10 +1393,10 @@ void CHalfLifeMultiplay::DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, 
 				killer_weapon_name = STRING( pevInflictor->classname );  // it's just that easy
 			}
 		}
-	}
-	else
-	{
-		killer_weapon_name = STRING( pevInflictor->classname );
+		else
+		{
+			killer_weapon_name = STRING( pevInflictor->classname );
+		}
 	}
 
 	// strip the monster_* or weapon_* from the inflictor's classname

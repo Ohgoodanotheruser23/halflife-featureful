@@ -25,7 +25,9 @@
 #include "screenfade.h"
 #include "shake.h"
 #include "hltv.h"
+#include "view.h"
 
+extern cvar_t *cl_viewroll;
 extern cvar_t *cl_rollspeed;
 extern cvar_t *cl_rollangle;
 
@@ -38,14 +40,6 @@ extern "C"
 	int iHasNewViewOrigin;
 	int iIsSpectator;
 }
-
-#ifndef M_PI
-#define M_PI		3.14159265358979323846	// matches value in gcc v2 math.h
-#endif
-
-#ifndef M_PI_F
-#define M_PI_F		(float)M_PI
-#endif
 
 extern "C" 
 {
@@ -337,13 +331,16 @@ void V_CalcViewRoll( struct ref_params_s *pparams )
 	if( !viewentity )
 		return;
 
-#if FEATURE_STRAFE_BOBBING
-	pparams->viewangles[ROLL] = V_CalcRoll (pparams->viewangles, pparams->simvel, cl_rollangle->value, cl_rollspeed->value ) * 4;
-#else
-	float side;
-	side = V_CalcRoll( viewentity->angles, pparams->simvel, pparams->movevars->rollangle, pparams->movevars->rollspeed );
-	pparams->viewangles[ROLL] += side;
-#endif
+	if (cl_viewroll && cl_viewroll->value > 0)
+	{
+		pparams->viewangles[ROLL] = V_CalcRoll (pparams->viewangles, pparams->simvel, cl_rollangle->value, cl_rollspeed->value ) * 4;
+	}
+	else
+	{
+		float side;
+		side = V_CalcRoll( viewentity->angles, pparams->simvel, pparams->movevars->rollangle, pparams->movevars->rollspeed );
+		pparams->viewangles[ROLL] += side;
+	}
 
 	if( pparams->health <= 0 && ( pparams->viewheight[2] != 0 ) )
 	{
@@ -600,11 +597,7 @@ void V_CalcNormalRefdef( struct ref_params_s *pparams )
 
 	for( i = 0; i < 3; i++ )
 	{
-#if FEATURE_STRAFE_BOBBING
-		view->origin[i] += bob * 0.4f * pparams->right[i];
-#else
 		view->origin[i] += bob * 0.4f * pparams->forward[i];
-#endif
 	}
 	view->origin[2] += bob;
 
@@ -746,6 +739,10 @@ void V_CalcNormalRefdef( struct ref_params_s *pparams )
 	if( CL_IsThirdPerson() )
 	{
 		VectorCopy( camAngles, pparams->viewangles );
+	}
+
+	// Apply this at all times
+	{
 		float pitch = camAngles[0];
 
 		// Normalize angles
@@ -1559,8 +1556,8 @@ void DLLEXPORT V_CalcRefdef( struct ref_params_s *pparams )
 	}
 /*
 // Example of how to overlay the whole screen with red at 50 % alpha
-#define SF_TEST
-#if defined SF_TEST
+#define SF_TEST	1
+#if SF_TEST
 	{
 		screenfade_t sf;
 		gEngfuncs.pfnGetScreenFade( &sf );
@@ -1626,8 +1623,8 @@ void V_Init( void )
 	cl_chasedist = gEngfuncs.pfnRegisterVariable( "cl_chasedist","112", 0 );
 }
 
-//#define TRACE_TEST
-#if defined( TRACE_TEST )
+//#define TRACE_TEST	1
+#if TRACE_TEST
 
 extern float in_fov;
 /*

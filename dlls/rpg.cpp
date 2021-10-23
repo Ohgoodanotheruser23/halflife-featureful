@@ -24,18 +24,28 @@
 
 LINK_ENTITY_TO_CLASS( weapon_rpg, CRpg )
 
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 
 LINK_ENTITY_TO_CLASS( laser_spot, CLaserSpot )
 
 //=========================================================
 //=========================================================
-CLaserSpot *CLaserSpot::CreateSpot( void )
+CLaserSpot *CLaserSpot::CreateSpot( edict_t* pOwner )
 {
 	CLaserSpot *pSpot = GetClassPtr( (CLaserSpot *)NULL );
 	pSpot->Spawn();
 
 	pSpot->pev->classname = MAKE_STRING( "laser_spot" );
+
+#if FEATURE_PREDICTABLE_LASER_SPOT
+	if( pOwner )
+	{
+		// predictable laserspot
+		pSpot->pev->flags |= FL_SKIPLOCALHOST;
+		pOwner->v.flags |= FL_LASERDOT;
+		pSpot->pev->owner = pOwner;
+	}
+#endif
 
 	return pSpot;
 }
@@ -62,7 +72,10 @@ void CLaserSpot::Spawn( void )
 void CLaserSpot::Suspend( float flSuspendTime )
 {
 	pev->effects |= EF_NODRAW;
-
+#if FEATURE_PREDICTABLE_LASER_SPOT
+	if (!FNullEnt(pev->owner))
+		pev->owner->v.flags &= ~FL_LASERDOT;
+#endif
 	SetThink( &CLaserSpot::Revive );
 	pev->nextthink = gpGlobals->time + flSuspendTime;
 }
@@ -73,8 +86,20 @@ void CLaserSpot::Suspend( float flSuspendTime )
 void CLaserSpot::Revive( void )
 {
 	pev->effects &= ~EF_NODRAW;
-
+#if FEATURE_PREDICTABLE_LASER_SPOT
+	if (!FNullEnt(pev->owner))
+		pev->owner->v.flags |= FL_LASERDOT;
+#endif
 	SetThink( NULL );
+}
+
+void CLaserSpot::Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib)
+{
+#if FEATURE_PREDICTABLE_LASER_SPOT
+	if (!FNullEnt(pev->owner))
+		pev->owner->v.flags &= ~FL_LASERDOT;
+#endif
+	CBaseEntity::Killed( pevInflictor, pevAttacker, iGib );
 }
 
 void CLaserSpot::Precache( void )
@@ -291,7 +316,7 @@ void CRpg::Reload( void )
 		return;
 	}
 
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	if( m_pSpot && m_fSpotActive )
 	{
 		m_pSpot->Suspend( 2.1f );
@@ -314,7 +339,7 @@ void CRpg::Spawn()
 	SET_MODEL( ENT( pev ), MyWModel() );
 	m_fSpotActive = 1;
 
-#ifdef CLIENT_DLL
+#if CLIENT_DLL
 	if( bIsMultiplayer() )
 #else
 	if( g_pGameRules->IsMultiplayer() )
@@ -413,7 +438,7 @@ void CRpg::Holster( int skiplocal /* = 0 */ )
 
 	SendWeaponAnim( RPG_HOLSTER1 );
 
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	if( m_pSpot )
 	{
 		m_pSpot->Killed( NULL, NULL, GIB_NEVER );
@@ -429,7 +454,7 @@ void CRpg::PrimaryAttack()
 		m_pPlayer->m_iWeaponVolume = LOUD_GUN_VOLUME;
 		m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
 
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 		// player "shoot" animation
 		m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
 
@@ -446,7 +471,7 @@ void CRpg::PrimaryAttack()
 		// Ken signed up for this as a global change (sjb)
 
 		int flags;
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	flags = FEV_NOTHOST;
 #else
 	flags = 0;
@@ -472,7 +497,7 @@ void CRpg::SecondaryAttack()
 {
 	m_fSpotActive = !m_fSpotActive;
 
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	if( !m_fSpotActive && m_pSpot )
 	{
 		m_pSpot->Killed( NULL, NULL, GIB_NORMAL );
@@ -511,7 +536,7 @@ void CRpg::WeaponIdle( void )
 			else
 				iAnim = RPG_FIDGET;
 
-			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.0f;
+			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 6.1f;
 		}
 
 		SendWeaponAnim( iAnim );
@@ -524,7 +549,7 @@ void CRpg::WeaponIdle( void )
 
 void CRpg::UpdateSpot( void )
 {
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 	if( m_fSpotActive )
 	{
 		if (m_pPlayer->pev->viewmodel == 0)
@@ -532,7 +557,7 @@ void CRpg::UpdateSpot( void )
 
 		if( !m_pSpot )
 		{
-			m_pSpot = CLaserSpot::CreateSpot();
+			m_pSpot = CLaserSpot::CreateSpot(m_pPlayer->edict());
 		}
 
 		UTIL_MakeVectors( m_pPlayer->pev->v_angle );

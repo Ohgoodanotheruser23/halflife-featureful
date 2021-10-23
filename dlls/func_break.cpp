@@ -89,6 +89,11 @@ void CBreakable::KeyValue( KeyValueData* pkvd )
 		else
 			m_Explosion = expRandom;
 
+		if (strcmp(pkvd->szValue, "1") == 0)
+		{
+			m_Explosion = expDirected;
+		}
+
 		pkvd->fHandled = TRUE;
 	}
 	else if( FStrEq( pkvd->szKeyName, "material" ) )
@@ -167,12 +172,12 @@ void CBreakable::Spawn( void )
 {
 	Precache();
 
-	if( FBitSet( pev->spawnflags, SF_BREAK_TRIGGER_ONLY ) )
+	if( FBitSet( pev->spawnflags, SF_BREAK_TRIGGER_ONLY | SF_BREAK_NOT_SOLID ) )
 		pev->takedamage	= DAMAGE_NO;
 	else
 		pev->takedamage	= DAMAGE_YES;
   
-	pev->solid = SOLID_BSP;
+	pev->solid = FBitSet(pev->spawnflags, SF_BREAK_NOT_SOLID) ? SOLID_NOT : SOLID_BSP;
 	pev->movetype = MOVETYPE_PUSH;
 	m_angle = pev->angles.y;
 	pev->angles.y = 0;
@@ -694,7 +699,7 @@ void CBreakable::Die( void )
 	}
 
 	if( m_Explosion == expDirected )
-		vecVelocity = g_vecAttackDir * 200.0f;
+		vecVelocity = -g_vecAttackDir * 100.0f;
 	else
 	{
 		vecVelocity.x = 0;

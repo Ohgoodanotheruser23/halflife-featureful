@@ -20,10 +20,14 @@
 # SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 2.6.0)
+cmake_minimum_required(VERSION 2.8.12)
+
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.15.0")
+    cmake_policy(SET CMP0091 NEW)
+endif()
 
 # Install custom module path
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 include(VSForceXPToolchain) # Force XP toolchain for Visual Studio
 
@@ -47,8 +51,6 @@ set(SERVER_LIBRARY_NAME "hl" CACHE STRING "Library name for Linux/MacOS/Windows"
 #-----------------
 # MAIN BUILD CODE \
 ###################\
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT 64BIT)
 	if(MSVC)
@@ -93,6 +95,8 @@ endif()
 if(NOT MSVC)
 	#add_compile_options(-Wempty-body) # GCC/Clang flag
 	add_compile_options(-Wreturn-type) # GCC/Clang flag
+else()
+	add_definitions(-D_CRT_SILENCE_NONCONFORMING_TGMATH_H)
 endif()
 
 

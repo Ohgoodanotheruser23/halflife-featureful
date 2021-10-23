@@ -847,6 +847,8 @@ int CScientist::DefaultISoundMask( void )
 {
 	return bits_SOUND_WORLD |
 			bits_SOUND_COMBAT |
+			bits_SOUND_CARCASS |
+			bits_SOUND_MEAT |
 			bits_SOUND_DANGER |
 			bits_SOUND_PLAYER;
 }
@@ -961,6 +963,7 @@ Schedule_t *CScientist::GetSchedule( void )
 	{
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
+	case MONSTERSTATE_HUNT:
 		if( pEnemy )
 		{
 			if( HasConditions( bits_COND_SEE_ENEMY ) )
@@ -1071,6 +1074,7 @@ MONSTERSTATE CScientist::GetIdealState( void )
 	{
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_IDLE:
+	case MONSTERSTATE_HUNT:
 		if( HasConditions( bits_COND_NEW_ENEMY ) )
 		{
 			if( IsFollowingPlayer() )
@@ -1140,16 +1144,11 @@ BOOL CScientist::CanHeal( void )
 
 void CScientist::StartFollowingHealTarget(CBaseEntity *pTarget)
 {
-	if( m_pCine )
-		m_pCine->CancelScript();
-
-	if( m_hEnemy != 0 )
-		m_IdealMonsterState = MONSTERSTATE_ALERT;
+	StopScript();
 
 	m_hTargetEnt = pTarget;
 	ClearConditions( bits_COND_CLIENT_PUSH );
 	ClearSchedule();
-	//ChangeSchedule(slHeal);
 	ALERT(at_aiconsole, "Scientist started to follow injured %s\n", STRING(pTarget->pev->classname));
 }
 
