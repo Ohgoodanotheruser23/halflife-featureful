@@ -49,6 +49,7 @@ set(GAMEDIR "valve" CACHE STRING "Gamedir path")
 set(SERVER_INSTALL_DIR "dlls" CACHE STRING "Where put server dll")
 set(CLIENT_INSTALL_DIR "cl_dlls" CACHE STRING "Where put client dll")
 set(SERVER_LIBRARY_NAME "hl" CACHE STRING "Library name for Linux/MacOS/Windows")
+set(OPENSOURCE_VGUI_PATH "" CACHE STRING "Path to alternative vgui implementation")
 
 #-----------------
 # MAIN BUILD CODE \
