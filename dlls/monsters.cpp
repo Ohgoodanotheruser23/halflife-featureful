@@ -520,6 +520,7 @@ void CBaseMonster::MonsterThink( void )
 {
 	pev->nextthink = gpGlobals->time + 0.1f;// keep monster thinking.
 
+	UTIL_SetOrigin(pev, pev->origin);
 	RunAI();
 
 	float flInterval = StudioFrameAdvance( ); // animate
