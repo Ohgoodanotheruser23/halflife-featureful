@@ -831,6 +831,7 @@ int CTalkMonster::GetVoicePitch( void )
 
 void CTalkMonster::Touch( CBaseEntity *pOther )
 {
+	ALERT(at_console, "%s touched %s\n", STRING(pev->classname), STRING(pOther->pev->classname));
 	// Did the player touch me?
 	if( pOther->IsPlayer() )
 	{
