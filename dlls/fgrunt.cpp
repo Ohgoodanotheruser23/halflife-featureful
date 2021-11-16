@@ -203,6 +203,12 @@ public:
 	virtual int FollowerType() {return FOLLOWER_TYPE_GRUNT;}
 
 	void SetHead(int head);
+	float CoverRadius( void ) {
+		if (IsFollowingPlayer())
+			return CTalkMonster::CoverRadius() / 2.0f;
+		else
+			return CTalkMonster::CoverRadius();
+	}
 
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
