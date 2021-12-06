@@ -282,6 +282,11 @@ int CGraph::HandleLinkEnt( int iNode, entvars_t *pevLinkEnt, int afCapMask, NODE
 	{
 		return TRUE;
 	}
+	else if ( FClassnameIs( pevLinkEnt, "func_monsterclip" ) )
+	{
+		ALERT(at_aiconsole, "In HandleLinkEnt for %s\n", STRING(pevLinkEnt->classname));
+		return TRUE;
+	}
 	else
 	{
 		ALERT( at_aiconsole, "Unhandled Ent in Path %s\n", STRING( pevLinkEnt->classname ) );
@@ -1270,9 +1275,10 @@ int CGraph::LinkVisibleNodes( CLink *pLinkPool, FILE *file, int *piBadNode )
 			tr.pHit = NULL;// clear every time so we don't get stuck with last trace's hit ent
 			pTraceEnt = 0;
 
-			UTIL_TraceLine( m_pNodes[i].m_vecOrigin,
+			UTIL_TraceHull( m_pNodes[i].m_vecOrigin,
 							m_pNodes[j].m_vecOrigin,
 							ignore_monsters,
+							point_hull,
 							g_pBodyQueueHead,//!!!HACKHACK no real ent to supply here, using a global we don't care about
 							&tr );
 
@@ -1284,9 +1290,10 @@ int CGraph::LinkVisibleNodes( CLink *pLinkPool, FILE *file, int *piBadNode )
 				// trace hit a brush ent, trace backwards to make sure that this ent is the only thing in the way.
 				pTraceEnt = tr.pHit;// store the ent that the trace hit, for comparison
 
-				UTIL_TraceLine( m_pNodes[j].m_vecOrigin,
+				UTIL_TraceHull( m_pNodes[j].m_vecOrigin,
 								m_pNodes[i].m_vecOrigin,
 								ignore_monsters,
+								point_hull,
 								g_pBodyQueueHead,//!!!HACKHACK no real ent to supply here, using a global we don't care about
 								&tr );
 
@@ -1780,7 +1787,6 @@ void CTestHull::BuildNodeGraph( void )
 							dont_ignore_monsters,
 							g_pBodyQueueHead,//!!!HACKHACK no real ent to supply here, using a global we don't care about
 							&trEnt );
-
 			
 			// Did we hit something closer than the floor?
 			if( trEnt.flFraction < tr.flFraction )
@@ -1795,6 +1801,7 @@ void CTestHull::BuildNodeGraph( void )
 		}
 	}
 
+	g_pBodyQueueHead->v.flags |= FL_MONSTERCLIP;
 	cPoolLinks = WorldGraph.LinkVisibleNodes( pTempPool, file, &iBadNode );
 
 	if( !cPoolLinks )
