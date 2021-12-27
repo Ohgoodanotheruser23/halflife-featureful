@@ -2178,6 +2178,14 @@ int CHFGrunt :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 {
 	Forget( bits_MEMORY_INCOVER );
 
+	if (pevAttacker && !FBitSet(pevAttacker->flags, FL_CLIENT)) {
+		CBaseEntity* pAttacker = CBaseEntity::Instance(pevAttacker);
+		if (pAttacker && IRelationship(pAttacker) == R_AL) {
+			ALERT(at_aiconsole, "%s accidentally hit an ally %s. Halfing the damage\n", STRING(pevAttacker->classname), STRING(pev->classname));
+			flDamage *= 0.5f;
+		}
+	}
+
 	return CTalkMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
 }
 
