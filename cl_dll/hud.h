@@ -279,6 +279,12 @@ struct Subtitle_t
 #define CAPTION_PROFILES_MAX 32
 #define CAPTIONS_MAX 256
 
+struct WordBoundary
+{
+	unsigned int wordStart;
+	unsigned int wordEnd;
+};
+
 class CHudCaption : public CHudBase
 {
 public:
@@ -824,6 +830,7 @@ public:
 	int m_iFontHeight;
 	int DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, int b );
 	int DrawHudString( int x, int y, int iMaxX, const char *szString, int r, int g, int b, int length = -1 );
+	int DrawStringUsingDefaultFont(int xpos, int ypos, int iMaxX, const char *szString, int r, int g, int b, int length = -1 );
 	int DrawHudStringReverse( int xpos, int ypos, int iMinX, const char *szString, int r, int g, int b );
 	int DrawHudNumberString( int xpos, int ypos, int iMinX, int iNumber, int r, int g, int b );
 	int GetNumWidth( int iNumber, int iFlags );
@@ -959,6 +966,13 @@ public:
 	FogProperties fog;
 
 	bool m_bFlashlight;
+
+	static bool ShouldUseConsoleFont();
+	static int GetMessageConsoleWidth(const char* message, unsigned int length);
+	static int GetConsoleFontHeight();
+	static int GetLineHeight();
+	static unsigned int SplitIntoWordBoundaries(WordBoundary* boundaries, const char* message);
+	static int DrawStringUsingConsoleFont(int x, int y, const char* message, int r, int g, int b, int length);
 };
 
 extern CHud gHUD;

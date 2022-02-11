@@ -125,6 +125,7 @@ inline void GetConsoleStringSize( const char *string, int *width, int *height )
 }
 
 int DrawUtfString( int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b, int length = -1 );
+int DrawUtfStringAdditive( int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b, int length = -1 );
 
 inline int ConsoleStringLen( const char *string )
 {

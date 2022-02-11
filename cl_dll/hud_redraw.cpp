@@ -248,14 +248,8 @@ const unsigned char colors[8][3] =
 {240, 180,  24}
 };
 
-int CHud::DrawHudString(int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b , int length)
+int CHud::DrawStringUsingDefaultFont(int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b, int length)
 {
-	if( hud_textmode->value == 2 && length == -1 )
-	{
-		gEngfuncs.pfnDrawSetTextColor( r / 255.0, g / 255.0, b / 255.0 );
-		return gEngfuncs.pfnDrawConsoleString( xpos, ypos, szIt );
-	}
-
 	// xash3d: reset unicode state
 	TextMessageDrawChar( 0, 0, 0, 0, 0, 0 );
 
@@ -284,38 +278,67 @@ int CHud::DrawHudString(int xpos, int ypos, int iMaxX, const char *szIt, int r, 
 	return xpos;
 }
 
+int CHud::DrawHudString(int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b , int length)
+{
+	if( CHud::ShouldUseConsoleFont() )
+	{
+		return CHud::DrawStringUsingConsoleFont( xpos, ypos, szIt, r, g, b, length );
+	}
+	else
+	{
+		return DrawStringUsingDefaultFont( xpos, ypos, iMaxX, szIt, r, g, b, length );
+	}
+}
+
+int DrawUtfStringXash3D(int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b , int length)
+{
+	// xash3d: reset unicode state
+	gEngfuncs.pfnVGUI2DrawCharacterAdditive( 0, 0, 0, 0, 0, 0, 0 );
+
+	const char* start = szIt;
+
+	// draw the string until we hit the null character or a newline character
+	for( ; (length == -1 || szIt - start < length) && *szIt != 0 && *szIt != '\n'; szIt++ )
+	{
+		int w = gHUD.m_scrinfo.charWidths['M'];
+		if( xpos + w  > iMaxX )
+			return xpos;
+		if( ( *szIt == '^' ) && ( *( szIt + 1 ) >= '0') && ( *( szIt + 1 ) <= '7') )
+		{
+			szIt++;
+			r = colors[*szIt - '0'][0];
+			g = colors[*szIt - '0'][1];
+			b = colors[*szIt - '0'][2];
+			if( !*(++szIt) )
+				return xpos;
+		}
+		int c = (unsigned int)(unsigned char)*szIt;
+		xpos += gEngfuncs.pfnVGUI2DrawCharacterAdditive( xpos, ypos, c, r, g, b, 0 );
+	}
+	return xpos;
+}
+
 int DrawUtfString(int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b, int length)
 {
 	if (IsXashFWGS())
 	{
-		// xash3d: reset unicode state
-		gEngfuncs.pfnVGUI2DrawCharacterAdditive( 0, 0, 0, 0, 0, 0, 0 );
-
-		const char* start = szIt;
-
-		// draw the string until we hit the null character or a newline character
-		for( ; (length == -1 || szIt - start < length) && *szIt != 0 && *szIt != '\n'; szIt++ )
-		{
-			int w = gHUD.m_scrinfo.charWidths['M'];
-			if( xpos + w  > iMaxX )
-				return xpos;
-			if( ( *szIt == '^' ) && ( *( szIt + 1 ) >= '0') && ( *( szIt + 1 ) <= '7') )
-			{
-				szIt++;
-				r = colors[*szIt - '0'][0];
-				g = colors[*szIt - '0'][1];
-				b = colors[*szIt - '0'][2];
-				if( !*(++szIt) )
-					return xpos;
-			}
-			int c = (unsigned int)(unsigned char)*szIt;
-			xpos += gEngfuncs.pfnVGUI2DrawCharacterAdditive( xpos, ypos, c, r, g, b, 0 );
-		}
-		return xpos;
+		return DrawUtfStringXash3D(xpos, ypos, iMaxX, szIt, r, g, b, length);
 	}
 	else
 	{
 		return gHUD.DrawHudString(xpos, ypos, iMaxX, szIt, r, g, b, length);
+	}
+}
+
+int DrawUtfStringAdditive(int xpos, int ypos, int iMaxX, const char *szIt, int r, int g, int b, int length)
+{
+	if (IsXashFWGS())
+	{
+		return DrawUtfStringXash3D(xpos, ypos, iMaxX, szIt, r, g, b, length);
+	}
+	else
+	{
+		return gHUD.DrawStringUsingDefaultFont( xpos, ypos, iMaxX, szIt, r, g, b, length );
 	}
 }
 
@@ -344,7 +367,7 @@ int CHud::DrawHudStringReverse( int xpos, int ypos, int iMinX, const char *szStr
 		xpos -= gHUD.m_scrinfo.charWidths[(unsigned char)*szIt];
 	if( xpos < iMinX )
 		xpos = iMinX;
-	DrawHudString( xpos, ypos, gHUD.m_scrinfo.iWidth, szString, r, g, b );
+	DrawUtfStringAdditive( xpos, ypos, gHUD.m_scrinfo.iWidth, szString, r, g, b );
 	return xpos;
 }
 
@@ -474,4 +497,21 @@ int CHud::MinHUDAlpha()
 	}
 #endif
 	return result;
+}
+
+int CHud::DrawStringUsingConsoleFont(int xpos, int ypos, const char *message, int r, int g, int b, int length)
+{
+	char buf[512] = {0};
+	const char* str = buf;
+
+	if (length == -1) {
+		str = message;
+	} else {
+		length = Q_min(length, sizeof(buf) - 1);
+		strncpy(buf, message, length);
+		buf[length] = '\0';
+	}
+
+	gEngfuncs.pfnDrawSetTextColor(r / 255.0f, g / 255.0f, b / 255.0f);
+	return gEngfuncs.pfnDrawConsoleString(xpos, ypos, str);
 }

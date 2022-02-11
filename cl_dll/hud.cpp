@@ -1500,3 +1500,69 @@ int CHudMoveMode::MsgFunc_MoveMode(const char *pszName, int iSize, void *pbuf)
 	return 1;
 }
 #endif
+
+bool CHud::ShouldUseConsoleFont()
+{
+	return !IsXashFWGS();
+}
+
+int CHud::GetMessageConsoleWidth(const char* message, unsigned int length)
+{
+	char buf[512] = {0};
+	length = Q_min(length, sizeof(buf) - 1);
+	strncpy(buf, message, length);
+	buf[length] = '\0';
+	int width, height;
+	gEngfuncs.pfnDrawConsoleStringLen(buf, &width, &height);
+	return width;
+}
+
+int CHud::GetConsoleFontHeight()
+{
+	int width, height;
+	gEngfuncs.pfnDrawConsoleStringLen("YAW", &width, &height);
+	return height;
+}
+
+int CHud::GetLineHeight()
+{
+	if (CHud::ShouldUseConsoleFont())
+		return GetConsoleFontHeight();
+	else
+		return gHUD.m_scrinfo.iCharHeight + 1;
+}
+
+static bool IsSpaceCharacter(char c)
+{
+	return c == ' ' || c == '\n' || c == '\r';
+}
+
+unsigned int CHud::SplitIntoWordBoundaries(WordBoundary* boundaries, const char *message)
+{
+	unsigned int wordCount = 0;
+
+	const unsigned int len = strlen(message);
+
+	bool searchingForWordStart = true;
+	for (unsigned int i = 0; i<len; ++i)
+	{
+		if (searchingForWordStart && !IsSpaceCharacter(message[i]))
+		{
+			boundaries[wordCount].wordStart = i;
+			searchingForWordStart = false;
+		}
+
+		if (!searchingForWordStart && IsSpaceCharacter(message[i]))
+		{
+			boundaries[wordCount].wordEnd = i;
+			wordCount++;
+			searchingForWordStart = true;
+		}
+	}
+	if (!searchingForWordStart) {
+		boundaries[wordCount].wordEnd = len;
+		wordCount++;
+	}
+
+	return wordCount;
+}
