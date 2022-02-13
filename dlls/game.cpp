@@ -43,7 +43,7 @@ ModFeatures::ModFeatures()
 	suit_light = SUIT_LIGHT_FLASHLIGHT;
 	suit_light_allow_both = false;
 	suit_sentences = true;
-	nosuit_allow_healthcharger = false;
+	nosuit_allow_healthcharger = true;
 	items_instant_drop = true;
 	tripmines_solid = FEATURE_OPFOR_SPECIFIC ? false : true;
 	satchels_pickable = true;
@@ -411,6 +411,9 @@ void ReadEnabledMonsters()
 	byte *pMemFile = LoadFileForMeWithBackup("features/" FEATUREFUL_MONSTERS_CONFIG, FEATUREFUL_MONSTERS_CONFIG, &fileSize, &fileName);
 	if (!pMemFile)
 	{
+		g_modFeatures.EnableMonster("keller");
+		g_modFeatures.EnableMonster("rosenberg");
+		g_modFeatures.EnableMonster("otis");
 		return;
 	}
 
