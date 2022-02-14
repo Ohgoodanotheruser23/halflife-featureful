@@ -1651,7 +1651,9 @@ public:
 	const char* ScreamSentence() { return "RO_SCREAM"; }
 	const char* FearSentence() { return "RO_FEAR"; }
 	const char* PlayerFearSentence() { return "RO_PLFEAR"; }
+	/*
 	void PlayPainSound();
+	*/
 
 #if FEATURE_ROSENBERG_DECAY
 	BOOL CanHeal() { return false; }
@@ -1681,6 +1683,7 @@ void CRosenberg::Precache()
 	PrecacheMyModel("models/scientist.mdl");
 	CalcTotalHeadCount();
 #endif
+	/*
 	PRECACHE_SOUND( "rosenberg/ro_pain0.wav" );
 	PRECACHE_SOUND( "rosenberg/ro_pain1.wav" );
 	PRECACHE_SOUND( "rosenberg/ro_pain2.wav" );
@@ -1690,6 +1693,7 @@ void CRosenberg::Precache()
 	PRECACHE_SOUND( "rosenberg/ro_pain6.wav" );
 	PRECACHE_SOUND( "rosenberg/ro_pain7.wav" );
 	PRECACHE_SOUND( "rosenberg/ro_pain8.wav" );
+	*/
 
 	PRECACHE_SOUND( "items/medshot4.wav" );
 
@@ -1732,6 +1736,7 @@ void CRosenberg::TalkInit()
 #endif
 }
 
+/*
 void CRosenberg::PlayPainSound()
 {
 	const char* painSound = NULL;
@@ -1767,6 +1772,7 @@ void CRosenberg::PlayPainSound()
 	}
 	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, painSound, 1, ATTN_NORM, 0, GetVoicePitch() );
 }
+*/
 
 #endif
 
@@ -1880,8 +1886,10 @@ public:
 	const char* ScreamSentence() { return "DK_SCREAM"; }
 	const char* FearSentence() { return "DK_FEAR"; }
 	const char* PlayerFearSentence() { return "DK_PLFEAR"; }
+	/*
 	void PainSound();
 	void DeathSound();
+	*/
 
 	BOOL CanHeal() { return false; }
 	bool ReadyToHeal() {return false; }
@@ -1924,8 +1932,11 @@ void CKeller::Spawn()
 void CKeller::Precache()
 {
 	PrecacheMyModel("models/wheelchair_sci.mdl");
+
+	/*
 	PRECACHE_SOUND_ARRAY( pPainSounds );
 	PRECACHE_SOUND_ARRAY( pDeathSounds );
+	*/
 
 	PRECACHE_SOUND( "wheelchair/wheelchair_jog.wav" );
 	PRECACHE_SOUND( "wheelchair/wheelchair_run.wav" );
@@ -1966,6 +1977,7 @@ void CKeller::TalkInit()
 	m_szGrp[TLK_MAD] = NULL;
 }
 
+/*
 void CKeller::PainSound()
 {
 	if( gpGlobals->time < m_painTime )
@@ -1980,4 +1992,5 @@ void CKeller::DeathSound()
 {
 	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pDeathSounds ), 1, ATTN_NORM, 0, GetVoicePitch() );
 }
+*/
 #endif

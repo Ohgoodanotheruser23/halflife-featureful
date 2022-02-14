@@ -747,7 +747,7 @@ void COtis::Spawn()
 void COtis::Precache()
 {
 	PrecacheImpl("models/otis.mdl");
-	PRECACHE_SOUND("weapons/desert_eagle_fire.wav");
+	PRECACHE_SOUND("barney/ba_attack1.wav");
 	TalkInit();
 	CTalkMonster::Precache();
 	RegisterTalkMonster();
@@ -810,7 +810,7 @@ void COtis::HandleAnimEvent( MonsterEvent_t *pEvent )
 	switch( pEvent->event )
 	{
 		case BARNEY_AE_SHOOT:
-			BarneyFirePistol("weapons/desert_eagle_fire.wav", BULLET_MONSTER_357);
+			BarneyFirePistol("barney/ba_attack1.wav", BULLET_MONSTER_357);
 			break;
 			
 		case BARNEY_AE_DRAW:
