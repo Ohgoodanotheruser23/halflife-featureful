@@ -798,7 +798,7 @@ void COp4MortarController::Spawn()
 
 void COp4MortarController::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
-	if(gpGlobals->time - m_lastpush > 0.5)
+	if(gpGlobals->time - m_lastpush > 0.1)
 		m_direction = -m_direction;
 
 	CBaseEntity* ent = UTIL_FindEntityByTargetname(NULL, STRING(pev->target));
