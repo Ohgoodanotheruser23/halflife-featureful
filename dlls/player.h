@@ -473,6 +473,8 @@ public:
 
 	void SetLoopedMp3(string_t loopedMp3);
 	string_t m_loopedMp3;
+
+	int m_integerVariable;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025

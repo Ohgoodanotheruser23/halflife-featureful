@@ -5451,6 +5451,34 @@
 	noise(sound) : "Sound on trigger" : : "This will be played on player's item sound channel"
 ]
 
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_int_var_operation : "Modify custom player's integer variable"
+[
+	operationtype(choices) : "Operation type" : 1 = 
+	[
+		0 : "Set"
+		1 : "Add"
+		2 : "Substract"
+		3 : "Multiply"
+		4 : "Divide"
+	]
+	operand(string) : "Operand" : 1
+]
+
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_int_var_test : "Compare custom player's integer variable to other integer"
+[
+	testtype(choices) : "Test type" : 0 = 
+	[
+		0 : "Equal"
+		1 : "Greater or equal"
+		2 : "Greater"
+		3 : "Less or equal"
+		4 : "Less"
+	]
+	comparand(string) : "Comparand" : 1
+	target(target_destination) : "Fire on success"
+	target_on_fail(target_destination) : "Fire on fail"
+]
+
 @PointClass base(Targetname) color(255 0 255) = scripted_schedule : "Scripted Schedule"
 [
 	entity(string) : "Affected Monster"

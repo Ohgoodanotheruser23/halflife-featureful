@@ -128,6 +128,8 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 
 	DEFINE_FIELD(CBasePlayer, m_loopedMp3, FIELD_STRING),
 
+	DEFINE_FIELD(CBasePlayer, m_integerVariable, FIELD_INTEGER),
+
 	//DEFINE_FIELD( CBasePlayer, m_fDeadTime, FIELD_FLOAT ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_fGameHUDInitialized, FIELD_INTEGER ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_flStopExtraSoundTime, FIELD_TIME ),
@@ -5861,3 +5863,145 @@ void CInfoIntermission::Think( void )
 }
 
 LINK_ENTITY_TO_CLASS( info_intermission, CInfoIntermission )
+
+enum
+{
+	PLAYER_VAR_OPERATION_SET = 0,
+	PLAYER_VAR_OPERATION_ADD = 1,
+	PLAYER_VAR_OPERATION_SUBSTRUCT = 2,
+	PLAYER_VAR_OPERATION_MULTIPLY = 3,
+	PLAYER_VAR_OPERATION_DIVIDE = 4,
+};
+
+class CPlayerIntVarOperation : public CPointEntity
+{
+public:
+	void KeyValue( KeyValueData *pkvd );
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+
+LINK_ENTITY_TO_CLASS( player_int_var_operation, CPlayerIntVarOperation )
+
+void CPlayerIntVarOperation::KeyValue(KeyValueData *pkvd)
+{
+	if( FStrEq( pkvd->szKeyName, "operationtype" ) )
+	{
+		pev->impulse = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "operand" ) )
+	{
+		pev->button = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CPointEntity::KeyValue( pkvd );
+}
+
+void CPlayerIntVarOperation::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
+	if (!pPlayer)
+		return;
+
+	const int operand = pev->button;
+
+	switch (pev->impulse) {
+	case PLAYER_VAR_OPERATION_SET:
+		pPlayer->m_integerVariable = operand;
+		break;
+	case PLAYER_VAR_OPERATION_ADD:
+		pPlayer->m_integerVariable += operand;
+		break;
+	case PLAYER_VAR_OPERATION_SUBSTRUCT:
+		pPlayer->m_integerVariable -= operand;
+		break;
+	case PLAYER_VAR_OPERATION_MULTIPLY:
+		pPlayer->m_integerVariable *= operand;
+		break;
+	case PLAYER_VAR_OPERATION_DIVIDE:
+		pPlayer->m_integerVariable /= operand;
+		break;
+	default:
+		break;
+	}
+}
+
+enum
+{
+	PLAYER_VAR_TEST_EQUAL = 0,
+	PLAYER_VAR_TEST_GTE,
+	PLAYER_VAR_TEST_GREATER,
+	PLAYER_VAR_TEST_LTE,
+	PLAYER_VAR_TEST_LESS,
+};
+
+class CPlayerIntVarTest : public CPointEntity
+{
+public:
+	void KeyValue( KeyValueData *pkvd );
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+
+LINK_ENTITY_TO_CLASS( player_int_var_test, CPlayerIntVarTest )
+
+void CPlayerIntVarTest::KeyValue(KeyValueData *pkvd)
+{
+	if( FStrEq( pkvd->szKeyName, "testtype" ) )
+	{
+		pev->impulse = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "comparand" ) )
+	{
+		pev->button = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "target_on_fail" ) )
+	{
+		pev->message = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CPointEntity::KeyValue( pkvd );
+}
+
+void CPlayerIntVarTest::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
+	if (!pPlayer)
+		return;
+
+	const int testValue = pPlayer->m_integerVariable;
+	const int comparand = pev->button;
+
+	bool success = false;
+
+	switch (pev->impulse) {
+	case PLAYER_VAR_TEST_EQUAL:
+		success = testValue == comparand;
+		break;
+	case PLAYER_VAR_TEST_GREATER:
+		success = testValue > comparand;
+		break;
+	case PLAYER_VAR_TEST_GTE:
+		success = testValue >= comparand;
+		break;
+	case PLAYER_VAR_TEST_LESS:
+		success = testValue < comparand;
+		break;
+	case PLAYER_VAR_TEST_LTE:
+		success = testValue <= comparand;
+		break;
+	default:
+		ALERT(at_error, "Unknown test type in %s: %d\n", STRING(pev->classname), pev->impulse);
+		return;
+	}
+
+	if (success && pev->target) {
+		FireTargets(STRING(pev->target), pActivator, this, USE_TOGGLE, 0.0f);
+	}
+	if (!success && pev->message) {
+		FireTargets(STRING(pev->message), pActivator, this, USE_TOGGLE, 0.0f);
+	}
+}
