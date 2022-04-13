@@ -4547,3 +4547,20 @@ void CMonsterTarget::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 			pev->health = 1;
 	}
 }
+
+class CMonsterSpeaker : public CBaseMonster
+{
+public:
+	void Spawn();
+	int Classify() {
+		return CLASS_NONE;
+	}
+};
+
+LINK_ENTITY_TO_CLASS( monster_speaker, CMonsterSpeaker );
+
+void CMonsterSpeaker::Spawn()
+{
+	pev->solid = SOLID_NOT;
+	pev->health = 1;
+}

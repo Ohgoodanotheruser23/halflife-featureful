@@ -4963,6 +4963,8 @@
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/w_squeak.mdl") = monster_snark : "Armed Snark" []
 
+@PointClass color(0 200 200) base(Targetname) size(-16 -16 -16, 16 16 16) = monster_speaker : "Fake monster to play scripted_sentence on" []
+
 @BaseClass color(0 200 200) base(Targetname) size(-16 -16 -16, 16 16 16) = MonsterTarget
 [
 	frags(choices) : "When active, count as:" : 11 =
