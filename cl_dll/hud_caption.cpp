@@ -82,6 +82,7 @@ int CHudCaption::MsgFunc_Caption(const char *pszName, int iSize, void *pbuf)
 		holdTime = 2 + strlen(caption->message)/20;
 	}
 	sub.timeLeft = holdTime;
+	sub.timeBeforeStart = caption->delay;
 	gEngfuncs.Con_DPrintf("New caption: Hold time: %f. Current time: %f\n", sub.timeLeft, gHUD.m_flTime);
 
 	CalculateLineOffsets(sub);
@@ -183,7 +184,16 @@ int CHudCaption::Draw(float flTime)
 	int maxLineWidth = 0;
 	for (i=0; i<sub_count; ++i)
 	{
-		subtitles[i].timeLeft -= gHUD.m_flTimeDelta;
+		if (subtitles[i].timeBeforeStart <= 0.0f) {
+			subtitles[i].timeLeft -= gHUD.m_flTimeDelta;
+		} else {
+			subtitles[i].timeBeforeStart -= gHUD.m_flTimeDelta;
+			if (subtitles[i].timeBeforeStart <= 0.0f) {
+				subtitles[i].timeLeft += subtitles[i].timeBeforeStart;
+			} else {
+				continue;
+			}
+		}
 
 		overallLineCount += subtitles[i].lineCount;
 		for (j=0; j<subtitles[i].lineCount; ++j)
@@ -200,6 +210,10 @@ int CHudCaption::Draw(float flTime)
 				maxLineWidth = lineWidth;
 		}
 	}
+
+	if (overallLineCount == 0)
+		return 0;
+
 	ypos -= overallLineCount * lineHeight + (sub_count-1) * distanceBetweenSubs;
 
 	if (cl_subtitles->value == 0)
@@ -214,6 +228,10 @@ int CHudCaption::Draw(float flTime)
 		const Subtitle_t& sub = subtitles[i];
 		for (j=0; j<sub.lineCount; ++j)
 		{
+			if (sub.timeBeforeStart > 0.0f) {
+				continue;
+			}
+
 			if (j == 0 && m_hVoiceIcon != 0 && sub.radio)
 			{
 				SPR_Set( m_hVoiceIcon, sub.r, sub.g, sub.b );
@@ -337,6 +355,21 @@ bool CHudCaption::ParseCaptionsFile()
 					ConsumeNonSpaceCharacters(pfile, i, length);
 
 					tokenLength = i-currentTokenStart;
+					if (tokenLength > 0 && pfile[currentTokenStart] >= '1' && pfile[currentTokenStart] <= '9')
+					{
+						char numbuf[8];
+						strncpy(numbuf, pfile + currentTokenStart, Q_max(tokenLength, sizeof(numbuf)-1));
+						numbuf[sizeof(numbuf)-1] = '\0';
+
+						caption.delay = atof(numbuf);
+
+						SkipSpaces(pfile, i, length);
+						currentTokenStart = i;
+						ConsumeNonSpaceCharacters(pfile, i, length);
+
+						tokenLength = i-currentTokenStart;
+					}
+
 					if (tokenLength != 2 || !IsLatinLowerCase(pfile[currentTokenStart]) || !IsLatinLowerCase(pfile[currentTokenStart+1]))
 					{
 						gEngfuncs.Con_Printf("invalid caption profile for %s! Must be 2 lowercase latin characters\n", caption.name);
