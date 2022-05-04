@@ -623,6 +623,13 @@ void ClientCommand( edict_t *pEntity )
 		if( pPlayer->IsObserver() )
 			pPlayer->Observer_FindNextPlayer( atoi( CMD_ARGV( 1 ) ) ? true : false );
 	}
+	else if ( FStrEq( pcmd, "int_var" ) )
+	{
+		if (g_enable_cheats->value != 0)
+		{
+			GetClassPtr( (CBasePlayer *)pev )->m_integerVariable = atoi(CMD_ARGV( 1 ));
+		}
+	}
 	else if( g_pGameRules->ClientCommand( GetClassPtr( (CBasePlayer *)pev ), pcmd ) )
 	{
 		// MenuSelect returns true only if the command is properly handled,  so don't print a warning
