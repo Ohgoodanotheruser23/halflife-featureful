@@ -82,7 +82,7 @@ ClientFeatures::ClientFeatures()
 	hud_min_alpha.minValue = 100;
 	hud_min_alpha.maxValue = 200;
 
-	hud_autoscale_by_default = false;
+	hud_autoscale_by_default = true;
 	hud_draw_nosuit = false;
 	hud_color_nosuit = RGB_HUD_NOSUIT;
 
@@ -97,7 +97,7 @@ ClientFeatures::ClientFeatures()
 	nvgstyle.configurable = false;
 	nvgstyle.defaultValue = 1;
 
-	nvg_cs.radius.configurable = false;
+	nvg_cs.radius.configurable = true;
 	nvg_cs.radius.defaultValue = CS_NVG_DLIGHT_RADIUS;
 	nvg_cs.radius.minValue = NVG_DLIGHT_MIN_RADIUS;
 	nvg_cs.radius.maxValue = NVG_DLIGHT_MAX_RADIUS;
@@ -105,7 +105,7 @@ ClientFeatures::ClientFeatures()
 	nvg_cs.layer_alpha = 110;
 	nvg_cs.light_color = 0x32FF32;
 
-	nvg_opfor.radius.configurable = false;
+	nvg_opfor.radius.configurable = true;
 	nvg_opfor.radius.defaultValue = OF_NVG_DLIGHT_RADIUS;
 	nvg_opfor.radius.minValue = NVG_DLIGHT_MIN_RADIUS;
 	nvg_opfor.radius.maxValue = NVG_DLIGHT_MAX_RADIUS;
@@ -115,6 +115,11 @@ ClientFeatures::ClientFeatures()
 
 	memset(nvg_empty_sprite, 0, sizeof (nvg_empty_sprite));
 	memset(nvg_full_sprite, 0, sizeof (nvg_full_sprite));
+
+	// Intense Force defaults
+	nvgstyle.configurable = true;
+	weapon_sparks.enabled_by_default = true;
+	weapon_wallpuff.enabled_by_default = true;
 }
 
 static cvar_t* CVAR_CREATE_INTVALUE(const char* name, int value, int flags)

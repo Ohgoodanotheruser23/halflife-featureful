@@ -31,7 +31,7 @@
 #include	"game.h"
 #include	"gamerules.h"
 
-#define FEATURE_MEDIC_DROP_HEALTHKIT 0
+#define FEATURE_MEDIC_DROP_HEALTHKIT 1
 
 #if FEATURE_OPFOR_GRUNT
 //=========================================================

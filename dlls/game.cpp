@@ -95,6 +95,22 @@ ModFeatures::ModFeatures()
 	opfor_decals = FEATURE_OPFOR_SPECIFIC ? true : false;
 	opfor_deadhaz = FEATURE_OPFOR_SPECIFIC ? true : false;
 	tentacle_opfor_height = FEATURE_OPFOR_SPECIFIC ? true : false;
+
+	SetModDefaultFeatures();
+}
+
+void ModFeatures::SetModDefaultFeatures()
+{
+	suit_light = SUIT_LIGHT_NVG;
+	strcpy(nvg_sound_on, "items/flashlight1.wav");
+	strcpy(nvg_sound_off, "items/flashlight2.wav");
+
+	racex_dislike_alien_military = false;
+	racex_dislike_gargs = false;
+
+	gargantua_larger_size = true;
+
+	gonome_lock_player = true;
 }
 
 template <typename T>
@@ -395,6 +411,16 @@ void ReadEnabledWeapons()
 	byte *pMemFile = LoadFileForMeWithBackup("features/" FEATUREFUL_WEAPONS_CONFIG, FEATUREFUL_WEAPONS_CONFIG, &fileSize, &fileName);
 	if (!pMemFile)
 	{
+		g_modFeatures.EnableWeapon("pipewrench");
+		g_modFeatures.EnableWeapon("knife");
+		g_modFeatures.EnableWeapon("grapple");
+		g_modFeatures.EnableWeapon("eagle");
+		g_modFeatures.EnableWeapon("m249");
+		g_modFeatures.EnableWeapon("displacer");
+		g_modFeatures.EnableWeapon("sniperrifle");
+		g_modFeatures.EnableWeapon("sporelauncher");
+		g_modFeatures.EnableWeapon("shockrifle");
+		g_modFeatures.EnableWeapon("penguin");
 		return;
 	}
 
@@ -434,6 +460,27 @@ void ReadEnabledMonsters()
 	byte *pMemFile = LoadFileForMeWithBackup("features/" FEATUREFUL_MONSTERS_CONFIG, FEATUREFUL_MONSTERS_CONFIG, &fileSize, &fileName);
 	if (!pMemFile)
 	{
+		g_modFeatures.EnableMonster("cleansuit_scientist");
+		g_modFeatures.EnableMonster("otis");
+		g_modFeatures.EnableMonster("babygarg");
+		g_modFeatures.EnableMonster("gonome");
+		g_modFeatures.EnableMonster("zombie_barney");
+		g_modFeatures.EnableMonster("zombie_soldier");
+		g_modFeatures.EnableMonster("human_grunt_ally");
+		g_modFeatures.EnableMonster("human_grunt_medic");
+		g_modFeatures.EnableMonster("human_grunt_torch");
+		g_modFeatures.EnableMonster("male_assassin");
+		g_modFeatures.EnableMonster("blkop_apache");
+		g_modFeatures.EnableMonster("blkop_osprey");
+		g_modFeatures.EnableMonster("pitdrone");
+		g_modFeatures.EnableMonster("shocktrooper");
+		g_modFeatures.EnableMonster("shockroach");
+		g_modFeatures.EnableMonster("voltigore");
+		g_modFeatures.EnableMonster("babyvoltigore");
+		g_modFeatures.EnableMonster("pitworm");
+		g_modFeatures.EnableMonster("geneworm");
+		g_modFeatures.EnableMonster("drillsergeant");
+		g_modFeatures.EnableMonster("recruit");
 		return;
 	}
 

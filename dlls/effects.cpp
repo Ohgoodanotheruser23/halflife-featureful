@@ -34,8 +34,8 @@
 #include "particledef.h"
 #include "soundent.h"
 
-#define FEATURE_ENV_WARPBALL 1
-#define FEATURE_ENV_XENMAKER 1
+#define FEATURE_ENV_WARPBALL 0
+#define FEATURE_ENV_XENMAKER 0
 
 #define ALIEN_TELEPORT_SOUND "debris/alien_teleport.wav"
 

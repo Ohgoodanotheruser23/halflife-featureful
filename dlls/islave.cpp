@@ -39,9 +39,9 @@
 // whether vortigaunts get health and energy when attack enemies
 #define FEATURE_ISLAVE_ENERGY 1
 // whether vortigaunt can have glowing hands
-#define FEATURE_ISLAVE_HANDGLOW 1
+#define FEATURE_ISLAVE_HANDGLOW 0
 // whether vortigaunt marked as squadleader has a different beam color
-#define FEATURE_ISLAVE_LEADER_COLOR 1
+#define FEATURE_ISLAVE_LEADER_COLOR 0
 
 // wheter vortigaunt can charge ally player's suit
 #define FEATURE_ISLAVE_CHARGE_TOKEN (0 && FEATURE_ISLAVE_ENERGY)

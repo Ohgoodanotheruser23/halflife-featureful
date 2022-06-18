@@ -9,14 +9,14 @@
 
 // Enable opfor specific changes, like more weapon slots, green hud, etc.
 // Follow the symbol to see what it actually changes
-#define FEATURE_OPFOR_SPECIFIC 0
+#define FEATURE_OPFOR_SPECIFIC 1
 
 #define FEATURE_OPFOR_WEAPON_SLOTS (0 || FEATURE_OPFOR_SPECIFIC)
 
 // Fast way to enable/disable entities that require extra content to be added in mod
 #define FEATURE_OPFOR_WEAPONS 1
 #define FEATURE_OPFOR_MONSTERS 1
-#define FEATURE_SVENCOOP_MONSTERS 1
+#define FEATURE_SVENCOOP_MONSTERS 0
 
 // New monsters
 #define FEATURE_ZOMBIE_BARNEY (0 || FEATURE_OPFOR_MONSTERS)
@@ -92,7 +92,7 @@
 #define FEATURE_ROPE (1 || FEATURE_OPFOR_SPECIFIC)
 
 // Experimental Cvars
-#define FEATURE_EXPERIMENTAL_CVARS 1
+#define FEATURE_EXPERIMENTAL_CVARS 0
 
 #define FEATURE_USE_THROUGH_WALLS_CVAR (0 || FEATURE_EXPERIMENTAL_CVARS)
 #define FEATURE_NPC_NEAREST_CVAR (0 || FEATURE_EXPERIMENTAL_CVARS)

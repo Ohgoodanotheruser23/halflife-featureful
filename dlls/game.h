@@ -113,6 +113,8 @@ private:
 	bool weapons[64];
 	char monsters[64][64];
 	unsigned int monstersCount;
+
+	void SetModDefaultFeatures();
 };
 
 extern ModFeatures g_modFeatures;
