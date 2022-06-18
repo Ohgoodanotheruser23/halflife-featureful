@@ -1575,8 +1575,8 @@ void FollowerResource::DrawFollowers( float flTime )
 
 			int width = (rect.right - rect.left) + 6;
 			if (!xpos)
-				xpos = ScreenWidth - width * followerCount;
-			int ypos = ScreenHeight - (32 + gHR.iHistoryGap * 2);
+				xpos = CHud::Renderer().PerceviedScreenWidth() - width * followerCount;
+			int ypos = CHud::Renderer().PerceviedScreenHeight() - (32 + gHR.iHistoryGap * 2);
 
 			if (followers[i].health <= 0 && !followers[i].removeTime)
 				followers[i].removeTime = flTime + REMOVE_FOLLOWER_TIME;
@@ -1601,14 +1601,14 @@ void FollowerResource::DrawFollowers( float flTime )
 				ScaleColors(r,g,b,a);
 			}
 
-			SPR_Set( hsprite1, r, g, b );
-			SPR_DrawAdditive( 0, xpos, ypos, &rect );
+			CHud::Renderer().SPR_Set( hsprite1, r, g, b );
+			CHud::Renderer().SPR_DrawAdditive( 0, xpos, ypos, &rect );
 
 			rect2.top = top + (1.0 - healthFraction) * height;
 			if( rect2.bottom > rect2.top )
 			{
-				SPR_Set( hsprite2, r, g, b );
-				SPR_DrawAdditive( 0, xpos, ypos + (rect2.top - top), &rect2 );
+				CHud::Renderer().SPR_Set( hsprite2, r, g, b );
+				CHud::Renderer().SPR_DrawAdditive( 0, xpos, ypos + (rect2.top - top), &rect2 );
 			}
 
 			xpos += width;
