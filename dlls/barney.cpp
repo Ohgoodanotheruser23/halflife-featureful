@@ -787,6 +787,11 @@ void COtis::KeyValue( KeyValueData *pkvd )
 		m_iHead = atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq( pkvd->szKeyName, "suspicious" ) )
+	{
+		// skip to be compatible with Opposing Force
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBarney::KeyValue( pkvd );
 }
