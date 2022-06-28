@@ -3815,6 +3815,7 @@
 	[
 		4 : "Not solid"	: 0
 		8 : "Head controller" : 0
+		32768 : "Don't drop to floor" : 0
 	]
 	model(studio) : "model"
 	body(integer) : "Body" : 0

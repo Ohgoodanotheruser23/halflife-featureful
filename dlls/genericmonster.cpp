@@ -25,6 +25,8 @@
 #define	SF_GENERICMONSTER_NOTSOLID					4 
 #define SF_HEAD_CONTROLLER					8
 
+#define SF_GENERICMONSTER_DONT_DROP SF_MONSTER_SPECIAL_FLAG
+
 //=========================================================
 // Monster's Anim Events Go Here
 //=========================================================
@@ -146,7 +148,10 @@ void CGenericMonster::Spawn()
 		SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid = SOLID_SLIDEBOX;
-	pev->movetype = MOVETYPE_STEP;
+	if (FBitSet(pev->spawnflags, SF_GENERICMONSTER_DONT_DROP))
+		pev->movetype = MOVETYPE_FLY;
+	else
+		pev->movetype = MOVETYPE_STEP;
 	SetMyBloodColor( BLOOD_COLOR_RED );
 	SetMyHealth( 8 );
 	SetMyFieldOfView(0.5f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
@@ -206,7 +211,7 @@ void CGenericMonster::IdleHeadTurn( Vector &vecFriend )
 void CGenericMonster::MonsterThink()
 {
 	if( m_afCapability & bits_CAP_TURN_HEAD )
-		{
+	{
 		if( m_hTalkTarget != 0 )
 		{
 			if( gpGlobals->time > m_talkTime )
@@ -218,6 +223,10 @@ void CGenericMonster::MonsterThink()
 			{
 				IdleHeadTurn( m_hTalkTarget->pev->origin );
 			}
+		}
+		else
+		{
+			m_flIdealYaw = 0;
 		}
 
 		if( m_flCurrentYaw != m_flIdealYaw )
