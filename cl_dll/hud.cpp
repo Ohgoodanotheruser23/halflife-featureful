@@ -682,6 +682,7 @@ void CHud::Init( void )
 	m_Menu.Init();
 
 	m_Caption.Init();
+	m_Achievements.Init();
 
 	MsgFunc_ResetHUD( 0, 0, NULL );
 }
@@ -1151,6 +1152,7 @@ void CHud::VidInit( void )
 	m_Nightvision.VidInit();
 
 	m_Caption.VidInit();
+	m_Achievements.VidInit();
 
 	memset(&fog, 0, sizeof(fog));
 }
@@ -1530,6 +1532,25 @@ int CHud::GetLineHeight()
 		return GetConsoleFontHeight();
 	else
 		return gHUD.m_scrinfo.iCharHeight + 1;
+}
+
+int CHud::GetLineWidth(const char *str)
+{
+	int width = 0;
+	if (CHud::ShouldUseConsoleFont())
+	{
+		int dummy;
+		gEngfuncs.pfnDrawConsoleStringLen(str, &width, &dummy);
+	}
+	else
+	{
+		while (*str != '\0')
+		{
+			width += gHUD.m_scrinfo.charWidths[(unsigned char)*str];
+			str++;
+		}
+	}
+	return width;
 }
 
 static bool IsSpaceCharacter(char c)

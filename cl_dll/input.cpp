@@ -660,6 +660,7 @@ void IN_ScoreDown( void )
 #else
 	gHUD.m_Scoreboard.UserCmd_ShowScores();
 #endif
+	gHUD.m_Achievements.m_iTabHeld = TRUE;
 }
 
 void IN_ScoreUp( void )
@@ -673,6 +674,7 @@ void IN_ScoreUp( void )
 #else
 	gHUD.m_Scoreboard.UserCmd_HideScores();
 #endif
+	gHUD.m_Achievements.m_iTabHeld = FALSE;
 }
 
 void IN_MLookUp( void )

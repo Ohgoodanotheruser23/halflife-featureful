@@ -143,6 +143,65 @@ int __MsgFunc_UseSound( const char *pszName, int iSize, void *pbuf )
 }
 
 /*
+Achievements related
+*/
+
+int g_achievementBits = 0;
+
+#define ACHIEVEMENTS_FILE "achievements.dat"
+
+static FILE* GetAchievementsFile(const char* mode)
+{
+	const char* gameDir = gEngfuncs.pfnGetGameDirectory();
+	if (gameDir && gameDir[0])
+	{
+		char fileNameBuf[1024];
+		_snprintf(fileNameBuf, sizeof(fileNameBuf), "%s/%s", gameDir, ACHIEVEMENTS_FILE);
+		fileNameBuf[sizeof(fileNameBuf)-1] = '\0';
+
+		FILE* file = fopen(fileNameBuf, mode);
+		if (file) {
+			gEngfuncs.Con_DPrintf("Opened the file %s in mode %s\n", fileNameBuf, mode);
+		} else {
+			gEngfuncs.Con_DPrintf("Couldn't open %s in mode %s\n", fileNameBuf, mode);
+		}
+		return file;
+	}
+	else
+	{
+		gEngfuncs.Con_DPrintf("Couldn't get Game Directory!\n");
+	}
+	return NULL;
+}
+
+static void ReadAchievementsBits()
+{
+	FILE* file = GetAchievementsFile("r");
+	if (file) {
+		int achievementBits = 0;
+		if (fread(&achievementBits, sizeof(achievementBits), 1, file) == 1)
+		{
+			g_achievementBits = achievementBits;
+			gEngfuncs.Con_DPrintf("Read achievement bits: %d\n", g_achievementBits);
+		}
+		else
+		{
+			gEngfuncs.Con_DPrintf("Couldn't read achievement bits!\n");
+		}
+		fclose(file);
+	}
+}
+
+static void WriteAchievementsBits()
+{
+	FILE* file = GetAchievementsFile("w");
+	if (file) {
+		fwrite(&g_achievementBits, sizeof(g_achievementBits), 1, file);
+		fclose(file);
+	}
+}
+
+/*
 ========================== 
     Initialize
 
@@ -408,6 +467,8 @@ the hud variables.
 
 void DLLEXPORT HUD_Init( void )
 {
+	ReadAchievementsBits();
+
 	InitInput();
 	gHUD.Init();
 #if USE_VGUI
@@ -548,6 +609,7 @@ void DLLEXPORT HUD_Shutdown( void )
 #ifdef CLDLL_FOG
 	UnloadOpenGL();
 #endif
+	WriteAchievementsBits();
 }
 
 bool IsXashFWGS()

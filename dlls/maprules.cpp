@@ -1204,3 +1204,26 @@ void CGameAutosave::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 }
 
 LINK_ENTITY_TO_CLASS( game_autosave, CGameAutosave )
+
+class CGameAchievement : public CPointEntity
+{
+public:
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+
+LINK_ENTITY_TO_CLASS( game_achievement, CGameAchievement );
+
+extern int gmsgAchievement;
+
+void CGameAchievement::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
+
+	if ( gmsgAchievement && pPlayer && pPlayer->IsNetClient() )
+	{
+		MESSAGE_BEGIN( MSG_ONE, gmsgAchievement, NULL, pPlayer->edict() );
+			WRITE_STRING( STRING(pev->message) );
+		MESSAGE_END();
+		UTIL_Remove( this );
+	}
+}

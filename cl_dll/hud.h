@@ -75,6 +75,13 @@ extern cvar_t* cl_flashlight_custom;
 extern cvar_t* cl_flashlight_radius;
 extern cvar_t* cl_flashlight_fade_distance;
 
+template<int dLen>
+struct LocalizedMessage
+{
+	char id[24];
+	char text[dLen];
+};
+
 #define HUD_ACTIVE	1
 #define HUD_INTERMISSION 2
 
@@ -314,6 +321,18 @@ protected:
 	int sub_count;
 	bool captionsInit;
 	HSPRITE m_hVoiceIcon;
+};
+
+#define ACHIEVEMENT_COUNT 32
+#define ACHIEVEMENT_ID_SIZE 32
+#define ACHIEVEMENT_TITLE_SIZE 64
+#define ACHIEVEMENT_DESCRIPTION_SIZE 256
+
+struct Achievement
+{
+	char id[ACHIEVEMENT_ID_SIZE];
+	char title[ACHIEVEMENT_TITLE_SIZE];
+	char description[ACHIEVEMENT_DESCRIPTION_SIZE];
 };
 
 #if !USE_VGUI || USE_NOVGUI_SCOREBOARD
@@ -695,6 +714,42 @@ private:
 };
 #endif
 
+typedef LocalizedMessage<128> Message_t;
+
+#define MESSAGES_MAX 32
+
+class CHudAchievements : public CHudBase
+{
+public:
+	int Init();
+	void InitHUDData();
+	int VidInit();
+	int Draw( float flTime );
+
+	bool ParseMessages();
+
+	void UserCmd_ResetAchievements();
+	int MsgFunc_Achievement( const char *pszName, int iSize, void *pbuf );
+	bool ParseAchievements();
+
+	int m_iTabHeld;
+
+	int achievementCount;
+	Achievement achievements[ACHIEVEMENT_COUNT];
+	int maxTextWidth;
+
+	HSPRITE m_hUnknownIcon;
+
+	int lastAchievementIndex;
+	float achievementDisplayTime;
+	HSPRITE achievementSprites[ACHIEVEMENT_COUNT];
+
+	Message_t messages[MESSAGES_MAX];
+	int messageCount;
+
+	char viewAchievementsText[256];
+};
+
 struct FogProperties
 {
 	short r,g,b;
@@ -836,6 +891,7 @@ public:
 	int GetNumWidth( int iNumber, int iFlags );
 	int DrawHudStringLen( const char *szIt );
 	void DrawDarkRectangle( int x, int y, int wide, int tall );
+	void DrawAdditiveRectangleWithBorders(int x, int y, int width, int height, int opaqueness, unsigned long borderColor );
 
 	int HUDColor();
 	int HUDColorCritical();
@@ -918,6 +974,7 @@ public:
 #endif
 	CHudNightvision m_Nightvision;
 	CHudCaption		m_Caption;
+	CHudAchievements m_Achievements;
 
 	void Init( void );
 	void VidInit( void );
@@ -971,6 +1028,7 @@ public:
 	static int GetMessageConsoleWidth(const char* message, unsigned int length);
 	static int GetConsoleFontHeight();
 	static int GetLineHeight();
+	static int GetLineWidth(const char* str);
 	static unsigned int SplitIntoWordBoundaries(WordBoundary* boundaries, const char* message);
 	static int DrawStringUsingConsoleFont(int x, int y, const char* message, int r, int g, int b, int length);
 };
@@ -982,4 +1040,6 @@ extern int g_iTeamNumber;
 extern int g_iUser1;
 extern int g_iUser2;
 extern int g_iUser3;
+
+extern int g_achievementBits;
 #endif

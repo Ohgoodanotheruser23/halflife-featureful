@@ -472,6 +472,18 @@ void CHud::DrawDarkRectangle( int x, int y, int wide, int tall )
 	FillRGBA( x, y + tall - 1, wide - 1, 1, 255, 140, 0, 255 );
 }
 
+void CHud::DrawAdditiveRectangleWithBorders(int x, int y, int width, int height, int opaqueness, unsigned long borderColor)
+{
+	int r, g, b;
+	UnpackRGB(r, g, b, borderColor);
+
+	gEngfuncs.pfnFillRGBABlend( x, y, width, height, 0, 0, 0, opaqueness );
+	FillRGBA( x + 1, y, width - 1, 1, r, g, b, 255 );
+	FillRGBA( x, y, 1, height - 1, r, g, b, 255 );
+	FillRGBA( x + width - 1, y + 1, 1, height - 1, r, g, b, 255 );
+	FillRGBA( x, y + height - 1, width - 1, 1, r, g, b, 255 );
+}
+
 int CHud::HUDColor()
 {
 	int result = HasSuit() ? clientFeatures.hud_color : clientFeatures.hud_color_nosuit;

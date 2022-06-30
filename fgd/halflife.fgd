@@ -2584,6 +2584,11 @@
 // game entities (requires Half-Life 1.0.0.9)
 //
 
+@PointClass base(Targetname) = game_achievement : "Achievement" 
+[
+	message(string) : "Achievement id"
+]
+
 @PointClass base(Targetname) = game_autosave : "Point entity alternative to trigger_autosave"
 [
 	health(string) : "Minimum Hit Points" : : "Don't save when player has less than this many hitpoints."

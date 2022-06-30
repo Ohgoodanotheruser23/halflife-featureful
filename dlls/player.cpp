@@ -222,6 +222,8 @@ int gmsgUseSound = 0;
 
 int gmsgCaption = 0;
 
+int gmsgAchievement = 0;
+
 void LinkUserMessages( void )
 {
 	// Already taken care of?
@@ -291,6 +293,8 @@ void LinkUserMessages( void )
 	gmsgUseSound = REG_USER_MSG( "UseSound", 1 );
 
 	gmsgCaption = REG_USER_MSG("Caption", -1);
+
+	gmsgAchievement = REG_USER_MSG("Achievement", -1);
 }
 
 LINK_ENTITY_TO_CLASS( player, CBasePlayer )
