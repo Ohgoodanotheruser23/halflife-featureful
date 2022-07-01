@@ -30,6 +30,8 @@
 #include	"game.h"
 #include	"gamerules.h"
 
+#define FEATURE_BARNEY_SPIRIT_PYTHON 0
+
 //=========================================================
 // Monster's Anim Events Go Here
 //=========================================================
@@ -325,7 +327,7 @@ void CBarney::HandleAnimEvent( MonsterEvent_t *pEvent )
 	switch( pEvent->event )
 	{
 	case BARNEY_AE_SHOOT:
-		if (pev->frags)
+		if (pev->frags && FEATURE_BARNEY_SPIRIT_PYTHON)
 		{
 			if (RANDOM_LONG(0, 1))
 				BarneyFirePistol("weapons/357_shot1.wav", BULLET_MONSTER_357);
@@ -550,7 +552,7 @@ void CBarney::OnDying()
 
 		GetAttachment( 0, vecGunPos, vecGunAngles );
 
-		if (pev->frags)
+		if (pev->frags && FEATURE_BARNEY_SPIRIT_PYTHON)
 			DropItem( "weapon_357", vecGunPos, vecGunAngles );
 		else
 			DropItem( "weapon_9mmhandgun", vecGunPos, vecGunAngles );
