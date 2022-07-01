@@ -14,11 +14,13 @@ class CDisplacerBall : public CBaseEntity
 {
 public:
 	void Spawn( void );
+	void Precache();
 
 	static void Shoot(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, Vector vecAngles);
+	static float BallSpeed() { return 500.0f; }
 	static void SelfCreate(entvars_t *pevOwner, Vector vecStart);
 
-	void Touch(CBaseEntity *pOther);
+	void EXPORT BallTouch(CBaseEntity *pOther);
 	void EXPORT ExplodeThink( void );
 	void EXPORT KillThink( void );
 	void Circle( void );
@@ -35,7 +37,9 @@ public:
 
 	int m_iBeams;
 
-	CBaseEntity *pRemoveEnt;
+	EHANDLE m_hDisplacedTarget;
+
+	int m_iTrail;
 };
 #endif
 #endif

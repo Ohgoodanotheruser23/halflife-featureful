@@ -488,6 +488,7 @@ Schedule_t	slFGruntVictoryDance[] =
 		tlFGruntVictoryDance,
 		ARRAYSIZE ( tlFGruntVictoryDance ),
 		bits_COND_NEW_ENEMY		|
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE	|
 		bits_COND_HEAVY_DAMAGE,
 		0,
@@ -1380,11 +1381,11 @@ BOOL CHFGrunt :: CheckMeleeAttack1 ( float flDot, float flDist )
 	if ( m_hEnemy != 0 )
 	{
 		pEnemy = m_hEnemy->MyMonsterPointer();
+	}
 
-		if ( !pEnemy )
-		{
-			return FALSE;
-		}
+	if ( !pEnemy )
+	{
+		return FALSE;
 	}
 
 	if ( flDist <= 64 && flDot >= 0.7	&&
@@ -1895,7 +1896,7 @@ void CHFGrunt::SpawnHelper(const char *defaultModel, float defaultHealth)
 	SetMyBloodColor( BLOOD_COLOR_RED );
 	SetMyHealth( defaultHealth );
 	pev->view_ofs		= Vector ( 0, 0, 50 );// position of the eyes relative to monster's origin.
-	m_flFieldOfView		= VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so npc will notice player and say hello
+	SetMyFieldOfView(VIEW_FIELD_WIDE); // NOTE: we need a wide field of view so npc will notice player and say hello
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_flNextGrenadeCheck = gpGlobals->time + 1;
 	m_flNextPainTime	= gpGlobals->time;
@@ -1941,7 +1942,7 @@ void CHFGrunt :: Precache()
 	case FG_HEAD_SHOTGUN:
 	case FG_HEAD_SAW_BLACK:
 	case FG_HEAD_BERET_BLACK:
-		m_voicePitch = 90;
+		m_voicePitch = 98;
 		break;
 	default:
 		m_voicePitch = 100;
@@ -2612,6 +2613,12 @@ Schedule_t *CHFGrunt :: GetSchedule ( void )
 	case MONSTERSTATE_IDLE:
 	case MONSTERSTATE_HUNT:
 	{
+		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) && CanIdleFlinch() )
+		{
+			// flinch if hurt
+			return GetScheduleOfType( SCHED_SMALL_FLINCH );
+		}
+
 		Schedule_t* reloadSched = GetReloadSchedule();
 		if (reloadSched)
 			return reloadSched;
@@ -2866,6 +2873,8 @@ public:
 	BOOL CheckRangeAttack1(float flDot, float flDist);
 	BOOL CheckRangeAttack2(float flDot, float flDist);
 	void GibMonster();
+	void OnDying();
+	void UpdateOnRemove();
 	void TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	void PrescheduleThink();
 
@@ -2880,13 +2889,16 @@ public:
 	static	TYPEDESCRIPTION m_SaveData[];
 
 	CBeam *m_pBeam;
+	BOOL m_torchActive;
+	BOOL m_gasTankExploded;
 };
 
 LINK_ENTITY_TO_CLASS( monster_human_torch_ally, CTorch )
 
 TYPEDESCRIPTION	CTorch::m_SaveData[] =
 {
-	DEFINE_FIELD( CTorch, m_pBeam, FIELD_CLASSPTR ),
+	DEFINE_FIELD( CTorch, m_torchActive, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CTorch, m_gasTankExploded, FIELD_BOOLEAN ),
 };
 
 IMPLEMENT_SAVERESTORE( CTorch, CHFGrunt )
@@ -2945,12 +2957,12 @@ void CTorch::HandleAnimEvent(MonsterEvent_t *pEvent)
 		break;
 
 	case TORCH_AE_ONGAS:
-		MakeGas ();
-		UpdateGas ();
+		MakeGas();
+		UpdateGas();
 		break;
 
 	case TORCH_AE_OFFGAS:
-		KillGas ();
+		KillGas();
 		break;
 	case HGRUNT_ALLY_AE_DROP_GUN:
 		if ( FBitSet( pev->weapons, TORCH_EAGLE ) )
@@ -3016,7 +3028,20 @@ void CTorch::GibMonster()
 	{// throw a gun if the grunt has one
 		DropMyItems(TRUE);
 	}
+	KillGas();
 	CTalkMonster::GibMonster();
+}
+
+void CTorch::OnDying()
+{
+	KillGas();
+	CHFGrunt::OnDying();
+}
+
+void CTorch::UpdateOnRemove()
+{
+	KillGas();
+	CHFGrunt::UpdateOnRemove();
 }
 
 void CTorch::DropMyItems(BOOL isGibbed)
@@ -3040,8 +3065,10 @@ void CTorch::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, 
 	{
 		if (bitsDamageType & (DMG_BULLET | DMG_SLASH | DMG_BLAST | DMG_CLUB))
 		{
-			if (g_pGameRules->FMonsterCanTakeDamage(this, CBaseEntity::Instance(pevAttacker)))
+			if (!m_gasTankExploded && g_pGameRules->FMonsterCanTakeDamage(this, CBaseEntity::Instance(pevAttacker)))
 			{
+				m_gasTankExploded = TRUE;
+
 				bitsDamageType = (DMG_ALWAYSGIB | DMG_BLAST);
 				flDamage = pev->health + 1;
 				UTIL_Ricochet( ptr->vecEndPos, 1.0 );
@@ -3065,7 +3092,7 @@ void CTorch::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, 
 
 void CTorch::PrescheduleThink()
 {
-	if (m_pBeam)
+	if (m_torchActive)
 	{
 		UpdateGas();
 	}
@@ -3079,6 +3106,10 @@ void CTorch::UpdateGas( void )
 {
 	TraceResult tr;
 	Vector			posGun, angleGun;
+
+	if (m_torchActive && !m_pBeam) {
+		MakeGas();
+	}
 
 	if ( m_pBeam )
 	{
@@ -3147,35 +3178,36 @@ void CTorch::MakeGas( void )
 	m_pBeam = CBeam::BeamCreate( g_pModelNameLaser, 7 );
 
 	if ( m_pBeam )
-		{
-			GetAttachment( 4, posGun, angleGun );
-			GetAttachment( 3, posGun, angleGun );
-			UTIL_Sparks( posGun );
-			Vector vecEnd = (gpGlobals->v_forward * 5) + posGun;
-			UTIL_TraceLine( posGun, vecEnd, dont_ignore_monsters, edict(), &tr );
+	{
+		GetAttachment( 4, posGun, angleGun );
+		GetAttachment( 3, posGun, angleGun );
+		UTIL_Sparks( posGun );
+		Vector vecEnd = (gpGlobals->v_forward * 5) + posGun;
+		UTIL_TraceLine( posGun, vecEnd, dont_ignore_monsters, edict(), &tr );
 
-			m_pBeam->EntsInit( entindex(), entindex() );
-			m_pBeam->SetColor( 24, 121, 239 );
-			m_pBeam->SetBrightness( 190 );
-			m_pBeam->SetScrollRate( 20 );
-			m_pBeam->SetStartAttachment( 4 );
-			m_pBeam->SetEndAttachment( 3 );
-			m_pBeam->DoSparks( tr.vecEndPos, posGun );
-			m_pBeam->SetFlags( BEAM_FSHADEIN );
-			m_pBeam->pev->spawnflags = SF_BEAM_SPARKSTART | SF_BEAM_TEMPORARY;
-			UTIL_Sparks( tr.vecEndPos );
-		}
-	return;
+		m_pBeam->EntsInit( entindex(), entindex() );
+		m_pBeam->SetColor( 24, 121, 239 );
+		m_pBeam->SetBrightness( 190 );
+		m_pBeam->SetScrollRate( 20 );
+		m_pBeam->SetStartAttachment( 4 );
+		m_pBeam->SetEndAttachment( 3 );
+		m_pBeam->DoSparks( tr.vecEndPos, posGun );
+		m_pBeam->SetFlags( BEAM_FSHADEIN );
+		m_pBeam->pev->spawnflags = SF_BEAM_SPARKSTART | SF_BEAM_TEMPORARY;
+		UTIL_Sparks( tr.vecEndPos );
+	}
+
+	m_torchActive = TRUE;
 }
 
-void CTorch :: KillGas( void )
+void CTorch::KillGas( void )
 {
+	m_torchActive = FALSE;
 	if ( m_pBeam )
 	{
 		UTIL_Remove( m_pBeam );
 		m_pBeam = NULL;
 	}
-	return;
 }
 
 //=========================================================
@@ -3262,7 +3294,7 @@ enum
 Task_t	tlMedicHeal[] =
 {
 	{ TASK_SET_FAIL_SCHEDULE,				(float)SCHED_MEDIC_RESTORE_TARGET },
-	{ TASK_CATCH_WITH_TARGET_RANGE,			(float)50		},	// Move within 50 of target ent
+	{ TASK_CATCH_WITH_TARGET_RANGE,			(float)64		},	// Move within 64 of target ent
 	{ TASK_FACE_IDEAL,						(float)0		},
 	{ TASK_MEDIC_SAY_HEAL,					(float)0		},
 	{ TASK_MEDIC_DRAW_NEEDLE,				(float)0		},	// Whip out the needle
@@ -3367,7 +3399,7 @@ void CMedic::StartTask(Task_t *pTask)
 	case TASK_MEDIC_SAY_HEAL:
 		if (m_hTargetEnt == 0)
 			TaskFail("no target ent");
-		else if (!m_hTargetEnt->IsAlive())
+		else if (!m_hTargetEnt->IsFullyAlive())
 			TaskFail("target ent is dead");
 		else
 		{
@@ -3526,6 +3558,12 @@ void CMedic::OnChangeSchedule( Schedule_t *pNewSchedule )
 	if (m_fHealing) {
 		StopHealing();
 	}
+	if (m_hLeadingPlayer != 0 && (m_hTargetEnt == 0 || !m_hTargetEnt->IsFullyAlive()))
+	{
+		// Restore target ent if medic follows a player but did not play RestoreTargetEnt task, e.g. due to save-load.
+		m_hTargetEnt = m_hLeadingPlayer;
+		m_hLeadingPlayer = 0;
+	}
 	CHFGrunt::OnChangeSchedule( pNewSchedule );
 }
 
@@ -3607,7 +3645,7 @@ void CMedic::Precache()
 	PrecacheHelper();
 	TalkInit();
 	if (m_iHead == MEDIC_HEAD_BLACK)
-		m_voicePitch = 95;
+		m_voicePitch = 100;
 	else
 		m_voicePitch = 105;
 	CTalkMonster::Precache();
@@ -3786,9 +3824,10 @@ void CMedic::StopHealing(bool clearTargetEnt)
 
 CBaseEntity* CMedic::HealTarget()
 {
-	if (m_hTargetEnt != 0 && m_hTargetEnt->IsAlive() && (m_hTargetEnt->pev->health < m_hTargetEnt->pev->max_health) &&
-			((m_hTargetEnt->MyMonsterPointer() && IRelationship(m_hTargetEnt) < R_DL) || m_hTargetEnt->IsPlayer())) {
-		return m_hTargetEnt;
+	CBaseEntity* pTargetEnt = m_hTargetEnt;
+	if (pTargetEnt != 0 && pTargetEnt->IsFullyAlive() && (pTargetEnt->pev->health < pTargetEnt->pev->max_health) &&
+			pTargetEnt->MyMonsterPointer() && IRelationship(pTargetEnt) < R_DL) {
+		return pTargetEnt;
 	}
 	return 0;
 }

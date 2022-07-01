@@ -258,7 +258,7 @@ void CBigSquidSpit::Animate( void )
 		if ( pEntity->MyMonsterPointer() && !FClassnameIs(pEntity->pev, "monster_bullchicken")) {
 			CBaseMonster* bullsquid = GetBullsquid();
 			if (!bullsquid || bullsquid->IRelationship(pEntity) >= R_DL) {
-				pEntity->TakeDamage(pev, bullsquid ? bullsquid->pev : pev, gSkillData.bullsquidDmgSpit/4, DMG_POISON);
+				pEntity->TakeDamage(pev, bullsquid ? bullsquid->pev : pev, gSkillData.bullsquidDmgSpit/4, DMG_POISON | DMG_TIMEDNONLETHAL);
 			}
 		}
 	}
@@ -339,7 +339,7 @@ void CBigSquidSpit::Touch( CBaseEntity *pOther )
 		if (!bullsquid || bullsquid->IRelationship(pOther) >= R_DL) {
 			entvars_t* pevAttacker = bullsquid ? bullsquid->pev : pev;
 			pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit * 1.5, DMG_ACID );
-			pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit/4, DMG_POISON);
+			pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit/4, DMG_POISON | DMG_TIMEDNONLETHAL);
 		}
 	}
 
@@ -396,6 +396,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -32.0f, -32.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 32.0f, 32.0f, 64.0f ); }
 
@@ -771,7 +772,7 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 				if (bigSpit) {
 					CBigSquidSpit::Shoot(pev, vecSpitOffset, vecSpitDir * 600.0f);
 				} else {
-					CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * 900.0f );
+					CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * CSquidSpit::SpitSpeed() );
 				}
 			}
 			break;
@@ -885,7 +886,7 @@ void CBullsquid::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	pev->effects = 0;
 	SetMyHealth( gSkillData.bullsquidHealth );
-	m_flFieldOfView = 0.2f;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	m_fCanThreatDisplay = TRUE;
@@ -1203,6 +1204,7 @@ Schedule_t slSquidWallow[] =
 		ARRAYSIZE( tlSquidWallow ),
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_NEW_ENEMY,
 		// even though HEAR_SOUND/SMELL FOOD doesn't break this schedule, we need this mask
 		// here or the monster won't detect these sounds at ALL while running this schedule.

@@ -29,6 +29,13 @@
 #define PLAYER_MIN_BOUNCE_SPEED		200
 #define PLAYER_FALL_PUNCH_THRESHHOLD (float)350 // won't punch player's screen/make scrape noise unless player falling at least this fast.
 
+#define STRIP_WEAPONS_ONLY 0
+#define STRIP_SUIT 1
+#define STRIP_FLASHLIGHT 2
+#define STRIP_LONGJUMP 4
+#define STRIP_DONT_TURNOFF_FLASHLIGHT 8
+#define STRIP_ALL_ITEMS (STRIP_SUIT | STRIP_FLASHLIGHT | STRIP_LONGJUMP)
+
 #define SF_DISPLACER_TARGET_DISABLED 1
 
 //
@@ -234,7 +241,7 @@ public:
 	virtual void StartSneaking( void ) { m_tSneaking = gpGlobals->time - 1; }
 	virtual void StopSneaking( void ) { m_tSneaking = gpGlobals->time + 30; }
 	virtual BOOL IsSneaking( void ) { return m_tSneaking <= gpGlobals->time; }
-	virtual BOOL IsAlive( void ) { return (pev->deadflag == DEAD_NO) && pev->health > 0; }
+	virtual BOOL IsAlive( void ) { return IsFullyAlive(); }
 	virtual BOOL ShouldFadeOnDeath( void ) { return FALSE; }
 	virtual	BOOL IsPlayer( void ) { return TRUE; }			// Spectators should return FALSE for this, they aren't "players" as far as game logic is concerned
 
@@ -246,7 +253,7 @@ public:
 	virtual int		Restore( CRestore &restore );
 	void RenewItems(void);
 	void PackDeadPlayerItems( void );
-	void RemoveAllItems( BOOL removeSuit );
+	void RemoveAllItems( int stripFlags );
 	BOOL SwitchWeapon( CBasePlayerWeapon *pWeapon );
 	BOOL SwitchToBestWeapon();
 
@@ -320,7 +327,8 @@ public:
 
 	void ResetAutoaim( void );
 	Vector GetAutoaimVector( float flDelta  );
-	Vector AutoaimDeflection( Vector &vecSrc, float flDist, float flDelta  );
+	Vector GetAutoaimVectorFromPoint( const Vector& vecSrc,float flDelta  );
+	Vector AutoaimDeflection( const Vector &vecSrc, float flDist, float flDelta  );
 
 	void ForceClientDllUpdate( void );  // Forces all client .dll specific data to be resent to client.
 
@@ -414,6 +422,7 @@ public:
 	bool SetClosestOriginOnRope(const Vector& vecPos);
 #endif
 	BOOL m_settingsLoaded;
+	BOOL m_buddha;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025

@@ -887,12 +887,9 @@ int CBasePlayerWeapon::UpdateClientData( CBasePlayer *pPlayer )
 	return 1;
 }
 
-void CBasePlayerWeapon::SendWeaponAnim( int iAnim, int skiplocal, int body )
+void CBasePlayerWeapon::SendWeaponAnim(int iAnim, int body )
 {
-	if( UseDecrement() )
-		skiplocal = 1;
-	else
-		skiplocal = 0;
+	const bool skiplocal = UseDecrement() != FALSE;
 
 	m_pPlayer->pev->weaponanim = iAnim;
 
@@ -1031,7 +1028,7 @@ BOOL CBasePlayerWeapon::CanDeploy( void )
 	return TRUE;
 }
 
-BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int skiplocal /* = 0 */, int body )
+BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int body )
 {
 	if( !CanDeploy() )
 		return FALSE;
@@ -1039,7 +1036,7 @@ BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWe
 	m_pPlayer->pev->viewmodel = MAKE_STRING( szViewModel );
 	m_pPlayer->pev->weaponmodel = MAKE_STRING( szWeaponModel );
 	strcpy( m_pPlayer->m_szAnimExtention, szAnimExt );
-	SendWeaponAnim( iAnim, skiplocal, body );
+	SendWeaponAnim( iAnim, body );
 
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.0f;
@@ -1061,7 +1058,7 @@ BOOL CBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay, i
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + fDelay;
 
 	//!!UNDONE -- reload sound goes here !!!
-	SendWeaponAnim( iAnim, UseDecrement() ? 1 : 0 );
+	SendWeaponAnim( iAnim );
 
 	m_fInReload = TRUE;
 
@@ -1096,10 +1093,10 @@ int CBasePlayerWeapon::PrimaryAmmoIndex( void )
 //=========================================================
 int CBasePlayerWeapon::SecondaryAmmoIndex( void )
 {
-	return -1;
+	return m_iSecondaryAmmoType;
 }
 
-void CBasePlayerWeapon::Holster( int skiplocal /* = 0 */ )
+void CBasePlayerWeapon::Holster()
 { 
 	m_fInReload = FALSE; // cancel any reload in progress.
 	m_pPlayer->pev->viewmodel = 0; 
@@ -1586,7 +1583,6 @@ TYPEDESCRIPTION	CShotgun::m_SaveData[] =
 {
 	DEFINE_FIELD( CShotgun, m_flNextReload, FIELD_TIME ),
 	DEFINE_FIELD( CShotgun, m_fInSpecialReload, FIELD_INTEGER ),
-	DEFINE_FIELD( CShotgun, m_flNextReload, FIELD_TIME ),
 	// DEFINE_FIELD( CShotgun, m_iShell, FIELD_INTEGER ),
 	DEFINE_FIELD( CShotgun, m_flPumpTime, FIELD_TIME ),
 };
@@ -1621,6 +1617,7 @@ IMPLEMENT_SAVERESTORE( CEgon, CBasePlayerWeapon )
 TYPEDESCRIPTION CHgun::m_SaveData[] =
 {
 	DEFINE_FIELD( CHgun, m_flRechargeTime, FIELD_TIME ),
+	DEFINE_FIELD( CHgun, m_iFirePhase, FIELD_INTEGER ),
 };
 
 IMPLEMENT_SAVERESTORE( CHgun, CBasePlayerWeapon )

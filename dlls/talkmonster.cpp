@@ -32,9 +32,10 @@ float CTalkMonster::g_talkWaitTime = 0;		// time delay until it's ok to speak: u
 
 #define SF_TALKMONSTER_DONTGREET_PLAYER (1 << 17)
 #define SF_TALKMONSTER_DONT_TALK_TO_PLAYER (1 << 18)
-#define SF_TALKMONSTER_IGNORE_PUSHING (1 << 19)
 
 #define CALL_MEDIC_DELAY				5 // Wait before calling for medic again.
+
+#define FLINCH_DELAY 2
 
 // NOTE: m_voicePitch & m_szGrp should be fixed up by precache each save/restore
 
@@ -58,6 +59,8 @@ TYPEDESCRIPTION	CTalkMonster::m_SaveData[] =
 	DEFINE_FIELD( CTalkMonster, m_iTolerance, FIELD_SHORT ),
 	DEFINE_FIELD( CTalkMonster, m_flLastHitByPlayer, FIELD_TIME ),
 	DEFINE_FIELD( CTalkMonster, m_iPlayerHits, FIELD_INTEGER ),
+	DEFINE_FIELD( CTalkMonster, m_flStopLookTime, FIELD_TIME ),
+	DEFINE_FIELD( CTalkMonster, m_flNextFlinch, FIELD_TIME ),
 };
 
 IMPLEMENT_SAVERESTORE( CTalkMonster, CFollowingMonster )
@@ -72,6 +75,7 @@ CTalkMonster::TalkFriend CTalkMonster::m_szFriends[TLK_CFRIENDS] =
 	{"monster_cleansuit_scientist",			true,	false,	TALK_FRIEND_PERSONNEL},
 	{"monster_sitting_scientist",			false,	false,	TALK_FRIEND_PERSONNEL},
 	{"monster_sitting_cleansuit_scientist", false,	false,	TALK_FRIEND_PERSONNEL},
+	{"monster_barniel",						true,	false,	TALK_FRIEND_PERSONNEL},
 	{"monster_gus",							true,	false,	TALK_FRIEND_PERSONNEL},
 	{"monster_human_grunt_ally",			true,	false,	TALK_FRIEND_SOLDIER},
 	{"monster_human_torch_ally",			true,	false,	TALK_FRIEND_SOLDIER},
@@ -100,6 +104,7 @@ Schedule_t slIdleResponse[] =
 		ARRAYSIZE( tlIdleResponse ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_HEAR_SOUND |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
 		bits_SOUND_DANGER,
@@ -124,6 +129,7 @@ Schedule_t slIdleSpeak[] =
 		ARRAYSIZE( tlIdleSpeak ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_CLIENT_PUSH |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
 		0,
@@ -146,6 +152,7 @@ Schedule_t slIdleSpeakWait[] =
 		ARRAYSIZE( tlIdleSpeakWait ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_CLIENT_PUSH |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
 		0,
@@ -177,6 +184,7 @@ Schedule_t slIdleHello[] =
 		ARRAYSIZE( tlIdleHello ),
 		bits_COND_NEW_ENEMY |
 		bits_COND_CLIENT_PUSH |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_HEAR_SOUND |
@@ -207,28 +215,6 @@ Schedule_t slIdleStopShooting[] =
 	},
 };
 
-Task_t	tlFollowFallible[] =
-{
-	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_CANT_FOLLOW },	// If you fail, bail out of follow
-	{ TASK_MOVE_NEAREST_TO_TARGET_RANGE, (float)128.0f },	// Move within 128 of target ent (client)
-	//{ TASK_SET_SCHEDULE, (float)SCHED_TARGET_FACE },
-};
-
-Schedule_t slFollowFallible[] =
-{
-	{
-		tlFollowFallible,
-		ARRAYSIZE( tlFollowFallible ),
-		bits_COND_NEW_ENEMY |
-		bits_COND_LIGHT_DAMAGE |
-		bits_COND_HEAVY_DAMAGE |
-		bits_COND_HEAR_SOUND,
-		bits_SOUND_COMBAT |
-		bits_SOUND_DANGER,
-		"Follow (Fallible)"
-	},
-};
-
 Task_t tlIdleTlkStand[] =
 {
 	{ TASK_STOP_MOVING, 0 },
@@ -243,6 +229,7 @@ Schedule_t slIdleTlkStand[] =
 		tlIdleTlkStand,
 		ARRAYSIZE( tlIdleTlkStand ),
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_HEAR_SOUND |
@@ -289,6 +276,7 @@ Schedule_t slTlkIdleWatchClient[] =
 		bits_COND_HEAR_SOUND |
 		bits_COND_SMELL |
 		bits_COND_CLIENT_PUSH |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_CLIENT_UNSEEN |
 		bits_COND_PROVOKED,
 		bits_SOUND_COMBAT |// sound flags - change these, and you'll break the talking code.
@@ -310,6 +298,7 @@ Schedule_t slTlkIdleWatchClient[] =
 		bits_COND_HEAR_SOUND |
 		bits_COND_SMELL |
 		bits_COND_CLIENT_PUSH |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_CLIENT_UNSEEN |
 		bits_COND_PROVOKED,
 		bits_SOUND_COMBAT |// sound flags - change these, and you'll break the talking code.
@@ -338,6 +327,7 @@ Schedule_t slTlkIdleEyecontact[] =
 		ARRAYSIZE( tlTlkIdleEyecontact ), 
 		bits_COND_NEW_ENEMY |
 		bits_COND_CLIENT_PUSH |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
 		0,
@@ -352,7 +342,6 @@ DEFINE_CUSTOM_SCHEDULES( CTalkMonster )
 	slIdleHello,
 	slIdleSpeakWait,
 	slIdleStopShooting,
-	slFollowFallible,
 	slIdleTlkStand,
 	slTlkIdleWatchClient,
 	&slTlkIdleWatchClient[1],
@@ -454,7 +443,8 @@ void CTalkMonster::StartTask( Task_t *pTask )
 		break;
 	case TASK_TLK_HEADRESET:
 		// reset head position after looking at something
-		m_hTalkTarget = NULL;
+		if (m_flStopLookTime <= gpGlobals->time)
+			m_hTalkTarget = NULL;
 		TaskComplete();
 		break;
 	case TASK_TLK_STOPSHOOTING:
@@ -468,7 +458,13 @@ void CTalkMonster::StartTask( Task_t *pTask )
 		TaskComplete();
 		break;
 	case TASK_PLAY_SCRIPT:
-		m_hTalkTarget = NULL;
+		if ( !m_pCine || !FBitSet(m_pCine->pev->spawnflags, SF_SCRIPT_DONT_RESET_HEAD) ) {
+			m_hTalkTarget = NULL;
+		}
+		CFollowingMonster::StartTask( pTask );
+		break;
+	case TASK_SMALL_FLINCH:
+		m_flNextFlinch = gpGlobals->time + FLINCH_DELAY;
 		CFollowingMonster::StartTask( pTask );
 		break;
 	default:
@@ -565,7 +561,7 @@ void CTalkMonster::RunTask( Task_t *pTask )
 			IdleHeadTurn( pev->origin );
 		break;
 	default:
-		if( IsTalking() && m_hTalkTarget != 0 )
+		if( (IsTalking() || m_flStopLookTime > gpGlobals->time) && m_hTalkTarget != 0 )
 		{
 			IdleHeadTurn( m_hTalkTarget->pev->origin );
 		}
@@ -579,14 +575,17 @@ void CTalkMonster::RunTask( Task_t *pTask )
 
 void CTalkMonster::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
 {
+	const int toleranceLevel = MyToleranceLevel();
 	// If a client killed me (unless I was already Barnacle'd), make everyone else mad/afraid of him
-	if( MyToleranceLevel() < TOLERANCE_ABSOLUTE_NO_ALERTS
+	if( toleranceLevel < TOLERANCE_ABSOLUTE_NO_ALERTS
 			&& ( pevAttacker->flags & FL_CLIENT) && m_MonsterState != MONSTERSTATE_PRONE
-			&& IsFriendWithPlayerBeforeProvoked() // no point in alerting friends if player is already foe
-			&& !HasMemory( bits_MEMORY_KILLED ) ) // corpses don't alert friends upon gibbing
+			&& !HasMemory( bits_MEMORY_KILLED ) // corpses don't alert friends upon gibbing
+			&& IsFriendWithPlayerBeforeProvoked() ) // no point in alerting friends if player is already foe
 	{
-		AlertFriends();
-		LimitFollowers( CBaseEntity::Instance( pevAttacker ), 0 );
+		if (toleranceLevel < TOLERANCE_HIGH || m_hEnemy == 0) {
+			AlertFriends();
+			LimitFollowers( CBaseEntity::Instance( pevAttacker ), 0 );
+		}
 	}
 	CFollowingMonster::Killed( pevInflictor, pevAttacker, iGib );
 }
@@ -622,7 +621,7 @@ CBaseEntity *CTalkMonster::EnumFriends( CBaseEntity *pPrevious, const char* pszF
 
 	while( ( pFriend = UTIL_FindEntityByClassname( pFriend, pszFriend ) ) )
 	{
-		if( pFriend == this || !pFriend->IsAlive() )
+		if( pFriend == this || !pFriend->IsFullyAlive() )
 			// don't talk to self or dead people
 			continue;
 		// has friend classname, but not friend really
@@ -659,7 +658,7 @@ void CTalkMonster::AlertFriends( void )
 		while( ( pFriend = EnumFriends( pFriend, i, TRUE ) ) != NULL )
 		{
 			CBaseMonster *pMonster = pFriend->MyMonsterPointer();
-			if( pMonster && pMonster->IsAlive() )
+			if( pMonster && pMonster->IsFullyAlive() )
 			{
 				// don't provoke a friend that's playing a death animation. They're a goner
 				pMonster->m_afMemory |= bits_MEMORY_PROVOKED;
@@ -758,7 +757,7 @@ void CTalkMonster::DeclineFollowing(CBaseEntity *pCaller)
 float CTalkMonster::TargetDistance( void )
 {
 	// If we lose the player, or he dies, return a really large distance
-	if( m_hTargetEnt == 0 || !m_hTargetEnt->IsAlive() )
+	if( m_hTargetEnt == 0 || !m_hTargetEnt->IsFullyAlive() )
 		return 1e6;
 
 	return ( m_hTargetEnt->pev->origin - pev->origin ).Length();
@@ -842,7 +841,7 @@ CBaseEntity *CTalkMonster::FindNearestFriend( BOOL fPlayer )
 		// for each friend in this bsp...
 		while( ( pFriend = UTIL_FindEntityByClassname( pFriend, pszFriend ) ) )
 		{
-			if( pFriend == this || !pFriend->IsAlive() )
+			if( pFriend == this || !pFriend->IsFullyAlive() )
 				// don't talk to self or dead people
 				continue;
 
@@ -886,10 +885,10 @@ int CTalkMonster::GetVoicePitch( void )
 	return m_voicePitch + RANDOM_LONG( 0, 3 );
 }
 
-bool CTalkMonster::CanBePushedByClient(CBaseEntity *pOther)
+bool CTalkMonster::CanBePushed(CBaseEntity *pPusher)
 {
 	// Stay put during speech
-	return !FBitSet(pev->spawnflags, SF_TALKMONSTER_IGNORE_PUSHING) && CFollowingMonster::CanBePushedByClient(pOther) && !IsTalking();
+	return CFollowingMonster::CanBePushed(pPusher) && !IsTalking();
 }
 
 //=========================================================
@@ -964,7 +963,7 @@ int CTalkMonster::FOkToSpeak(int speakFlags )
 		return FALSE;
 
 	// if player is not in pvs, don't speak
-	if( !IsAlive() || FNullEnt(FIND_CLIENT_IN_PVS( edict() ) ) )
+	if( !IsFullyAlive() || FNullEnt(FIND_CLIENT_IN_PVS( edict() ) ) )
 		return FALSE;
 
 	// don't talk if you're in combat
@@ -1143,7 +1142,7 @@ void CTalkMonster::PlayScriptedSentence( const char *pszSentence, float duration
 		ShutUpFriends();
 
 	ClearConditions( bits_COND_CLIENT_PUSH );	// Forget about moving!  I've got something to say!
-	m_useTime = gpGlobals->time + duration;
+	m_flStopLookTime = m_useTime = gpGlobals->time + duration;
 	PlaySentence( pszSentence, duration, volume, attenuation );
 
 	m_hTalkTarget = pListener;
@@ -1202,7 +1201,7 @@ bool CTalkMonster::SetAnswerQuestion( CTalkMonster *pSpeaker )
 int CTalkMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
 {
 	int ret = CFollowingMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
-	if( ret && IsAlive() )
+	if( IsAlive() )
 	{
 		// if player damaged this entity, have other friends talk about it
 		if( pevAttacker && m_MonsterState != MONSTERSTATE_PRONE && FBitSet( pevAttacker->flags, FL_CLIENT ) 
@@ -1211,7 +1210,7 @@ int CTalkMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 			CBaseEntity *pFriend = FindNearestFriend( FALSE );
 
 			// only if not dead or dying!
-			if( pFriend && pFriend->IsAlive() )
+			if( pFriend && pFriend->IsFullyAlive() )
 			{
 				CBaseMonster* pMonster = pFriend->MyMonsterPointer();
 				if (pMonster)
@@ -1221,7 +1220,10 @@ int CTalkMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 						pTalkMonster->PlaySentence( pTalkMonster->m_szGrp[TLK_NOSHOOT], RANDOM_FLOAT( 2.8, 3.2 ), VOL_NORM, ATTN_NORM );
 				}
 			}
-			ReactToPlayerHit(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+
+			if ( ret > 0 && IsFullyAlive() ) {
+				ReactToPlayerHit(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+			}
 		}
 	}
 	return ret;
@@ -1247,9 +1249,15 @@ static BOOL IsFacing( entvars_t *pevTest, const Vector &reference )
 
 void CTalkMonster::ReactToPlayerHit(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType)
 {
+	// don't say anything if already provoked
+	if (HasMemory(bits_MEMORY_PROVOKED))
+		return;
+
+	CBaseEntity* pAttacker = pevAttacker ? CBaseEntity::Instance(pevAttacker) : NULL;
 	const int myTolerance = MyToleranceLevel();
 	if ( myTolerance <= TOLERANCE_ZERO )
 	{
+		m_hTalkTarget = pAttacker;
 		PlaySentence( m_szGrp[TLK_MAD], 4, VOL_NORM, ATTN_NORM );
 		Remember( bits_MEMORY_PROVOKED );
 		StopFollowing( TRUE );
@@ -1281,6 +1289,7 @@ void CTalkMonster::ReactToPlayerHit(entvars_t *pevInflictor, entvars_t *pevAttac
 		if( getMad )
 		{
 			// Alright, now I'm pissed!
+			m_hTalkTarget = pAttacker;
 			PlaySentence( m_szGrp[TLK_MAD], 4, VOL_NORM, ATTN_NORM );
 
 			Remember( bits_MEMORY_PROVOKED );
@@ -1296,13 +1305,15 @@ void CTalkMonster::ReactToPlayerHit(entvars_t *pevInflictor, entvars_t *pevAttac
 			// Hey, be careful with that
 			if (myTolerance < TOLERANCE_ABSOLUTE || !IsTalking())
 			{
+				m_hTalkTarget = pAttacker;
 				PlaySentence( m_szGrp[TLK_SHOT], 4, VOL_NORM, ATTN_NORM );
 			}
 			Remember( bits_MEMORY_SUSPICIOUS );
 		}
 	}
-	else if( !( m_hEnemy->IsPlayer()) && pev->deadflag == DEAD_NO )
+	else if( !m_hEnemy->IsPlayer() && pev->deadflag == DEAD_NO )
 	{
+		m_hTalkTarget = pAttacker;
 		PlaySentence( m_szGrp[TLK_SHOT], 4, VOL_NORM, ATTN_NORM );
 	}
 }
@@ -1421,11 +1432,6 @@ Schedule_t *CTalkMonster::GetScheduleOfType( int Type )
 			// slIdleStand, return slIdleSciStand
 		}
 		break;
-	case SCHED_FOLLOW_FALLIBLE:
-		{
-			return slFollowFallible;
-		}
-		break;
 	case SCHED_TARGET_REACHED:
 		{
 			return GetScheduleOfType(SCHED_TARGET_FACE);
@@ -1520,6 +1526,7 @@ bool CTalkMonster::FindAndCallMedic()
 		if (!IsTalking())
 			PlayCallForMedic();
 
+		Forget(bits_MEMORY_SHOULD_ROAM_IN_ALERT);
 		ALERT( at_aiconsole, "Injured %s called for %s\n", STRING(pev->classname), STRING(foundMedic->pev->classname) );
 		foundMedic->StartFollowingHealTarget(this);
 

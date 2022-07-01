@@ -53,6 +53,7 @@ public:
 	virtual float MaximumExplosionDamage();
 
 	virtual int SizeForGrapple() { return GRAPPLE_SMALL; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -4.0f, -4.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 4.0f, 4.0f, 8.0f ); }
 
@@ -127,7 +128,7 @@ void CSqueakGrenade::SpawnImpl(const char* modelName , float damage)
 
 	m_flDie = gpGlobals->time + SQUEEK_DETONATE_DELAY;
 
-	m_flFieldOfView = 0.0f; // 180 degrees
+	SetMyFieldOfView(0.0f); // 180 degrees
 
 	if( pev->owner )
 		m_hOwner = Instance( pev->owner );
@@ -363,7 +364,7 @@ void CSqueakGrenade::SuperBounceTouch( CBaseEntity *pOther )
 
 				pev->dmg += AdditionalExplosionDamage(); // add more explosion damage
 				if (MaximumExplosionDamage()) {
-					pev->dmg = Q_max(pev->dmg, MaximumExplosionDamage());
+					pev->dmg = Q_min(pev->dmg, MaximumExplosionDamage());
 				}
 				// m_flDie += 2.0f; // add more life
 
@@ -531,7 +532,7 @@ BOOL CSqueak::Deploy()
 	return result;
 }
 
-void CSqueak::Holster( int skiplocal /* = 0 */ )
+void CSqueak::Holster()
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 

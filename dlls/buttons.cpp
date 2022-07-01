@@ -59,7 +59,7 @@ TYPEDESCRIPTION CEnvGlobal::m_SaveData[] =
 	DEFINE_FIELD( CEnvGlobal, m_initialstate, FIELD_INTEGER ),
 };
 
-IMPLEMENT_SAVERESTORE( CEnvGlobal, CBaseEntity )
+IMPLEMENT_SAVERESTORE( CEnvGlobal, CPointEntity )
 
 LINK_ENTITY_TO_CLASS( env_global, CEnvGlobal )
 
@@ -337,9 +337,11 @@ void CEnvState::Think( void )
 		{
 			ALERT(at_console,"DEBUG: env_state \"%s\" turned itself off",STRING(pev->targetname));
 			if (pev->target)
+			{
 				ALERT(at_console,": firing %s",STRING(pev->target));
 				if (m_fireWhenOff)
 					ALERT(at_console," and %s",STRING(m_fireWhenOff));
+			}
 			else if (m_fireWhenOff)
 				ALERT(at_console,": firing %s",STRING(m_fireWhenOff));
 			ALERT(at_console,".\n");
@@ -359,7 +361,7 @@ TYPEDESCRIPTION CMultiSource::m_SaveData[] =
 	DEFINE_FIELD( CMultiSource, m_globalstate, FIELD_STRING ),
 };
 
-IMPLEMENT_SAVERESTORE( CMultiSource, CBaseEntity )
+IMPLEMENT_SAVERESTORE( CMultiSource, CPointEntity )
 
 LINK_ENTITY_TO_CLASS( multisource, CMultiSource )
 
@@ -487,9 +489,14 @@ void CMultiSource::Register( void )
 
 int CBaseButton::ObjectCaps( void )
 {
-	return (CBaseToggle:: ObjectCaps() & ~FCAP_ACROSS_TRANSITION) |
-			((pev->takedamage || FBitSet(pev->spawnflags,SF_BUTTON_PLAYER_CANT_USE))?0:FCAP_IMPULSE_USE) |
-			(FBitSet(pev->spawnflags, SF_BUTTON_ONLYDIRECT)?FCAP_ONLYDIRECT_USE:0);
+	int objectCaps = (CBaseToggle:: ObjectCaps() & ~FCAP_ACROSS_TRANSITION);
+	if (!pev->takedamage && !FBitSet(pev->spawnflags,SF_BUTTON_PLAYER_CANT_USE))
+		objectCaps |= FCAP_IMPULSE_USE;
+	if (FBitSet(pev->spawnflags, SF_BUTTON_ONLYDIRECT) || m_iDirectUse == PLAYER_USE_POLICY_DIRECT)
+		objectCaps |= FCAP_ONLYDIRECT_USE;
+	if (m_iDirectUse == PLAYER_USE_POLICY_VISIBLE)
+		objectCaps |= FCAP_ONLYVISIBLE_USE;
+	return objectCaps;
 }
 
 // CBaseButton
@@ -511,6 +518,7 @@ TYPEDESCRIPTION CBaseButton::m_SaveData[] =
 	DEFINE_FIELD( CBaseButton, m_unlockedSoundOverride, FIELD_STRING ),
 	DEFINE_FIELD( CBaseButton, m_lockedSentenceOverride, FIELD_STRING ),
 	DEFINE_FIELD( CBaseButton, m_unlockedSentenceOverride, FIELD_STRING ),
+	DEFINE_FIELD( CBaseButton, m_iDirectUse, FIELD_SHORT ),
 };
 	
 IMPLEMENT_SAVERESTORE( CBaseButton, CBaseToggle )
@@ -697,6 +705,16 @@ void CBaseButton::KeyValue( KeyValueData *pkvd )
 		m_unlockedSentenceOverride = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if (FStrEq(pkvd->szKeyName, "directuse"))
+	{
+		m_iDirectUse = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	if( FStrEq( pkvd->szKeyName, "usetype" ) )
+	{
+		pev->impulse = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else 
 		CBaseToggle::KeyValue( pkvd );
 }
@@ -723,7 +741,7 @@ int CBaseButton::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 
 		// Toggle buttons fire when they get back to their "home" position
 		if( !( pev->spawnflags & SF_BUTTON_TOGGLE ) )
-			SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 );
+			SUB_UseTargets( m_hActivator, UseType(true), 0 );
 		ButtonReturn();
 	}
 	else // code == BUTTON_ACTIVATE
@@ -975,7 +993,6 @@ void CBaseButton::ButtonUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 		{
 			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1.0f, ATTN_NORM );
 
-			//SUB_UseTargets( m_eoActivator );
 			ButtonReturn();
 		}
 	}
@@ -1040,7 +1057,7 @@ void CBaseButton::ButtonTouch( CBaseEntity *pOther )
 	if( code == BUTTON_RETURN )
 	{
 		EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );
-		SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 );
+		SUB_UseTargets( m_hActivator, UseType(true), 0 );
 		ButtonReturn();
 	}
 	else	// code == BUTTON_ACTIVATE
@@ -1101,10 +1118,6 @@ void CBaseButton::TriggerAndWait( void )
 
 	m_toggle_state = TS_AT_TOP;
 
-	pev->frame = 1;			// use alternate textures
-
-	SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 );
-
 	// If button automatically comes back out, start it moving out.
 	// Else re-instate touch method
 	if( m_fStayPushed || FBitSet( pev->spawnflags, SF_BUTTON_TOGGLE ) )
@@ -1129,6 +1142,10 @@ void CBaseButton::TriggerAndWait( void )
 			ButtonReturn();
 		}
 	}
+
+	pev->frame = 1;			// use alternate textures
+
+	SUB_UseTargets( m_hActivator, UseType(false), 0 );
 }
 
 //
@@ -1161,7 +1178,7 @@ void CBaseButton::ButtonBackHome( void )
 	{
 		//EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );
 		
-		SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 );
+		SUB_UseTargets( m_hActivator, UseType(true), 0 );
 	}
 
 	if( !FStringNull( pev->target ) )
@@ -1208,6 +1225,36 @@ bool CBaseButton::IsSparkingButton()
 {
 	return FBitSet( pev->spawnflags, SF_BUTTON_SPARK_IF_OFF )
 			&& !FClassnameIs(pev, "func_rot_button"); // there's a clash in flags, don't enable sparking for rotating buttons
+}
+
+USE_TYPE CBaseButton::UseType(bool returning)
+{
+	if (pev->impulse == BUTTON_USE_ON)
+	{
+		return USE_ON;
+	}
+	else if (pev->impulse == BUTTON_USE_OFF)
+	{
+		return USE_OFF;
+	}
+	if ( FBitSet(pev->spawnflags, SF_BUTTON_TOGGLE) )
+	{
+		if (pev->impulse == BUTTON_USE_ON_OFF)
+		{
+			if (returning)
+				return USE_OFF;
+			else
+				return USE_ON;
+		}
+		else if (pev->impulse == BUTTON_USE_OFF_ON)
+		{
+			if (returning)
+				return USE_ON;
+			else
+				return USE_OFF;
+		}
+	}
+	return USE_TOGGLE;
 }
 
 //

@@ -250,6 +250,7 @@ public:
 	CUSTOM_SCHEDULES
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -16.0f, -16.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 16.0f, 16.0f, 48.0f ); }
 
@@ -667,7 +668,7 @@ void CPitdrone::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	pev->effects = 0;
 	SetMyHealth( gSkillData.pitdroneHealth );
-	m_flFieldOfView = 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_afCapability		= bits_CAP_SQUAD | bits_CAP_DOORS_GROUP;
 

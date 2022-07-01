@@ -163,6 +163,7 @@ public:
 	static const char *pAttackMissSounds[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_LARGE; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
 	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
 protected:
@@ -620,7 +621,11 @@ int CGonome::IgnoreConditions( void )
 {
 	int iIgnore = CBaseMonster::IgnoreConditions();
 
-	if( m_Activity == ACT_MELEE_ATTACK1 )
+	if (m_Activity == ACT_RANGE_ATTACK1)
+	{
+		iIgnore |= bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE | bits_COND_ENEMY_TOOFAR | bits_COND_ENEMY_OCCLUDED;
+	}
+	else if( m_Activity == ACT_MELEE_ATTACK1 )
 	{
 		if( m_flNextFlinch >= gpGlobals->time )
 			iIgnore |= ( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE );
@@ -650,8 +655,9 @@ void CGonome::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	pev->effects = 0;
 	SetMyHealth( gSkillData.gonomeHealth );
-	m_flFieldOfView = 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
+	m_afCapability = bits_CAP_DOORS_GROUP;
 
 	m_flNextThrowTime = gpGlobals->time;
 
@@ -819,6 +825,7 @@ Schedule_t slGonomeVictoryDance[] =
 		tlGonomeVictoryDance,
 		ARRAYSIZE( tlGonomeVictoryDance ),
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
 		0,

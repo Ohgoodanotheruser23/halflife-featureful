@@ -37,7 +37,7 @@ extern globalvars_t *gpGlobals;
 extern int g_iUser1;
 
 // Pool of client side entities/entvars_t
-static entvars_t ev[32];
+static entvars_t ev[MAX_WEAPONS];
 static int num_ents = 0;
 
 // The entity we'll use to represent the local client
@@ -46,7 +46,7 @@ static CBasePlayer player;
 // Local version of game .dll global variables ( time, etc. )
 static globalvars_t Globals; 
 
-static CBasePlayerWeapon *g_pWpns[32];
+static CBasePlayerWeapon *g_pWpns[MAX_WEAPONS];
 int g_iWaterLevel;
 float g_flApplyVel = 0.0;
 int g_irunninggausspred = 0;
@@ -196,7 +196,7 @@ BOOL CBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay, i
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + fDelay;
 
 	//!!UNDONE -- reload sound goes here !!!
-	SendWeaponAnim( iAnim, UseDecrement(), body );
+	SendWeaponAnim( iAnim, body );
 
 	m_fInReload = TRUE;
 
@@ -245,14 +245,14 @@ CBasePlayerWeapon::DefaultDeploy
 
 =====================
 */
-BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int skiplocal, int body )
+BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int body )
 {
 	if( !CanDeploy() )
 		return FALSE;
 
 	gEngfuncs.CL_LoadModel( szViewModel, &m_pPlayer->pev->viewmodel );
 
-	SendWeaponAnim( iAnim, skiplocal, body );
+	SendWeaponAnim( iAnim, body );
 
 	g_irunninggausspred = false;
 	m_pPlayer->m_flNextAttack = 0.5f;
@@ -295,7 +295,7 @@ CBasePlayerWeapon::Holster
 Put away weapon
 =====================
 */
-void CBasePlayerWeapon::Holster( int skiplocal /* = 0 */ )
+void CBasePlayerWeapon::Holster()
 { 
 	m_fInReload = FALSE; // cancel any reload in progress.
 	g_irunninggausspred = false;
@@ -309,7 +309,7 @@ CBasePlayerWeapon::SendWeaponAnim
 Animate weapon model
 =====================
 */
-void CBasePlayerWeapon::SendWeaponAnim( int iAnim, int skiplocal, int body )
+void CBasePlayerWeapon::SendWeaponAnim( int iAnim, int body )
 {
 	m_pPlayer->pev->weaponanim = iAnim;
 
@@ -885,7 +885,7 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	if( !pWeapon )
 		return;
 
-	for( i = 0; i < 32; i++ )
+	for( i = 0; i < MAX_WEAPONS; i++ )
 	{
 		pCurrent = g_pWpns[i];
 		if( !pCurrent )
@@ -957,6 +957,12 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		( (CRpg *)player.m_pActiveItem )->m_fSpotActive = (int)from->client.vuser2[1];
 		( (CRpg *)player.m_pActiveItem )->m_cActiveRockets = (int)from->client.vuser2[2];
 	}
+#if FEATURE_PICKABLE_SATCHELS
+	if( player.m_pActiveItem->m_iId == WEAPON_SATCHEL )
+	{
+		player.m_pActiveItem->m_chargeReady = (int)from->client.vuser2[1];
+	}
+#endif
 #if FEATURE_DESERT_EAGLE
 	if( player.m_pActiveItem->m_iId == WEAPON_EAGLE )
 	{
@@ -1035,8 +1041,8 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 
 	if( player.m_pActiveItem->m_iId == WEAPON_RPG )
 	{
-		from->client.vuser2[1] = ( (CRpg *)player.m_pActiveItem)->m_fSpotActive;
-		from->client.vuser2[2] = ( (CRpg *)player.m_pActiveItem)->m_cActiveRockets;
+		to->client.vuser2[1] = ( (CRpg *)player.m_pActiveItem)->m_fSpotActive;
+		to->client.vuser2[2] = ( (CRpg *)player.m_pActiveItem)->m_cActiveRockets;
 	}
 #if FEATURE_DESERT_EAGLE
 	else if( player.m_pActiveItem->m_iId == WEAPON_EAGLE )
@@ -1093,7 +1099,7 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		HUD_SendWeaponAnim( to->client.weaponanim, body, 1 );
 	}
 
-	for( i = 0; i < 32; i++ )
+	for( i = 0; i < MAX_WEAPONS; i++ )
 	{
 		pCurrent = g_pWpns[i];
 

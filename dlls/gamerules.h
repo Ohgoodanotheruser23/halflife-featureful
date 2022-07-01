@@ -16,7 +16,7 @@
 // GameRules
 //=========================================================
 #pragma once
-#if !defined(GAMERULES_H)
+#if !defined(GAMERULES_H) && !defined(CLIENT_DLL)
 #define GAMERULES_H
 
 #include "cbase.h"
@@ -384,11 +384,13 @@ protected:
 extern DLL_GLOBAL CGameRules *g_pGameRules;
 
 int TridepthValue();
+bool TridepthForAll();
 bool AllowUseThroughWalls();
 bool NeedUseToTake();
 bool NpcFollowNearest();
 float NpcForgetEnemyTime();
 bool NpcActiveAfterCombat();
+bool NpcFollowOutOfPvs();
 bool NpcFixMeleeDistance();
 bool AllowGrenadeJump();
 

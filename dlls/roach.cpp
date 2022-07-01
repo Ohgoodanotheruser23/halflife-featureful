@@ -55,6 +55,7 @@ public:
 	Vector DefaultMaxHullSize() { return  Vector( 1, 1, 2 ); }
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_SMALL; }
+	bool IsDisplaceable() { return true; }
 
 	// UNDONE: These don't necessarily need to be save/restored, but if we add more data, it may
 	BOOL m_fLightHacked;
@@ -133,7 +134,7 @@ void CRoach::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_YELLOW );
 	pev->effects = 0;
 	SetMyHealth( 1 );
-	m_flFieldOfView = 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.5f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	MonsterInit();
@@ -175,14 +176,10 @@ void CRoach::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
 	{
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_BODY, "roach/rch_smash.wav", 0.7, ATTN_NORM, 0, 80 + RANDOM_LONG( 0, 39 ) );
 	}
-	
+
 	CSoundEnt::InsertSound( bits_SOUND_WORLD, pev->origin, 128, 1 );
 
-	CBaseEntity *pOwner = CBaseEntity::Instance( pev->owner );
-	if( pOwner )
-	{
-		pOwner->DeathNotice( pev );
-	}
+	OnDying();
 	UTIL_Remove( this );
 }
 

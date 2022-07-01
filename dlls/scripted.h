@@ -34,6 +34,7 @@
 #define SF_SCRIPT_APPLYNEWANGLES		512
 #define SF_SCRIPT_FORCE_IDLE_LOOPING 2048
 #define SF_SCRIPT_TRY_ONCE	4096
+#define SF_SCRIPT_DONT_RESET_HEAD	8192
 
 #define SCRIPT_BREAK_CONDITIONS		(bits_COND_LIGHT_DAMAGE|bits_COND_HEAVY_DAMAGE)
 
@@ -62,6 +63,20 @@ enum
 {
 	SCRIPT_APPLY_SEARCH_RADIUS_TO_CLASSNAME = 0,
 	SCRIPT_APPLY_SEARCH_RADIUS_ALWAYS = 1
+};
+
+enum
+{
+	SCRIPT_INTERRUPTION_POLICY_ANY_DAMAGE = 0,
+	SCRIPT_INTERRUPTION_POLICY_NO_INTERRUPTIONS = 1,
+	SCRIPT_INTERRUPTION_POLICY_ONLY_DEATH = 2,
+};
+
+enum
+{
+	SCRIPT_SEARCH_POLICY_ALL = 0,
+	SCRIPT_SEARCH_POLICY_TARGETNAME_ONLY = 1,
+	SCRIPT_SEARCH_POLICY_CLASSNAME_ONLY = 2,
 };
 
 // when a monster finishes an AI scripted sequence, we can choose
@@ -103,10 +118,14 @@ public:
 	virtual BOOL FCanOverrideState ( void );
 	void SequenceDone ( CBaseMonster *pMonster );
 	virtual void FixScriptMonsterSchedule( CBaseMonster *pMonster );
+	bool ForcedNoInterruptions();
 	BOOL	CanInterrupt( void );
+	bool	CanInterruptByPlayerCall();
 	void	AllowInterrupt( BOOL fAllow );
 	int		IgnoreConditions( void );
 	virtual bool	ShouldResetOnGroundFlag();
+	void OnMoveFail();
+	bool MoveFailAttemptsExceeded() const;
 
 	string_t m_iszIdle;		// string index for idle animation
 	string_t m_iszPlay;		// string index for scripted animation
@@ -114,7 +133,10 @@ public:
 	int m_fMoveTo;
 	int m_iFinishSchedule;
 	float m_flRadius;		// range to search
-	float m_flRepeat;	// repeat rate
+	//float m_flRepeat;	// repeat rate
+	int m_iRepeats; //LRC - number of times to repeat the animation
+	int m_iRepeatsLeft; //LRC
+	float m_fRepeatFrame; //LRC
 
 	int m_iDelay;
 	float m_startTime;
@@ -124,12 +146,19 @@ public:
 	int m_saved_effects;
 	//Vector m_vecOrigOrigin;
 	BOOL m_interruptable;
+	BOOL m_firedOnAnimStart;
 	string_t m_iszFireOnAnimStart;
 	short m_targetActivator;
 	short m_fTurnType;
 	float m_flMoveToRadius;
 	short m_requiredFollowerState;
 	short m_applySearchRadius;
+	short m_maxMoveFailAttempts;
+	short m_moveFailCount;
+
+	short m_interruptionPolicy;
+	short m_searchPolicy;
+	short m_requiredState;
 
 	bool m_cantFindReported; // no need to save
 	bool m_cantPlayReported;

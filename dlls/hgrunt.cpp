@@ -357,11 +357,11 @@ BOOL CHGrunt::CheckMeleeAttack1( float flDot, float flDist )
 	if( m_hEnemy != 0 )
 	{
 		pEnemy = m_hEnemy->MyMonsterPointer();
+	}
 
-		if( !pEnemy )
-		{
-			return FALSE;
-		}
+	if( !pEnemy )
+	{
+		return FALSE;
 	}
 
 	if( flDist <= 64.0f && flDot >= 0.7f &&
@@ -953,7 +953,7 @@ void CHGrunt::SpawnHelper(const char* modelName, int health, int bloodColor)
 	SetMyBloodColor( bloodColor );
 	pev->effects		= 0;
 	SetMyHealth( health );
-	m_flFieldOfView		= 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_flNextGrenadeCheck	= gpGlobals->time + 1;
 	m_flNextPainTime	= gpGlobals->time;
@@ -1307,6 +1307,7 @@ Schedule_t slGruntVictoryDance[] =
 		tlGruntVictoryDance,
 		ARRAYSIZE( tlGruntVictoryDance ),
 		bits_COND_NEW_ENEMY		|
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE	|
 		bits_COND_HEAVY_DAMAGE,
 		0,
@@ -2373,7 +2374,7 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	const int knownFlags =
 			SF_MONSTER_GAG | SF_MONSTER_HITMONSTERCLIP | SF_MONSTER_PRISONER |
 			SF_MONSTER_DONT_DROP_GUN | SF_SQUADMONSTER_LEADER | SF_MONSTER_PREDISASTER |
-			SF_MONSTER_FADECORPSE | SF_MONSTER_NONSOLID_CORPSE;
+			SF_MONSTER_FADECORPSE | SF_MONSTER_NONSOLID_CORPSE | SF_MONSTER_ACT_OUT_OF_PVS;
 	const int flagsToSet = knownFlags & pev->spawnflags;
 	SetBits(pEntity->pev->spawnflags, flagsToSet);
 
@@ -2385,6 +2386,7 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	pGrunt->m_iClass = m_iClass;
 	pGrunt->m_reverseRelationship = m_reverseRelationship;
 	pGrunt->SetMyBloodColor(m_bloodColor);
+	pGrunt->SetMyFieldOfView(m_flFieldOfView);
 	pGrunt->m_gibModel = m_gibModel;
 	pGrunt->m_iszTriggerTarget = m_iszTriggerTarget;
 	pGrunt->m_iTriggerCondition = m_iTriggerCondition;
@@ -2395,6 +2397,7 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	pGrunt->m_freeRoam = m_freeRoam;
 	pGrunt->m_activeAfterCombat = m_activeAfterCombat;
 	pGrunt->m_sizeForGrapple = m_sizeForGrapple;
+	pGrunt->m_gibPolicy = m_gibPolicy;
 	PrepareBeforeSpawn(pEntity);
 	DispatchSpawn(pEntity->edict());
 	pGrunt->pev->movetype = MOVETYPE_FLY;

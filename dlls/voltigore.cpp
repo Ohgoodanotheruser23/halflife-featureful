@@ -30,6 +30,8 @@
 #include	"weapons.h"
 #include	"mod_features.h"
 
+#define FEATURE_VOLGITOGRE_LESSER_SIZE 0
+
 #if FEATURE_VOLTIFORE
 #define		VOLTIGORE_SPRINT_DIST	256 // how close the voltigore has to get before starting to sprint and refusing to swerve
 
@@ -332,7 +334,6 @@ public:
 	virtual void GibMonster();
 	Schedule_t *GetSchedule(void);
 	Schedule_t *GetScheduleOfType(int Type);
-	virtual int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	virtual void Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib);
 	void UpdateOnRemove();
 	const char* DefaultGibModel() {
@@ -349,8 +350,21 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_LARGE; }
-	Vector DefaultMinHullSize() { return Vector( -80.0f, -80.0f, 0.0f ); }
-	Vector DefaultMaxHullSize() { return Vector( 80.0f, 80.0f, 90.0f ); }
+	bool IsDisplaceable() { return true; }
+	Vector DefaultMinHullSize() {
+#if FEATURE_VOLGITOGRE_LESSER_SIZE
+		return Vector( -40.0f, -40.0f, 0.0f );
+#else
+		return Vector( -80.0f, -80.0f, 0.0f );
+#endif
+	}
+	Vector DefaultMaxHullSize() {
+#if FEATURE_VOLGITOGRE_LESSER_SIZE
+		return Vector( 40.0f, 40.0f, 85.0f );
+#else
+		return Vector( 80.0f, 80.0f, 90.0f );
+#endif
+	}
 
 	float m_flNextBeamAttackCheck; // next time the voltigore can use the spit attack.
 	BOOL m_fShouldUpdateBeam;
@@ -466,35 +480,6 @@ const char* CVoltigore::pGruntSounds[] =
 	"voltigore/voltigore_run_grunt1.wav",
 	"voltigore/voltigore_run_grunt2.wav",
 };
-
-//=========================================================
-// TakeDamage - overridden for voltigore so we can keep track
-// of how much time has passed since it was last injured
-//=========================================================
-int CVoltigore::TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType)
-{
-	float flDist;
-	Vector vecApex;
-
-	// if the voltigore is running, has an enemy, was hurt by the enemy, hasn't been hurt in the last 3 seconds, and isn't too close to the enemy,
-	// it will swerve. (whew).
-	if (m_hEnemy != 0 && IsMoving() && pevAttacker == m_hEnemy->pev)
-	{
-		flDist = (pev->origin - m_hEnemy->pev->origin).Length2D();
-
-		if (flDist > VOLTIGORE_SPRINT_DIST)
-		{
-			flDist = (pev->origin - m_Route[m_iRouteIndex].vecLocation).Length2D();// reusing flDist. 
-
-			if (FTriangulate(pev->origin, m_Route[m_iRouteIndex].vecLocation, flDist * 0.5, m_hEnemy, &vecApex))
-			{
-				InsertWaypoint(vecApex, bits_MF_TO_DETOUR | bits_MF_DONT_SIMPLIFY);
-			}
-		}
-	}
-
-	return CSquadMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
-}
 
 //=========================================================
 // CheckRangeAttack1
@@ -749,7 +734,7 @@ void CVoltigore::Spawn()
 	SetMyBloodColor(BLOOD_COLOR_GREEN);
 	pev->effects		= 0;
 	SetMyHealth(gSkillData.voltigoreHealth);
-	m_flFieldOfView		= 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_afCapability = bits_CAP_TURN_HEAD | bits_CAP_SQUAD;
 
@@ -874,6 +859,7 @@ Schedule_t slVoltigoreVictoryDance[] =
 		tlVoltigoreVictoryDance,
 		ARRAYSIZE( tlVoltigoreVictoryDance ),
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
 		0,
@@ -1242,7 +1228,7 @@ void CBabyVoltigore::Spawn()
 	SetMyBloodColor(BLOOD_COLOR_GREEN);
 	pev->effects		= 0;
 	SetMyHealth(gSkillData.babyVoltigoreHealth);
-	m_flFieldOfView		= 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_afCapability = bits_CAP_TURN_HEAD | bits_CAP_SQUAD;
 

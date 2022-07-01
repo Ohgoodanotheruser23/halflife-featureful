@@ -32,6 +32,8 @@
 #include "func_break.h"
 #include "player.h"
 #include "gamerules.h"
+#include "scripted.h"
+#include "game.h"
 
 extern DLL_GLOBAL Vector		g_vecAttackDir;
 extern DLL_GLOBAL int			g_iSkillLevel;
@@ -674,14 +676,25 @@ void CBaseMonster::BecomeDead( void )
 
 	// make the corpse fly away from the attack vector
 	pev->movetype = MOVETYPE_TOSS;
-	//pev->flags &= ~FL_ONGROUND;
-	//pev->origin.z += 2.0f;
-	//pev->velocity = g_vecAttackDir * -1.0f;
-	//pev->velocity = pev->velocity * RANDOM_FLOAT( 300.0f, 400.0f );
+	if (corpsephysics.value &&
+			// affect only dying monsters, not initially dead ones
+			m_IdealMonsterState == MONSTERSTATE_DEAD)
+	{
+		pev->flags &= ~FL_ONGROUND;
+		pev->origin.z += 2.0f;
+		pev->velocity = g_vecAttackDir * -1.0f;
+		pev->velocity = pev->velocity * RANDOM_FLOAT( 300.0f, 400.0f );
+	}
+
 }
 
 BOOL CBaseMonster::ShouldGibMonster( int iGib )
 {
+	if ( iGib != GIB_NEVER && m_gibPolicy == GIBBING_POLICY_PREFER_GIB )
+		return TRUE;
+	if ( iGib != GIB_ALWAYS && m_gibPolicy == GIBBING_POLICY_PREFER_NOGIB )
+		return FALSE;
+
 	if( ( iGib == GIB_NORMAL && pev->health < GIB_HEALTH_VALUE ) || ( iGib == GIB_ALWAYS ) )
 		return TRUE;
 
@@ -1126,9 +1139,19 @@ int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 	// HACKHACK Don't kill monsters in a script.  Let them break their scripts first
 	if( m_MonsterState == MONSTERSTATE_SCRIPT )
 	{
-		if (flDamage > 0)
+		if ( m_pCine && m_pCine->m_interruptionPolicy == SCRIPT_INTERRUPTION_POLICY_ONLY_DEATH )
+		{
+			if (pev->health <= 0.0f)
+				SetConditions( bits_COND_HEAVY_DAMAGE );
+		}
+		else if (flDamage > 0)
 			SetConditions( bits_COND_LIGHT_DAMAGE );
 		return 0;
+	}
+
+	if ( pev->health <= 1 && FBitSet(bitsDamageType, DMG_NONLETHAL) && IsPlayer() ) {
+		pev->health = 1;
+		return 1;
 	}
 
 	if( pev->health <= 0 )
@@ -1539,6 +1562,11 @@ void CBaseMonster::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector v
 //=========================================================
 // TraceAttack
 //=========================================================
+float CBaseMonster::HeadHitGroupDamageMultiplier()
+{
+	return gSkillData.monHead;
+}
+
 void CBaseMonster::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	if( pev->takedamage )
@@ -1550,7 +1578,7 @@ void CBaseMonster::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector v
 		case HITGROUP_GENERIC:
 			break;
 		case HITGROUP_HEAD:
-			flDamage *= gSkillData.monHead;
+			flDamage *= HeadHitGroupDamageMultiplier();
 			break;
 		case HITGROUP_CHEST:
 			flDamage *= gSkillData.monChest;
@@ -1570,8 +1598,11 @@ void CBaseMonster::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector v
 			break;
 		}
 
-		SpawnBlood( ptr->vecEndPos, BloodColor(), flDamage );// a little surface blood.
-		TraceBleed( flDamage, vecDir, ptr, bitsDamageType );
+		if (!FBitSet(bitsDamageType, DMG_DONTBLEED))
+		{
+			SpawnBlood( ptr->vecEndPos, BloodColor(), flDamage );// a little surface blood.
+			TraceBleed( flDamage, vecDir, ptr, bitsDamageType );
+		}
 		AddMultiDamage( pevAttacker, this, flDamage, bitsDamageType );
 	}
 }
@@ -1788,7 +1819,7 @@ void CBaseEntity::TraceBleed( float flDamage, Vector vecDir, TraceResult *ptr, i
 	if( BloodColor() == DONT_BLEED )
 		return;
 
-	if( flDamage == 0 )
+	if( (int)flDamage == 0 )
 		return;
 
 	if( !( bitsDamageType & ( DMG_CRUSH | DMG_BULLET | DMG_SLASH | DMG_BLAST | DMG_CLUB | DMG_MORTAR ) ) )

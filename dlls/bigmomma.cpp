@@ -577,7 +577,7 @@ int CBigMomma::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, floa
 		{
 			flDamage = 0;
 		}
-		else
+		else if (pAttacker)
 		{
 			const int rel = IRelationship( pAttacker );
 			if (rel < R_DL && rel != R_FR)
@@ -636,7 +636,7 @@ void CBigMomma::DeathNotice( entvars_t *pevChild )
 {
 	if( m_crabCount > 0 )		// Some babies may cross a transition, but we reset the count then
 		m_crabCount--;
-	if( IsAlive() )
+	if( IsFullyAlive() )
 	{
 		// Make the "my baby's dead" noise!
 		EMIT_SOUND_ARRAY_DYN( CHAN_WEAPON, pChildDieSounds );
@@ -671,7 +671,7 @@ void CBigMomma::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	SetMyHealth( 150.0f * gSkillData.bigmommaHealthFactor );
 	pev->view_ofs = Vector( 0.0f, 0.0f, 128.0f );// position of the eyes relative to monster's origin.
-	m_flFieldOfView = 0.3f;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.3f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	MonsterInit();

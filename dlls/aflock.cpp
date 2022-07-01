@@ -46,8 +46,6 @@ public:
 	// Sounds are shared by the flock
 	static void PrecacheFlockSounds( void );
 
-	virtual int DefaultSizeForGrapple() { return GRAPPLE_SMALL; }
-
 	int m_cFlockSize;
 	float m_flFlockRadius;
 };
@@ -79,7 +77,7 @@ public:
 	void AlertFlock( void );
 	void SpreadFlock( void );
 	void SpreadFlock2( void );
-	void Killed( entvars_t *pevAttacker, int iGib );
+	void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	void Poop ( void );
 	BOOL FPathBlocked( void );
 	//void KeyValue( KeyValueData *pkvd );
@@ -278,7 +276,7 @@ void CFlockingFlyer::MakeSound( void )
 
 //=========================================================
 //=========================================================
-void CFlockingFlyer::Killed( entvars_t *pevAttacker, int iGib )
+void CFlockingFlyer::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
 {
 	CFlockingFlyer *pSquad;
 
@@ -336,7 +334,7 @@ void CFlockingFlyer::SpawnCommonCode()
 	pev->health = 1;
 
 	m_fPathBlocked	= FALSE;// obstacles will be detected
-	m_flFieldOfView	= 0.2f;
+	SetMyFieldOfView(0.2f);
 
 	//SET_MODEL( ENT( pev ), "models/aflock.mdl" );
 	SET_MODEL( ENT( pev ), "models/boid.mdl" );
@@ -438,7 +436,7 @@ void CFlockingFlyer::FormFlock( void )
 		{
 			CBaseMonster *pRecruit = pEntity->MyMonsterPointer();
 
-			if( pRecruit && pRecruit != this && pRecruit->IsAlive() && !pRecruit->m_pCine )
+			if( pRecruit && pRecruit != this && pRecruit->IsFullyAlive() && !pRecruit->m_pCine )
 			{
 				// Can we recruit this guy?
 				if( FClassnameIs ( pRecruit->pev, "monster_flyer" ) )

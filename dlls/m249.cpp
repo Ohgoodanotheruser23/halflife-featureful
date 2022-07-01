@@ -100,13 +100,13 @@ BOOL CM249::Deploy()
 {
 	m_fInSpecialReload = FALSE;
 	UpdateTape();
-	return DefaultDeploy("models/v_saw.mdl", "models/p_saw.mdl", M249_DEPLOY, "mp5", UseDecrement(), pev->body);
+	return DefaultDeploy("models/v_saw.mdl", "models/p_saw.mdl", M249_DEPLOY, "mp5", pev->body);
 }
 
-void CM249::Holster(int skiplocal)
+void CM249::Holster()
 {
 	m_fInSpecialReload = FALSE;
-	CBasePlayerWeapon::Holster(skiplocal);
+	CBasePlayerWeapon::Holster();
 }
 
 void CM249::PrimaryAttack()
@@ -238,15 +238,24 @@ void CM249::ItemPostFrame()
 	}
 	if ( m_fInSpecialReload )
 	{
-		m_iVisibleClip = m_iClip + Q_min( iMaxClip() - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);
 		if (m_pPlayer->m_flNextAttack <= UTIL_WeaponTimeBase())
 		{
+			int maxClip;
+	#ifndef CLIENT_DLL
+			maxClip = iMaxClip();
+	#else
+			ItemInfo itemInfo;
+			GetItemInfo( &itemInfo );
+			maxClip = itemInfo.iMaxClip;
+	#endif
+			m_iVisibleClip = m_iClip + Q_min( maxClip - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
+
+			UpdateTape(m_iVisibleClip);
 			m_fInSpecialReload = FALSE;
-			SendWeaponAnim( M249_RELOAD1, UseDecrement(), pev->body );
+			SendWeaponAnim( M249_RELOAD1, pev->body );
 			m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 2.4;
 		}
 	}
-	UpdateTape(m_iVisibleClip);
 
 	CBasePlayerWeapon::ItemPostFrame();
 }
@@ -272,7 +281,7 @@ void CM249::WeaponIdle(void)
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 155.0/25.0;
 	}
 
-	SendWeaponAnim(iAnim, UseDecrement(), pev->body);
+	SendWeaponAnim(iAnim, pev->body);
 }
 
 void CM249::UpdateTape()

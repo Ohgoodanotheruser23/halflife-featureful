@@ -91,6 +91,7 @@ public:
 	void OnDying();
 	void GibMonster( void );
 
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -32.0f, -32.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 32.0f, 32.0f, 64.0f ); }
 
@@ -362,7 +363,7 @@ void CController::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	SetMyHealth( gSkillData.controllerHealth );
 	pev->view_ofs		= Vector( 0.0f, 0.0f, -2.0f );// position of the eyes relative to monster's origin.
-	m_flFieldOfView		= VIEW_FIELD_FULL;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(VIEW_FIELD_FULL);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 
 	MonsterInit();
@@ -1100,6 +1101,29 @@ void CController::MoveExecute( CBaseEntity *pTargetEnt, const Vector &vecDir, fl
 	m_velocity = m_velocity * 0.8f + m_flGroundSpeed * vecDir * 0.2f;
 
 	UTIL_MoveToOrigin( ENT( pev ), pev->origin + m_velocity, m_velocity.Length() * flInterval, MOVE_STRAFE );	
+}
+
+class CControllerDead : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_ALIEN_MILITARY; }
+
+	const char* getPos(int pos) const;
+};
+
+const char* CControllerDead::getPos(int pos) const
+{
+	return "die1";
+}
+
+LINK_ENTITY_TO_CLASS( monster_alien_controller_dead, CControllerDead )
+
+void CControllerDead :: Spawn( )
+{
+	SpawnHelper("models/controller.mdl", BLOOD_COLOR_YELLOW, gSkillData.controllerHealth/2);
+	MonsterInitDead();
+	pev->frame = 255;
 }
 
 //=========================================================

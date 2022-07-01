@@ -397,6 +397,7 @@ public:
 	void PrescheduleThink();
 	int LookupActivity(int activity);
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
 	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
 
@@ -491,6 +492,8 @@ public:
 		}
 		return pev->origin + gpGlobals->v_forward * 36 + Vector(0,0,20);
 	}
+
+	bool CanSpawnBeams() const;
 
 	int m_iBravery;
 
@@ -613,7 +616,7 @@ int CISlave::DefaultClassify( void )
 
 int CISlave::IRelationship( CBaseEntity *pTarget )
 {
-	if( ( pTarget->IsPlayer() ) )
+	if( ( pTarget && pTarget->IsPlayer() ) )
 		if( ( pev->spawnflags & SF_MONSTER_WAIT_UNTIL_PROVOKED ) && ! ( m_afMemory & bits_MEMORY_ISLAVE_PROVOKED ) )
 			return R_NO;
 	return CBaseMonster::IRelationship( pTarget );
@@ -688,7 +691,7 @@ void CISlave::PainSound( void )
 {
 	if( RANDOM_LONG( 0, 2 ) == 0 )
 	{
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pPainSounds[RANDOM_LONG( 0, ARRAYSIZE( pPainSounds ) - 1 )], 1.0, ATTN_NORM, 0, m_voicePitch );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pPainSounds ), 1.0, ATTN_NORM, 0, m_voicePitch );
 	}
 }
 
@@ -697,7 +700,7 @@ void CISlave::PainSound( void )
 //=========================================================
 void CISlave::DeathSound( void )
 {
-	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pDeathSounds[RANDOM_LONG( 0, ARRAYSIZE( pDeathSounds ) - 1 )], 1.0, ATTN_NORM, 0, m_voicePitch );
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pDeathSounds ), 1.0, ATTN_NORM, 0, m_voicePitch );
 }
 
 //=========================================================
@@ -788,12 +791,12 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 					pHurt->pev->punchangle.x = 5;
 				}
 				// Play a random attack hit sound
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pAttackHitSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackHitSounds ) - 1 )], 1.0, ATTN_NORM, 0, m_voicePitch );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pAttackHitSounds ), 1.0, ATTN_NORM, 0, m_voicePitch );
 			}
 			else
 			{
 				// Play a random attack miss sound
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pAttackMissSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackMissSounds ) - 1 )], 1.0, ATTN_NORM, 0, m_voicePitch );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pAttackMissSounds ), 1.0, ATTN_NORM, 0, m_voicePitch );
 			}
 		}
 			break;
@@ -807,11 +810,11 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 					pHurt->pev->punchangle.z = -18;
 					pHurt->pev->punchangle.x = 5;
 				}
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pAttackHitSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackHitSounds ) - 1 )], 1.0, ATTN_NORM, 0, m_voicePitch );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pAttackHitSounds ), 1.0, ATTN_NORM, 0, m_voicePitch );
 			}
 			else
 			{
-				EMIT_SOUND_DYN( ENT(pev), CHAN_WEAPON, pAttackMissSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackMissSounds ) - 1 )], 1.0, ATTN_NORM, 0, m_voicePitch );
+				EMIT_SOUND_DYN( ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pAttackMissSounds ), 1.0, ATTN_NORM, 0, m_voicePitch );
 			}
 		}
 			break;
@@ -827,20 +830,21 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				Vector vecSrc = pev->origin + gpGlobals->v_forward * 2;
 				MakeDynamicLight(vecSrc, 12, (int)(20/pev->framerate));
 			}
-			if( CanRevive() )
+			if (CanSpawnBeams())
 			{
-				WackBeam( ISLAVE_LEFT_ARM, m_hDead );
-				WackBeam( ISLAVE_RIGHT_ARM, m_hDead );
+				if( CanRevive() )
+				{
+					WackBeam( ISLAVE_LEFT_ARM, m_hDead );
+					WackBeam( ISLAVE_RIGHT_ARM, m_hDead );
+				}
+				else
+				{
+					ArmBeam( ISLAVE_LEFT_ARM );
+					ArmBeam( ISLAVE_RIGHT_ARM );
+					BeamGlow();
+				}
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM, 0, 100 + m_iBeams * 10 );
 			}
-			else
-			{
-				ArmBeam( ISLAVE_LEFT_ARM );
-				ArmBeam( ISLAVE_RIGHT_ARM );
-				BeamGlow();
-			}
-
-			EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM, 0, 100 + m_iBeams * 10 );
-			pev->skin = m_iBeams / 2;
 		}
 			break;
 		case ISLAVE_AE_ZAP_SHOOT:
@@ -923,14 +927,24 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				CoilBeam();
 				Remember(bits_MEMORY_ISLAVE_LAST_ATTACK_WAS_COIL);
 
-				float flAdjustedDamage = gSkillData.slaveDmgZap*3;
+				UTIL_ScreenShake( pev->origin, 3.0, 40.0, 1.0, ISLAVE_COIL_ATTACK_RADIUS );
+
 				CBaseEntity *pEntity = NULL;
 				while( ( pEntity = UTIL_FindEntityInSphere( pEntity, pev->origin, ISLAVE_COIL_ATTACK_RADIUS ) ) != NULL )
 				{
+					float flAdjustedDamage = gSkillData.slaveDmgZap*2.5;
 					if( pEntity != this && pEntity->pev->takedamage != DAMAGE_NO && pEntity->MyMonsterPointer() != NULL ) {
 						if (IRelationship(pEntity) >= R_DL) {
 							if( !FVisible( pEntity ) ) {
-								flAdjustedDamage *= 0.5;
+								if( pEntity->IsPlayer() )
+								{
+									// Restrict it to clients so that monsters in other parts of the level don't take the damage and get pissed.
+									flAdjustedDamage *= 0.5f;
+								}
+								else
+								{
+									flAdjustedDamage = 0;
+								}
 							}
 
 							if( flAdjustedDamage > 0 ) {
@@ -1011,7 +1025,7 @@ BOOL CISlave::CheckHealOrReviveTargets(float flDist, bool mustSee)
 {
 	if (m_nextHealTargetCheck >= gpGlobals->time)
 	{
-		return m_hDead != 0 || m_hWounded != 0;
+		return (m_hDead != 0 && gSkillData.slaveRevival > 0) || m_hWounded != 0;
 	}
 
 	m_nextHealTargetCheck = gpGlobals->time + 1;
@@ -1030,7 +1044,7 @@ BOOL CISlave::CheckHealOrReviveTargets(float flDist, bool mustSee)
 		if( (mustSee && (tr.flFraction == 1.0f || tr.pHit == pEntity->edict())) || (!mustSee && (pEntity->pev->origin -pev->origin).Length() < flDist ) )
 		{
 #if FEATURE_ISLAVE_REVIVE
-			if( CanBeRevived(pEntity) )
+			if( gSkillData.slaveRevival > 0 && CanBeRevived(pEntity) )
 			{
 				float d = ( pev->origin - pEntity->pev->origin ).Length();
 				if( d < flDist )
@@ -1062,7 +1076,7 @@ BOOL CISlave::CheckHealOrReviveTargets(float flDist, bool mustSee)
 
 bool CISlave::IsValidHealTarget(CBaseEntity *pEntity)
 {
-	return pEntity != NULL && pEntity != this && pEntity->pev->deadflag != DEAD_DYING && pEntity->IsAlive() && IsVortWounded(pEntity);
+	return pEntity != NULL && pEntity != this && pEntity->IsFullyAlive() && IsVortWounded(pEntity);
 }
 
 //=========================================================
@@ -1071,7 +1085,7 @@ bool CISlave::IsValidHealTarget(CBaseEntity *pEntity)
 void CISlave::StartTask( Task_t *pTask )
 {
 	ClearBeams();
-	
+
 	switch(pTask->iTask)
 	{
 	case TASK_ISLAVE_SUMMON_FAMILIAR:
@@ -1201,9 +1215,10 @@ void CISlave::SpawnFamiliar(const char *entityName, const Vector &origin, int hu
 	}
 	if (CanSpawnAtPosition(origin, hullType, edict())) {
 		CBaseEntity *pNew = Create( entityName, origin, pev->angles, edict() );
-		CBaseMonster *pNewMonster = pNew->MyMonsterPointer( );
 
 		if(pNew) {
+			CBaseMonster *pNewMonster = pNew->MyMonsterPointer( );
+
 			Remember(bits_MEMORY_ISLAVE_FAMILIAR_IS_ALIVE);
 			CSprite *pSpr = CSprite::SpriteCreate( "sprites/bexplo.spr", origin, TRUE );
 			pSpr->AnimateAndDie( 20 );
@@ -1249,7 +1264,7 @@ void CISlave::Spawn()
 	pev->effects		= 0;
 	SetMyHealth( gSkillData.slaveHealth );
 	pev->view_ofs		= Vector( 0, 0, 64 );// position of the eyes relative to monster's origin.
-	m_flFieldOfView		= VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so npc will notice player and say hello
+	SetMyFieldOfView(VIEW_FIELD_WIDE); // NOTE: we need a wide field of view so npc will notice player and say hello
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_afCapability		= bits_CAP_HEAR | bits_CAP_TURN_HEAD | bits_CAP_RANGE_ATTACK2 | bits_CAP_DOORS_GROUP;
 
@@ -1263,13 +1278,6 @@ void CISlave::Spawn()
 	m_handGlow1 = CreateHandGlow(1);
 	m_handGlow2 = CreateHandGlow(2);
 	HandsGlowOff();
-#endif
-
-
-#if FEATURE_ISLAVE_FAMILIAR
-	if (!pev->weapons) {
-		pev->weapons = ISLAVE_SNARKS;
-	}
 #endif
 
 	FollowingMonsterInit();
@@ -1304,10 +1312,10 @@ void CISlave::Precache()
 	PRECACHE_SOUND( "aslave/slv_word5.wav" );
 	PRECACHE_SOUND( "aslave/slv_word7.wav" );
 
-	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
-	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
-	PRECACHE_SOUND_ARRAY(pPainSounds);
-	PRECACHE_SOUND_ARRAY(pDeathSounds);
+	PRECACHE_SOUND_ARRAY( pAttackHitSounds );
+	PRECACHE_SOUND_ARRAY( pAttackMissSounds );
+	PRECACHE_SOUND_ARRAY( pPainSounds );
+	PRECACHE_SOUND_ARRAY( pDeathSounds );
 
 	UTIL_PrecacheOther( "test_effect" );
 
@@ -1354,8 +1362,11 @@ void CISlave::UpdateOnRemove()
 int CISlave::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
 {
 	// don't slash one of your own
-	if( ( bitsDamageType & DMG_SLASH ) && pevAttacker && IRelationship( Instance( pevAttacker ) ) == R_AL )
-		return 0;
+	if( ( bitsDamageType & DMG_SLASH ) && pevAttacker ) {
+		CBaseEntity* pAttacker = Instance( pevAttacker );
+		if (pAttacker && IRelationship( pAttacker ) == R_AL)
+			return 0;
+	}
 
 	m_afMemory |= bits_MEMORY_ISLAVE_PROVOKED;
 	return CFollowingMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
@@ -1363,8 +1374,13 @@ int CISlave::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 
 void CISlave::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
-	if( (bitsDamageType & DMG_SHOCK) && (!pevAttacker || IRelationship(Instance(pevAttacker)) == R_AL) )
-		return;
+	if( (bitsDamageType & DMG_SHOCK)) {
+		if (!pevAttacker)
+			return;
+		CBaseEntity* pAttacker = Instance( pevAttacker );
+		if (pAttacker && IRelationship( pAttacker ) == R_AL)
+			return;
+	}
 
 	CFollowingMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 }
@@ -1422,7 +1438,7 @@ Task_t tlSlaveCoverAndSummon[] =
 {
 	{ TASK_STOP_MOVING, (float)0 },
 	{ TASK_WAIT, (float)0.1 },
-	{ TASK_FIND_RUN_AWAY_FROM_ENEMY, (float)0 },
+	{ TASK_FIND_SPOT_AWAY_FROM_ENEMY, (float)0 },
 	{ TASK_RUN_PATH, (float)0 },
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
 	{ TASK_REMEMBER, (float)bits_MEMORY_INCOVER },
@@ -1545,7 +1561,7 @@ Schedule_t *CISlave::GetSchedule( void )
 		{
 			if( !HasConditions( bits_COND_CAN_MELEE_ATTACK1 ) )
 			{
-				const int sched = CanSpawnFamiliar() ? (int)SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR : (int)SCHED_RUN_AWAY_FROM_ENEMY;
+				const int sched = CanSpawnFamiliar() ? (int)SCHED_ISLAVE_COVER_AND_SUMMON_FAMILIAR : (int)SCHED_RETREAT_FROM_ENEMY;
 
 				if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
 				{
@@ -1633,7 +1649,7 @@ Schedule_t *CISlave::GetScheduleOfType( int Type )
 		return slSlaveHealOrReviveAttack;
 	case SCHED_ISLAVE_GIVE_CHARGE:
 		return slSlaveGiveArmor;
-	case SCHED_RUN_AWAY_FROM_ENEMY_FAILED:
+	case SCHED_RETREAT_FROM_ENEMY_FAILED:
 		{
 			if ( HasConditions( bits_COND_CAN_RANGE_ATTACK1 ) && HasConditions( bits_COND_SEE_ENEMY ) )
 			{
@@ -1719,7 +1735,7 @@ void CISlave::ArmBeamMessage( int side )
 
 	int brightness;
 	const Vector armBeamColor = GetArmBeamColor(brightness);
-	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY );
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSrc );
 		WRITE_BYTE( TE_BEAMENTPOINT );
 		WRITE_SHORT( entindex() + 0x1000 * (AttachmentFromSide(side)) );
 		WRITE_COORD( tr.vecEndPos.x );
@@ -1868,7 +1884,6 @@ void CISlave::ClearBeams()
 		}
 	}
 	m_iBeams = 0;
-	pev->skin = 0;
 	
 	HandsGlowOff();
 	RemoveSummonBeams();
@@ -2079,7 +2094,7 @@ bool CISlave::HasFreeEnergy()
 bool CISlave::CanRevive()
 {
 #if FEATURE_ISLAVE_REVIVE
-	return m_hDead != 0 && HasFreeEnergy();
+	return m_hDead != 0 && gSkillData.slaveRevival > 0 && HasFreeEnergy();
 #else
 	return false;
 #endif
@@ -2088,7 +2103,7 @@ bool CISlave::CanRevive()
 int CISlave::HealOther(CBaseEntity *pEntity)
 {
 	int result = 0;
-	if (pEntity->IsAlive()) {
+	if (pEntity->IsFullyAlive()) {
 		result = pEntity->TakeHealth(this, HealPower(), DMG_GENERIC);
 		SpendEnergy(result);
 	}
@@ -2129,6 +2144,12 @@ Vector CISlave::GetArmBeamColor(int &brightness)
 	return Vector(ISLAVE_ARMBEAM_RED, ISLAVE_ARMBEAM_GREEN, ISLAVE_ARMBEAM_BLUE);
 }
 
+bool CISlave::CanSpawnBeams() const
+{
+	// TODO: Not sure if this is good
+	return m_pSchedule == slSlaveAttack1 || m_pSchedule == slSlaveHealOrReviveAttack;
+}
+
 void CISlave::PlayUseSentence()
 {
 	SENTENCEG_PlayRndSz( ENT( pev ), "SLV_IDLE", 0.85, ATTN_NORM, 0, m_voicePitch );
@@ -2145,6 +2166,7 @@ void CISlave::ReportAIState(ALERT_TYPE level )
 #if FEATURE_ISLAVE_ENERGY
 	ALERT(level, "Free energy: %3.1f. ", (double)m_freeEnergy);
 #endif
+	ALERT(level, "Current number of beams: %d. ", m_iBeams);
 }
 
 #if FEATURE_ISLAVE_DEAD

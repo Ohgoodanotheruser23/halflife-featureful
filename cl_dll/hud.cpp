@@ -101,6 +101,22 @@ cvar_t *cl_viewroll = NULL;
 cvar_t *cl_rollspeed = NULL;
 cvar_t *cl_rollangle = NULL;
 
+#if FEATURE_NIGHTVISION_STYLES
+cvar_t *cl_nvgstyle = NULL;
+#endif
+
+#if FEATURE_CS_NIGHTVISION
+cvar_t *cl_nvgradius_cs = NULL;
+#endif
+
+#if FEATURE_OPFOR_NIGHTVISION_DLIGHT
+cvar_t *cl_nvgradius_of = NULL;
+#endif
+
+#if FEATURE_FILTER_NIGHTVISION
+cvar_t *cl_nvgfilterbrightness = NULL;
+#endif
+
 void ShutdownInput( void );
 
 //DECLARE_MESSAGE( m_Logo, Logo )
@@ -151,6 +167,33 @@ int __MsgFunc_Concuss( const char *pszName, int iSize, void *pbuf )
 int __MsgFunc_GameMode( const char *pszName, int iSize, void *pbuf )
 {
 	return gHUD.MsgFunc_GameMode( pszName, iSize, pbuf );
+}
+
+int __MsgFunc_PlayMP3( const char *pszName, int iSize, void *pbuf )
+{
+	const char *pszSound;
+	char cmd[64];
+
+	BEGIN_READ( pbuf, iSize );
+	pszSound = READ_STRING();
+
+	if( !IsXashFWGS() && gEngfuncs.pfnGetCvarPointer( "gl_overbright" ) )
+	{
+		sprintf( cmd, "mp3 play \"%s\"\n", pszSound );
+		gEngfuncs.pfnClientCmd( cmd );
+	}
+	else
+		gEngfuncs.pfnPrimeMusicStream( pszSound, 0 );
+
+	return 1;
+}
+
+void __CmdFunc_StopMP3( void )
+{
+	if( !IsXashFWGS() && gEngfuncs.pfnGetCvarPointer( "gl_overbright" ) )
+		gEngfuncs.pfnClientCmd( "mp3 stop\n" );
+	else
+		gEngfuncs.pfnPrimeMusicStream( 0, 0 );
 }
 
 // TFFree Command Menu
@@ -383,6 +426,9 @@ void CHud::Init( void )
 	// VGUI Menus
 	HOOK_MESSAGE( VGUIMenu );
 
+	HOOK_MESSAGE( PlayMP3 );
+	HOOK_COMMAND( "stopaudio", StopMP3 );
+
 	CVAR_CREATE( "hud_classautokill", "1", FCVAR_ARCHIVE | FCVAR_USERINFO );		// controls whether or not to suicide immediately on TF class switch
 	CVAR_CREATE( "hud_takesshots", "0", FCVAR_ARCHIVE );		// controls whether or not to automatically take screenshots at the end of a round
 	hud_textmode = CVAR_CREATE ( "hud_textmode", "0", FCVAR_ARCHIVE );
@@ -402,6 +448,22 @@ void CHud::Init( void )
 	cl_viewroll = CVAR_CREATE( "cl_viewroll", "0", FCVAR_ARCHIVE );
 	cl_rollangle = gEngfuncs.pfnRegisterVariable ( "cl_rollangle", "0.65", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
 	cl_rollspeed = gEngfuncs.pfnRegisterVariable ( "cl_rollspeed", "300", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
+
+#if FEATURE_NIGHTVISION_STYLES
+	cl_nvgstyle = CVAR_CREATE( "cl_nvgstyle", "0", FCVAR_ARCHIVE );
+#endif
+
+#if FEATURE_CS_NIGHTVISION
+	cl_nvgradius_cs = CVAR_CREATE( "cl_nvgradius_cs", "775", FCVAR_ARCHIVE );
+#endif
+
+#if FEATURE_OPFOR_NIGHTVISION_DLIGHT
+	cl_nvgradius_of = CVAR_CREATE( "cl_nvgradius_of", "400", FCVAR_ARCHIVE );
+#endif
+
+#if FEATURE_FILTER_NIGHTVISION
+	cl_nvgfilterbrightness = CVAR_CREATE( "cl_nvgfilterbrightness", "0.6", FCVAR_ARCHIVE );
+#endif
 
 	m_pSpriteList = NULL;
 

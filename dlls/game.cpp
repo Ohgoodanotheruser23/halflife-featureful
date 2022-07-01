@@ -41,9 +41,11 @@ cvar_t item_respawndelay = { "mp_item_respawndelay","-2",FCVAR_SERVER };
 cvar_t healthcharger_rechargetime = { "mp_healthcharger_rechargetime","-2",FCVAR_SERVER };
 cvar_t hevcharger_rechargetime = { "mp_hevcharger_rechargetime","-2",FCVAR_SERVER };
 
-cvar_t selfgauss	= { "selfgauss", "1", FCVAR_SERVER };
-cvar_t satchelfix	= { "satchelfix", "0", FCVAR_SERVER };
+cvar_t selfgauss	= { "selfgauss", "0", FCVAR_SERVER };
+cvar_t satchelfix	= { "satchelfix", "1", FCVAR_SERVER };
+cvar_t explosionfix	= { "explosionfix", "1", FCVAR_SERVER };
 cvar_t monsteryawspeedfix	= { "monsteryawspeedfix", "1", FCVAR_SERVER };
+cvar_t corpsephysics = { "corpsephysics", "0", FCVAR_SERVER };
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
 cvar_t respawndelay	= { "mp_respawndelay","0", FCVAR_SERVER };
 cvar_t flashlight	= { "mp_flashlight","0", FCVAR_SERVER };
@@ -69,7 +71,10 @@ cvar_t multibyte_only = { "mp_multibyte_only", "0", FCVAR_SERVER };
 cvar_t use_through_walls = { "use_through_walls", "1", FCVAR_SERVER };
 #endif
 #if FEATURE_TRIDEPTH_CVAR
-cvar_t tridepth = { "tridepth", "1", FCVAR_SERVER };
+cvar_t npc_tridepth = { "npc_tridepth", "1", FCVAR_SERVER };
+#endif
+#if FEATURE_TRIDEPTH_ALL_CVAR
+cvar_t npc_tridepth_all = { "npc_tridepth_all", "0", FCVAR_SERVER };
 #endif
 #if FEATURE_NPC_NEAREST_CVAR
 cvar_t npc_nearest = { "npc_nearest", "0", FCVAR_SERVER };
@@ -82,6 +87,9 @@ cvar_t npc_fix_melee_distance = { "npc_fix_melee_distance", "0", FCVAR_SERVER };
 #endif
 #if FEATURE_NPC_ACTIVE_AFTER_COMBAT_CVAR
 cvar_t npc_active_after_combat = { "npc_active_after_combat", "0", FCVAR_SERVER };
+#endif
+#if FEATURE_NPC_FOLLOW_OUT_OF_PVS_CVAR
+cvar_t npc_follow_out_of_pvs = { "npc_follow_out_of_pvs", "0", FCVAR_SERVER };
 #endif
 cvar_t npc_patrol = { "npc_patrol", "1", FCVAR_SERVER };
 
@@ -327,6 +335,10 @@ cvar_t sk_islave_zap_rate1 = {"sk_islave_zap_rate1", "1"};
 cvar_t sk_islave_zap_rate2 = {"sk_islave_zap_rate2", "1"};
 cvar_t sk_islave_zap_rate3 = {"sk_islave_zap_rate3", "1.5"};
 
+cvar_t sk_islave_revival1 = {"sk_islave_revival1", "0"};
+cvar_t sk_islave_revival2 = {"sk_islave_revival2", "0"};
+cvar_t sk_islave_revival3 = {"sk_islave_revival3", "1"};
+
 // Icthyosaur
 cvar_t	sk_ichthyosaur_health1	= {"sk_ichthyosaur_health1","0"};
 cvar_t	sk_ichthyosaur_health2	= {"sk_ichthyosaur_health2","0"};
@@ -404,6 +416,13 @@ cvar_t	sk_blkopsosprey3	= {"sk_blkopsosprey3","0"};
 cvar_t	sk_otis_health1	= {"sk_otis_health1","0"};
 cvar_t	sk_otis_health2	= {"sk_otis_health2","0"};
 cvar_t	sk_otis_health3	= {"sk_otis_health3","0"};
+#endif
+
+#if FEATURE_KATE
+// Kate
+cvar_t	sk_kate_health1	= {"sk_kate_health1","0"};
+cvar_t	sk_kate_health2	= {"sk_kate_health2","0"};
+cvar_t	sk_kate_health3	= {"sk_kate_health3","0"};
 #endif
 
 #if FEATURE_PITDRONE
@@ -902,7 +921,7 @@ cvar_t	sk_player_leg3	= { "sk_player_leg3","1" };
 // flashlight settings
 
 cvar_t	sk_flashlight_drain_time1	= { "sk_flashlight_drain_time1","120" };
-cvar_t	sk_flashlight_drain_time2	= { "sk_flashlight_drain_time2","1020" };
+cvar_t	sk_flashlight_drain_time2	= { "sk_flashlight_drain_time2","120" };
 cvar_t	sk_flashlight_drain_time3	= { "sk_flashlight_drain_time3","120" };
 
 cvar_t	sk_flashlight_charge_time1	= { "sk_flashlight_charge_time1","20" };
@@ -933,7 +952,10 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &use_through_walls );
 #endif
 #if FEATURE_TRIDEPTH_CVAR
-	CVAR_REGISTER( &tridepth );
+	CVAR_REGISTER( &npc_tridepth );
+#endif
+#if FEATURE_TRIDEPTH_ALL_CVAR
+	CVAR_REGISTER( &npc_tridepth_all );
 #endif
 #if FEATURE_NPC_NEAREST_CVAR
 	CVAR_REGISTER( &npc_nearest );
@@ -946,6 +968,9 @@ void GameDLLInit( void )
 #endif
 #if FEATURE_NPC_ACTIVE_AFTER_COMBAT_CVAR
 	CVAR_REGISTER( &npc_active_after_combat );
+#endif
+#if FEATURE_NPC_FOLLOW_OUT_OF_PVS_CVAR
+	CVAR_REGISTER( &npc_follow_out_of_pvs );
 #endif
 	CVAR_REGISTER( &npc_patrol );
 
@@ -969,8 +994,9 @@ void GameDLLInit( void )
 
 	CVAR_REGISTER( &selfgauss );
 	CVAR_REGISTER( &satchelfix );
-
+	CVAR_REGISTER( &explosionfix );
 	CVAR_REGISTER( &monsteryawspeedfix );
+	CVAR_REGISTER( &corpsephysics );
 	CVAR_REGISTER( &forcerespawn );
 	CVAR_REGISTER( &respawndelay );
 	CVAR_REGISTER( &flashlight );
@@ -1219,6 +1245,10 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &sk_islave_zap_rate2 );
 	CVAR_REGISTER( &sk_islave_zap_rate3 );
 
+	CVAR_REGISTER( &sk_islave_revival1 );
+	CVAR_REGISTER( &sk_islave_revival2 );
+	CVAR_REGISTER( &sk_islave_revival3 );
+
 	// Icthyosaur
 	CVAR_REGISTER( &sk_ichthyosaur_health1 );// {"sk_ichthyosaur_health1","0"};
 	CVAR_REGISTER( &sk_ichthyosaur_health2 );// {"sk_ichthyosaur_health2","0"};
@@ -1293,6 +1323,13 @@ void GameDLLInit( void )
 	CVAR_REGISTER ( &sk_otis_health1 );// {"sk_barney_health1","0"};
 	CVAR_REGISTER ( &sk_otis_health2 );// {"sk_barney_health2","0"};
 	CVAR_REGISTER ( &sk_otis_health3 );// {"sk_barney_health3","0"};
+#endif
+
+#if FEATURE_KATE
+	// Kate
+	CVAR_REGISTER ( &sk_kate_health1 );
+	CVAR_REGISTER ( &sk_kate_health2 );
+	CVAR_REGISTER ( &sk_kate_health3 );
 #endif
 
 #if FEATURE_PITDRONE

@@ -349,6 +349,7 @@ public:
 	void FlameUpdate( void );
 	void FlameControls( float angleX, float angleY );
 	void FlameDestroy( void );
+	void FlameOffSound( void );
 	inline BOOL FlameIsOn( void ) { return m_pFlame[0] != NULL; }
 
 	void FlameDamage( Vector vecStart, Vector vecEnd, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType );
@@ -827,10 +828,7 @@ void CGargantua::FlameDamage( Vector vecStart, Vector vecEnd, entvars_t *pevInfl
 
 void CGargantua::FlameDestroy( void )
 {
-	int i;
-
-	EMIT_SOUND_DYN( edict(), CHAN_WEAPON, pBeamAttackSounds[0], 1.0, ATTN_NORM, 0, PITCH_NORM );
-	for( i = 0; i < 4; i++ )
+	for( int i = 0; i < 4; i++ )
 	{
 		if( m_pFlame[i] )
 		{
@@ -838,6 +836,11 @@ void CGargantua::FlameDestroy( void )
 			m_pFlame[i] = NULL;
 		}
 	}
+}
+
+void CGargantua::FlameOffSound( void )
+{
+	EMIT_SOUND_DYN( edict(), CHAN_WEAPON, pBeamAttackSounds[0], 1.0, ATTN_NORM, 0, PITCH_NORM );
 }
 
 void CGargantua::PrescheduleThink( void )
@@ -907,7 +910,7 @@ void CGargantua::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	SetMyHealth( DefaultHealth() );
 	//pev->view_ofs		= Vector ( 0, 0, 96 );// taken from mdl file
-	m_flFieldOfView		= -0.2;// width of forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(-0.2f);// width of forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 
 	FollowingMonsterInit();
@@ -969,7 +972,7 @@ void CGargantua::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vec
 	{
 		if( m_painSoundTime < gpGlobals->time )
 		{
-			EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, pPainSounds[RANDOM_LONG( 0, ARRAYSIZE( pPainSounds ) - 1 )], 1.0, ATTN_GARG, 0, PITCH_NORM );
+			EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pPainSounds ), 1.0, ATTN_GARG, 0, PITCH_NORM );
 			m_painSoundTime = gpGlobals->time + RANDOM_FLOAT( 2.5, 4 );
 		}
 	}
@@ -1172,7 +1175,7 @@ CBaseEntity* CGargantua::GargantuaCheckTraceHullAttack(float flDist, int iDamage
 	{
 		CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
 
-		if( iDamage > 0 )
+		if( pEntity && iDamage > 0 )
 		{
 			pEntity->TakeDamage( pev, pev, iDamage, iDmgType );
 		}
@@ -1205,8 +1208,10 @@ Schedule_t *CGargantua::GetSchedule()
 Schedule_t *CGargantua::GetScheduleOfType( int Type )
 {
 	// HACKHACK - turn off the flames if they are on and garg goes scripted / dead
-	if( FlameIsOn() )
+	if( FlameIsOn() ) {
+		FlameOffSound();
 		FlameDestroy();
+	}
 
 	switch( Type )
 	{
@@ -1329,6 +1334,7 @@ void CGargantua::RunTask( Task_t *pTask )
 	case TASK_FLAME_SWEEP:
 		if( gpGlobals->time > m_flWaitFinished )
 		{
+			FlameOffSound();
 			FlameDestroy();
 			TaskComplete();
 			FlameControls( 0, 0 );
@@ -1709,9 +1715,9 @@ const char *CBabyGargantua::pAlertSounds[] =
 
 const char *CBabyGargantua::pPainSounds[] =
 {
-	"garg/gar_pain1.wav",
-	"garg/gar_pain2.wav",
-	"garg/gar_pain3.wav",
+	"babygarg/gar_pain1.wav",
+	"babygarg/gar_pain2.wav",
+	"babygarg/gar_pain3.wav",
 };
 
 const char *CBabyGargantua::pDeathSounds[] =
@@ -1857,7 +1863,7 @@ int CBabyGargantua::TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, 
 
 void CBabyGargantua::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
-	if( !IsAlive() || pev->health <= 0.0 )
+	if( !IsFullyAlive() )
 	{
 		CFollowingMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 		return;

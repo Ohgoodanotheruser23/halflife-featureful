@@ -150,7 +150,7 @@ void CApache::SpawnImpl(const char *modelName)
 	pev->takedamage = DAMAGE_AIM;
 	SetMyHealth( gSkillData.apacheHealth );
 
-	m_flFieldOfView = -0.707f; // 270 degrees
+	SetMyFieldOfView(-0.707f); // 270 degrees
 
 	pev->sequence = 0;
 	ResetSequenceInfo();
@@ -793,23 +793,25 @@ void CApache::FireRocket( void )
 		break;
 	}
 
-	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSrc );
-		WRITE_BYTE( TE_SMOKE );
-		WRITE_COORD( vecSrc.x );
-		WRITE_COORD( vecSrc.y );
-		WRITE_COORD( vecSrc.z );
-		WRITE_SHORT( g_sModelIndexSmoke );
-		WRITE_BYTE( 20 ); // scale * 10
-		WRITE_BYTE( 12 ); // framerate
-	MESSAGE_END();
-
 	CBaseEntity *pRocket = CBaseEntity::Create( "hvr_rocket", vecSrc, pev->angles, edict() );
 	if( pRocket )
+	{
+		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSrc );
+			WRITE_BYTE( TE_SMOKE );
+			WRITE_COORD( vecSrc.x );
+			WRITE_COORD( vecSrc.y );
+			WRITE_COORD( vecSrc.z );
+			WRITE_SHORT( g_sModelIndexSmoke );
+			WRITE_BYTE( 20 ); // scale * 10
+			WRITE_BYTE( 12 ); // framerate
+		MESSAGE_END();
+
 		pRocket->pev->velocity = pev->velocity + gpGlobals->v_forward * 100.0f;
 
-	m_iRockets--;
+		m_iRockets--;
 
-	side = - side;
+		side = - side;
+	}
 }
 
 BOOL CApache::FireGun()

@@ -25,6 +25,7 @@
 #include "decals.h"
 #include "explode.h"
 #include "locus.h"
+#include "weapons.h"
 
 // Spark Shower
 class CShower : public CBaseEntity
@@ -81,7 +82,7 @@ void CShower::Touch( CBaseEntity *pOther )
 		pev->speed = 0.0f;
 }
 
-class CEnvExplosion : public CBaseMonster
+class CEnvExplosion : public CBaseEntity
 {
 public:
 	void Spawn();
@@ -95,15 +96,17 @@ public:
 
 	int m_iMagnitude;// how large is the fireball? how much damage?
 	int m_spriteScale; // what's the exact fireball sprite scale? 
+	int m_iRadius;
 };
 
 TYPEDESCRIPTION	CEnvExplosion::m_SaveData[] =
 {
 	DEFINE_FIELD( CEnvExplosion, m_iMagnitude, FIELD_INTEGER ),
 	DEFINE_FIELD( CEnvExplosion, m_spriteScale, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvExplosion, m_iRadius, FIELD_INTEGER ),
 };
 
-IMPLEMENT_SAVERESTORE( CEnvExplosion, CBaseMonster )
+IMPLEMENT_SAVERESTORE( CEnvExplosion, CBaseEntity )
 LINK_ENTITY_TO_CLASS( env_explosion, CEnvExplosion )
 
 void CEnvExplosion::KeyValue( KeyValueData *pkvd )
@@ -111,6 +114,11 @@ void CEnvExplosion::KeyValue( KeyValueData *pkvd )
 	if( FStrEq( pkvd->szKeyName, "iMagnitude" ) )
 	{
 		m_iMagnitude = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "iRadius" ) )
+	{
+		m_iRadius = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -228,7 +236,12 @@ void CEnvExplosion::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	// do damage
 	if( !( pev->spawnflags & SF_ENVEXPLOSION_NODAMAGE ) )
 	{
-		RadiusDamage( pev, pCaller ? pCaller->pev : pev, m_iMagnitude, CLASS_NONE, DMG_BLAST );
+		entvars_t* pevAttacker = pev;
+		if (FBitSet(pev->spawnflags, SF_ENVEXPLOSION_ACTIVATOR_IS_ATTACKER) && pActivator) {
+			pevAttacker = pActivator->pev;
+		}
+		const float radius = m_iRadius > 0 ? m_iRadius : m_iMagnitude * DEFAULT_EXPLOSTION_RADIUS_MULTIPLIER;
+		::RadiusDamage( pev->origin, pev, pevAttacker, m_iMagnitude, radius, CLASS_NONE, DMG_BLAST );
 	}
 
 	SetThink( &CEnvExplosion::Smoke );
@@ -281,6 +294,10 @@ void ExplosionCreate(const Vector &center, const Vector &angles, edict_t *pOwner
 	if( !doDamage )
 		pExplosion->pev->spawnflags |= SF_ENVEXPLOSION_NODAMAGE;
 
+	if (pevAttacker) {
+		pExplosion->pev->spawnflags |= SF_ENVEXPLOSION_ACTIVATOR_IS_ATTACKER;
+	}
+
 	pExplosion->Spawn();
-	pExplosion->Use( NULL, pevAttacker ? CBaseEntity::Instance(pevAttacker) : NULL, USE_TOGGLE, 0 );
+	pExplosion->Use( pevAttacker ? CBaseEntity::Instance(pevAttacker) : NULL, NULL, USE_TOGGLE, 0 );
 }

@@ -66,6 +66,7 @@ set (SVDLL_SOURCES
 	crowbar.cpp
 	defaultai.cpp
 	displacer.cpp
+	displacerball.cpp
 	doors.cpp
 	drillsergeant.cpp
 	eagle.cpp
@@ -206,7 +207,7 @@ add_library (${SVDLL_LIBRARY} SHARED ${SVDLL_SOURCES})
 set_target_properties (${SVDLL_LIBRARY} PROPERTIES
 	POSITION_INDEPENDENT_CODE 1)
 
-if(APPLE OR WIN32 OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")
 	set(SVDLL_NAME "${SERVER_LIBRARY_NAME}")
 
 	set_target_properties(${SVDLL_LIBRARY} PROPERTIES

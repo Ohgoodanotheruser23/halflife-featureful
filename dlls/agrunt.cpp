@@ -93,6 +93,7 @@ public:
 	void PainSound( void );
 	void AttackSound( void );
 	void PrescheduleThink( void );
+	float HeadHitGroupDamageMultiplier();
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	int IRelationship( CBaseEntity *pTarget );
 	void StopTalking( void );
@@ -106,6 +107,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_LARGE; }
+	bool IsDisplaceable() { return true; }
 
 	Vector DefaultMinHullSize() { return Vector( -32.0f, -32.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 32.0f, 32.0f, 64.0f ); }
@@ -256,14 +258,17 @@ static void AgruntTraceAttack( CBaseMonster* self, entvars_t *pevAttacker, float
 		flDamage -= 20.0f;
 		if( flDamage <= 0.0f )
 			flDamage = 0.1f;// don't hurt the monster much, but allow bits_COND_LIGHT_DAMAGE to be generated
-	}
-	else
-	{
-		SpawnBlood( ptr->vecEndPos, self->BloodColor(), flDamage );// a little surface blood.
-		self->TraceBleed( flDamage, vecDir, ptr, bitsDamageType );
+
+		ptr->iHitgroup = HITGROUP_GENERIC;
+		bitsDamageType |= DMG_DONTBLEED;
 	}
 
-	AddMultiDamage( pevAttacker, self, flDamage, bitsDamageType );
+	self->CBaseMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+}
+
+float CAGrunt::HeadHitGroupDamageMultiplier()
+{
+	return Q_min(gSkillData.monHead, 1.5f);
 }
 
 void CAGrunt::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
@@ -349,7 +354,7 @@ void CAGrunt::DeathSound( void )
 {
 	StopTalking();
 
-	EMIT_SOUND( ENT( pev ), CHAN_VOICE, pDieSounds[RANDOM_LONG( 0, ARRAYSIZE( pDieSounds ) - 1 )], 1.0f, ATTN_NORM );
+	EMIT_SOUND( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pDieSounds ), 1.0f, ATTN_NORM );
 }
 
 //=========================================================
@@ -359,7 +364,7 @@ void CAGrunt::AlertSound( void )
 {
 	StopTalking();
 
-	EMIT_SOUND( ENT( pev ), CHAN_VOICE, pAlertSounds[RANDOM_LONG( 0, ARRAYSIZE( pAlertSounds ) - 1 )], 1.0f, ATTN_NORM );
+	EMIT_SOUND( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pAlertSounds ), 1.0f, ATTN_NORM );
 }
 
 //=========================================================
@@ -369,7 +374,7 @@ void CAGrunt::AttackSound( void )
 {
 	StopTalking();
 
-	EMIT_SOUND( ENT( pev ), CHAN_VOICE, pAttackSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackSounds ) - 1 )], 1.0f, ATTN_NORM );
+	EMIT_SOUND( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pAttackSounds ), 1.0f, ATTN_NORM );
 }
 
 //=========================================================
@@ -386,7 +391,7 @@ void CAGrunt::PainSound( void )
 
 	StopTalking();
 
-	EMIT_SOUND( ENT( pev ), CHAN_VOICE, pPainSounds[RANDOM_LONG( 0, ARRAYSIZE( pPainSounds ) - 1 )], 1.0f, ATTN_NORM );
+	EMIT_SOUND( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pPainSounds ), 1.0f, ATTN_NORM );
 }
 
 //=========================================================
@@ -544,7 +549,7 @@ void CAGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 					pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * 250.0f;
 				}
 
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pAttackHitSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackHitSounds ) - 1 )], 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pAttackHitSounds ), 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
 
 				Vector vecArmPos, vecArmAng;
 				GetAttachment( 0, vecArmPos, vecArmAng );
@@ -553,7 +558,7 @@ void CAGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 			else
 			{
 				// Play a random attack miss sound
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pAttackMissSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackMissSounds ) - 1 )], 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pAttackMissSounds ), 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
 			}
 		}
 		break;
@@ -573,7 +578,7 @@ void CAGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 					pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * -250.0f;
 				}
 
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pAttackHitSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackHitSounds ) - 1 )], 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pAttackHitSounds ), 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
 
 				Vector vecArmPos, vecArmAng;
 				GetAttachment( 0, vecArmPos, vecArmAng );
@@ -582,7 +587,7 @@ void CAGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 			else
 			{
 				// Play a random attack miss sound
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, pAttackMissSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackMissSounds ) - 1 )], 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pAttackMissSounds ), 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
 			}
 		}
 		break;
@@ -607,7 +612,7 @@ void CAGrunt::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	pev->effects = 0;
 	SetMyHealth( gSkillData.agruntHealth );
-	m_flFieldOfView = 0.2f;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_afCapability = 0;
 	m_afCapability |= bits_CAP_SQUAD;
@@ -624,30 +629,15 @@ void CAGrunt::Spawn()
 //=========================================================
 void CAGrunt::Precache()
 {
-	size_t i;
-
 	PrecacheMyModel( "models/agrunt.mdl" );
 
-	for( i = 0; i < ARRAYSIZE( pAttackHitSounds ); i++ )
-		PRECACHE_SOUND( pAttackHitSounds[i] );
-
-	for( i = 0; i < ARRAYSIZE( pAttackMissSounds ); i++ )
-		PRECACHE_SOUND( pAttackMissSounds[i] );
-
-	for( i = 0; i < ARRAYSIZE( pIdleSounds ); i++ )
-		PRECACHE_SOUND( pIdleSounds[i] );
-
-	for( i = 0; i < ARRAYSIZE( pDieSounds ); i++ )
-		PRECACHE_SOUND( pDieSounds[i] );
-
-	for( i = 0; i < ARRAYSIZE( pPainSounds ); i++ )
-		PRECACHE_SOUND( pPainSounds[i] );
-
-	for( i = 0; i < ARRAYSIZE( pAttackSounds ); i++ )
-		PRECACHE_SOUND( pAttackSounds[i] );
-
-	for( i = 0; i < ARRAYSIZE( pAlertSounds ); i++ )
-		PRECACHE_SOUND( pAlertSounds[i] );
+	PRECACHE_SOUND_ARRAY( pAttackHitSounds );
+	PRECACHE_SOUND_ARRAY( pAttackMissSounds );
+	PRECACHE_SOUND_ARRAY( pIdleSounds );
+	PRECACHE_SOUND_ARRAY( pDieSounds );
+	PRECACHE_SOUND_ARRAY( pPainSounds );
+	PRECACHE_SOUND_ARRAY( pAttackSounds );
+	PRECACHE_SOUND_ARRAY( pAlertSounds );
 
 	PRECACHE_SOUND( "hassault/hw_shoot1.wav" );
 
@@ -727,6 +717,7 @@ Schedule_t slAGruntStandoff[] =
 		bits_COND_CAN_MELEE_ATTACK1 |
 		bits_COND_SEE_ENEMY |
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_HEAR_SOUND,
 		bits_SOUND_DANGER,
 		"Agrunt Standoff"
@@ -864,6 +855,7 @@ Schedule_t slAGruntVictoryDance[] =
 		tlAGruntVictoryDance,
 		ARRAYSIZE( tlAGruntVictoryDance ),
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
 		0,
@@ -886,6 +878,7 @@ Schedule_t slAGruntThreatDisplay[] =
 		tlAGruntThreatDisplay,
 		ARRAYSIZE( tlAGruntThreatDisplay ),
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
 		bits_SOUND_PLAYER |
