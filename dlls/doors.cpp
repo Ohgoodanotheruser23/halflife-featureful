@@ -1458,3 +1458,160 @@ void CMomentaryDoor::StopMoveSound()
 	pev->nextthink = -1.0f;
 	ResetThink();
 }
+
+class CSlider : public CBaseToggle
+{
+public:
+	void Spawn( void );
+	void KeyValue( KeyValueData *pkvd );
+
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+
+	EXPORT void StartMoving();
+	EXPORT void SliderReachedDest();
+
+	Vector ChooseTargetPosition();
+
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
+	static TYPEDESCRIPTION m_SaveData[];
+
+	Vector m_vecOrigPosition;
+	string_t m_targetOnExtreme;
+	BOOL m_inActiveMove;
+};
+
+TYPEDESCRIPTION	CSlider::m_SaveData[] =
+{
+	DEFINE_FIELD( CSlider, m_vecOrigPosition, FIELD_POSITION_VECTOR ),
+	DEFINE_FIELD( CSlider, m_targetOnExtreme, FIELD_STRING ),
+	DEFINE_FIELD( CSlider, m_inActiveMove, FIELD_BOOLEAN ),
+};
+IMPLEMENT_SAVERESTORE( CSlider, CBaseToggle )
+
+LINK_ENTITY_TO_CLASS( func_slider, CSlider )
+
+void CSlider::Spawn()
+{
+	SetMovedir( pev );
+
+	pev->movetype = MOVETYPE_PUSH;
+	UTIL_SetOrigin( pev, pev->origin );
+	SET_MODEL( ENT( pev ), STRING( pev->model ) );
+
+	if( pev->speed == 0.0f )
+		pev->speed = 10.0f;
+
+	if (m_flLip == 0.0f)
+		m_flLip = 16.0f;
+
+	m_vecFinalDest = m_vecOrigPosition = pev->origin;
+
+	m_vecPosition1 = m_vecOrigPosition + pev->movedir * m_flLip;
+	m_vecPosition2 = m_vecOrigPosition - pev->movedir * m_flLip;
+
+	m_inActiveMove = FALSE;
+}
+
+void CSlider::KeyValue(KeyValueData *pkvd)
+{
+	CBaseToggle::KeyValue(pkvd);
+}
+
+Vector CSlider::ChooseTargetPosition()
+{
+	if (RANDOM_LONG(0,1))
+	{
+		return m_vecPosition1;
+	}
+	else
+	{
+		return m_vecPosition2;
+	}
+}
+
+void CSlider::StartMoving()
+{
+	SetMoveDone(&CSlider::SliderReachedDest);
+	const Vector vecDest = ChooseTargetPosition();
+	LinearMove(vecDest, pev->speed);
+}
+
+void CSlider::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if (useType == USE_SET)
+	{
+		if (!m_inActiveMove)
+			return;
+
+		Vector suggestedDest = pev->origin + pev->movedir * value;
+		if ((suggestedDest - m_vecOrigPosition).Length() >= m_flLip)
+		{
+			//ALERT(at_console, "Trying to adjust too far! Clamping\n");
+			if (value > 0) {
+				suggestedDest = m_vecPosition1;
+			} else {
+				suggestedDest = m_vecPosition2;
+			}
+		}
+
+		SetMoveDone(&CSlider::SliderReachedDest);
+		const Vector vecDest = suggestedDest;
+		LinearMove(vecDest, pev->speed);
+	}
+	else
+	{
+		if (ShouldToggle(useType, m_inActiveMove))
+		{
+			if (m_inActiveMove)
+			{
+				m_inActiveMove = FALSE;
+				SetMoveDone(NULL);
+				LinearMove(m_vecOrigPosition, pev->speed * 2);
+			}
+			else
+			{
+				m_inActiveMove = TRUE;
+				StartMoving();
+			}
+		}
+	}
+}
+
+void CSlider::SliderReachedDest()
+{
+	if ((pev->origin - m_vecOrigPosition).Length() >= m_flLip)
+	{
+		if (pev->target)
+			FireTargets(STRING(pev->target), this, this, USE_TOGGLE, 0.0f);
+		return;
+	}
+
+	SetThink(&CSlider::StartMoving);
+	pev->nextthink = pev->ltime + m_flWait;
+}
+
+class CTriggerAdjustSlider : public CPointEntity
+{
+public:
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+
+void CTriggerAdjustSlider::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if (pev->target)
+	{
+		const char* target = STRING(pev->target);
+
+		CBaseEntity* pTarget = NULL;
+		while ((pTarget = UTIL_FindEntityByTargetname(pTarget, target)) != NULL)
+		{
+			if (FClassnameIs(pTarget->pev, "func_slider")) {
+				pTarget->Use(pActivator, this, USE_SET, pev->speed);
+				break;
+			}
+		}
+	}
+}
+
+LINK_ENTITY_TO_CLASS( trigger_adjust_slider, CTriggerAdjustSlider )

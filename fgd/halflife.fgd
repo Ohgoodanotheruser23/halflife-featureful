@@ -2426,6 +2426,20 @@
 	dmg(integer) : "Damage inflicted when blocked" : 0
 ]
 
+@SolidClass base(Targetname, RenderFields, Angles, ZHLT) = func_slider : "Slider"
+[
+	speed(integer)	: "Speed"
+	lip(string)	: "Extreme"
+	target(target_destination) : "Target on extreme"
+	wait(string) : "Wait before move agan"
+]
+
+@PointClass base(Targetname, Target) = trigger_adjust_slider : "Adjust Slider"
+[
+	target(target_destination) : "Target slider"
+	speed(integer) : "Adjustment" : 16
+]
+
 @SolidClass base(BaseTank, ZHLT) = func_tank : "Brush Gun Turret"
 [
 	bullet(choices) : "Bullets" : 0 =
