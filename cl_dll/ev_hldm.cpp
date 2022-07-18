@@ -945,7 +945,7 @@ void EV_FireGauss( event_args_t *args )
 
 			n = -DotProduct( tr.plane.normal, forward );
 
-			if( n < 0.5f ) // 60 degrees	
+			/*if( n < 0.5f ) // 60 degrees
 			{
 				// ALERT( at_console, "reflect %f\n", n );
 				// reflect
@@ -976,7 +976,7 @@ void EV_FireGauss( event_args_t *args )
 
 				flDamage = flDamage * ( 1 - n );
 			}
-			else
+			else*/
 			{
 				// tunnel
 				EV_HLDM_DecalGunshot( &tr, BULLET_MONSTER_12MM );
@@ -991,7 +991,7 @@ void EV_FireGauss( event_args_t *args )
 				fHasPunched = 1;
 				
 				// try punching through wall if secondary attack (primary is incapable of breaking through)
-				if( !m_fPrimaryFire )
+				//if( !m_fPrimaryFire )
 				{
 					vec3_t start;
 
@@ -1056,9 +1056,9 @@ void EV_FireGauss( event_args_t *args )
 
 					gEngfuncs.pEventAPI->EV_PopPMStates();
 				}
-				else
+				//else
 				{
-					if( m_fPrimaryFire )
+					//if( m_fPrimaryFire )
 					{
 						// slug doesn't punch through ever with primary 
 						// fire, so leave a little glowy bit and make some balls

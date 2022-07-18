@@ -150,7 +150,7 @@ void CGauss::PrimaryAttack()
 		return;
 	}
 
-	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] < 2 )
+	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] < 1 )
 	{
 		PlayEmptySound();
 		m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
@@ -160,7 +160,7 @@ void CGauss::PrimaryAttack()
 	m_pPlayer->m_iWeaponVolume = GAUSS_PRIMARY_FIRE_VOLUME;
 	m_fPrimaryFire = TRUE;
 
-	m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 2;
+	m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 1;
 
 	StartFire();
 	m_fInAttack = 0;
@@ -170,6 +170,8 @@ void CGauss::PrimaryAttack()
 
 void CGauss::SecondaryAttack()
 {
+	return;
+
 	// don't fire underwater
 	if( m_pPlayer->pev->waterlevel == 3 )
 	{
@@ -438,7 +440,7 @@ void CGauss::Fire( Vector vecOrigSrc, Vector vecDir, float flDamage )
 
 			n = -DotProduct( tr.vecPlaneNormal, vecDir );
 
-			if( n < 0.5f ) // 60 degrees
+			/*if( n < 0.5f ) // 60 degrees
 			{
 				// ALERT( at_console, "reflect %f\n", n );
 				// reflect
@@ -459,7 +461,7 @@ void CGauss::Fire( Vector vecOrigSrc, Vector vecDir, float flDamage )
 				if( n == 0.0f ) n = 0.1f;
 				flDamage = flDamage * ( 1.0f - n );
 			}
-			else
+			else*/
 			{
 				nTotal += 13;
 
@@ -469,7 +471,7 @@ void CGauss::Fire( Vector vecOrigSrc, Vector vecDir, float flDamage )
 				fHasPunched = 1;
 
 				// try punching through wall if secondary attack (primary is incapable of breaking through)
-				if( !m_fPrimaryFire )
+				//if( !m_fPrimaryFire )
 				{
 					UTIL_TraceLine( tr.vecEndPos + vecDir * 8, vecDest, dont_ignore_monsters, pentIgnore, &beam_tr );
 					if( !beam_tr.fAllSolid )
@@ -509,7 +511,7 @@ void CGauss::Fire( Vector vecOrigSrc, Vector vecDir, float flDamage )
 
 							vecSrc = beam_tr.vecEndPos + vecDir;
 						}
-						else if( !selfgauss.value )
+						else
 						{
 							flDamage = 0;
 						}
@@ -520,12 +522,12 @@ void CGauss::Fire( Vector vecOrigSrc, Vector vecDir, float flDamage )
 						flDamage = 0;
 					}
 				}
-				else
+				/*else
 				{
 					//ALERT( at_console, "blocked solid\n" );
 
 					flDamage = 0;
-				}
+				}*/
 
 			}
 		}
