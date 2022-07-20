@@ -150,7 +150,7 @@ int CHudAchievements::VidInit()
 	lastAchievementIndex = -1;
 	achievementDisplayTime = 0;
 
-	/*for (int i=0; i<achievementCount; ++i)
+	for (int i=0; i<achievementCount; ++i)
 	{
 		char id[ACHIEVEMENT_ID_SIZE];
 		strncpy(id, achievements[i].id, ACHIEVEMENT_ID_SIZE);
@@ -164,9 +164,18 @@ int CHudAchievements::VidInit()
 		char buf[ACHIEVEMENT_ID_SIZE + 16];
 		sprintf(buf, "sprites/%s.spr", id);
 
-		const HSPRITE hSprite = SPR_Load(buf);
-		achievementSprites[i] = hSprite ? hSprite : m_hUnknownIcon;
-	}*/
+		int length = 0;
+		unsigned char* const pfile = gEngfuncs.COM_LoadFile( buf, 5, &length );
+		if (pfile)
+		{
+			gEngfuncs.COM_FreeFile(pfile);
+			achievementSprites[i] = SPR_Load(buf);
+		}
+		else
+		{
+			achievementSprites[i] = m_hUnknownIcon;
+		}
+	}
 
 	maxTextWidth = 0;
 	for (int i=0; i<achievementCount; ++i)
@@ -239,7 +248,7 @@ int CHudAchievements::Draw( float flTime )
 		const int xtext = xnotification + maxIconSize + labelPadding + iconPadding * 2;
 		const int ytext = ynotification + notificationHeight / 2 - lineHeight * 1.5f;
 
-		const HSPRITE hSprite = m_hUnknownIcon;
+		const HSPRITE hSprite = achievementSprites[lastAchievementIndex] ? achievementSprites[lastAchievementIndex] : m_hUnknownIcon;
 
 		const int spriteWidth = SPR_Width(hSprite, 0);
 		const int spriteHeight = SPR_Height(hSprite, 0);
@@ -290,6 +299,7 @@ int CHudAchievements::Draw( float flTime )
 		gHUD.DrawAdditiveRectangleWithBorders( xlabel, currentLabelY, labelWidth, labelHeight, 160, RGB_YELLOWISH );
 
 		const int color = (g_achievementBits & (1 << i)) ? unlockedColor : lockedColor;
+		const int spriteColor = (g_achievementBits & (1 << i)) ? unlockedColor : 100;
 
 		int titleColorRed, titleColorGreen, titleColorBlue;
 		if (g_achievementBits & (1 << i))
@@ -303,7 +313,7 @@ int CHudAchievements::Draw( float flTime )
 			titleColorRed = titleColorGreen = titleColorBlue = color;
 		}
 
-		const HSPRITE hSprite = m_hUnknownIcon;
+		const HSPRITE hSprite = achievementSprites[i] ? achievementSprites[i] : m_hUnknownIcon;
 
 		const int spriteWidth = SPR_Width(hSprite, 0);
 		const int spriteHeight = SPR_Height(hSprite, 0);
@@ -311,7 +321,7 @@ int CHudAchievements::Draw( float flTime )
 		const int iconInnerPaddingX = spriteWidth < maxIconSize ? (maxIconSize - spriteWidth) / 2 : 0;
 		const int iconInnerPaddingY = spriteHeight < maxIconSize ? (maxIconSize - spriteHeight) / 2 : 0;
 
-		SPR_Set(hSprite, color, color, color);
+		SPR_Set(hSprite, spriteColor, spriteColor, spriteColor);
 		SPR_Draw(0, xlabel + iconPadding + iconInnerPaddingX, currentLabelY + iconPadding + iconInnerPaddingY, NULL);
 
 		DrawUtfString( xtext, currentTextY, xmax, achievements[i].title, titleColorRed, titleColorGreen, titleColorBlue );
@@ -362,7 +372,7 @@ bool CHudAchievements::ParseAchievements()
 {
 	const char* fileName = "achievements.txt";
 	int length = 0;
-	char* pfile = (char *)gEngfuncs.COM_LoadFile( fileName, 5, &length );
+	char* const pfile = (char *)gEngfuncs.COM_LoadFile( fileName, 5, &length );
 
 	if( !pfile )
 	{
