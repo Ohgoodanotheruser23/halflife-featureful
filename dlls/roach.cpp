@@ -180,6 +180,10 @@ void CRoach::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
 	CSoundEnt::InsertSound( bits_SOUND_WORLD, pev->origin, 128, 1 );
 
 	OnDying();
+
+	pev->deadflag = DEAD_DEAD;
+	FCheckAITrigger();
+
 	UTIL_Remove( this );
 }
 
