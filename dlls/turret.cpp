@@ -1199,6 +1199,7 @@ void CSentry::Precache()
 
 void CSentry::Spawn()
 {
+	pev->model = iStringNull;
 	Precache();
 	SetMyModel( "models/sentry.mdl" );
 	SetMyHealth( gSkillData.sentryHealth );
