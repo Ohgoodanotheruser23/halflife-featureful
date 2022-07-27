@@ -1582,6 +1582,14 @@ LINK_ENTITY_TO_CLASS( monster_cleansuit_scientist, CCleansuitScientist )
 void CCleansuitScientist::Spawn()
 {
 	SciSpawnHelper("models/cleansuit_scientist.mdl", gSkillData.cleansuitScientistHealth);
+
+	// White hands
+	pev->skin = 0;
+
+	// Luther is black, make his hands black
+	if( pev->body == HEAD_LUTHER )
+		pev->skin = 1;
+
 	TalkMonsterInit();
 }
 
