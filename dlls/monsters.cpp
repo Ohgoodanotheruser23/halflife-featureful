@@ -2458,6 +2458,11 @@ void CBaseMonster::MonsterInit( void )
 	SetUse( &CBaseMonster::MonsterUse );
 
 	m_flLastYawTime = gpGlobals->time;
+
+	if (FBitSet(pev->spawnflags, SF_MONSTER_ALWAYS_BRIGHT))
+	{
+		pev->effects |= EF_MODEL_BRIGHT;
+	}
 }
 
 //=========================================================

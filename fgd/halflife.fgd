@@ -414,6 +414,7 @@
 		16384 : "Reserved (don't use)" : 0 : "Reserved for Sven Co-op 'No Dyn collision' flag"
 		65536: "Non-solid corpse" : 0 : "Become non-solid upon dying. Helps preventing dead corpses get into the way of moving entities like doors"
 		1048576: "Act out of PVS" : 0 : "Act as usual even if there're no players in the PVS"
+		4194304: "Always bright" : 0 : "The model is always bright"
 	]
 	is_player_ally(choices) : "Reverse Relationship" : : "Set inverted relationship with players. Sven Co-op compatible parameter. Simple alternative to custom classify." =
 	[

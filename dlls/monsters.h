@@ -61,6 +61,8 @@
 #define SF_MONSTER_IGNORE_PLAYER_PUSH	( 1 << 19 )
 #define SF_MONSTER_ACT_OUT_OF_PVS		( 1 << 20 )
 
+#define SF_MONSTER_ALWAYS_BRIGHT		( 1 << 22 )
+
 #define SF_MONSTER_FALL_TO_GROUND		0x80000000
 
 #define SF_DEADMONSTER_DONT_DROP 2 // dead corpse don't fall on the ground
