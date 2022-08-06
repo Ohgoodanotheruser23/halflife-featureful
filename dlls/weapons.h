@@ -420,6 +420,9 @@ public:
 	// hle time creep vars
 	float	m_flPrevPrimaryAttack;
 	float	m_flLastFireTime;
+
+	//Hack so deploy animations work when weapon prediction is enabled.
+	bool m_ForceSendAnimations;
 };
 
 extern DLL_GLOBAL	short	g_sModelIndexLaser;// holds the index for the laser beam
@@ -570,9 +573,7 @@ public:
 	int Swing( int fFirst );
 	BOOL Deploy( void );
 	void Holster();
-#if FEATURE_CROWBAR_IDLE_ANIM
 	void WeaponIdle();
-#endif
 	int m_iSwing;
 	TraceResult m_trHit;
 
@@ -1220,6 +1221,8 @@ public:
 	float	m_flRechargeTime;
 	BOOL	m_secondaryAttack;
 
+protected:
+	bool CanRecharge();
 private:
 	unsigned short m_usMedkitFire;
 };

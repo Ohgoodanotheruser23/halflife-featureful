@@ -7,7 +7,7 @@ set PATH=%MSVCDir%\bin;%PATH%
 echo -- Compiler is MSVC6
 
 set XASH3DSRC=..\..\Xash3D_original
-set INCLUDES=-I../common -I../engine -I../pm_shared -I../game_shared -I../public -I../external -I../dlls -I../utils/false_vgui/include
+set INCLUDES=-I../common -I../engine -I../pm_shared -I../game_shared -I../public -I../external -I../dlls -I../utils/fake_vgui/include
 set SOURCES=../dlls/crossbow.cpp ^
 	../dlls/crowbar.cpp ^
 	../dlls/egon.cpp ^
@@ -83,7 +83,7 @@ set SOURCES=../dlls/crossbow.cpp ^
 	view.cpp ^
 	scoreboard.cpp ^
 	MOTD.cpp
-set DEFINES=/DCLIENT_DLL /DCLIENT_WEAPONS /Dsnprintf=_snprintf /DNO_VOICEGAMEMGR /DGOLDSOURCE_SUPPORT
+set DEFINES=/DCLIENT_DLL /DCLIENT_WEAPONS /Dsnprintf=_snprintf /DNO_VOICEGAMEMGR /DGOLDSOURCE_SUPPORT /DNDEBUG
 set LIBS=user32.lib Winmm.lib
 set OUTNAME=client.dll
 

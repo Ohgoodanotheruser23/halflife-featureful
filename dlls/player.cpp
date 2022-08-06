@@ -3632,7 +3632,9 @@ void CBasePlayer::SelectItem( const char *pstr )
 
 	if( m_pActiveItem )
 	{
+		m_pActiveItem->m_ForceSendAnimations = true;
 		m_pActiveItem->Deploy();
+		m_pActiveItem->m_ForceSendAnimations = false;
 		m_pActiveItem->UpdateItemInfo();
 	}
 }
@@ -3658,7 +3660,10 @@ void CBasePlayer::SelectLastItem( void )
 	CBasePlayerWeapon *pTemp = m_pActiveItem;
 	m_pActiveItem = m_pLastItem;
 	m_pLastItem = pTemp;
+
+	m_pActiveItem->m_ForceSendAnimations = true;
 	m_pActiveItem->Deploy();
+	m_pActiveItem->m_ForceSendAnimations = false;
 	m_pActiveItem->UpdateItemInfo();
 }
 
@@ -5338,7 +5343,10 @@ BOOL CBasePlayer::SwitchWeapon(CBasePlayerWeapon *pWeapon )
 	}
 
 	m_pActiveItem = pWeapon;
+
+	pWeapon->m_ForceSendAnimations = true;
 	pWeapon->Deploy();
+	pWeapon->m_ForceSendAnimations = false;
 
 	return TRUE;
 }
