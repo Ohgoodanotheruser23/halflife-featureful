@@ -1655,7 +1655,20 @@ static bool EMIT_SOUND_DYN_IMPL(edict_t *entity, int channel, const char *sample
 		if( SENTENCEG_Lookup( sample, name ) >= 0 )
 		{
 			if (subtitle)
-				UTIL_ShowCaption(sample, holdTime, false);
+			{
+				bool sendCaption = true;
+				if (attenuation > 0 && !FBitSet(entity->v.spawnflags, SF_MONSTER_IMPORTANT_SPEAKER))
+				{
+					// NOTE: this is valid only for singleplayer!
+					CBaseEntity* pPlayer = CBaseEntity::Instance( g_engfuncs.pfnPEntityOfEntIndex( 1 ) );
+					if (pPlayer)
+					{
+						sendCaption = (entity->v.origin - pPlayer->pev->origin).Length() < 1000.0f/attenuation;
+					}
+				}
+				if (sendCaption)
+					UTIL_ShowCaption(sample, holdTime, false);
+			}
 			EMIT_SOUND_DYN2( entity, channel, name, volume, attenuation, flags, pitch );
 			return true;
 		}

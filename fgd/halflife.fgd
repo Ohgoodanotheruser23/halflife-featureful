@@ -455,7 +455,15 @@
 	]
 ]
 
-@BaseClass base(CustomSentences, FollowingMonster) = TalkMonster
+@BaseClass = ImportantSpeaker
+[
+	spawnflags(Flags) =
+	[
+		8388608: "Important speaker" : 0 : "Always send subtitles"
+	]
+]
+
+@BaseClass base(CustomSentences, FollowingMonster, ImportantSpeaker) = TalkMonster
 [
 	tolerance(choices) : "Tolerance level" : : "Tolerance to player's hits" =
 	[
@@ -3829,7 +3837,7 @@
 		21 : "bust"
 	]
 ]
-@PointClass base(Monster, Sequence) size(-16 -16 -36, 16 16 36) studio() = monster_generic : "Generic Script Monster"
+@PointClass base(Monster, Sequence, ImportantSpeaker) size(-16 -16 -36, 16 16 36) studio() = monster_generic : "Generic Script Monster"
 [
 	spawnflags(Flags) =
 	[
@@ -4984,7 +4992,7 @@
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/w_squeak.mdl") = monster_snark : "Armed Snark" []
 
-@PointClass color(0 200 200) base(Targetname) size(-16 -16 -16, 16 16 16) = monster_speaker : "Fake monster to play scripted_sentence on" []
+@PointClass color(0 200 200) base(Targetname, ImportantSpeaker) size(-16 -16 -16, 16 16 16) = monster_speaker : "Fake monster to play scripted_sentence on" []
 
 @BaseClass color(0 200 200) base(Targetname) size(-16 -16 -16, 16 16 16) = MonsterTarget
 [
