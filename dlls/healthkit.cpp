@@ -630,7 +630,7 @@ void CWallHealthDecay::SearchForPlayer()
 	CBaseEntity* pEntity = 0;
 	UTIL_MakeVectors( pev->angles );
 	while((pEntity = UTIL_FindEntityInSphere(pEntity, Center(), 64)) != 0) { // this must be in sync with PLAYER_SEARCH_RADIUS from player.cpp
-		if (pEntity->IsPlayer() && pEntity->IsAlive() && ((static_cast<CBasePlayer*>(pEntity))->HasSuit() || g_modFeatures.nosuit_allow_healthcharger)) {
+		if (pEntity->IsPlayer() && pEntity->IsAlive() && ((static_cast<CBasePlayer*>(pEntity))->HasSuit() || g_modFeatures.nosuit_allow_healthcharger) && pEntity->pev->health < pEntity->pev->max_health) {
 			if (DotProduct(pEntity->pev->origin - pev->origin, gpGlobals->v_forward) < 0) {
 				continue;
 			}
@@ -698,7 +698,7 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	CBasePlayer* pPlayer = static_cast<CBasePlayer*>(pCaller);
 
 	// if the player doesn't have the suit, or there is no juice left, make the deny noise
-	if( ( m_iJuice <= 0 ) || !(pPlayer->HasSuit() || g_modFeatures.nosuit_allow_healthcharger) )
+	if( ( m_iJuice <= 0 ) || !(pPlayer->HasSuit() || g_modFeatures.nosuit_allow_healthcharger) || pPlayer->pev->health >= pPlayer->pev->max_health )
 	{
 		if( m_flSoundTime <= gpGlobals->time )
 		{
