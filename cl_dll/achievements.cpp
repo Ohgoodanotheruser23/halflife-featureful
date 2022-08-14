@@ -150,7 +150,8 @@ int CHudAchievements::VidInit()
 	lastAchievementIndex = -1;
 	achievementDisplayTime = 0;
 
-	for (int i=0; i<achievementCount; ++i)
+	int i;
+	for (i=0; i<achievementCount; ++i)
 	{
 		char id[ACHIEVEMENT_ID_SIZE];
 		strncpy(id, achievements[i].id, ACHIEVEMENT_ID_SIZE);
@@ -178,7 +179,7 @@ int CHudAchievements::VidInit()
 	}
 
 	maxTextWidth = 0;
-	for (int i=0; i<achievementCount; ++i)
+	for (i=0; i<achievementCount; ++i)
 	{
 		int width = CHud::GetLineWidth(achievements[i].description);
 		if (width > maxTextWidth)
