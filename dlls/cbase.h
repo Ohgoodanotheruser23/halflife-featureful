@@ -783,6 +783,7 @@ public:
 	string_t m_unlockedSentenceOverride;
 
 	short m_iDirectUse;
+	BOOL m_fNonMoving;
 };
 
 //
