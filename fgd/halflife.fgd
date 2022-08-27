@@ -7150,7 +7150,7 @@
 	]
 ]
 
-@SolidClass base(Targetname, Target, DamageType, GibbingPolicy) = trigger_hurt : "Trigger player hurt"
+@SolidClass base(Targetname, Target, DamageType, GibbingPolicy, MoveWith) = trigger_hurt : "Trigger player hurt"
 [
 	spawnflags(flags) =
 	[

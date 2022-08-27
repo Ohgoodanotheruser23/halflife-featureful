@@ -1097,12 +1097,12 @@ void CTriggerHurt::Spawn( void )
 	if( m_bitsDamageInflict & DMG_RADIATION )
 	{
 		SetThink( &CTriggerHurt::RadiationThink );
-		pev->nextthink = gpGlobals->time + RANDOM_FLOAT( 0.0, 0.5 );
+		SetNextThink( RANDOM_FLOAT( 0.0, 0.5 ) );
 	}
 	else if (FBitSet(pev->spawnflags, SF_TRIGGER_HURT_AFFECT_NON_MOVING_MONSTERS))
 	{
 		SetThink( &CTriggerHurt::HurtNonMovingMonstersThink );
-		pev->nextthink = gpGlobals->time + 0.1f;
+		SetNextThink( 0.1f );
 	}
 
 	if( FBitSet( pev->spawnflags, SF_TRIGGER_HURT_START_OFF ) )// if flagged to Start Turned Off, make trigger nonsolid.
@@ -1163,7 +1163,7 @@ void CTriggerHurt::RadiationThink( void )
 			pPlayer->m_flgeigerRange = flRange;
 	}
 
-	pev->nextthink = gpGlobals->time + 0.25f;
+	SetNextThink( 0.25f );
 }
 
 void CTriggerHurt::HurtNonMovingMonsters()
@@ -1189,9 +1189,9 @@ void CTriggerHurt::HurtNonMovingMonsters()
 void CTriggerHurt::HurtNonMovingMonstersThink()
 {
 	if (pev->dmgtime > gpGlobals->time) {
-		pev->nextthink = Q_min(gpGlobals->time + 0.5f, pev->dmgtime);
+		AbsoluteNextThink( Q_min(gpGlobals->time + 0.5f, pev->dmgtime) );
 	} else {
-		pev->nextthink = gpGlobals->time + 0.5f;
+		SetNextThink( 0.5f );
 	}
 
 	HurtNonMovingMonsters();
