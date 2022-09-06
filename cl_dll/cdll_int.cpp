@@ -61,6 +61,17 @@ int __MsgFunc_Bhopcap( const char *pszName, int iSize, void *pbuf )
 
 	g_bhopcap = READ_BYTE();
 
+	int spriteIndex = READ_SHORT();
+	struct model_s* model = gEngfuncs.pfnGetModelByIndex(spriteIndex);
+	if (model)
+	{
+		gEngfuncs.Con_Printf("Got a model for index %d\n", spriteIndex);
+	}
+	else
+	{
+		gEngfuncs.Con_Printf("Didn't get a model for index %d!\n", spriteIndex);
+	}
+
 	return 1;
 }
 

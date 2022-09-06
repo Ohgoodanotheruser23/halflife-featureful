@@ -182,6 +182,9 @@ class CItemSuit : public CItem
 	void Precache( void )
 	{
 		PRECACHE_MODEL( "models/w_suit.mdl" );
+
+		pev->button = PRECACHE_MODEL("sprites/rope.spr");
+		ALERT(at_console, "Sprite index is %d\n", pev->button);
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
@@ -196,6 +199,7 @@ class CItemSuit : public CItem
 		pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
 		return TRUE;
 	}
+	virtual int ObjectCaps( void ) { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 };
 
 LINK_ENTITY_TO_CLASS( item_suit, CItemSuit )

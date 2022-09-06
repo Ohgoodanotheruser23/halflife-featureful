@@ -230,7 +230,7 @@ void LinkUserMessages( void )
 	gmsgFade = REG_USER_MSG( "ScreenFade", sizeof(ScreenFade) );
 	gmsgAmmoX = REG_USER_MSG( "AmmoX", 2 );
 	gmsgTeamNames = REG_USER_MSG( "TeamNames", -1 );
-	gmsgBhopcap = REG_USER_MSG( "Bhopcap", 1 );
+	gmsgBhopcap = REG_USER_MSG( "Bhopcap", 3 );
 
 	gmsgStatusText = REG_USER_MSG( "StatusText", -1 );
 	gmsgStatusValue = REG_USER_MSG( "StatusValue", 3 );
@@ -2927,6 +2927,8 @@ void CBasePlayer::Precache( void )
 		m_fInitHUD = TRUE;
 
 	pev->fov = m_iFOV;	// Vit_amiN: restore the FOV on level change or map/saved game load
+
+	m_precacheTime = gpGlobals->time;
 }
 
 int CBasePlayer::Save( CSave &save )
@@ -4114,13 +4116,19 @@ void CBasePlayer::UpdateClientData( void )
 		m_flNextSBarUpdateTime = gpGlobals->time + 0.2f;
 	}
 
+	CBaseEntity* pSuit = UTIL_FindEntityByClassname(NULL, "item_suit");
+
 	// Send the current bhopcap state.
 	if( !m_bSentBhopcap )
 	{
-		m_bSentBhopcap = true;
-		MESSAGE_BEGIN( MSG_ONE, gmsgBhopcap, NULL, pev );
-			WRITE_BYTE( g_bhopcap );
-		MESSAGE_END();
+		if (gpGlobals->time - m_precacheTime >= 1)
+		{
+			m_bSentBhopcap = true;
+			MESSAGE_BEGIN( MSG_ONE, gmsgBhopcap, NULL, pev );
+				WRITE_BYTE( g_bhopcap );
+				WRITE_SHORT( pSuit ? pSuit->pev->button : 0 );
+			MESSAGE_END();
+		}
 	}
 }
 
