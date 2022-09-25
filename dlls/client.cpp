@@ -1260,6 +1260,7 @@ int AddToFullPack( struct entity_state_s *state, int e, edict_t *ent, edict_t *h
 
 	// This non-player entity is being moved by the game .dll and not the physics simulation system
 	//  make sure that we interpolate it's position on the client if it moves
+#if 0
 	if( !player &&
 		 ent->v.animtime &&
 		 ent->v.velocity[0] == 0 && 
@@ -1268,6 +1269,11 @@ int AddToFullPack( struct entity_state_s *state, int e, edict_t *ent, edict_t *h
 	{
 		state->eflags |= EFLAG_SLERP;
 	}
+#else
+	if(ent->v.flags & FL_FLY )
+		state->eflags |= EFLAG_SLERP;
+	else state->eflags &= ~EFLAG_SLERP;
+#endif
 
 	state->scale		= ent->v.scale;
 	state->solid		= ent->v.solid;
