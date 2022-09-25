@@ -115,6 +115,7 @@ public:
 	static const char *pAlertSounds[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_SMALL; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -1.0f, -1.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 1.0f, 1.0f, 2.0f ); }
 
@@ -187,7 +188,7 @@ void CLeech::Spawn( void )
 	SetBits( pev->flags, FL_SWIM );
 	SetMyHealth( gSkillData.leechHealth );
 
-	m_flFieldOfView = -0.5;	// 180 degree FOV
+	SetMyFieldOfView(-0.5);
 	m_flDistLook = 750;
 	MonsterInit();
 	SetThink( &CLeech::SwimThink );
@@ -265,27 +266,23 @@ void CLeech::AttackSound( void )
 {
 	if( gpGlobals->time > m_attackSoundTime )
 	{
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, pAttackSounds[RANDOM_LONG( 0, ARRAYSIZE( pAttackSounds ) - 1 )], 1.0f, ATTN_NORM, 0, PITCH_NORM );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pAttackSounds ), 1.0f, ATTN_NORM, 0, PITCH_NORM );
 		m_attackSoundTime = gpGlobals->time + 0.5f;
 	}
 }
 
 void CLeech::AlertSound( void )
 {
-	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, pAlertSounds[RANDOM_LONG( 0, ARRAYSIZE( pAlertSounds ) - 1 )], 1.0f, ATTN_NORM * 0.5f, 0, PITCH_NORM );
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pAlertSounds ), 1.0f, ATTN_NORM * 0.5f, 0, PITCH_NORM );
 }
 
 void CLeech::Precache( void )
 {
-	size_t i;
-
 	//PRECACHE_MODEL( "models/icky.mdl" );
 	PrecacheMyModel( "models/leech.mdl" );
 
-	for( i = 0; i < ARRAYSIZE( pAttackSounds ); i++ )
-		PRECACHE_SOUND( pAttackSounds[i] );
-	for( i = 0; i < ARRAYSIZE( pAlertSounds ); i++ )
-		PRECACHE_SOUND( pAlertSounds[i] );
+	PRECACHE_SOUND_ARRAY( pAttackSounds );
+	PRECACHE_SOUND_ARRAY( pAlertSounds );
 }
 
 int CLeech::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
@@ -405,6 +402,11 @@ void CLeech::DeadThink( void )
 		{
 			SetThink( NULL );
 			StopAnimation();
+
+			if( ShouldFadeOnDeath() )
+			{
+				SUB_StartFadeOut();
+			}
 			return;
 		}
 		else if( pev->flags & FL_ONGROUND )
@@ -664,9 +666,7 @@ void CLeech::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
 
 	//ALERT(at_aiconsole, "Leech: killed\n");
 	// tell owner ( if any ) that we're dead.This is mostly for MonsterMaker functionality.
-	CBaseEntity *pOwner = CBaseEntity::Instance( pev->owner );
-	if( pOwner )
-		pOwner->DeathNotice( pev );
+	OnDying();
 
 	// When we hit the ground, play the "death_end" activity
 	if( pev->waterlevel )
@@ -684,7 +684,7 @@ void CLeech::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
 	}
 	else
 		SetActivity( ACT_DIEFORWARD );
-	
+
 	pev->movetype = MOVETYPE_TOSS;
 	pev->takedamage = DAMAGE_NO;
 	SetThink( &CLeech::DeadThink );

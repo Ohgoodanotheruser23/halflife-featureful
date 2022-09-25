@@ -213,6 +213,7 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.slaveDmgClawrake = GetSkillCvar( "sk_islave_dmg_clawrake" );
 	gSkillData.slaveDmgZap = GetSkillCvar( "sk_islave_dmg_zap" );
 	gSkillData.slaveZapRate = GetSkillCvar( "sk_islave_zap_rate" );
+	gSkillData.slaveRevival = GetSkillCvar( "sk_islave_revival", 0, true );
 
 	// Icthyosaur
 	gSkillData.ichthyosaurHealth = GetSkillCvar( "sk_ichthyosaur_health" );
@@ -265,6 +266,10 @@ void CGameRules::RefreshSkillData ( void )
 #if FEATURE_OTIS
 	// Otis
 	gSkillData.otisHealth = GetSkillCvar( "sk_otis_health", "sk_barney_health" );
+#endif
+#if FEATURE_KATE
+	// Kate
+	gSkillData.kateHealth = GetSkillCvar( "sk_kate_health", "sk_barney_health" );
 #endif
 #if FEATURE_ROBOGRUNT
 	// Robogrunt
@@ -529,10 +534,20 @@ CGameRules *InstallGameRules( void )
 int TridepthValue()
 {
 #if FEATURE_TRIDEPTH_CVAR
-	extern cvar_t tridepth;
-	return (int)tridepth.value;
+	extern cvar_t npc_tridepth;
+	return (int)npc_tridepth.value;
 #else
 	return 1;
+#endif
+}
+
+bool TridepthForAll()
+{
+#if FEATURE_TRIDEPTH_ALL_CVAR
+	extern cvar_t npc_tridepth_all;
+	return npc_tridepth_all.value > 0;
+#else
+	return 0;
 #endif
 }
 
@@ -581,6 +596,16 @@ bool NpcActiveAfterCombat()
 #if FEATURE_NPC_ACTIVE_AFTER_COMBAT_CVAR
 	extern cvar_t npc_active_after_combat;
 	return npc_active_after_combat.value != 0;
+#else
+	return false;
+#endif
+}
+
+bool NpcFollowOutOfPvs()
+{
+#if FEATURE_NPC_FOLLOW_OUT_OF_PVS_CVAR
+	extern cvar_t npc_follow_out_of_pvs;
+	return npc_follow_out_of_pvs.value != 0;
 #else
 	return false;
 #endif

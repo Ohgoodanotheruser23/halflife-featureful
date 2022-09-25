@@ -52,17 +52,16 @@ void CBaseMonster::SetState( MONSTERSTATE State )
 	case MONSTERSTATE_ALERT:
 		if (m_MonsterState == MONSTERSTATE_COMBAT)
 		{
-			Remember(bits_MEMORY_ALERT_AFTER_COMBAT);
+			Remember(bits_MEMORY_ACTIVE_AFTER_COMBAT);
 			// Don't roam after fight if was following the player
-			CFollowingMonster* pFollowingMonster = MyFollowingMonsterPointer();
-			if (!pFollowingMonster || !pFollowingMonster->IsFollowingPlayer())
+			if (CanRoamAfterCombat())
 			{
 				Remember(bits_MEMORY_SHOULD_ROAM_IN_ALERT);
 			}
 		}
 		break;
 	case MONSTERSTATE_COMBAT:
-		Forget(bits_MEMORY_SHOULD_ROAM_IN_ALERT|bits_MEMORY_ALERT_AFTER_COMBAT);
+		Forget(bits_MEMORY_SHOULD_ROAM_IN_ALERT|bits_MEMORY_ACTIVE_AFTER_COMBAT);
 		break;
 	case MONSTERSTATE_HUNT:
 		if (m_MonsterState != State)
@@ -100,7 +99,7 @@ void CBaseMonster::RunAI( void )
 		// things will happen before the player gets there!
 		// UPDATE: We now let COMBAT state monsters think and act fully outside of player PVS. This allows the player to leave 
 		// an area where monsters are fighting, and the fight will continue.
-		if( !FNullEnt( FIND_CLIENT_IN_PVS( edict() ) ) || ( m_MonsterState == MONSTERSTATE_COMBAT ) )
+		if( FBitSet(pev->spawnflags, SF_MONSTER_ACT_OUT_OF_PVS) || ( m_MonsterState == MONSTERSTATE_COMBAT ) || !FNullEnt( FIND_CLIENT_IN_PVS( edict() ) ) )
 		{
 			Look( m_flDistLook );
 			Listen();// check for audible sounds. 

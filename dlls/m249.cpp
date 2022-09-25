@@ -100,13 +100,13 @@ BOOL CM249::Deploy()
 {
 	m_fInSpecialReload = FALSE;
 	UpdateTape();
-	return DefaultDeploy("models/v_saw.mdl", "models/p_saw.mdl", M249_DEPLOY, "mp5", UseDecrement(), pev->body);
+	return DefaultDeploy("models/v_saw.mdl", "models/p_saw.mdl", M249_DEPLOY, "mp5", pev->body);
 }
 
-void CM249::Holster(int skiplocal)
+void CM249::Holster()
 {
 	m_fInSpecialReload = FALSE;
-	CBasePlayerWeapon::Holster(skiplocal);
+	CBasePlayerWeapon::Holster();
 }
 
 void CM249::PrimaryAttack()
@@ -214,7 +214,7 @@ void CM249::PrimaryAttack()
 	if (m_flNextPrimaryAttack < UTIL_WeaponTimeBase())
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.1;
 
-	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15);
+	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.2f;
 }
 
 
@@ -238,15 +238,24 @@ void CM249::ItemPostFrame()
 	}
 	if ( m_fInSpecialReload )
 	{
-		m_iVisibleClip = m_iClip + Q_min( iMaxClip() - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);
 		if (m_pPlayer->m_flNextAttack <= UTIL_WeaponTimeBase())
 		{
+			int maxClip;
+	#ifndef CLIENT_DLL
+			maxClip = iMaxClip();
+	#else
+			ItemInfo itemInfo;
+			GetItemInfo( &itemInfo );
+			maxClip = itemInfo.iMaxClip;
+	#endif
+			m_iVisibleClip = m_iClip + Q_min( maxClip - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
+
+			UpdateTape(m_iVisibleClip);
 			m_fInSpecialReload = FALSE;
-			SendWeaponAnim( M249_RELOAD1, UseDecrement(), pev->body );
+			SendWeaponAnim( M249_RELOAD1, pev->body );
 			m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 2.4;
 		}
 	}
-	UpdateTape(m_iVisibleClip);
 
 	CBasePlayerWeapon::ItemPostFrame();
 }
@@ -272,7 +281,7 @@ void CM249::WeaponIdle(void)
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 155.0/25.0;
 	}
 
-	SendWeaponAnim(iAnim, UseDecrement(), pev->body);
+	SendWeaponAnim(iAnim, pev->body);
 }
 
 void CM249::UpdateTape()
@@ -283,12 +292,22 @@ void CM249::UpdateTape()
 
 void CM249::UpdateTape(int clip)
 {
+	pev->body = BodyFromClip(clip);
+}
+
+int CM249::BodyFromClip()
+{
+	return BodyFromClip(m_iVisibleClip);
+}
+
+int CM249::BodyFromClip(int clip)
+{
 	if (clip == 0) {
-		pev->body = 8;
+		return 8;
 	} else if (clip > 0 && clip < 8) {
-		pev->body = 9 - clip;
+		return 9 - clip;
 	} else {
-		pev->body = 0;
+		return 0;
 	}
 }
 

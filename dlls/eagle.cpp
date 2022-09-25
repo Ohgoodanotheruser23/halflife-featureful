@@ -79,20 +79,22 @@ int CEagle::GetItemInfo(ItemInfo *p)
 
 BOOL CEagle::Deploy( )
 {
-	return DefaultDeploy( "models/v_desert_eagle.mdl", "models/p_desert_eagle.mdl", EAGLE_DRAW, "onehanded", 0 );
+	return DefaultDeploy( "models/v_desert_eagle.mdl", "models/p_desert_eagle.mdl", EAGLE_DRAW, "onehanded" );
 }
 
-void CEagle::Holster( int skiplocal /* = 0 */ )
+void CEagle::Holster()
 {
 	m_fInReload = FALSE;// cancel any reload in progress.
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
 	SendWeaponAnim( EAGLE_HOLSTER );
 
+#ifndef CLIENT_DLL
 	if (m_pEagleLaser)
 	{
 		m_pEagleLaser->Killed( NULL, NULL, GIB_NEVER );
 		m_pEagleLaser = NULL;
 	}
+#endif
 }
 
 void CEagle::SecondaryAttack()
@@ -166,7 +168,8 @@ void CEagle::PrimaryAttack()
 		vecDir = m_pPlayer->FireBulletsPlayer( 1, vecSrc, vecAiming, Vector( flSpread, flSpread, flSpread ), 8192, BULLET_PLAYER_EAGLE, 0, 0, m_pPlayer->pev, m_pPlayer->random_seed );
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.5f;
 #ifndef CLIENT_DLL
-		m_pEagleLaser->Suspend( 0.6 );
+		if (m_pEagleLaser)
+			m_pEagleLaser->Suspend( 0.6f );
 #endif
 	}
 	else
@@ -289,7 +292,7 @@ void CEagle::WeaponIdle( void )
 				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.63f;
 			}
 		}
-		SendWeaponAnim( iAnim, UseDecrement() ? 1 : 0 );
+		SendWeaponAnim( iAnim );
 	}
 }
 #endif

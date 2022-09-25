@@ -25,6 +25,7 @@
 #include	"effects.h"
 #include	"decals.h"
 #include	"soundent.h"
+#include	"scripted.h"
 #include	"game.h"
 #include	"bullsquid.h"
 
@@ -258,7 +259,7 @@ void CBigSquidSpit::Animate( void )
 		if ( pEntity->MyMonsterPointer() && !FClassnameIs(pEntity->pev, "monster_bullchicken")) {
 			CBaseMonster* bullsquid = GetBullsquid();
 			if (!bullsquid || bullsquid->IRelationship(pEntity) >= R_DL) {
-				pEntity->TakeDamage(pev, bullsquid ? bullsquid->pev : pev, gSkillData.bullsquidDmgSpit/4, DMG_POISON);
+				pEntity->TakeDamage(pev, bullsquid ? bullsquid->pev : pev, gSkillData.bullsquidDmgSpit/4, DMG_POISON | DMG_TIMEDNONLETHAL);
 			}
 		}
 	}
@@ -339,7 +340,7 @@ void CBigSquidSpit::Touch( CBaseEntity *pOther )
 		if (!bullsquid || bullsquid->IRelationship(pOther) >= R_DL) {
 			entvars_t* pevAttacker = bullsquid ? bullsquid->pev : pev;
 			pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit * 1.5, DMG_ACID );
-			pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit/4, DMG_POISON);
+			pOther->TakeDamage( pev, pevAttacker, gSkillData.bullsquidDmgSpit/4, DMG_POISON | DMG_TIMEDNONLETHAL);
 		}
 	}
 
@@ -396,6 +397,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -32.0f, -32.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 32.0f, 32.0f, 64.0f ); }
 
@@ -732,44 +734,37 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 
 				// !!!HACKHACK - the spot at which the spit originates (in front of the mouth) was measured in 3ds and hardcoded here.
 				// we should be able to read the position of bones at runtime for this info.
-				Vector vecSpitOffset = ( gpGlobals->v_right * 8.0f + gpGlobals->v_forward * 37.0f + gpGlobals->v_up * 23.0f );
-				vecSpitOffset = ( pev->origin + vecSpitOffset );
-				Vector vecEnemyPosition;
-				if (m_hEnemy != 0)
-					vecEnemyPosition = m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs / 2;
-				else
-					vecEnemyPosition = m_vecEnemyLKP;
-				Vector vecSpitDir = ( vecEnemyPosition - vecSpitOffset ).Normalize();
-
-				bool bigSpit = false;
-#if FEATURE_BULLSQUID_BIGSPIT
-				if (RANDOM_LONG(0,1))
-				{
-					if ((vecEnemyPosition - vecSpitOffset).Length() < 400) {
-						bigSpit = true;
-					}
-				}
-#endif
+				const Vector vecSpitOffset = ( gpGlobals->v_right * 8.0f + gpGlobals->v_forward * 37.0f + gpGlobals->v_up * 23.0f );
+				const Vector vecSpitOrigin = ( pev->origin + vecSpitOffset );
 
 				float dirRandomDeviation = 0.05f;
 				if (g_iSkillLevel == SKILL_HARD)
 					dirRandomDeviation = 0.01f;
 				else if (g_iSkillLevel == SKILL_MEDIUM)
 					dirRandomDeviation = 0.03f;
+				float distanceToEnemy;
 
-				vecSpitDir.x += RANDOM_FLOAT( -dirRandomDeviation, dirRandomDeviation );
-				vecSpitDir.y += RANDOM_FLOAT( -dirRandomDeviation, dirRandomDeviation );
-				vecSpitDir.z += RANDOM_FLOAT( -dirRandomDeviation, 0.0f );
+				const Vector vecSpitDir = SpitAtEnemy(vecSpitOrigin, dirRandomDeviation, &distanceToEnemy);
+
+				bool bigSpit = false;
+#if FEATURE_BULLSQUID_BIGSPIT
+				if (RANDOM_LONG(0,1))
+				{
+					if (distanceToEnemy < 400) {
+						bigSpit = true;
+					}
+				}
+#endif
 
 				// do stuff for this event.
 				AttackSound(bigSpit);
 
 				// spew the spittle temporary ents.
-				MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpitOffset );
+				MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpitOrigin );
 					WRITE_BYTE( TE_SPRITE_SPRAY );
-					WRITE_COORD( vecSpitOffset.x );	// pos
-					WRITE_COORD( vecSpitOffset.y );	
-					WRITE_COORD( vecSpitOffset.z );	
+					WRITE_COORD( vecSpitOrigin.x );	// pos
+					WRITE_COORD( vecSpitOrigin.y );
+					WRITE_COORD( vecSpitOrigin.z );
 					WRITE_COORD( vecSpitDir.x );	// dir
 					WRITE_COORD( vecSpitDir.y );	
 					WRITE_COORD( vecSpitDir.z );	
@@ -780,12 +775,12 @@ void CBullsquid::HandleAnimEvent( MonsterEvent_t *pEvent )
 				MESSAGE_END();
 
 				if (bigSpit) {
-					CBigSquidSpit::Shoot(pev, vecSpitOffset, vecSpitDir * 600.0f);
+					CBigSquidSpit::Shoot(pev, vecSpitOrigin, vecSpitDir * 600.0f);
 				} else {
 					const float spitAngle = 0.13;
-					CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * 900.0f );
-					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, spitAngle) * 900.0f );
-					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, -spitAngle) * 900.0f );
+					CSquidSpit::Shoot( pev, vecSpitOffset, vecSpitDir * CSquidSpit::SpitSpeed() );
+					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, spitAngle) * CSquidSpit::SpitSpeed() );
+					CSquidSpit::Shoot( pev, vecSpitOffset, RotateSpitVector(vecSpitDir, -spitAngle) * CSquidSpit::SpitSpeed() );
 				}
 			}
 			break;
@@ -899,7 +894,7 @@ void CBullsquid::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	pev->effects = 0;
 	SetMyHealth( gSkillData.bullsquidHealth );
-	m_flFieldOfView = 0.2f;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	m_fCanThreatDisplay = TRUE;
@@ -1217,6 +1212,7 @@ Schedule_t slSquidWallow[] =
 		ARRAYSIZE( tlSquidWallow ),
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_NEW_ENEMY,
 		// even though HEAR_SOUND/SMELL FOOD doesn't break this schedule, we need this mask
 		// here or the monster won't detect these sounds at ALL while running this schedule.

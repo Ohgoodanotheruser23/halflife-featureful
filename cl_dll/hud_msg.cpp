@@ -44,6 +44,7 @@ int CHud::MsgFunc_ResetHUD( const char *pszName, int iSize, void *pbuf )
 			pList->p->Reset();
 		pList = pList->pNext;
 	}
+	m_Nightvision.Reset();
 
 	// reset sensitivity
 	m_flMouseSensitivity = 0;
@@ -150,7 +151,7 @@ int CHud::MsgFunc_Concuss( const char *pszName, int iSize, void *pbuf )
 	m_iConcussionEffect = READ_BYTE();
 	if( m_iConcussionEffect )
 	{
-		UnpackRGB( r, g, b, gHUD.m_iHUDColor );	// Vit_amiN: fixed
+		UnpackRGB( r, g, b, gHUD.HUDColor() );	// Vit_amiN: fixed
 		this->m_StatusIcons.EnableIcon( "dmg_concuss", r, g, b );
 	}
 	else

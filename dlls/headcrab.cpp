@@ -108,6 +108,7 @@ public:
 	CUSTOM_SCHEDULES
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_SMALL; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -12.0f, -12.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 12.0f, 12.0f, 24.0f ); }
 	int MonsterCategory() { return MONSTER_CATEGORY_HEADCRAB; }
@@ -317,7 +318,7 @@ void CHeadCrab::SpawnHelper(const char *modelName, float health)
 	SetMyHealth( health );
 	pev->view_ofs		= Vector( 0, 0, 20 );// position of the eyes relative to monster's origin.
 	pev->yaw_speed		= 5;//!!! should we put this in the monster's changeanim function since turn rates may vary with state/anim?
-	m_flFieldOfView		= 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.5f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 }
 
@@ -458,9 +459,13 @@ int CHeadCrab::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, floa
 	// Don't take ally acid damage -- BigMomma's mortar is acid
 	if( ( bitsDamageType & DMG_ACID ) && pevAttacker)
 	{
-		const int rel = IRelationship( Instance( pevAttacker ) );
-		if (rel < R_DL && rel != R_FR)
-			return 0;
+		CBaseEntity* pAttacker = Instance( pevAttacker );
+		if (pAttacker)
+		{
+			const int rel = IRelationship( pAttacker );
+			if (rel < R_DL && rel != R_FR)
+				return 0;
+		}
 	}
 
 	return CBaseMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
@@ -512,6 +517,26 @@ Schedule_t *CHeadCrab::GetScheduleOfType( int Type )
 	}
 
 	return CBaseMonster::GetScheduleOfType( Type );
+}
+
+class CDeadHeadCrab : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_ALIEN_PREY; }
+
+	const char* getPos(int pos) const {
+		return "dieback";
+	}
+};
+
+LINK_ENTITY_TO_CLASS( monster_headcrab_dead, CDeadHeadCrab )
+
+void CDeadHeadCrab::Spawn( )
+{
+	SpawnHelper("models/headcrab.mdl", BLOOD_COLOR_YELLOW);
+	MonsterInitDead();
+	pev->frame = 255;
 }
 
 class CBabyCrab : public CHeadCrab
@@ -585,6 +610,8 @@ Schedule_t *CBabyCrab::GetScheduleOfType( int Type )
 }
 
 #if FEATURE_SHOCKTROOPER
+#define bits_MEMORY_SHOCKTROOPER_IS_OWNER bits_MEMORY_CUSTOM1
+
 class CShockRoach : public CHeadCrab
 {
 public:
@@ -593,13 +620,26 @@ public:
 	const char* DefaultDisplayName() { return "Shock Roach"; }
 	virtual float GetDamageAmount( void ) { return gSkillData.sroachDmgBite; }
 	void EXPORT LeapTouch(CBaseEntity *pOther);
+	bool TryGiveAsWeapon(CBaseEntity* pOther);
+	void EXPORT RoachUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	int ObjectCaps() {
+		if (IsFullyAlive())
+			return CBaseMonster::ObjectCaps() | FCAP_IMPULSE_USE | FCAP_ONLYVISIBLE_USE;
+		else
+			return CBaseMonster::ObjectCaps();
+	}
 	void PainSound(void);
 	void DeathSound(void);
 	void IdleSound(void);
 	void AlertSound(void);
 	void MonsterThink(void);
 	void StartTask(Task_t* pTask);
+	BOOL ShouldFadeOnDeath();
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
+	void OnDying();
+
+	Vector DefaultMinHullSize() { return Vector( -12.0f, -12.0f, 0.0f ); }
+	Vector DefaultMaxHullSize() { return Vector( 12.0f, 12.0f, 4.0f ); }
 
 	int MonsterCategory() { return MONSTER_CATEGORY_ALIEN_MONSTER; }
 
@@ -671,7 +711,7 @@ void CShockRoach::Spawn()
 	Precache();
 
 	SetMyModel("models/w_shock_rifle.mdl");
-	UTIL_SetOrigin(pev, pev->origin);
+	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
@@ -680,13 +720,19 @@ void CShockRoach::Spawn()
 	SetMyHealth( gSkillData.sroachHealth );
 	pev->view_ofs = Vector(0, 0, 20);// position of the eyes relative to monster's origin.
 	pev->yaw_speed = 5;//!!! should we put this in the monster's changeanim function since turn rates may vary with state/anim?
-	m_flFieldOfView = 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.5f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
-	m_fRoachSolid = 0;
+	m_fRoachSolid = FALSE;
 	m_flBirthTime = gpGlobals->time;
 
 	MonsterInit();
+
+	if (pev->owner && FClassnameIs(pev->owner, "monster_shocktrooper")) {
+		Remember(bits_MEMORY_SHOCKTROOPER_IS_OWNER);
+	}
+
+	SetUse(&CShockRoach::RoachUse);
 }
 
 //=========================================================
@@ -722,25 +768,38 @@ void CShockRoach::LeapTouch(CBaseEntity *pOther)
 		return;
 	}
 
-	// Don't hit if back on ground
-	if (!FBitSet(pev->flags, FL_ONGROUND))
+	if (!TryGiveAsWeapon(pOther))
 	{
-		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBiteSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
-
-#if FEATURE_SHOCKRIFLE
-		// Give the shockrifle weapon to the player, if not already in possession.
-		if (pOther->IsPlayer() && pOther->IsAlive() && !(pOther->pev->weapons & (1 << WEAPON_SHOCKRIFLE))) {
-			CBasePlayer* pPlayer = (CBasePlayer*)(pOther);
-			pPlayer->GiveNamedItem("weapon_shockrifle");
-			pPlayer->pev->weapons |= (1 << WEAPON_SHOCKRIFLE);
-			UTIL_Remove(this);
-			return;
+		if (!FBitSet(pev->flags, FL_ONGROUND))
+		{
+			EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBiteSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+			pOther->TakeDamage(pev, pev, GetDamageAmount(), DMG_SLASH);
 		}
-#endif
-		pOther->TakeDamage(pev, pev, GetDamageAmount(), DMG_SLASH);
 	}
 
 	SetTouch(NULL);
+}
+
+bool CShockRoach::TryGiveAsWeapon(CBaseEntity *pOther)
+{
+#if FEATURE_SHOCKRIFLE
+	// Give the shockrifle weapon to the player, if not already in possession.
+	if (pOther->IsPlayer() && pOther->IsAlive() && !(pOther->pev->weapons & (1 << WEAPON_SHOCKRIFLE))) {
+		CBasePlayer* pPlayer = (CBasePlayer*)(pOther);
+		pPlayer->GiveNamedItem("weapon_shockrifle");
+		UTIL_Remove(this);
+		return true;
+	}
+#endif
+	return false;
+}
+
+void CShockRoach::RoachUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if (TryGiveAsWeapon(pCaller)) {
+		SetTouch(NULL);
+		SetUse(NULL);
+	}
 }
 //=========================================================
 // PrescheduleThink
@@ -754,7 +813,7 @@ void CShockRoach::MonsterThink(void)
 	}
 	if (!m_fRoachSolid && lifeTime >= 2.0) {
 		m_fRoachSolid = TRUE;
-		SetMySize(Vector(-12, -12, 0), Vector(12, 12, 24));
+		SetMySize(DefaultMinHullSize(), DefaultMaxHullSize());
 	}
 	// die when ready
 	if (lifeTime >= gSkillData.sroachLifespan)
@@ -815,6 +874,13 @@ void CShockRoach::StartTask(Task_t *pTask)
 	}
 }
 
+BOOL CShockRoach::ShouldFadeOnDeath()
+{
+	if( ( pev->spawnflags & SF_MONSTER_FADECORPSE ) || (!FNullEnt( pev->owner ) && !HasMemory(bits_MEMORY_SHOCKTROOPER_IS_OWNER)) )
+		return TRUE;
+	return FALSE;
+}
+
 void CShockRoach::AttackSound()
 {
 	EMIT_SOUND_DYN( edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch() );
@@ -827,4 +893,30 @@ int CShockRoach::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	// Skip headcrab's TakeDamage to avoid unwanted immunity to friendly acid.
 	return CBaseMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
 }
+
+void CShockRoach::OnDying()
+{
+	SetUse(NULL);
+}
+
+class CDeadShockRoach : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_ALIEN_PREY; }
+
+	const char* getPos(int pos) const {
+		return "dieback";
+	}
+};
+
+LINK_ENTITY_TO_CLASS( monster_shockroach_dead, CDeadShockRoach )
+
+void CDeadShockRoach::Spawn( )
+{
+	SpawnHelper("models/w_shock_rifle.mdl", BLOOD_COLOR_YELLOW);
+	MonsterInitDead();
+	pev->frame = 255;
+}
+
 #endif

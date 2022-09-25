@@ -23,6 +23,7 @@
 #include "monsters.h"
 #include "saverestore.h"
 #include "locus.h"
+#include "talkmonster.h"
 
 #define MONSTERMAKER_START_ON_FIX 1
 
@@ -39,9 +40,10 @@
 #define SF_MONSTERMAKER_NO_GROUND_CHECK 2048 // don't check if something on ground prevents a monster to fall on spawn
 #define SF_MONSTERMAKER_ALIGN_TO_PLAYER 4096 // Align to closest player on spawn
 #define SF_MONSTERMAKER_WAIT_UNTIL_PROVOKED 8192
-#define SF_MONSTERMAKER_PASS_MONSTER_AS_ACTIVATOR 16384 // DEPRECATED. Use the spawned monster as activator to fire target
-#define SF_MONSTERMAKER_SPECIAL_FLAG		32768
-#define SF_MONSTERMAKER_NONSOLID_CORPSE		65536
+#define SF_MONSTERMAKER_SPECIAL_FLAG		( 1 << 15 )
+#define SF_MONSTERMAKER_NONSOLID_CORPSE		( 1 << 16 )
+#define SF_MONSTERMAKER_IGNORE_PLAYER_PUSHING ( 1 << 19 )
+#define SF_MONSTERMAKER_ACT_IN_NON_PVS		( 1 << 20 )
 
 enum
 {
@@ -77,6 +79,14 @@ public:
 	void DeathNotice( entvars_t *pevChild );// monster maker children use this to tell the monster maker that they have died.
 	int MakeMonster( void );
 
+	void GetRealHullSizes(Vector& minHullSize, Vector& maxHullSize);
+	int CalculateSpot(const Vector& testMinHullSize, const Vector& testMaxHullSize, Vector& placePosition, Vector& placeAngles, edict_t*& warpballSoundEnt);
+	CBaseEntity* SpawnMonster(const Vector& placePosition, const Vector& placeAngles);
+	void StartWarpballEffect(const Vector& vecPosition, edict_t* warpballSoundEnt);
+	string_t WarpballName() {
+		return pev->message;
+	}
+
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 
@@ -104,6 +114,12 @@ public:
 	short m_iMaxYawDeviation;
 	Vector m_defaultMinHullSize;
 	Vector m_defaultMaxHullSize;
+
+	string_t m_iszUse;
+	string_t m_iszUnUse;
+	string_t m_iszDecline;
+
+	float m_spawnDelay;
 };
 
 LINK_ENTITY_TO_CLASS( monstermaker, CMonsterMaker )
@@ -131,6 +147,10 @@ TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 	DEFINE_FIELD( CMonsterMaker, m_iMaxYawDeviation, FIELD_SHORT ),
 	DEFINE_FIELD( CMonsterMaker, m_defaultMinHullSize, FIELD_VECTOR ),
 	DEFINE_FIELD( CMonsterMaker, m_defaultMaxHullSize, FIELD_VECTOR ),
+	DEFINE_FIELD( CMonsterMaker, m_iszUse, FIELD_STRING ),
+	DEFINE_FIELD( CMonsterMaker, m_iszUnUse, FIELD_STRING ),
+	DEFINE_FIELD( CMonsterMaker, m_iszDecline, FIELD_STRING ),
+	DEFINE_FIELD( CMonsterMaker, m_spawnDelay, FIELD_FLOAT ),
 };
 
 IMPLEMENT_SAVERESTORE( CMonsterMaker, CBaseMonster )
@@ -217,17 +237,32 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 		m_iMaxYawDeviation = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq( pkvd->szKeyName, "UseSentence" ) )
+	{
+		m_iszUse = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "UnUseSentence" ) )
+	{
+		m_iszUnUse = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq( pkvd->szKeyName, "RefusalSentence" ))
+	{
+		m_iszDecline = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "spawndelay" ) )
+	{
+		m_spawnDelay = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBaseMonster::KeyValue( pkvd );
 }
 
 void CMonsterMaker::Spawn()
 {
-	if (FBitSet(pev->spawnflags, SF_MONSTERMAKER_PASS_MONSTER_AS_ACTIVATOR))
-	{
-		ALERT(at_console, "%s: Usage of 'Pass monster as activator' flag is deprecated! Use Target's Activator instead\n", STRING(pev->classname));
-	}
-
 	pev->solid = SOLID_NOT;
 
 	if (FStringNull(m_iszPlacePosition))
@@ -300,6 +335,61 @@ void CMonsterMaker::Precache( void )
 		PRECACHE_MODEL(STRING(m_gibModel));
 
 	UTIL_PrecacheMonster( STRING(m_iszMonsterClassname), m_reverseRelationship, &m_defaultMinHullSize, &m_defaultMaxHullSize );
+
+	UTIL_PrecacheOther("monstermaker_hull");
+}
+
+class CMonsterMakerHull : public CBaseEntity
+{
+public:
+	void Spawn();
+	void Precache();
+	static CMonsterMakerHull* SelfCreate(CMonsterMaker* pMonsterMaker, const Vector& position, const Vector& angles, const Vector& minHullSize, const Vector& maxHullSize, float delay);
+	void Think();
+};
+
+LINK_ENTITY_TO_CLASS( monstermaker_hull, CMonsterMakerHull )
+
+void CMonsterMakerHull::Precache()
+{
+	PRECACHE_MODEL("sprites/iunknown.spr");
+}
+
+void CMonsterMakerHull::Spawn()
+{
+	Precache();
+}
+
+CMonsterMakerHull* CMonsterMakerHull::SelfCreate(CMonsterMaker *pMonsterMaker, const Vector &position, const Vector &angles, const Vector &minHullSize, const Vector &maxHullSize, float delay)
+{
+	CMonsterMakerHull *pHull = GetClassPtr((CMonsterMakerHull *)NULL);
+	UTIL_SetOrigin( pHull->pev, position );
+	SET_MODEL( pHull->edict(), "sprites/iunknown.spr" );
+	pHull->pev->angles = angles;
+	pHull->pev->solid = SOLID_BBOX;
+	pHull->pev->classname = MAKE_STRING("monstermaker_hull");
+	pHull->pev->movetype = MOVETYPE_NONE;
+	pHull->pev->owner = pMonsterMaker->edict();
+	UTIL_SetSize( pHull->pev, minHullSize, maxHullSize );
+	pHull->pev->renderamt = 0;
+	pHull->pev->rendermode = kRenderTransTexture;
+	pHull->pev->nextthink = gpGlobals->time + delay;
+	return pHull;
+}
+
+void CMonsterMakerHull::Think()
+{
+	pev->solid = SOLID_NOT;
+	pev->effects |= EF_NODRAW;
+
+	CBaseEntity* pOwner = CBaseEntity::Instance(pev->owner);
+	if (pOwner)
+	{
+		CMonsterMaker* pMonsterMaker = static_cast<CMonsterMaker*>(pOwner);
+		pMonsterMaker->SpawnMonster(pev->origin, pev->angles);
+	}
+
+	UTIL_Remove(this);
 }
 
 static CBaseEntity* MakerBlocker(const Vector& mins, const Vector& maxs)
@@ -324,47 +414,29 @@ static float MakerGroundLevel(const Vector& position, entvars_t* pev)
 	return tr.vecEndPos.z;
 }
 
-//=========================================================
-// MakeMonster-  this is the code that drops the monster
-//=========================================================
-int CMonsterMaker::MakeMonster( void )
+void CMonsterMaker::GetRealHullSizes(Vector &minHullSize, Vector &maxHullSize)
 {
-	edict_t	*pent;
-	entvars_t *pevCreate;
-	edict_t *posEnt = NULL;
-
-	if( m_iMaxLiveChildren > 0 && m_cLiveChildren >= m_iMaxLiveChildren )
+	if (m_minHullSize != g_vecZero)
 	{
-		// not allowed to make a new one yet. Too many live ones out right now.
-		return MONSTERMAKER_LIMIT;
+		minHullSize = Vector( m_minHullSize.x, m_minHullSize.y, 0 );
+	}
+	else if (m_defaultMinHullSize != g_vecZero)
+	{
+		minHullSize = Vector( m_defaultMinHullSize.x, m_defaultMinHullSize.y, 0 );
 	}
 
-	Vector minHullSize = Vector( -34, -34, 0 );
-	Vector maxHullSize = Vector( 34, 34, 0 );
-
-	if (FBitSet(pev->spawnflags, SF_MONSTERMAKER_AUTOSIZEBBOX))
+	if (m_maxHullSize != g_vecZero)
 	{
-		if (m_minHullSize != g_vecZero)
-		{
-			minHullSize = Vector( m_minHullSize.x, m_minHullSize.y, 0 );
-		}
-		else if (m_defaultMinHullSize != g_vecZero)
-		{
-			minHullSize = Vector( m_defaultMinHullSize.x, m_defaultMinHullSize.y, 0 );
-		}
-
-		if (m_maxHullSize != g_vecZero)
-		{
-			maxHullSize = Vector( m_maxHullSize.x, m_maxHullSize.y, 0 );
-		}
-		else if (m_defaultMaxHullSize != g_vecZero)
-		{
-			maxHullSize = Vector( m_defaultMaxHullSize.x, m_defaultMaxHullSize.y, 0 );
-		}
+		maxHullSize = m_maxHullSize;
 	}
+	else if (m_defaultMaxHullSize != g_vecZero)
+	{
+		maxHullSize = m_defaultMaxHullSize;
+	}
+}
 
-	Vector placePosition;
-	Vector placeAngles;
+int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &testMaxHullSize, Vector &placePosition, Vector &placeAngles, edict_t *&warpballSoundEnt)
+{
 	Vector mins, maxs;
 
 	const char* placeIdentifier = STRING(m_iszPlacePosition);
@@ -384,9 +456,11 @@ int CMonsterMaker::MakeMonster( void )
 		{
 			foundAnything = true;
 
-			mins = pCandidate->pev->origin + minHullSize;
-			maxs = pCandidate->pev->origin + maxHullSize;
-			maxs.z = pCandidate->pev->origin.z;
+			mins = pCandidate->pev->origin + testMinHullSize;
+			maxs = pCandidate->pev->origin + testMaxHullSize;
+
+			if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_AUTOSIZEBBOX))
+				maxs.z = pCandidate->pev->origin.z;
 
 			if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
 			{
@@ -406,7 +480,7 @@ int CMonsterMaker::MakeMonster( void )
 		{
 			placePosition = pChosenSpot->pev->origin;
 			placeAngles = pChosenSpot->pev->angles;
-			posEnt = pChosenSpot->edict();
+			warpballSoundEnt = pChosenSpot->edict();
 		}
 		else
 		{
@@ -424,7 +498,7 @@ int CMonsterMaker::MakeMonster( void )
 		if (FStringNull(m_iszPlacePosition))
 		{
 			placePosition = pev->origin;
-			posEnt = edict();
+			warpballSoundEnt = edict();
 		}
 		else
 		{
@@ -434,8 +508,8 @@ int CMonsterMaker::MakeMonster( void )
 			if (tempPosEnt)
 			{
 				tempPosEnt->SetThink(&CBaseEntity::SUB_Remove);
-				tempPosEnt->pev->nextthink = gpGlobals->time + 0.1;
-				posEnt = tempPosEnt->edict();
+				tempPosEnt->pev->nextthink = gpGlobals->time + m_spawnDelay + 0.5f;
+				warpballSoundEnt = tempPosEnt->edict();
 			}
 		}
 
@@ -449,10 +523,11 @@ int CMonsterMaker::MakeMonster( void )
 			}
 		}
 
-		mins = placePosition + minHullSize;
-		maxs = placePosition + maxHullSize;
+		mins = placePosition + testMinHullSize;
+		maxs = placePosition + testMaxHullSize;
 
-		maxs.z = placePosition.z;
+		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_AUTOSIZEBBOX))
+			maxs.z = placePosition.z;
 		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
 			mins.z = m_flGround;
 
@@ -495,15 +570,19 @@ int CMonsterMaker::MakeMonster( void )
 		placeAngles.y = UTIL_AngleMod(placeAngles.y);
 	}
 
-	pent = CREATE_NAMED_ENTITY( m_iszMonsterClassname );
+	return 0;
+}
 
+CBaseEntity* CMonsterMaker::SpawnMonster(const Vector &placePosition, const Vector &placeAngles)
+{
+	edict_t *pent = CREATE_NAMED_ENTITY( m_iszMonsterClassname );
 	if( FNullEnt( pent ) )
 	{
 		ALERT ( at_console, "NULL Ent in MonsterMaker!\n" );
-		return MONSTERMAKER_NULLENTITY;
+		return 0;
 	}
 
-	pevCreate = VARS( pent );
+	entvars_t *pevCreate = VARS( pent );
 	pevCreate->origin = placePosition;
 	pevCreate->angles = placeAngles;
 	SetBits( pevCreate->spawnflags, SF_MONSTER_FALL_TO_GROUND );
@@ -521,18 +600,22 @@ int CMonsterMaker::MakeMonster( void )
 		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_MONSTERCLIP ))
 			SetBits( pevCreate->spawnflags, SF_MONSTER_HITMONSTERCLIP );
 
-		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_PRISONER ))
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_PRISONER ) )
 			SetBits( pevCreate->spawnflags, SF_MONSTER_PRISONER );
-		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_PREDISASTER ))
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_PREDISASTER ) )
 			SetBits( pevCreate->spawnflags, SF_MONSTER_PREDISASTER );
-		if (FBitSet(pev->spawnflags, SF_MONSTERMAKER_DONT_DROP_GUN))
-			SetBits(pevCreate->spawnflags, SF_MONSTER_DONT_DROP_GUN);
-		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_WAIT_UNTIL_PROVOKED ))
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_DONT_DROP_GUN ) )
+			SetBits( pevCreate->spawnflags, SF_MONSTER_DONT_DROP_GUN);
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_WAIT_UNTIL_PROVOKED ) )
 			SetBits( pevCreate->spawnflags, SF_MONSTER_WAIT_UNTIL_PROVOKED );
-		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_SPECIAL_FLAG ))
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_SPECIAL_FLAG ) )
 			SetBits( pevCreate->spawnflags, SF_MONSTER_SPECIAL_FLAG );
-		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_NONSOLID_CORPSE ))
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_NONSOLID_CORPSE ) )
 			SetBits( pevCreate->spawnflags, SF_MONSTER_NONSOLID_CORPSE );
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_ACT_IN_NON_PVS ) )
+			SetBits( pevCreate->spawnflags, SF_MONSTER_ACT_OUT_OF_PVS );
+		if( FBitSet( pev->spawnflags, SF_MONSTERMAKER_IGNORE_PLAYER_PUSHING ) )
+			SetBits( pevCreate->spawnflags, SF_MONSTER_IGNORE_PLAYER_PUSH );
 		if (m_gag > 0)
 			SetBits(pevCreate->spawnflags, SF_MONSTER_GAG);
 		pevCreate->weapons = pev->weapons;
@@ -542,6 +625,7 @@ int CMonsterMaker::MakeMonster( void )
 		createdMonster->m_reverseRelationship = m_reverseRelationship;
 		createdMonster->m_displayName = m_displayName;
 		createdMonster->SetMyBloodColor(m_bloodColor);
+		createdMonster->SetMyFieldOfView(m_flFieldOfView);
 		if (!FStringNull(m_gibModel))
 			createdMonster->m_gibModel = m_gibModel;
 
@@ -560,6 +644,7 @@ int CMonsterMaker::MakeMonster( void )
 		createdMonster->m_freeRoam = m_freeRoam;
 		createdMonster->m_activeAfterCombat = m_activeAfterCombat;
 		createdMonster->m_sizeForGrapple = m_sizeForGrapple;
+		createdMonster->m_gibPolicy = m_gibPolicy;
 
 		createdMonster->SetHead(m_iHead);
 
@@ -567,6 +652,28 @@ int CMonsterMaker::MakeMonster( void )
 		if (deadMonster)
 		{
 			deadMonster->m_iPose = m_iPose;
+		}
+
+		CTalkMonster* pTalkMonster = createdMonster->MyTalkMonsterPointer();
+		if (pTalkMonster)
+		{
+			if (!FStringNull(m_iszUse))
+			{
+				pTalkMonster->m_iszUse = m_iszUse;
+				pTalkMonster->m_szGrp[TLK_USE] = CTalkMonster::GetRedefinedSentence(m_iszUse);
+			}
+
+			if (!FStringNull(m_iszUnUse))
+			{
+				pTalkMonster->m_iszUnUse = m_iszUnUse;
+				pTalkMonster->m_szGrp[TLK_UNUSE] = CTalkMonster::GetRedefinedSentence(m_iszUnUse);
+			}
+
+			if (!FStringNull(m_iszDecline))
+			{
+				pTalkMonster->m_iszDecline = m_iszDecline;
+				pTalkMonster->m_szGrp[TLK_DECLINE] = CTalkMonster::GetRedefinedSentence(m_iszDecline);
+			}
 		}
 	}
 
@@ -579,53 +686,6 @@ int CMonsterMaker::MakeMonster( void )
 		pevCreate->solid = SOLID_NOT;
 	}
 #endif
-
-	if ( !FStringNull( pev->message ) )
-	{
-		CBaseEntity* foundEntity = UTIL_FindEntityByTargetname(NULL, STRING(pev->message));
-		if ( foundEntity && (FClassnameIs(foundEntity->pev, "env_warpball")
-							 || FClassnameIs(foundEntity->pev, "env_xenmaker")))
-		{
-			Vector vecPosition = pevCreate->origin;
-			if (createdMonster)
-			{
-				Vector vecJunk;
-
-				switch (pev->impulse) {
-				case 1:
-					vecPosition = createdMonster->EyePosition();
-					break;
-				case 3:
-					vecPosition = createdMonster->Center();
-					break;
-				case 5:
-					createdMonster->GetAttachment(0, vecPosition, vecJunk);
-					break;
-				case 6:
-					createdMonster->GetAttachment(1, vecPosition, vecJunk);
-					break;
-				case 7:
-					createdMonster->GetAttachment(2, vecPosition, vecJunk);
-					break;
-				case 8:
-					createdMonster->GetAttachment(3, vecPosition, vecJunk);
-					break;
-				default:
-					break;
-				}
-			}
-
-			foundEntity->pev->vuser1 = vecPosition;
-			foundEntity->pev->dmg_inflictor = posEnt;
-			foundEntity->Use(this, this, USE_SET, 0.0f);
-			foundEntity->pev->vuser1 = g_vecZero;
-			foundEntity->pev->dmg_inflictor = NULL;
-		}
-		else
-		{
-			ALERT(at_error, "template %s for %s is not env_warpball or does not exist\n", STRING(pev->message), STRING(pev->classname));
-		}
-	}
 
 	if( !FStringNull( pev->netname ) )
 	{
@@ -650,10 +710,6 @@ int CMonsterMaker::MakeMonster( void )
 		// NOTE: in Spirit activator is monster.
 		// We keep original Half-Life behavior by default, but it can be configured.
 		CBaseEntity* pActivator = this;
-		if (FBitSet(pev->spawnflags, SF_MONSTERMAKER_PASS_MONSTER_AS_ACTIVATOR))
-		{
-			pActivator = createdMonster;
-		}
 		switch (m_targetActivator) {
 		case MMA_NO:
 			pActivator = NULL;
@@ -673,6 +729,115 @@ int CMonsterMaker::MakeMonster( void )
 		}
 		// delay already overloaded for this entity, so can't call SUB_UseTargets()
 		FireTargets( STRING( pev->target ), pActivator, this, USE_TOGGLE, 0 );
+	}
+
+	return CBaseEntity::Instance(pevCreate);
+}
+
+void CMonsterMaker::StartWarpballEffect(const Vector &vecPosition, edict_t* warpballSoundEnt)
+{
+	CBaseEntity* foundEntity = UTIL_FindEntityByTargetname(0, STRING(WarpballName()));
+	if ( foundEntity && (FClassnameIs(foundEntity->pev, "env_warpball") || FClassnameIs(foundEntity->pev, "env_xenmaker")))
+	{
+		edict_t* prevInflictor = foundEntity->pev->dmg_inflictor;
+		foundEntity->pev->vuser1 = vecPosition;
+		foundEntity->pev->dmg_inflictor = warpballSoundEnt;
+		foundEntity->Use(this, this, USE_SET, 0.0f);
+		foundEntity->pev->vuser1 = g_vecZero;
+		foundEntity->pev->dmg_inflictor = prevInflictor;
+	}
+	else
+	{
+		ALERT(at_error, "template %s for %s is not env_warpball or does not exist\n", STRING(pev->message), STRING(pev->classname));
+	}
+}
+
+//=========================================================
+// MakeMonster-  this is the code that drops the monster
+//=========================================================
+int CMonsterMaker::MakeMonster( void )
+{
+	if( m_iMaxLiveChildren > 0 && m_cLiveChildren >= m_iMaxLiveChildren )
+	{
+		// not allowed to make a new one yet. Too many live ones out right now.
+		return MONSTERMAKER_LIMIT;
+	}
+
+	Vector minHullSize = Vector( -34, -34, 0 );
+	Vector maxHullSize = Vector( 34, 34, 0 );
+
+	if (FBitSet(pev->spawnflags, SF_MONSTERMAKER_AUTOSIZEBBOX))
+	{
+		GetRealHullSizes(minHullSize, maxHullSize);
+	}
+
+	Vector placePosition, placeAngles;
+	edict_t *warpballSoundEnt = NULL;
+
+	const int spotResult = CalculateSpot(minHullSize, maxHullSize, placePosition, placeAngles, warpballSoundEnt);
+	if (spotResult != 0)
+		return spotResult;
+
+	string_t warpballName = WarpballName();
+
+	if (m_spawnDelay <= 0.0f)
+	{
+		CBaseEntity* createdEntity = SpawnMonster(placePosition, placeAngles);
+		if (!createdEntity)
+			return MONSTERMAKER_NULLENTITY;
+
+		CBaseMonster* createdMonster = createdEntity->MyMonsterPointer();
+
+		if (!FStringNull(warpballName))
+		{
+			Vector vecWarpPosition = createdEntity->pev->origin;
+			if (createdMonster)
+			{
+				Vector vecJunk;
+				switch (pev->impulse) {
+				case 1:
+					vecWarpPosition = createdMonster->EyePosition();
+					break;
+				case 3:
+					vecWarpPosition = createdMonster->Center();
+					break;
+				case 5:
+					createdMonster->GetAttachment(0, vecWarpPosition, vecJunk);
+					break;
+				case 6:
+					createdMonster->GetAttachment(1, vecWarpPosition, vecJunk);
+					break;
+				case 7:
+					createdMonster->GetAttachment(2, vecWarpPosition, vecJunk);
+					break;
+				case 8:
+					createdMonster->GetAttachment(3, vecWarpPosition, vecJunk);
+					break;
+				default:
+					break;
+				}
+			}
+			StartWarpballEffect(vecWarpPosition, warpballSoundEnt);
+		}
+	}
+	else
+	{
+		CMonsterMakerHull* pHull = CMonsterMakerHull::SelfCreate(this, placePosition, placeAngles, minHullSize, maxHullSize, m_spawnDelay);
+		if (!pHull)
+			return MONSTERMAKER_NULLENTITY;
+
+		if (!FStringNull(warpballName))
+		{
+			Vector vecWarpPosition = placePosition;
+			if (pev->impulse > 0)
+			{
+				Vector realMinHullSize = g_vecZero;
+				Vector realMaxHullSize = g_vecZero;
+				GetRealHullSizes(realMinHullSize, realMaxHullSize);
+				vecWarpPosition = placePosition + (realMinHullSize + realMaxHullSize) / 2.0f;
+			}
+			StartWarpballEffect(vecWarpPosition, warpballSoundEnt);
+		}
 	}
 
 	return MONSTERMAKER_SPAWNED;
@@ -745,8 +910,15 @@ void CMonsterMaker::CyclicBacklogThink()
 void CMonsterMaker::DeathNotice( entvars_t *pevChild )
 {
 	// ok, we've gotten the deathnotice from our child, now clear out its owner if we don't want it to fade.
-	m_cLiveChildren--;
-	ALERT(at_aiconsole, "Monstermaker DeathNotice: %d live children left\n", m_cLiveChildren);
+	if (m_cLiveChildren > 0)
+	{
+		m_cLiveChildren--;
+		ALERT(at_aiconsole, "%s DeathNotice: %d live children left\n", STRING(pev->classname), m_cLiveChildren);
+	}
+	else
+	{
+		ALERT(at_aiconsole, "Impossible situation: %s got DeathNotice when live children count is 0!\n", STRING(pev->classname));
+	}
 
 	if( !m_fFadeChildren )
 	{

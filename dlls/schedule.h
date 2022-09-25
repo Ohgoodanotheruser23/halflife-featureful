@@ -44,6 +44,7 @@ typedef enum
 		SCHED_ALERT_BIG_FLINCH,
 		SCHED_ALERT_STAND,
 		SCHED_INVESTIGATE_SOUND,
+		SCHED_INVESTIGATE_SPOT,
 		SCHED_COMBAT_FACE,
 		SCHED_COMBAT_STAND,
 		SCHED_CHASE_ENEMY,
@@ -55,6 +56,7 @@ typedef enum
 		SCHED_TAKE_COVER_FROM_ENEMY,
 		SCHED_TAKE_COVER_FROM_BEST_SOUND,
 		SCHED_TAKE_COVER_FROM_ORIGIN,
+		SCHED_TAKE_COVER_FROM_SPOT,
 		SCHED_COWER, // usually a last resort!
 		SCHED_MELEE_ATTACK1,
 		SCHED_MELEE_ATTACK2,
@@ -79,8 +81,11 @@ typedef enum
 		SCHED_FREEROAM,
 		SCHED_FREEROAM_ALERT,
 		SCHED_MOVE_TO_ENEMY_LKP,
-		SCHED_RUN_AWAY_FROM_ENEMY,
-		SCHED_RUN_AWAY_FROM_ENEMY_FAILED,
+		SCHED_RETREAT_FROM_ENEMY,
+		SCHED_RETREAT_FROM_ENEMY_FAILED,
+		SCHED_RETREAT_FROM_SPOT,
+		SCHED_RETREAT_FROM_SPOT_FAILED,
+		SCHED_IDLE_FACE,
 
 		LAST_COMMON_SCHEDULE			// Leave this at the bottom
 } SCHEDULE_TYPE;
@@ -95,20 +100,21 @@ typedef enum
 		TASK_WAIT_FACE_ENEMY,
 		TASK_WAIT_PVS,
 		TASK_SUGGEST_STATE,
-		TASK_WALK_TO_TARGET,
-		TASK_RUN_TO_TARGET,
+		TASK_WALK_TO_SCRIPT,
+		TASK_RUN_TO_SCRIPT,
 		TASK_MOVE_TO_TARGET_RANGE,
 		TASK_MOVE_NEAREST_TO_TARGET_RANGE,
 		TASK_GET_PATH_TO_ENEMY,
 		TASK_GET_PATH_TO_ENEMY_LKP,
 		TASK_GET_PATH_TO_ENEMY_CORPSE,
 		TASK_GET_PATH_TO_LEADER,
-		TASK_GET_PATH_TO_SPOT,
+		TASK_GET_PATH_TO_PLAYER,
 		TASK_GET_PATH_TO_TARGET,
 		TASK_GET_PATH_TO_HINTNODE,
 		TASK_GET_PATH_TO_LASTPOSITION,
 		TASK_GET_PATH_TO_BESTSOUND,
 		TASK_GET_PATH_TO_BESTSCENT,
+		TASK_GET_PATH_TO_SPOT,
 		TASK_RUN_PATH,	
 		TASK_WALK_PATH,	
 		TASK_STRAFE_PATH,
@@ -166,12 +172,14 @@ typedef enum
 		TASK_FIND_NEAR_NODE_COVER_FROM_ENEMY,// data for this one is the MAXIMUM acceptable distance to the cover.
 		TASK_FIND_FAR_NODE_COVER_FROM_ENEMY,// data for this one is there MINIMUM aceptable distance to the cover.
 		TASK_FIND_COVER_FROM_ORIGIN,
+		TASK_FIND_COVER_FROM_SPOT,
 		TASK_EAT,
 		TASK_DIE,
 		TASK_WAIT_FOR_SCRIPT,
 		TASK_PLAY_SCRIPT,
 		TASK_ENABLE_SCRIPT,
 		TASK_PLANT_ON_SCRIPT,
+		TASK_FORCED_PLANT_ON_SCRIPT,
 		TASK_FACE_SCRIPT,
 		TASK_WAIT_RANDOM,
 		TASK_WAIT_INDEFINITE,
@@ -186,9 +194,13 @@ typedef enum
 		TASK_CHECK_FIRE, // check friendly fire
 		TASK_CATCH_WITH_TARGET_RANGE,
 		TASK_GET_PATH_TO_FREEROAM_NODE,
-		TASK_FIND_RUN_AWAY_FROM_ENEMY,
-		TASK_WALK_TO_TARGET_RADIUS,
-		TASK_RUN_TO_TARGET_RADIUS,
+		TASK_FIND_SPOT_AWAY_FROM_ENEMY,
+		TASK_FIND_SPOT_AWAY,
+		TASK_RUN_OR_WALK_PATH,
+		TASK_WALK_OR_RUN_PATH,
+		TASK_WALK_TO_SCRIPT_RADIUS,
+		TASK_RUN_TO_SCRIPT_RADIUS,
+		TASK_FACE_SCHEDULED,
 		LAST_COMMON_TASK // LEAVE THIS AT THE BOTTOM!! (sjb)
 } SHARED_TASKS;
 
@@ -255,7 +267,6 @@ struct WayPoint_t
 #define bits_MF_IS_GOAL				( 1 << 7 ) // this waypoint is the goal of the whole move.
 #define bits_MF_DONT_SIMPLIFY		( 1 << 8 ) // Don't let the route code simplify this waypoint
 #define bits_MF_NEAREST_PATH		( 1 << 9 )
-#define bits_MF_NO_TRIDEPTH			( 1 << 10 ) // make tridepth always equal 1
 
 // If you define any flags that aren't _TO_ flags, add them here so we can mask
 // them off when doing compares.
@@ -268,6 +279,12 @@ struct WayPoint_t
 #define MOVEGOAL_LOCATION			(bits_MF_TO_LOCATION)
 #define MOVEGOAL_NODE				(bits_MF_TO_NODE)
 #define MOVEGOAL_TARGETENT_NEAREST	(bits_MF_TO_TARGETENT|bits_MF_NEAREST_PATH)
+#define MOVEGOAL_LOCATION_NEAREST	(bits_MF_TO_LOCATION|bits_MF_NEAREST_PATH)
+
+#define BUILDROUTE_NO_NODEROUTE ( 1 << 0 )
+#define BUILDROUTE_NODEROUTE_ONLY ( 1 << 1 )
+#define BUILDROUTE_NO_TRIANGULATION ( 1 << 2 )
+#define BUILDROUTE_NO_TRIDEPTH ( 1 << 3 )
 
 // these bits represent conditions that may befall the monster, of which some are allowed 
 // to interrupt certain schedules. 
@@ -294,9 +311,10 @@ struct WayPoint_t
 #define bits_COND_ENEMY_DEAD			( 1 << 20) // enemy was killed. If you get this in combat, try to find another enemy. If you get it in alert, victory dance.
 #define bits_COND_SEE_CLIENT			( 1 << 21) // see a client
 #define bits_COND_SEE_NEMESIS			( 1 << 22) // see my nemesis
-#define bits_COND_ENEMY_LOST			( 1 << 23 ) // did not observe an enemy for a while
+#define bits_COND_ENEMY_LOST			( 1 << 23) // did not observe an enemy for a while
+#define bits_COND_SCHEDULE_SUGGESTED	( 1 << 24)
 
-#define bits_COND_CLIENT_PUSH			( 1 << 26 ) // Clients can push ally monsters out of their way
+#define bits_COND_CLIENT_PUSH			( 1 << 26) // Clients can push ally monsters out of their way
 #define bits_COND_NOFIRE				( 1 << 27) // better stop firing (usually as friendly fire is possible)
 #define bits_COND_SPECIAL1				( 1 << 28) // Defined by individual monster
 #define bits_COND_SPECIAL2				( 1 << 29) // Defined by individual monster

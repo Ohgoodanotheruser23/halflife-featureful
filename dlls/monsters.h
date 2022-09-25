@@ -55,9 +55,12 @@
 #define SF_MONSTER_PREDISASTER			256	//this is a predisaster scientist or barney. Influences how they speak.
 #define SF_MONSTER_FADECORPSE			512 // Fade out corpse after death
 #define SF_MONSTER_DONT_DROP_GUN		1024
-#define SF_MONSTER_NO_YELLOW_BLOBS		8192
-#define SF_MONSTER_SPECIAL_FLAG			32768
-#define SF_MONSTER_NONSOLID_CORPSE		65536
+#define SF_MONSTER_NO_YELLOW_BLOBS		( 1 << 13 )
+#define SF_MONSTER_SPECIAL_FLAG			( 1 << 15 )
+#define SF_MONSTER_NONSOLID_CORPSE		( 1 << 16 )
+#define SF_MONSTER_IGNORE_PLAYER_PUSH	( 1 << 19 )
+#define SF_MONSTER_ACT_OUT_OF_PVS		( 1 << 20 )
+
 #define SF_MONSTER_FALL_TO_GROUND		0x80000000
 
 #define SF_DEADMONSTER_DONT_DROP 2 // dead corpse don't fall on the ground
@@ -109,7 +112,7 @@ BOOL FBoxVisible( entvars_t *pevLooker, entvars_t *pevTarget, Vector &vecTargetO
 #define bits_MEMORY_FLINCHED			( 1 << 6 )// Has already flinched
 #define bits_MEMORY_KILLED				( 1 << 7 )// HACKHACK -- remember that I've already called my Killed()
 #define bits_MEMORY_SHOULD_ROAM_IN_ALERT	( 1 << 8 )
-#define bits_MEMORY_ALERT_AFTER_COMBAT	( 1 << 9 )
+#define bits_MEMORY_ACTIVE_AFTER_COMBAT	( 1 << 9 )
 #define bits_MEMORY_SHOULD_GO_TO_LKP	( 1 << 10 )
 #define bits_MEMORY_CUSTOM4				( 1 << 28 )	// Monster-specific memory
 #define bits_MEMORY_CUSTOM3				( 1 << 29 )	// Monster-specific memory
@@ -145,6 +148,30 @@ enum
 		8 : "Hear Player"
 		9 : "Hear Combat"
 */
+
+#define	COVER_CHECKS	5// how many checks are made
+#define COVER_DELTA		48// distance between checks
+
+#define FINDSPOTAWAY_WALK 0
+#define FINDSPOTAWAY_CHECK_SPOT 1
+#define FINDSPOTAWAY_RUN 2
+#define FINDSPOTAWAY_TRACE_LOOKER 4
+
+#define SUGGEST_SCHEDULE_FLAG_WALK ( 1 << 0 )
+#define SUGGEST_SCHEDULE_FLAG_RUN ( 1 << 1 )
+#define SUGGEST_SCHEDULE_FLAG_SPOT_IS_POSITION ( 1 << 2 )
+#define SUGGEST_SCHEDULE_FLAG_SPOT_IS_ENTITY ( 1 << 3 )
+
+// utility flags
+#define SUGGEST_SCHEDULE_FLAG_SPOT_IS_INVALID ( 1 << 24 )
+#define SUGGEST_SCHEDULE_FLAG_SPOT_ENTITY_IS_PROVIDED ( 1 << 25 )
+
+enum
+{
+	GIBBING_POLICY_DEFAULT = 0,
+	GIBBING_POLICY_PREFER_GIB,
+	GIBBING_POLICY_PREFER_NOGIB,
+};
 
 //
 // A gib is a chunk of a body, or a piece of wood/metal/rocks/etc.

@@ -993,15 +993,16 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 	DEFINE_FIELD(CBasePlayer, m_pRope, FIELD_CLASSPTR),
 #endif
 	DEFINE_FIELD(CBasePlayer, m_settingsLoaded, FIELD_BOOLEAN),
+	DEFINE_FIELD(CBasePlayer, m_buddha, FIELD_BOOLEAN),
 
 	//DEFINE_FIELD( CBasePlayer, m_fDeadTime, FIELD_FLOAT ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_fGameHUDInitialized, FIELD_INTEGER ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_flStopExtraSoundTime, FIELD_TIME ),
 	//DEFINE_FIELD( CBasePlayer, m_fKnownItem, FIELD_INTEGER ), // reset to zero on load
 	//DEFINE_FIELD( CBasePlayer, m_iPlayerSound, FIELD_INTEGER ),	// Don't restore, set in Precache()
-	//DEFINE_FIELD( CBasePlayer, m_pentSndLast, FIELD_EDICT ),	// Don't restore, client needs reset
-	//DEFINE_FIELD( CBasePlayer, m_flSndRoomtype, FIELD_FLOAT ),	// Don't restore, client needs reset
-	//DEFINE_FIELD( CBasePlayer, m_flSndRange, FIELD_FLOAT ),	// Don't restore, client needs reset
+	DEFINE_FIELD( CBasePlayer, m_pentSndLast, FIELD_EDICT ),
+	DEFINE_FIELD( CBasePlayer, m_SndRoomtype, FIELD_INTEGER ),
+	DEFINE_FIELD( CBasePlayer, m_flSndRange, FIELD_FLOAT ),
 	//DEFINE_FIELD( CBasePlayer, m_fNewAmmo, FIELD_INTEGER ), // Don't restore, client needs reset
 	//DEFINE_FIELD( CBasePlayer, m_flgeigerRange, FIELD_FLOAT ),	// Don't restore, reset in Precache()
 	//DEFINE_FIELD( CBasePlayer, m_flgeigerDelay, FIELD_FLOAT ),	// Don't restore, reset in Precache()
@@ -1060,6 +1061,7 @@ int gmsgShowMenu = 0;
 int gmsgGeigerRange = 0;
 int gmsgTeamNames = 0;
 int gmsgBhopcap = 0;
+int gmsgPlayMP3 = 0;
 int gmsgHUDColor = 0;
 
 int gmsgStatusText = 0;
@@ -1123,6 +1125,7 @@ void LinkUserMessages( void )
 	gmsgAmmoX = REG_USER_MSG( "AmmoX", 2 );
 	gmsgTeamNames = REG_USER_MSG( "TeamNames", -1 );
 	gmsgBhopcap = REG_USER_MSG( "Bhopcap", 1 );
+	gmsgPlayMP3 = REG_USER_MSG( "PlayMP3", -1 );
 	gmsgHUDColor = REG_USER_MSG( "HUDColor", 4 );
 
 	gmsgStatusText = REG_USER_MSG( "StatusText", -1 );
@@ -1303,6 +1306,19 @@ int CBasePlayer::TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamag
 			if (medAmmo >= 0 && medAmmo < pPlayerMedkit->iMaxAmmo1()) {
 				const int toAdd = Q_min(rest, pPlayerMedkit->iMaxAmmo1() - medAmmo);
 				m_rgAmmo[medAmmoIndex] += toAdd;
+
+				if (flHealth > 1)
+				{
+					MESSAGE_BEGIN( MSG_ONE, gmsgAmmoPickup, NULL, pev );
+						WRITE_BYTE( medAmmoIndex );		// ammo ID
+						WRITE_BYTE( toAdd );		// amount
+					MESSAGE_END();
+
+					if (healed == 0) {
+						EMIT_SOUND( ENT( pev ), CHAN_ITEM, AMMO_PICKUP_SOUND, 1, ATTN_NORM );
+					}
+				}
+
 				return healed + toAdd;
 			}
 		}
@@ -1671,7 +1687,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	int iWeaponRules;
 	int iAmmoRules;
 	int i;
-	CBasePlayerWeapon *rgpPackWeapons[32] = {0};
+	CBasePlayerWeapon *rgpPackWeapons[MAX_WEAPONS] = {0};
 	memset(rgpPackWeapons, 0, sizeof(rgpPackWeapons));
 	AmmoCountInfo iPackAmmo[MAX_AMMO_SLOTS];
 	int iPW = 0;// index into packweapons array
@@ -1685,7 +1701,7 @@ void CBasePlayer::PackDeadPlayerItems( void )
 	if( iWeaponRules == GR_PLR_DROP_GUN_NO && iAmmoRules == GR_PLR_DROP_AMMO_NO )
 	{
 		// nothing to pack. Remove the weapons and return. Don't call create on the box!
-		RemoveAllItems( TRUE );
+		RemoveAllItems( STRIP_ALL_ITEMS );
 		return;
 	}
 
@@ -1782,10 +1798,10 @@ void CBasePlayer::PackDeadPlayerItems( void )
 		iPW++;
 	}
 
-	RemoveAllItems( TRUE );// now strip off everything that wasn't handled by the code above.
+	RemoveAllItems( STRIP_ALL_ITEMS );// now strip off everything that wasn't handled by the code above.
 }
 
-void CBasePlayer::RemoveAllItems( BOOL removeSuit )
+void CBasePlayer::RemoveAllItems( int stripFlags )
 {
 	int i;
 
@@ -1815,13 +1831,22 @@ void CBasePlayer::RemoveAllItems( BOOL removeSuit )
 	pev->viewmodel = 0;
 	pev->weaponmodel = 0;
 
-	if( removeSuit )
-		pev->weapons = 0;
-	else
-		pev->weapons &= ~WEAPON_ALLWEAPONS;
+	if (FBitSet(stripFlags, STRIP_FLASHLIGHT) || !FBitSet(stripFlags, STRIP_DONT_TURNOFF_FLASHLIGHT)) {
+		FlashlightTurnOff(false);
+	}
 
-	// Turn off flashlight
-	ClearBits( pev->effects, EF_DIMLIGHT );
+	pev->weapons &= ~WEAPON_ALLWEAPONS;
+	if( FBitSet(stripFlags, STRIP_SUIT) )
+		pev->weapons &= ~(1 << WEAPON_SUIT);
+#if FEATURE_FLASHLIGHT_ITEM
+	if ( FBitSet(stripFlags, STRIP_FLASHLIGHT) )
+		pev->weapons &= ~(1 << WEAPON_FLASHLIGHT);
+#endif
+
+	if (FBitSet(stripFlags, STRIP_LONGJUMP)) {
+		m_fLongJump = FALSE;
+		g_engfuncs.pfnSetPhysicsKeyValue( edict(), "slj", "0" );
+	}
 
 	for( i = 0; i < MAX_AMMO_SLOTS; i++ )
 		m_rgAmmo[i] = 0;
@@ -1847,6 +1872,10 @@ void CBasePlayer::RemoveAllItems( BOOL removeSuit )
 
 void CBasePlayer::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
 {
+	if (m_buddha && pev->health < 1) {
+		pev->health = 1;
+		return;
+	}
 	SentenceStop();
 
 	CSound *pSound;
@@ -2463,7 +2492,7 @@ void CBasePlayer::StartObserver( Vector vecPosition, Vector vecViewAngle )
 	MESSAGE_END();
 
 	// Remove all the player's stuff
-	RemoveAllItems( FALSE );
+	RemoveAllItems( STRIP_ALL_ITEMS );
 
 	// Move them to the new position
 	UTIL_SetOrigin( pev, vecPosition );
@@ -3557,7 +3586,7 @@ void CBasePlayer::CheckTimeBasedDamage()
 				bDuration = NERVEGAS_DURATION;
 				break;
 			case itbd_Poison:
-				TakeDamage( pev, pev, POISON_DAMAGE, DMG_GENERIC );
+				TakeDamage( pev, pev, POISON_DAMAGE, FBitSet(m_bitsDamageType, DMG_TIMEDNONLETHAL) ? DMG_NONLETHAL : DMG_GENERIC );
 				bDuration = POISON_DURATION;
 				break;
 			case itbd_Radiation:
@@ -4345,6 +4374,7 @@ void CBasePlayer::Spawn( void )
 
 	pev->fov = m_iFOV = 0;// init field of view.
 	m_iClientFOV = -1; // make sure fov reset is sent
+	m_ClientSndRoomtype = -1;
 
 	m_flNextDecalTime = 0;// let this player decal as soon as he spawns.
 
@@ -4353,7 +4383,7 @@ void CBasePlayer::Spawn( void )
 
 	m_flTimeStepSound = 0;
 	m_iStepLeft = 0;
-	m_flFieldOfView = 0.5f;// some monsters use this to determine whether or not the player is looking at them.
+	SetMyFieldOfView(0.5f);// some monsters use this to determine whether or not the player is looking at them.
 
 	m_bloodColor = BLOOD_COLOR_RED;
 	m_flNextAttack = UTIL_WeaponTimeBase();
@@ -4449,22 +4479,6 @@ void CBasePlayer::RefreshCharacter()
 
 void CBasePlayer::Precache( void )
 {
-	// in the event that the player JUST spawned, and the level node graph
-	// was loaded, fix all of the node graph pointers before the game starts.
-
-	// !!!BUGBUG - now that we have multiplayer, this needs to be moved!
-	if( WorldGraph.m_fGraphPresent && !WorldGraph.m_fGraphPointersSet )
-	{
-		if( !WorldGraph.FSetGraphPointers() )
-		{
-			ALERT( at_console, "**Graph pointers were not set!\n" );
-		}
-		else
-		{
-			ALERT( at_console, "**Graph Pointers Set!\n" );
-		}
-	}
-
 	// SOUNDS / MODELS ARE PRECACHED in ClientPrecache() (game specific)
 	// because they need to precache before any clients have connected
 
@@ -4535,6 +4549,8 @@ int CBasePlayer::Restore( CRestore &restore )
 	pev->angles = pev->v_angle;
 
 	pev->fixangle = TRUE;           // turn this way immediately
+
+	m_ClientSndRoomtype = -1;
 
 	// Copied from spawn() for now
 	m_bloodColor = BLOOD_COLOR_RED;
@@ -4610,7 +4626,9 @@ void CBasePlayer::SelectItem( const char *pstr )
 
 	if( m_pActiveItem )
 	{
+		m_pActiveItem->m_ForceSendAnimations = true;
 		m_pActiveItem->Deploy();
+		m_pActiveItem->m_ForceSendAnimations = false;
 		m_pActiveItem->UpdateItemInfo();
 	}
 }
@@ -4636,7 +4654,10 @@ void CBasePlayer::SelectLastItem( void )
 	CBasePlayerWeapon *pTemp = m_pActiveItem;
 	m_pActiveItem = m_pLastItem;
 	m_pLastItem = pTemp;
+
+	m_pActiveItem->m_ForceSendAnimations = true;
 	m_pActiveItem->Deploy();
+	m_pActiveItem->m_ForceSendAnimations = false;
 	m_pActiveItem->UpdateItemInfo();
 }
 
@@ -4812,9 +4833,6 @@ BOOL CBasePlayer::FlashlightIsOn( void )
 {
 #if FEATURE_NIGHTVISION
 	return m_fNVGisON;
-#if FEATURE_OPFOR_NIGHTVISION
-	return FBitSet( pev->effects, EF_BRIGHTLIGHT );
-#endif
 #else
 	return FBitSet( pev->effects, EF_DIMLIGHT );
 #endif
@@ -4839,7 +4857,7 @@ void CBasePlayer::FlashlightTurnOn( void )
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_ON, 1.0, ATTN_NORM, 0, PITCH_NORM );
 #if FEATURE_NIGHTVISION
 		m_fNVGisON = TRUE;
-#if FEATURE_OPFOR_NIGHTVISION
+#if FEATURE_OPFOR_NIGHTVISION_BRIGHTLIGHT
 		SetBits( pev->effects, EF_BRIGHTLIGHT );
 #endif
 #else
@@ -4867,7 +4885,7 @@ void CBasePlayer::FlashlightTurnOff( bool playOffSound )
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_OFF, 1.0, ATTN_NORM, 0, PITCH_NORM );
 #if FEATURE_NIGHTVISION
 	m_fNVGisON = FALSE;
-#if FEATURE_OPFOR_NIGHTVISION
+#if FEATURE_OPFOR_NIGHTVISION_BRIGHTLIGHT
 	ClearBits( pev->effects, EF_BRIGHTLIGHT );
 #endif
 #else
@@ -4903,13 +4921,13 @@ void CBasePlayer::ForceClientDllUpdate( void )
 	m_iClientBattery = -1;
 	m_iClientHideHUD = -1;	// Vit_amiN: forcing to update
 	m_iClientFOV = -1;	// Vit_amiN: force client weapons to be sent
+	m_ClientSndRoomtype = -1;
 	m_iTrain |= TRAIN_NEW;  // Force new train message.
 	m_fWeapon = FALSE;          // Force weapon send
 	m_fKnownItem = FALSE;    // Force weaponinit messages.
 	m_fInitHUD = TRUE;		// Force HUD gmsgResetHUD message
 	m_bSentBhopcap = true; // a1ba: Update bhopcap state
 	memset( m_rgAmmoLast, 0, sizeof( m_rgAmmoLast )); // a1ba: Force update AmmoX
-
 
 
 	// Now force all the necessary messages
@@ -4922,7 +4940,7 @@ void CBasePlayer::ForceClientDllUpdate( void )
 ImpulseCommands
 ============
 */
-extern float g_flWeaponCheat;
+extern cvar_t *g_enable_cheats;
 
 void CBasePlayer::ImpulseCommands()
 {
@@ -5006,7 +5024,7 @@ void CBasePlayer::ImpulseCommands()
 void CBasePlayer::CheatImpulseCommands( int iImpulse )
 {
 #if !HLDEMO_BUILD
-	if( g_flWeaponCheat == 0.0f )
+	if( g_enable_cheats->value == 0 )
 	{
 		return;
 	}
@@ -5760,6 +5778,16 @@ void CBasePlayer::UpdateClientData( void )
 		m_flNextSBarUpdateTime = gpGlobals->time + 0.2f;
 	}
 
+	// Send new room type to client.
+	if (m_ClientSndRoomtype != m_SndRoomtype)
+	{
+		m_ClientSndRoomtype = m_SndRoomtype;
+
+		MESSAGE_BEGIN(MSG_ONE, SVC_ROOMTYPE, NULL, edict());
+		WRITE_SHORT((short)m_SndRoomtype); // sequence number
+		MESSAGE_END();
+	}
+
 	// Send the current bhopcap state.
 	if( !m_bSentBhopcap )
 	{
@@ -5881,7 +5909,12 @@ void CBasePlayer::EnableControl( BOOL fControl )
 // Autoaim
 // set crosshair position to point to enemey
 //=========================================================
-Vector CBasePlayer::GetAutoaimVector( float flDelta )
+Vector CBasePlayer::GetAutoaimVector(float flDelta)
+{
+	return GetAutoaimVectorFromPoint(GetGunPosition(), flDelta);
+}
+
+Vector CBasePlayer::GetAutoaimVectorFromPoint( const Vector& vecSrc, float flDelta )
 {
 	if( g_iSkillLevel == SKILL_HARD )
 	{
@@ -5889,7 +5922,6 @@ Vector CBasePlayer::GetAutoaimVector( float flDelta )
 		return gpGlobals->v_forward;
 	}
 
-	Vector vecSrc = GetGunPosition();
 	float flDist = 8192.0f;
 
 	// always use non-sticky autoaim
@@ -5960,7 +5992,7 @@ Vector CBasePlayer::GetAutoaimVector( float flDelta )
 	return gpGlobals->v_forward;
 }
 
-Vector CBasePlayer::AutoaimDeflection( Vector &vecSrc, float flDist, float flDelta )
+Vector CBasePlayer::AutoaimDeflection( const Vector &vecSrc, float flDist, float flDelta )
 {
 	edict_t *pEdict = g_engfuncs.pfnPEntityOfEntIndex( 1 );
 	CBaseEntity *pEntity;
@@ -6128,7 +6160,7 @@ static bool ItemDropIsProhibited()
 //=========================================================
 void CBasePlayer::DropPlayerItem( char *pszItemName )
 {
-	if( ItemDropIsProhibited() ) {
+	if( !g_pGameRules->PlayerCanDropWeapon(this) ) {
 		return;
 	}
 
@@ -6155,7 +6187,7 @@ void CBasePlayer::DropPlayerItem( char *pszItemName )
 
 void CBasePlayer::DropPlayerItemById(int iId)
 {
-	if( ItemDropIsProhibited() ) {
+	if( !g_pGameRules->PlayerCanDropWeapon(this) ) {
 		return;
 	}
 
@@ -6382,7 +6414,10 @@ BOOL CBasePlayer::SwitchWeapon(CBasePlayerWeapon *pWeapon )
 	}
 
 	m_pActiveItem = pWeapon;
+
+	pWeapon->m_ForceSendAnimations = true;
 	pWeapon->Deploy();
+	pWeapon->m_ForceSendAnimations = false;
 
 	return TRUE;
 }
@@ -6898,7 +6933,6 @@ void CDeadHEV :: Spawn( void )
 	MonsterInitDead();
 }
 
-#define STRIP_SUIT 1
 class CStripWeapons : public CPointEntity
 {
 public:
@@ -6920,10 +6954,11 @@ void CStripWeapons::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	CBasePlayer *pPlayer = g_pGameRules->EffectivePlayer(pActivator);
 
 	if( pPlayer ) {
-		const bool removeSuit = (pev->spawnflags & STRIP_SUIT) ? true : false;
-		pPlayer->RemoveAllItems( removeSuit );
-		if (removeSuit)
-			pPlayer->FlashlightTurnOff(false);
+		int stripFlags = pev->spawnflags;
+#if FEATURE_SUIT_FLASHLIGHT
+		stripFlags |= STRIP_FLASHLIGHT;
+#endif
+		pPlayer->RemoveAllItems( stripFlags );
 		if (!FStringNull(pev->noise))
 			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, STRING(pev->noise), 1, ATTN_NORM );
 	}
@@ -7010,7 +7045,7 @@ void CRevertSaved::LoadSavedUse( CBaseEntity *pActivator, CBaseEntity *pCaller, 
 		CBasePlayer *pPlayer = g_pGameRules->EffectivePlayer(pActivator);
 		if (pPlayer) {
 			if (FBitSet(pev->spawnflags, SF_PLAYER_LOAD_SAVED_WEAPONSTRIP)) {
-				pPlayer->RemoveAllItems(FALSE);
+				pPlayer->RemoveAllItems(STRIP_WEAPONS_ONLY);
 			}
 
 			if (FBitSet(pev->spawnflags, SF_PLAYER_LOAD_SAVED_FREEZE)) {

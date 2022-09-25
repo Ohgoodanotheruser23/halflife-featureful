@@ -54,6 +54,8 @@ void CBaseMonster::ClearSchedule( void )
 	m_iTaskStatus = TASKSTATUS_NEW;
 	m_pSchedule = NULL;
 	m_iScheduleIndex = 0;
+
+	Forget(bits_MEMORY_SHOULD_ROAM_IN_ALERT);
 }
 
 //=========================================================
@@ -77,9 +79,16 @@ BOOL CBaseMonster::FScheduleDone( void )
 // with the passed pointer, and sets the ScheduleIndex back
 // to 0
 //=========================================================
-void CBaseMonster::ChangeSchedule( Schedule_t *pNewSchedule )
+void CBaseMonster::ChangeSchedule( Schedule_t *pNewSchedule, bool isSuggested )
 {
 	ASSERT( pNewSchedule != NULL );
+
+	if (isSuggested) {
+		m_suggestedSchedule = SCHED_NONE; // don't loop
+	} else {
+		// clear overrides
+		ClearSuggestedSchedule();
+	}
 
 	OnChangeSchedule( pNewSchedule );
 	if (m_MonsterState == MONSTERSTATE_HUNT)
@@ -276,11 +285,19 @@ void CBaseMonster::MaintainSchedule( void )
 			else
 			{
 				SetState( m_IdealMonsterState );
+				bool isSuggested = false;
 				if( m_MonsterState == MONSTERSTATE_SCRIPT || m_MonsterState == MONSTERSTATE_DEAD )
 					pNewSchedule = CBaseMonster::GetSchedule();
 				else
-					pNewSchedule = GetSchedule();
-				ChangeSchedule( pNewSchedule );
+				{
+					pNewSchedule = GetSuggestedSchedule();
+					if (pNewSchedule) {
+						isSuggested = true;
+					} else {
+						pNewSchedule = GetSchedule();
+					}
+				}
+				ChangeSchedule( pNewSchedule, isSuggested );
 			}
 		}
 
@@ -380,6 +397,7 @@ void CBaseMonster::RunTask( Task_t *pTask )
 	case TASK_FACE_TARGET:
 	case TASK_FACE_IDEAL:
 	case TASK_FACE_ROUTE:
+	case TASK_FACE_SCHEDULED:
 		{
 			ChangeYaw( pev->yaw_speed );
 
@@ -391,7 +409,7 @@ void CBaseMonster::RunTask( Task_t *pTask )
 		}
 	case TASK_WAIT_PVS:
 		{
-			if( !FNullEnt( FIND_CLIENT_IN_PVS( edict() ) ) )
+			if( FBitSet(pev->spawnflags, SF_MONSTER_ACT_OUT_OF_PVS) || !FNullEnt( FIND_CLIENT_IN_PVS( edict() ) ) )
 			{
 				TaskComplete();
 			}
@@ -558,19 +576,55 @@ void CBaseMonster::RunTask( Task_t *pTask )
 		break;
 	case TASK_WAIT_FOR_SCRIPT:
 		{
-			if( m_pCine->m_iDelay <= 0 && gpGlobals->time >= m_pCine->m_startTime )
+			if (m_pCine)
 			{
-				TaskComplete();
-				m_pCine->StartSequence( (CBaseMonster *)this, m_pCine->m_iszPlay, TRUE );
-				if( m_fSequenceFinished )
-					ClearSchedule();
-				pev->framerate = 1.0;
-				//ALERT( at_aiconsole, "Script %s has begun for %s\n", STRING( m_pCine->m_iszPlay ), STRING( pev->classname ) );
-			}
-			else if ( FBitSet(m_pCine->pev->spawnflags, SF_SCRIPT_FORCE_IDLE_LOOPING) && !FStringNull( m_pCine->m_iszIdle) )
-			{
-				if ( m_fSequenceFinished )
-					m_pCine->StartSequence( this, m_pCine->m_iszIdle, FALSE );
+				if( m_pCine->m_iDelay <= 0 && gpGlobals->time >= m_pCine->m_startTime )
+				{
+					TaskComplete();
+					if (m_pCine->IsAction())
+					{
+						switch( m_pCine->m_fAction )
+						{
+						case SCRIPT_ACT_RANGE_ATTACK:
+							m_IdealActivity = ACT_RANGE_ATTACK1;
+							break;
+						case SCRIPT_ACT_RANGE_ATTACK2:
+							m_IdealActivity = ACT_RANGE_ATTACK2;
+							break;
+						case SCRIPT_ACT_MELEE_ATTACK:
+							m_IdealActivity = ACT_MELEE_ATTACK1;
+							break;
+						case SCRIPT_ACT_MELEE_ATTACK2:
+							m_IdealActivity = ACT_MELEE_ATTACK2;
+							break;
+						case SCRIPT_ACT_SPECIAL_ATTACK:
+							m_IdealActivity = ACT_SPECIAL_ATTACK1;
+							break;
+						case SCRIPT_ACT_SPECIAL_ATTACK2:
+							m_IdealActivity = ACT_SPECIAL_ATTACK2;
+							break;
+						case SCRIPT_ACT_RELOAD:
+							m_IdealActivity = ACT_RELOAD;
+							break;
+						case SCRIPT_ACT_JUMP:
+							m_IdealActivity = ACT_HOP;
+							break;
+						}
+					}
+					else
+					{
+						m_pCine->StartSequence( (CBaseMonster *)this, m_pCine->m_iszPlay, TRUE );
+						if( m_fSequenceFinished )
+							ClearSchedule();
+					}
+					pev->framerate = 1.0;
+					//ALERT( at_aiconsole, "Script %s has begun for %s\n", STRING( m_pCine->m_iszPlay ), STRING( pev->classname ) );
+				}
+				else if ( FBitSet(m_pCine->pev->spawnflags, SF_SCRIPT_FORCE_IDLE_LOOPING) && !FStringNull( m_pCine->m_iszIdle) && !m_pCine->IsAction() )
+				{
+					if ( m_fSequenceFinished )
+						m_pCine->StartSequence( this, m_pCine->m_iszIdle, FALSE );
+				}
 			}
 			break;
 		}
@@ -578,14 +632,28 @@ void CBaseMonster::RunTask( Task_t *pTask )
 		{
 			if( m_fSequenceFinished )
 			{
-				m_pCine->SequenceDone( this );
+				if (m_pCine)
+				{
+					if( m_pCine->m_iRepeatsLeft > 0 )
+					{
+						m_pCine->m_iRepeatsLeft--;
+						pev->frame = m_pCine->m_fRepeatFrame;
+						ResetSequenceInfo();
+					}
+					else
+					{
+						m_pCine->SequenceDone( this );
+					}
+				}
+				else
+					TaskComplete();
 			}
 			break;
 		}
-	case TASK_RUN_TO_TARGET_RADIUS:
-	case TASK_WALK_TO_TARGET_RADIUS:
+	case TASK_RUN_TO_SCRIPT_RADIUS:
+	case TASK_WALK_TO_SCRIPT_RADIUS:
 		{
-			if( m_hTargetEnt == 0 )
+			if( m_pGoalEnt == 0 )
 				TaskFail("no target ent");
 			else
 			{
@@ -595,7 +663,7 @@ void CBaseMonster::RunTask( Task_t *pTask )
 					checkDistance = m_pCine->m_flMoveToRadius;
 				}
 
-				float distance = ( m_hTargetEnt->pev->origin - pev->origin ).Length2D();
+				float distance = ( m_pGoalEnt->pev->origin - pev->origin ).Length2D();
 
 				if( distance <= checkDistance )
 				{
@@ -607,7 +675,7 @@ void CBaseMonster::RunTask( Task_t *pTask )
 					TaskFail("completed movement before reaching the radius");
 					RouteClear();
 				}
-				else if ( pTask->iTask == TASK_RUN_TO_TARGET_RADIUS )
+				else if ( pTask->iTask == TASK_RUN_TO_SCRIPT_RADIUS )
 					m_movementActivity = ACT_RUN;
 				else
 					m_movementActivity = ACT_WALK;
@@ -859,11 +927,42 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			}
 		}
 		break;
+	case TASK_FIND_COVER_FROM_SPOT:
+		{
+			Vector vecSpot;
+			Vector viewOffset;
+			if (CalcSuggestedSpot(&vecSpot, &viewOffset))
+			{
+				const int moveFlag = FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_WALK) ? FINDSPOTAWAY_WALK : FINDSPOTAWAY_RUN;
+				if( FindLateralCover( vecSpot, viewOffset, SuggestedMinDist(COVER_DELTA), SuggestedMaxDist(COVER_DELTA * COVER_CHECKS), moveFlag|FINDSPOTAWAY_CHECK_SPOT ) )
+				{
+					m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+					TaskComplete();
+				}
+				else if( FindCover( vecSpot, viewOffset, SuggestedMinDist(0), SuggestedMaxDist(CoverRadius()), moveFlag|FINDSPOTAWAY_CHECK_SPOT ) )
+				{
+					m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+					TaskComplete();
+				}
+				else if ( FindSpotAway( vecSpot, SuggestedMinDist(64), SuggestedMaxDist(CoverRadius()), moveFlag ) )
+				{
+					m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+					TaskComplete();
+				}
+				else
+				{
+					TaskFail("no cover found");
+				}
+			}
+			else
+			{
+				TaskFail("no valid spot");
+			}
+		}
+		break;
 	case TASK_FIND_COVER_FROM_BEST_SOUND:
 		{
-			CSound *pBestSound;
-
-			pBestSound = PBestSound();
+			CSound *pBestSound = PBestSound();
 
 			ASSERT( pBestSound != NULL );
 			/*
@@ -885,7 +984,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 				}
 
 				// The point is to just run away from danger. Try to find a node without actual cover.
-				else if (FindRunAway( pBestSound->m_vecOrigin, pBestSound->m_iVolume, CoverRadius() ))
+				else if (FindSpotAway( pBestSound->m_vecOrigin, pBestSound->m_iVolume, CoverRadius(), FINDSPOTAWAY_CHECK_SPOT|FINDSPOTAWAY_RUN ))
 				{
 					//ALERT(at_aiconsole, "Using run away\n");
 					m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
@@ -940,6 +1039,16 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		{
 			MakeIdealYaw( m_vecEnemyLKP );
 			SetTurnActivity(); 
+			break;
+		}
+	case TASK_FACE_SCHEDULED:
+		{
+			Vector vecSpot;
+			if (CalcSuggestedSpot(&vecSpot))
+			{
+				MakeIdealYaw(vecSpot);
+			}
+			SetTurnActivity();
 			break;
 		}
 	case TASK_FACE_IDEAL:
@@ -1001,18 +1110,18 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			}
 			break;
 		}
-	case TASK_RUN_TO_TARGET:
-	case TASK_WALK_TO_TARGET:
+	case TASK_RUN_TO_SCRIPT:
+	case TASK_WALK_TO_SCRIPT:
 		{
 			Activity newActivity;
 
-			if ( m_hTargetEnt == 0 )
-				TaskFail("no target ent");
-			else if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < 1 )
+			if ( m_pGoalEnt == 0 )
+				TaskFail("no move target ent");
+			else if( ( m_pGoalEnt->pev->origin - pev->origin ).Length() < 1 )
 				TaskComplete();
 			else
 			{
-				if( pTask->iTask == TASK_WALK_TO_TARGET )
+				if( pTask->iTask == TASK_WALK_TO_SCRIPT )
 					newActivity = ACT_WALK;
 				else
 					newActivity = ACT_RUN;
@@ -1022,9 +1131,21 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					TaskComplete();
 				else 
 				{
-					if( m_hTargetEnt == 0 || !MoveToTarget( newActivity, 2 ) )
+					if (m_pGoalEnt != 0)
 					{
-						TaskFail("failed to reach target ent");
+						const Vector vecDest = m_pGoalEnt->pev->origin;
+						if( !MoveToLocation( newActivity, 2, vecDest ) )
+						{
+							if (m_pCine) {
+								m_pCine->OnMoveFail();
+							}
+							TaskFail("failed to reach script");
+							RouteClear();
+						}
+					}
+					else
+					{
+						TaskFail("no move target ent");
 						RouteClear();
 					}
 				}
@@ -1032,8 +1153,8 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			TaskComplete();
 			break;
 		}
-	case TASK_RUN_TO_TARGET_RADIUS:
-	case TASK_WALK_TO_TARGET_RADIUS:
+	case TASK_RUN_TO_SCRIPT_RADIUS:
+	case TASK_WALK_TO_SCRIPT_RADIUS:
 		{
 			float radius = pTask->flData;
 			if (m_pCine != 0 && m_pCine->m_flMoveToRadius >= 1.0f)
@@ -1045,13 +1166,13 @@ void CBaseMonster::StartTask( Task_t *pTask )
 
 			Activity newActivity;
 
-			if ( m_hTargetEnt == 0 )
-				TaskFail("no target ent");
-			else if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < radius )
+			if ( m_pGoalEnt == 0 )
+				TaskFail("no move target ent");
+			else if( ( m_pGoalEnt->pev->origin - pev->origin ).Length2D() <= radius )
 				TaskComplete();
 			else
 			{
-				if( pTask->iTask == TASK_RUN_TO_TARGET_RADIUS )
+				if( pTask->iTask == TASK_RUN_TO_SCRIPT_RADIUS )
 					newActivity = ACT_WALK;
 				else
 					newActivity = ACT_RUN;
@@ -1061,9 +1182,9 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					TaskComplete();
 				else
 				{
-					if( m_hTargetEnt == 0 || !MoveToTarget( newActivity, 2, true ) )
+					if( m_pGoalEnt == 0 || !MoveToLocationClosest( newActivity, 2, m_pGoalEnt->pev->origin ) )
 					{
-						TaskFail("failed to reach target ent");
+						TaskFail("failed to reach move target ent");
 						RouteClear();
 					}
 				}
@@ -1177,7 +1298,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			}
 		}
 		break;
-	case TASK_GET_PATH_TO_SPOT:
+	case TASK_GET_PATH_TO_PLAYER:
 		{
 			CBaseEntity *pPlayer = CBaseEntity::Instance( FIND_ENTITY_BY_CLASSNAME( NULL, "player" ) );
 			if( BuildRoute( m_vecMoveGoal, bits_MF_TO_LOCATION, pPlayer ) )
@@ -1187,7 +1308,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			else
 			{
 				// no way to get there =(
-				TaskFail("can't build path to spot");
+				TaskFail("can't build path to player");
 			}
 			break;
 		}
@@ -1277,6 +1398,27 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			}
 			break;
 		}
+	case TASK_GET_PATH_TO_SPOT:
+		{
+			Vector vecSpot;
+			if (CalcSuggestedSpot(&vecSpot))
+			{
+				UTIL_MakeVectors( pev->angles );
+				if( BuildRoute( vecSpot - gpGlobals->v_forward * SuggestedMinDist(0), bits_MF_TO_LOCATION, NULL ) )
+				{
+					TaskComplete();
+				}
+				else
+				{
+					TaskFail("can't build path to spot");
+				}
+			}
+			else
+			{
+				TaskFail("no valid spot");
+			}
+			break;
+		}
 	case TASK_RUN_PATH:
 		{
 			// UNDONE: This is in some default AI and some monsters can't run? -- walk instead?
@@ -1305,6 +1447,18 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			{
 				m_movementActivity = ACT_RUN;
 			}
+			TaskComplete();
+			break;
+		}
+	case TASK_RUN_OR_WALK_PATH:
+		{
+			m_movementActivity = GetSuggestedMovementActivity(ACT_RUN);
+			TaskComplete();
+			break;
+		}
+	case TASK_WALK_OR_RUN_PATH:
+		{
+			m_movementActivity = GetSuggestedMovementActivity(ACT_WALK);
 			TaskComplete();
 			break;
 		}
@@ -1399,7 +1553,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_WAIT_FOR_SCRIPT:
 		{
-			if( m_pCine->m_iszIdle )
+			if( m_pCine && m_pCine->m_iszIdle && !m_pCine->IsAction() )
 			{
 				m_pCine->StartSequence( (CBaseMonster *)this, m_pCine->m_iszIdle, FALSE );
 				if( FStrEq( STRING( m_pCine->m_iszIdle ), STRING( m_pCine->m_iszPlay ) ) )
@@ -1420,7 +1574,8 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_ENABLE_SCRIPT:
 		{
-			m_pCine->DelayStart( 0 );
+			if (m_pCine)
+				m_pCine->DelayStart( 0 );
 			TaskComplete();
 			break;
 		}
@@ -1432,36 +1587,67 @@ void CBaseMonster::StartTask( Task_t *pTask )
 				{
 					if (m_hTargetEnt != 0)
 					{
-						if (m_pCine->m_fTurnType == 0)
+						UTIL_SetOrigin( pev, m_hTargetEnt->pev->origin );
+						if (m_pCine->m_fTurnType == SCRIPT_TURN_MATCH_ANGLE)
 							pev->angles.y = m_hTargetEnt->pev->angles.y;
-						else if (m_pCine->m_fTurnType == 1)
+						else if (m_pCine->m_fTurnType == SCRIPT_TURN_FACE)
 							pev->angles.y = UTIL_VecToYaw(m_hTargetEnt->pev->origin - pev->origin);
 						pev->ideal_yaw = pev->angles.y;
+
+						pev->avelocity = Vector( 0, 0, 0 );
+						pev->velocity = Vector( 0, 0, 0 );
+						pev->effects |= EF_NOINTERP;
 					}
-					pev->avelocity = Vector( 0, 0, 0 );
-					pev->velocity = Vector( 0, 0, 0 );
-					pev->effects |= EF_NOINTERP;
 				}
 			}
-			if( m_hTargetEnt != 0 )
+			if( m_pGoalEnt != 0 )
 			{
-				pev->origin = m_hTargetEnt->pev->origin;	// Plant on target
+				pev->origin = m_pGoalEnt->pev->origin;
 			}
 
 			TaskComplete();
 			break;
 		}
+	case TASK_FORCED_PLANT_ON_SCRIPT:
+		{
+			if (m_pCine != NULL)
+			{
+				if (m_hTargetEnt != 0)
+				{
+					if (m_pCine->m_fTurnType == SCRIPT_TURN_MATCH_ANGLE)
+						pev->angles.y = m_hTargetEnt->pev->angles.y;
+					else if (m_pCine->m_fTurnType == SCRIPT_TURN_FACE)
+						pev->angles.y = UTIL_VecToYaw(m_hTargetEnt->pev->origin - pev->origin);
+					pev->ideal_yaw = pev->angles.y;
+
+					pev->avelocity = Vector( 0, 0, 0 );
+					pev->velocity = Vector( 0, 0, 0 );
+					pev->effects |= EF_NOINTERP;
+				}
+				if( m_pGoalEnt != 0 )
+				{
+					ALERT(at_aiconsole, "Forcibly teleporting the monster to script after %d attempts\n", m_pCine->m_moveFailCount );
+					UTIL_SetOrigin( pev, m_pGoalEnt->pev->origin );
+				}
+				m_pCine->m_moveFailCount = 0;
+			}
+			TaskComplete();
+			break;
+		}
 	case TASK_FACE_SCRIPT:
 		{
-			if ( m_pCine != 0 && m_pCine->m_fMoveTo != 0)
+			if ( m_pCine != 0 && m_pCine->m_fMoveTo != SCRIPT_MOVE_NO)
 			{
 				switch (m_pCine->m_fTurnType)
 				{
-				case 0:
+				case SCRIPT_TURN_MATCH_ANGLE:
 					pev->ideal_yaw = UTIL_AngleMod( m_pCine->pev->angles.y );
 					break;
-				case 1:
-					MakeIdealYaw ( m_pCine->pev->origin );
+				case SCRIPT_TURN_FACE:
+					if (m_hTargetEnt)
+						MakeIdealYaw ( m_hTargetEnt->pev->origin );
+					else
+						MakeIdealYaw ( m_pCine->pev->origin );
 					break;
 				}
 			}
@@ -1528,12 +1714,11 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			}
 		}
 		break;
-	case TASK_FIND_RUN_AWAY_FROM_ENEMY:
+	case TASK_FIND_SPOT_AWAY_FROM_ENEMY:
 		{
 			entvars_t *pevThreat;
 			if( m_hEnemy == 0 )
 			{
-				// Find cover from self if no enemy available
 				pevThreat = pev;
 			}
 			else
@@ -1541,25 +1726,59 @@ void CBaseMonster::StartTask( Task_t *pTask )
 
 			if( FindLateralCover( pevThreat->origin, pevThreat->view_ofs ) )
 			{
-				// try lateral first
 				m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
 				TaskComplete();
 			}
 			else if( FindCover( pevThreat->origin, pevThreat->view_ofs, 0, CoverRadius() ) )
 			{
-				// then try for plain ole cover
 				m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
 				TaskComplete();
 			}
-			else if (FindRunAway( pevThreat->origin, 128, CoverRadius() ))
+			else if (FindSpotAway( pevThreat->origin, 128, CoverRadius(), FINDSPOTAWAY_CHECK_SPOT|FINDSPOTAWAY_RUN ))
 			{
 				m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
 				TaskComplete();
 			}
 			else
 			{
-				// no coverwhatsoever.
-				TaskFail("no cover found");
+				TaskFail("no spot found");
+			}
+		}
+		break;
+	case TASK_FIND_SPOT_AWAY:
+		{
+			Vector vecSpot;
+			if (CalcSuggestedSpot(&vecSpot))
+			{
+				const int moveFlag = FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_RUN) ? FINDSPOTAWAY_RUN : FINDSPOTAWAY_WALK;
+				if ( FindStraightSpotAway( vecSpot, SuggestedMinDist(COVER_DELTA), SuggestedMaxDist(COVER_DELTA * COVER_CHECKS), moveFlag ) )
+				{
+					m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+					TaskComplete();
+				}
+				else
+				{
+					HandleBlocker(CBaseEntity::Instance( gpGlobals->trace_ent ), false);
+
+					if( FindLateralSpotAway( vecSpot, SuggestedMinDist(COVER_DELTA), SuggestedMaxDist(COVER_DELTA * COVER_CHECKS), moveFlag ) )
+					{
+						m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+						TaskComplete();
+					}
+					else if ( FindSpotAway( vecSpot, SuggestedMinDist(64), SuggestedMaxDist(784), moveFlag ) )
+					{
+						m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
+						TaskComplete();
+					}
+					else
+					{
+						TaskFail("no spot found");
+					}
+				}
+			}
+			else
+			{
+				TaskFail("no valid spot");
 			}
 		}
 		break;
@@ -1600,6 +1819,119 @@ Schedule_t* CBaseMonster::GetFreeroamSchedule()
 		}
 	}
 	return NULL;
+}
+
+Schedule_t* CBaseMonster::GetSuggestedSchedule()
+{
+	if (m_suggestedSchedule && IsFreeToManipulate()) {
+		return GetScheduleOfType(m_suggestedSchedule);
+	}
+	return NULL;
+}
+
+bool CBaseMonster::SuggestSchedule(int schedule, CBaseEntity* spotEntity, float minDist, float maxDist, int flags)
+{
+	Vector pos;
+	if (spotEntity) {
+		if (spotEntity->CalcPosition(NULL, &pos)) {
+			m_suggestedScheduleOrigin = pos;
+		} else {
+			if (FBitSet(flags, SUGGEST_SCHEDULE_FLAG_SPOT_IS_POSITION)) {
+				ALERT(at_aiconsole, "SuggestSchedule: couldn't calc position for %s\n", STRING(spotEntity->pev->classname));
+				return false;
+			}
+
+			flags |= SUGGEST_SCHEDULE_FLAG_SPOT_IS_INVALID;
+		}
+		flags |= SUGGEST_SCHEDULE_FLAG_SPOT_ENTITY_IS_PROVIDED;
+	}
+
+	m_suggestedSchedule = schedule;
+	m_suggestedScheduleEntity = spotEntity;
+	m_suggestedScheduleMinDist = minDist;
+	m_suggestedScheduleMaxDist = maxDist;
+	m_suggestedScheduleFlags = flags;
+	SetConditions(bits_COND_SCHEDULE_SUGGESTED);
+	return true;
+}
+
+float CBaseMonster::SuggestedMinDist(float defaultValue) const
+{
+	return m_suggestedScheduleMinDist > 0 ? m_suggestedScheduleMinDist: defaultValue;
+}
+
+float CBaseMonster::SuggestedMaxDist(float defaultValue) const
+{
+	return m_suggestedScheduleMaxDist > 0 ? m_suggestedScheduleMaxDist: defaultValue;
+}
+
+static bool CalcSuggestedSpotEntity(CBaseMonster* pMonster, CBaseEntity* pSpotEntity, Vector *outVec, Vector* viewOffset)
+{
+	if (pSpotEntity)
+	{
+		*outVec = pSpotEntity->pev->origin;
+		if (viewOffset)
+			*viewOffset = pSpotEntity->pev->view_ofs;
+		ALERT(at_aiconsole, "%s picked %s as spot for suggested schedule\n", STRING(pMonster->pev->classname), STRING(pSpotEntity->pev->classname));
+		return true;
+	}
+	return false;
+}
+
+bool CBaseMonster::CalcSuggestedSpot(Vector *outVec, Vector* viewOffset)
+{
+	if (viewOffset)
+		*viewOffset = g_vecZero;
+	if (FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_SPOT_ENTITY_IS_PROVIDED))
+	{
+		if (FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_SPOT_IS_ENTITY)) {
+			return CalcSuggestedSpotEntity(this, m_suggestedScheduleEntity, outVec, viewOffset);
+		} else if (FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_SPOT_IS_POSITION)) {
+			*outVec = m_suggestedScheduleOrigin;
+			return true;
+		}
+
+		if (CalcSuggestedSpotEntity(this, m_suggestedScheduleEntity, outVec, viewOffset)) {
+			return true;
+		} else if (FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_SPOT_IS_INVALID)) {
+			return false;
+		} else {
+			*outVec = m_suggestedScheduleOrigin;
+			return true;
+		}
+	}
+	else
+	{
+		*outVec = pev->origin;
+		if (viewOffset)
+			*viewOffset = pev->view_ofs;
+		return true;
+	}
+}
+
+Activity CBaseMonster::GetSuggestedMovementActivity(Activity defaultActivity)
+{
+	Activity preferedActivity = defaultActivity;
+	if (FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_WALK)) {
+		preferedActivity = ACT_WALK;
+	} else if (FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_RUN)) {
+		preferedActivity = ACT_RUN;
+	}
+
+	if (LookupActivity( preferedActivity ) != ACTIVITY_NOT_AVAILABLE) {
+		return preferedActivity;
+	} else {
+		return preferedActivity == ACT_WALK ? ACT_RUN : ACT_WALK; // last resort
+	}
+}
+
+void CBaseMonster::ClearSuggestedSchedule()
+{
+	m_suggestedScheduleEntity = 0;
+	m_suggestedScheduleOrigin = g_vecZero;
+	m_suggestedScheduleMinDist = 0.0f;
+	m_suggestedScheduleMaxDist = 0.0f;
+	m_suggestedScheduleFlags = 0;
 }
 
 //=========================================================
@@ -1682,7 +2014,7 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 			{
 				if( HasConditions ( bits_COND_HEAR_SOUND ) )
 				{
-					if (HasMemory(bits_MEMORY_ALERT_AFTER_COMBAT))
+					if (HasMemory(bits_MEMORY_ACTIVE_AFTER_COMBAT))
 					{
 						CSound *pSound = PBestSound();
 						if (pSound)
@@ -1826,7 +2158,6 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 		}
 	case MONSTERSTATE_SCRIPT:
 		{
-			ASSERT( m_pCine != NULL );
 			if( !m_pCine )
 			{
 				ALERT( at_aiconsole, "Script failed for %s\n", STRING( pev->classname ) );

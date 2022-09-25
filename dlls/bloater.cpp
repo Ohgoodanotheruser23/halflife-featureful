@@ -46,6 +46,7 @@ public:
 	BOOL CheckRangeAttack2( float flDot, float flDist ) { return FALSE; }
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_SMALL; }
+	bool IsDisplaceable() { return true; }
 };
 
 LINK_ENTITY_TO_CLASS( monster_bloater, CBloater )
@@ -194,7 +195,7 @@ void CBloater::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	SetMyHealth( 40 );
 	pev->view_ofs = VEC_VIEW;// position of the eyes relative to monster's origin.
-	m_flFieldOfView = 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.5f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	MonsterInit();

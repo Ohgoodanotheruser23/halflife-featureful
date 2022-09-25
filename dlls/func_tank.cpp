@@ -439,7 +439,7 @@ void CFuncTank::UpdateSpot( void )
 {
 	if ( pev->spawnflags & SF_TANK_LASERSPOT )
 	{
-		if (!m_pSpot)
+		if (!m_pSpot && !FBitSet(pev->flags, FL_KILLME))
 		{
 			m_pSpot = CLaserSpot::CreateSpot();
 		}
@@ -462,6 +462,10 @@ void CFuncTank::UpdateOnRemove()
 {
 	StopControl();
 	CBaseEntity::UpdateOnRemove();
+	if (m_pSpot) {
+		UTIL_Remove(m_pSpot);
+		m_pSpot = NULL;
+	}
 }
 
 // Called each frame by the player's ItemPostFrame
@@ -887,6 +891,8 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 	virtual void StopFire( void );
 
+	void UpdateOnRemove();
+
 private:
 	CLaser *m_pLaser;
 	float m_laserTime;
@@ -912,6 +918,7 @@ void CFuncTankLaser::Activate( void )
 	}
 	else
 	{
+		ClearBits(pev->flags, FL_ALWAYSTHINK);
 		m_pLaser->TurnOff();
 	}
 }
@@ -929,6 +936,9 @@ void CFuncTankLaser::KeyValue( KeyValueData *pkvd )
 
 CLaser *CFuncTankLaser::GetLaser( void )
 {
+	if (FBitSet(pev->flags, FL_KILLME))
+		return NULL;
+
 	if( m_pLaser )
 		return m_pLaser;
 
@@ -952,8 +962,10 @@ CLaser *CFuncTankLaser::GetLaser( void )
 
 void CFuncTankLaser::Think( void )
 {
-	if( m_pLaser && (gpGlobals->time > m_laserTime) )
+	if( m_pLaser && (gpGlobals->time > m_laserTime) && m_pLaser->IsOn() ) {
+		ClearBits(pev->flags, FL_ALWAYSTHINK);
 		m_pLaser->TurnOff();
+	}
 
 	CFuncTank::Think();
 }
@@ -983,6 +995,8 @@ void CFuncTankLaser::Fire( const Vector &barrelEnd, const Vector &forward, entva
 
 				m_laserTime = gpGlobals->time;
 				m_pLaser->TurnOn();
+				if (pev->solid != SOLID_NOT)
+					SetBits(pev->flags, FL_ALWAYSTHINK);
 				m_pLaser->pev->dmgtime = gpGlobals->time - 1.0f;
 				m_pLaser->FireAtPoint( tr, pevAttacker );
 				m_pLaser->pev->nextthink = 0;
@@ -1001,6 +1015,12 @@ void CFuncTankLaser::StopFire( void )
 {
 	if( m_pLaser )
 		m_pLaser->TurnOff();
+}
+
+void CFuncTankLaser::UpdateOnRemove()
+{
+	CFuncTank::UpdateOnRemove();
+	m_pLaser = NULL;
 }
 
 class CFuncTankRocket : public CFuncTank

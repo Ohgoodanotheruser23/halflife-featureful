@@ -247,18 +247,17 @@ void KillTargets(const char* targetName)
 
 LINK_ENTITY_TO_CLASS( DelayedUse, CBaseDelay )
 
-void CBaseDelay::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, float value )
+void CBaseDelay::DelayedUse(float delay, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, string_t target, string_t killTarget, float value)
 {
 	//
 	// exit immediatly if we don't have a target or kill target
 	//
-	if( FStringNull( pev->target ) && !m_iszKillTarget )
+	if( FStringNull( target ) && !killTarget )
 		return;
 
 	//
 	// check for a delay
 	//
-	const float delay = GetTriggerDelay();
 	if( delay != 0 )
 	{
 		// create a temp object to fire at a later time
@@ -271,10 +270,10 @@ void CBaseDelay::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, floa
 
 		// Save the useType
 		pTemp->pev->button = (int)useType;
-		pTemp->m_iszKillTarget = m_iszKillTarget;
+		pTemp->m_iszKillTarget = killTarget;
 		pTemp->m_flDelay = 0.0f; // prevent "recursion"
 		pTemp->m_flMaxDelay = 0.0f;
-		pTemp->pev->target = pev->target;
+		pTemp->pev->target = target;
 
 		pTemp->m_hActivator = pActivator;
 
@@ -284,19 +283,24 @@ void CBaseDelay::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, floa
 	//
 	// kill the killtargets
 	//
-	if( m_iszKillTarget )
+	if( killTarget )
 	{
-		ALERT( at_aiconsole, "KillTarget: %s\n", STRING( m_iszKillTarget ) );
-		KillTargets(STRING( m_iszKillTarget ));
+		ALERT( at_aiconsole, "KillTarget: %s\n", STRING( killTarget ) );
+		KillTargets(STRING( killTarget ));
 	}
 
 	//
 	// fire targets
 	//
-	if( !FStringNull( pev->target ) )
+	if( !FStringNull( target ) )
 	{
-		FireTargets( STRING( pev->target ), pActivator, this, useType, value );
+		FireTargets( STRING( target ), pActivator, pCaller, useType, value );
 	}
+}
+
+void CBaseDelay::SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, float value )
+{
+	DelayedUse( GetTriggerDelay(), pActivator, this, useType, pev->target, m_iszKillTarget, value );
 }
 
 /*
@@ -358,7 +362,6 @@ TYPEDESCRIPTION	CBaseToggle::m_SaveData[] =
 	DEFINE_FIELD( CBaseToggle, m_vecPosition2, FIELD_POSITION_VECTOR ),
 	DEFINE_FIELD( CBaseToggle, m_vecAngle1, FIELD_VECTOR ),		// UNDONE: Position could go through transition, but also angle?
 	DEFINE_FIELD( CBaseToggle, m_vecAngle2, FIELD_VECTOR ),		// UNDONE: Position could go through transition, but also angle?
-	DEFINE_FIELD( CBaseToggle, m_cTriggersLeft, FIELD_INTEGER ),
 	DEFINE_FIELD( CBaseToggle, m_flHeight, FIELD_FLOAT ),
 	//DEFINE_FIELD( CBaseToggle, m_hActivator, FIELD_EHANDLE ), // now in CBaseDelay
 	DEFINE_FIELD( CBaseToggle, m_pfnCallWhenMoveDone, FIELD_FUNCTION ),

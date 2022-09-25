@@ -31,6 +31,9 @@
 #include "weapons.h"
 #include "effects.h"
 
+// Set to 1 to fix 'eternal' search for enemy of sentry turret
+#define FEATURE_SENTRY_TURRET_RETRACTS 0
+
 extern Vector VecBModelOrigin( entvars_t* pevBModel );
 
 #define TURRET_SHOTS	2
@@ -270,7 +273,7 @@ void CBaseTurret::Spawn()
 	ResetSequenceInfo();
 	SetBoneController( 0, 0 );
 	SetBoneController( 1, 0 );
-	m_flFieldOfView = VIEW_FIELD_FULL;
+	SetMyFieldOfView(VIEW_FIELD_FULL);
 	// m_flSightRange = TURRET_RANGE;
 }
 
@@ -1212,7 +1215,9 @@ void CSentry::Spawn()
 	SetMyHealth( gSkillData.sentryHealth );
 	m_HackedGunPos = Vector( 0, 0, 48 );
 	pev->view_ofs.z = 48;
+#if !FEATURE_SENTRY_TURRET_RETRACTS
 	m_flMaxWait = 1E6;
+#endif
 	m_flMaxSpin = 1E6;
 
 	CBaseTurret::Spawn();

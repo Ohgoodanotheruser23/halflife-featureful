@@ -62,6 +62,7 @@ public:
 	Schedule_t *GetScheduleOfType( int Type );
 
 	virtual int SizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
 	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
 	int MonsterCategory() { return MONSTER_CATEGORY_MILITARY_HUMAN; }
@@ -99,7 +100,7 @@ void CHWGrunt::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_RED );
 	pev->effects		= 0;
 	SetMyHealth( gSkillData.hwgruntHealth );
-	m_flFieldOfView		= 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_flNextPainTime	= gpGlobals->time;
 

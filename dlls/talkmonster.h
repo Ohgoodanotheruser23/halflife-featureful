@@ -36,7 +36,7 @@
 #define bit_saidHeard			(1<<6)
 #define bit_saidSmelled			(1<<7)
 
-#define TLK_CFRIENDS		10
+#define TLK_CFRIENDS		11
 
 enum
 {
@@ -74,17 +74,12 @@ typedef enum
 
 enum
 {
-	SCHED_CANT_FOLLOW = LAST_FOLLOWINGMONSTER_SCHEDULE+1,
-	SCHED_FOLLOW_FALLIBLE,
-
-	LAST_TALKMONSTER_SCHEDULE		// MUST be last
+	LAST_TALKMONSTER_SCHEDULE = LAST_FOLLOWINGMONSTER_SCHEDULE,
 };
 
 enum
 {
-	TASK_CANT_FOLLOW = LAST_FOLLOWINGMONSTER_TASK+1,
-
-	TASK_TLK_RESPOND,		// say my response
+	TASK_TLK_RESPOND = LAST_FOLLOWINGMONSTER_TASK,		// say my response
 	TASK_TLK_SPEAK,			// question or remark
 	TASK_TLK_HELLO,			// Try to say hello to player
 	TASK_TLK_HEADRESET,		// reset head position
@@ -126,14 +121,14 @@ public:
 	void			Precache( void );
 	int 			TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	int 			TakeHealth(CBaseEntity* pHealer, float flHealth, int bitsDamageType);
-	bool			CanBePushedByClient(CBaseEntity *pOther);
+	bool			CanBePushed(CBaseEntity *pPusher);
 	void			Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	void			OnDying();
 	void			StartMonster( void );
 	int				IRelationship ( CBaseEntity *pTarget );
 	bool			IsFriendWithPlayerBeforeProvoked();
 	virtual int		CanPlaySentence( BOOL fDisregardState );
-	virtual bool PlaySentence( const char *pszSentence, float duration, float volume, float attenuation );
+	virtual bool	PlaySentence( const char *pszSentence, float duration, float volume, float attenuation );
 	void			PlayScriptedSentence( const char *pszSentence, float duration, float volume, float attenuation, BOOL bConcurrent, CBaseEntity *pListener );
 	void			KeyValue( KeyValueData *pkvd );
 
@@ -150,7 +145,8 @@ public:
 	// Conversations / communication
 	int				GetVoicePitch( void );
 	virtual void	IdleRespond( void );
-	virtual bool AskQuestion( float duration );
+	virtual bool	AskQuestion( float duration );
+	virtual bool	SetAnswerQuestion( CTalkMonster *pSpeaker );
 	virtual void	MakeIdleStatement( void );
 	float			RandomSentenceDuraion( void );
 	int				FIdleSpeak( void );
@@ -182,14 +178,18 @@ public:
 	virtual void	PlayCallForMedic();
 	bool			IsWounded();
 	bool			IsHeavilyWounded();
-	
-	virtual bool	SetAnswerQuestion( CTalkMonster *pSpeaker );
+
+	// Utility functions
+	bool CanIdleFlinch() {
+		return m_flNextFlinch < gpGlobals->time;
+	}
 
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
 	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
 
@@ -229,6 +229,9 @@ public:
 	short m_iTolerance;
 	float m_flLastHitByPlayer;
 	int m_iPlayerHits;
+
+	float m_flStopLookTime;
+	float m_flNextFlinch;
 
 	CUSTOM_SCHEDULES
 };

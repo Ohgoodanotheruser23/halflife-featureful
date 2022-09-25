@@ -22,6 +22,7 @@
 #include	"effects.h"
 #include	"decals.h"
 #include	"soundent.h"
+#include	"scripted.h"
 #include	"game.h"
 #include	"weapons.h"
 #include	"followingmonster.h"
@@ -250,6 +251,7 @@ public:
 	CUSTOM_SCHEDULES
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -16.0f, -16.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 16.0f, 16.0f, 48.0f ); }
 
@@ -566,37 +568,25 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t *pEvent)
 		m_cAmmoLoaded--;
 		BodyChange(m_cAmmoLoaded);
 
-		Vector	vecSpitOffset;
-		Vector	vecSpitDir;
-
 		UTIL_MakeAimVectors(pev->angles);
 
 		// !!!HACKHACK - the spot at which the spit originates (in front of the mouth) was measured in 3ds and hardcoded here.
 		// we should be able to read the position of bones at runtime for this info.
-		vecSpitOffset = (gpGlobals->v_forward * 15 + gpGlobals->v_up * 36);
-		vecSpitOffset = (pev->origin + vecSpitOffset);
-		//vecSpitDir = ((m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs) - vecSpitOffset).Normalize();
-		Vector vecEnemyPosition;
-		if (m_hEnemy != 0)
-			vecEnemyPosition = m_hEnemy->BodyTarget(pev->origin);
-		else
-			vecEnemyPosition = m_vecEnemyLKP;
-		vecSpitDir = (vecEnemyPosition - vecSpitOffset).Normalize();
+		const Vector vecSpitOffset = (gpGlobals->v_forward * 15 + gpGlobals->v_up * 36);
+		const Vector vecSpitOrigin = (pev->origin + vecSpitOffset);
 
-		vecSpitDir.x += RANDOM_FLOAT(-0.01, 0.01);
-		vecSpitDir.y += RANDOM_FLOAT(-0.01, 0.01);
-		vecSpitDir.z += RANDOM_FLOAT(-0.01, 0);
+		const Vector vecSpitDir = SpitAtEnemy(vecSpitOrigin, 0.01f);
 
 		// SOUND HERE! (in the pitdrone model)
 
-		CPitdroneSpike::Shoot(pev, vecSpitOffset, vecSpitDir * 900, UTIL_VecToAngles(vecSpitDir));
+		CPitdroneSpike::Shoot(pev, vecSpitOrigin, vecSpitDir * 900, UTIL_VecToAngles(vecSpitDir));
 
 		// spew the spittle temporary ents.
-		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpitOffset );
+		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpitOrigin );
 			WRITE_BYTE( TE_SPRITE_SPRAY );
-			WRITE_COORD( vecSpitOffset.x );	// pos
-			WRITE_COORD( vecSpitOffset.y );
-			WRITE_COORD( vecSpitOffset.z );
+			WRITE_COORD( vecSpitOrigin.x );	// pos
+			WRITE_COORD( vecSpitOrigin.y );
+			WRITE_COORD( vecSpitOrigin.z );
 			WRITE_COORD( vecSpitDir.x );	// dir
 			WRITE_COORD( vecSpitDir.y );
 			WRITE_COORD( vecSpitDir.z );
@@ -667,7 +657,7 @@ void CPitdrone::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	pev->effects = 0;
 	SetMyHealth( gSkillData.pitdroneHealth );
-	m_flFieldOfView = 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_afCapability		= bits_CAP_SQUAD | bits_CAP_DOORS_GROUP;
 

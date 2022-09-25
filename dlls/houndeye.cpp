@@ -140,6 +140,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -16.0f, -16.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 16.0f, 16.0f, 36.0f ); }
 
@@ -351,7 +352,7 @@ void CHoundeye::Spawn()
 	pev->effects		= 0;
 	SetMyHealth( gSkillData.houndeyeHealth );
 	pev->yaw_speed		= 5;//!!! should we put this in the monster's changeanim function since turn rates may vary with state/anim?
-	m_flFieldOfView		= 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.5f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_iAsleep		= HOUNDEYE_AWAKE; // everyone spawns awake
 	m_iBlink		= HOUNDEYE_BLINK;
@@ -634,7 +635,7 @@ void CHoundeye::SonicAttack( void )
 	{
 		if( pEntity->pev->takedamage != DAMAGE_NO )
 		{
-			if( !FClassnameIs( pEntity->pev, "monster_houndeye" ) )
+			if( !(FClassnameIs( pEntity->pev, "monster_houndeye" ) && IRelationship(pEntity) < R_DL ) )
 			{
 				// houndeyes don't hurt other houndeyes with their attack
 				// houndeyes do FULL damage if the ent in question is visible. Half damage otherwise.

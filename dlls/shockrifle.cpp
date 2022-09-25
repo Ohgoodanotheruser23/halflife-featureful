@@ -122,7 +122,7 @@ BOOL CShockrifle::Deploy()
 	return DefaultDeploy("models/v_shock.mdl", "models/p_shock.mdl", SHOCK_DRAW, "bow");
 }
 
-void CShockrifle::Holster(int skiplocal /* = 0 */)
+void CShockrifle::Holster()
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
 	SendWeaponAnim(SHOCK_HOLSTER);
@@ -156,15 +156,21 @@ void CShockrifle::PrimaryAttack()
 
 #ifndef CLIENT_DLL
 	Vector anglesAim = m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle;
+
+	UTIL_MakeVectors(anglesAim);
 	anglesAim.x = -anglesAim.x;
-	UTIL_MakeVectors(m_pPlayer->pev->v_angle);
 
-	Vector vecSrc;
-	vecSrc = m_pPlayer->GetGunPosition() + gpGlobals->v_forward * 8 + gpGlobals->v_right * 12 + gpGlobals->v_up * -12;
+	const Vector vecSrc =
+		m_pPlayer->GetGunPosition() +
+		gpGlobals->v_forward * 8 +
+		gpGlobals->v_right * 9 +
+		gpGlobals->v_up * -7;
 
-	CShock::Shoot(m_pPlayer->pev, anglesAim, vecSrc, gpGlobals->v_forward * 2000);
+	m_pPlayer->GetAutoaimVectorFromPoint(vecSrc, AUTOAIM_10DEGREES);
 
-	m_flRechargeTime = gpGlobals->time + 1;
+	CShock::Shoot(m_pPlayer->pev, anglesAim, vecSrc, gpGlobals->v_forward * CShock::ShockSpeed());
+
+	m_flRechargeTime = gpGlobals->time + 1.0f;
 #endif
 	m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
 
@@ -226,6 +232,8 @@ void CShockrifle::Reload(void)
 void CShockrifle::WeaponIdle(void)
 {
 	Reload();
+
+	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
 
 	if (m_flTimeWeaponIdle > UTIL_WeaponTimeBase())
 		return;

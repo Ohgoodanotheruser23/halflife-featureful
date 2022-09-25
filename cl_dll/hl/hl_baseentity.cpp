@@ -130,9 +130,9 @@ int CBaseMonster::IgnoreConditions( void ) { return 0; }
 void CBaseMonster::RouteClear( void ) { }
 void CBaseMonster::RouteNew( void ) { }
 BOOL CBaseMonster::FRouteClear( void ) { return FALSE; }
-BOOL CBaseMonster::FRefreshRoute( void ) { return 0; }
+BOOL CBaseMonster::FRefreshRoute( int buildRouteFlags ) { return 0; }
 BOOL CBaseMonster::MoveToEnemy( Activity movementAct, float waitTime ) { return FALSE; }
-BOOL CBaseMonster::MoveToLocation( Activity movementAct, float waitTime, const Vector &goal ) { return FALSE; }
+BOOL CBaseMonster::MoveToLocation(Activity movementAct, float waitTime, const Vector &goal, int buildRouteFlags) { return FALSE; }
 BOOL CBaseMonster::MoveToTarget(Activity movementAct, float waitTime , bool closest) { return FALSE; }
 BOOL CBaseMonster::MoveToNode( Activity movementAct, float waitTime, const Vector &goal ) { return FALSE; }
 int ShouldSimplify( int routeType ) { return TRUE; }
@@ -154,10 +154,10 @@ int CBaseMonster::CheckLocalMove( const Vector &vecStart, const Vector &vecEnd, 
 float CBaseMonster::OpenDoorAndWait( entvars_t *pevDoor ) { return 0.0; }
 void CBaseMonster::AdvanceRoute( float distance ) { }
 int CBaseMonster::RouteClassify( int iMoveFlag ) { return 0; }
-BOOL CBaseMonster::BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget ) { return FALSE; }
+BOOL CBaseMonster::BuildRoute(const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget, int buildRouteFlags) { return FALSE; }
 void CBaseMonster::InsertWaypoint( Vector vecLocation, int afMoveFlags ) { }
-int CBaseMonster::FTriangulate(const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApexes, int n , int tries, bool recursive) { return FALSE; }
-Vector CBaseMonster::FTriangulateToNearest(const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector &apex) { return Vector(0,0,0); }
+int CBaseMonster::FTriangulate(const Vector &vecStart, const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector *pApexes, int n, int tries, bool recursive) { return FALSE; }
+Vector CBaseMonster::FTriangulateToNearest(const Vector &vecStart, const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector &apex) { return Vector(0,0,0); }
 void CBaseMonster::Move( float flInterval ) { }
 BOOL CBaseMonster::ShouldAdvanceRoute( float flWaypointDist ) { return FALSE; }
 void CBaseMonster::MoveExecute( CBaseEntity *pTargetEnt, const Vector &vecDir, float flInterval ) { }
@@ -167,8 +167,6 @@ void CBaseMonster::StartMonster( void ) { }
 void CBaseMonster::MovementComplete( void ) { }
 int CBaseMonster::TaskIsRunning( void ) { return 0; }
 int CBaseMonster::IRelationship( CBaseEntity *pTarget ) { return 0; }
-BOOL CBaseMonster::FindCover( Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist ) { return FALSE; }
-BOOL CBaseMonster::FindRunAway( Vector vecThreat, float flMinDist, float flMaxDist ) { return FALSE; }
 BOOL CBaseMonster::BuildNearestRoute( Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist ) { return FALSE; }
 CBaseEntity *CBaseMonster::BestVisibleEnemy( void ) { return NULL; }
 BOOL CBaseMonster::FInViewCone( CBaseEntity *pEntity ) { return FALSE; }
@@ -209,7 +207,6 @@ void CBaseMonster::SetMySize(const Vector &vecMin, const Vector &vecMax) {}
 BOOL CBaseMonster::FCheckAITrigger( void ) { return FALSE; }
 BOOL CBaseMonster::FCheckAITrigger( short ) { return FALSE; }
 int CBaseMonster::CanPlaySequence( BOOL fDisregardMonsterState, int interruptLevel ) { return FALSE; }
-BOOL CBaseMonster::FindLateralCover( const Vector &vecThreat, const Vector &vecViewOffset ) { return FALSE; }
 Vector CBaseMonster::ShootAtEnemy( const Vector &shootOrigin ) { return g_vecZero; }
 BOOL CBaseMonster::FacingIdeal( void ) { return FALSE; }
 BOOL CBaseMonster::FCanActiveIdle( void ) { return FALSE; }
@@ -220,8 +217,10 @@ void CBaseMonster::CorpseFallThink( void ) { }
 void CBaseMonster::MonsterInitDead( void ) { }
 BOOL CBaseMonster::BBoxFlat( void ) { return TRUE; }
 BOOL CBaseMonster::GetEnemy( bool forcePopping ) { return FALSE; }
+float CBaseMonster::HeadHitGroupDamageMultiplier() { return 3.0f; }
 void CBaseMonster::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType) { }
 CBaseEntity* CBaseMonster::DropItem( const char *pszItemName, const Vector &vecPos, const Vector &vecAng ) { return NULL; }
+bool CBaseMonster::IsFullyAlive( void ) { return CBaseToggle::IsFullyAlive(); }
 BOOL CBaseMonster::ShouldFadeOnDeath( void ) { return FALSE; }
 void CBaseMonster::RadiusDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType ) { }
 void CBaseMonster::RadiusDamage( Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int iClassIgnore, int bitsDamageType ) { }
@@ -264,7 +263,7 @@ int CBasePlayer::TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamag
 void CBasePlayer::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType) { }
 int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType ) { return 0; }
 void CBasePlayer::PackDeadPlayerItems( void ) { }
-void CBasePlayer::RemoveAllItems( BOOL removeSuit ) { }
+void CBasePlayer::RemoveAllItems( int stripFlags ) { }
 void CBasePlayer::SetAnimation( PLAYER_ANIM playerAnim ) { }
 void CBasePlayer::WaterMove() { }
 BOOL CBasePlayer::IsOnLadder( void ) { return FALSE; }
@@ -310,7 +309,8 @@ void CBasePlayer::BarnacleVictimReleased( void ) { }
 int CBasePlayer::Illumination( void ) { return 0; }
 void CBasePlayer::EnableControl( BOOL fControl ) { }
 Vector CBasePlayer::GetAutoaimVector( float flDelta ) { return g_vecZero; }
-Vector CBasePlayer::AutoaimDeflection( Vector &vecSrc, float flDist, float flDelta  ) { return g_vecZero; }
+Vector CBasePlayer::GetAutoaimVectorFromPoint( const Vector& vecSrc, float flDelta ) { return g_vecZero; }
+Vector CBasePlayer::AutoaimDeflection( const Vector &vecSrc, float flDist, float flDelta  ) { return g_vecZero; }
 void CBasePlayer::ResetAutoaim() { }
 void CBasePlayer::SetCustomDecalFrames( int nFrames ) { }
 int CBasePlayer::GetCustomDecalFrames( void ) { return -1; }

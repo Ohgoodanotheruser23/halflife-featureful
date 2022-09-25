@@ -86,6 +86,7 @@ class CFuncWallToggle : public CFuncWall
 public:
 	void Spawn( void );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	NODE_LINKENT HandleLinkEnt(int afCapMask, bool nodeQueryStatic);
 	void TurnOff( void );
 	void TurnOn( void );
 	BOOL IsOn( void );
@@ -132,6 +133,17 @@ void CFuncWallToggle::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 		else
 			TurnOn();
 	}
+}
+
+NODE_LINKENT CFuncWallToggle::HandleLinkEnt(int afCapMask, bool nodeQueryStatic)
+{
+	if (nodeQueryStatic) {
+		return NLE_ALLOW;
+	}
+	if (!IsOn()) {
+		return NLE_ALLOW;
+	}
+	return NLE_PROHIBIT;
 }
 
 #define SF_CONVEYOR_VISUAL	0x0001
@@ -246,6 +258,7 @@ class CFuncMonsterClip : public CFuncWall
 public:
 	void Spawn( void );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value ) {}		// Clear out func_wall's use function
+	NODE_LINKENT HandleLinkEnt(int afCapMask, bool nodeQueryStatic);
 };
 
 LINK_ENTITY_TO_CLASS( func_monsterclip, CFuncMonsterClip )
@@ -255,7 +268,16 @@ void CFuncMonsterClip::Spawn( void )
 	CFuncWall::Spawn();
 	if( CVAR_GET_FLOAT( "showtriggers" ) == 0 )
 		pev->effects = EF_NODRAW;
-	pev->flags |= FL_MONSTERCLIP;
+	pev->flags = FL_MONSTERCLIP;
+}
+
+NODE_LINKENT CFuncMonsterClip::HandleLinkEnt(int afCapMask, bool nodeQueryStatic)
+{
+	if (nodeQueryStatic)
+		return NLE_ALLOW;
+	if (afCapMask & bits_CAP_MONSTERCLIPPED)
+		return NLE_PROHIBIT;
+	return NLE_ALLOW;
 }
 
 // =================== FUNC_ROTATING ==============================================

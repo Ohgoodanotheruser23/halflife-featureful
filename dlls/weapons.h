@@ -135,8 +135,6 @@ public:
 #endif
 #define WEAPON_SUIT				31	// ?????
 
-#define MAX_WEAPONS			32
-
 #define MAX_NORMAL_BATTERY	100
 
 // weapon weight factors (for auto-switching)   (-1 = noswitch)
@@ -389,10 +387,10 @@ public:
 	virtual BOOL PlayEmptySound( void );
 	virtual void ResetEmptySound( void );
 
-	virtual void SendWeaponAnim( int iAnim, int skiplocal = 1, int body = 0 );  // skiplocal is 1 if client is predicting weapon animations
+	virtual void SendWeaponAnim( int iAnim, int body = 0 );  // skiplocal is 1 if client is predicting weapon animations
 
 	virtual BOOL IsUseable( void );
-	BOOL DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int skiplocal = 0, int body = 0 );
+	BOOL DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int body = 0 );
 	BOOL DefaultReload( int iClipSize, int iAnim, float fDelay, int body = 0 );
 
 	virtual void ItemPostFrame( void );	// called each frame by the player PostThink
@@ -404,7 +402,7 @@ public:
 	virtual int UpdateClientData( CBasePlayer *pPlayer );		// sends hud info to client dll, if things have changed
 	virtual void RetireWeapon( void );
 	virtual BOOL ShouldWeaponIdle( void ) {return FALSE; }
-	virtual void Holster( int skiplocal = 0 );
+	virtual void Holster();
 	virtual BOOL UseDecrement( void ) { return FALSE; }
 
 	int	PrimaryAmmoIndex();
@@ -431,6 +429,9 @@ public:
 	// hle time creep vars
 	float	m_flPrevPrimaryAttack;
 	float	m_flLastFireTime;
+
+	//Hack so deploy animations work when weapon prediction is enabled.
+	bool m_ForceSendAnimations;
 };
 
 extern DLL_GLOBAL	short	g_sModelIndexLaser;// holds the index for the laser beam
@@ -583,10 +584,8 @@ public:
 	void PrimaryAttack( void );
 	int Swing( int fFirst );
 	BOOL Deploy( void );
-	void Holster( int skiplocal = 0 );
-#if FEATURE_CROWBAR_IDLE_ANIM
+	void Holster();
 	void WeaponIdle();
-#endif
 	int m_iSwing;
 	TraceResult m_trHit;
 
@@ -616,7 +615,7 @@ public:
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
 	BOOL Deploy( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void Reload( void );
 	void WeaponIdle( void );
 	
@@ -650,7 +649,6 @@ public:
 
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
-	int SecondaryAmmoIndex( void );
 	BOOL Deploy( void );
 	void Reload( void );
 	void WeaponIdle( void );
@@ -687,7 +685,7 @@ public:
 	void SecondaryAttack( void );
 	int AddToPlayer( CBasePlayer *pPlayer );
 	BOOL Deploy( );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void Reload( void );
 	void WeaponIdle( void );
 
@@ -782,7 +780,7 @@ public:
 
 	BOOL Deploy( void );
 	BOOL CanHolster( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
@@ -843,7 +841,7 @@ public:
 	int AddToPlayer( CBasePlayer *pPlayer );
 
 	BOOL Deploy( void );
-	void Holster( int skiplocal = 0  );
+	void Holster();
 
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
@@ -892,7 +890,7 @@ public:
 	int AddToPlayer( CBasePlayer *pPlayer );
 
 	BOOL Deploy( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 
 	void UpdateEffect( const Vector &startPoint, const Vector &endPoint, float timeBlend );
 
@@ -963,14 +961,14 @@ public:
 	void SecondaryAttack( void );
 	BOOL Deploy( void );
 	BOOL IsUseable( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void Reload( void );
 	void WeaponIdle( void );
 	float m_flNextAnimTime;
 
 	float m_flRechargeTime;
 
-	int m_iFirePhase;// don't save me.
+	int m_iFirePhase;
 
 	virtual BOOL UseDecrement( void )
 	{
@@ -996,7 +994,7 @@ public:
 	void PrimaryAttack( void );
 	BOOL Deploy( void );
 	BOOL CanHolster( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void WeaponIdle( void );
 
 	virtual BOOL UseDecrement( void )
@@ -1030,9 +1028,10 @@ public:
 	BOOL Deploy( void );
 	BOOL IsUseable( void );
 
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void WeaponIdle( void );
 	void Throw( void );
+	void DrawSatchel( void );
 
 	virtual BOOL UseDecrement( void )
 	{
@@ -1061,7 +1060,7 @@ public:
 
 	void PrimaryAttack( void );
 	BOOL Deploy( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void WeaponIdle( void );
 
 	virtual BOOL UseDecrement( void )
@@ -1088,7 +1087,7 @@ public:
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
 	BOOL Deploy( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void WeaponIdle( void );
 	int m_fJustThrown;
 
@@ -1135,7 +1134,7 @@ public:
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
 	BOOL Deploy( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void Reload( void );
 	void WeaponIdle( void );
 
@@ -1182,7 +1181,7 @@ public:
 	int Swing(int fFirst);
 	BOOL Deploy(void);
 	void WeaponIdle(void);
-	void Holster(int skiplocal = 0);
+	void Holster();
 	void BigSwing(void);
 
 	int m_iSwing;
@@ -1223,7 +1222,7 @@ public:
 	void PrimaryAttack(void);
 	void SecondaryAttack(void);
 	BOOL Deploy(void);
-	void Holster(int skiplocal = 0);
+	void Holster();
 	void Reload( void );
 	void WeaponIdle(void);
 	BOOL PlayEmptySound(void);
@@ -1244,6 +1243,8 @@ public:
 	float	m_flRechargeTime;
 	BOOL	m_secondaryAttack;
 
+protected:
+	bool CanRecharge();
 private:
 	unsigned short m_usMedkitFire;
 };
@@ -1273,7 +1274,7 @@ public:
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer* pPlayer );
 	BOOL Deploy();
-	void Holster( int skiplocal /* = 0 */ );
+	void Holster();
 	void WeaponIdle( void );
 	void PrimaryAttack( void );
 
@@ -1325,7 +1326,7 @@ public:
 
 	void PrimaryAttack(void);
 	BOOL Deploy(void);
-	void Holster(int skiplocal = 0);
+	void Holster();
 	void Reload(void);
 	void ItemPostFrame();
 	void WeaponIdle(void);
@@ -1345,6 +1346,8 @@ public:
 
 	void UpdateTape();
 	void UpdateTape(int clip);
+	int BodyFromClip();
+	int BodyFromClip(int clip);
 
 	int m_iVisibleClip;
 
@@ -1372,7 +1375,7 @@ public:
 	void PrimaryAttack(void);
 	void SecondaryAttack(void);
 	BOOL Deploy(void);
-	void Holster(int skiplocal = 0);
+	void Holster();
 	void Reload(void);
 	void WeaponIdle(void);
 	//void ItemPostFrame(void);
@@ -1413,7 +1416,7 @@ public:
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
 	BOOL Deploy( void );
-	void Holster( int skiplocal = 0 );
+	void Holster();
 	void WeaponIdle( void );
 
 	BOOL PlayEmptySound( void );
@@ -1429,7 +1432,6 @@ public:
 
 	const char* MyWModel() { return "models/w_displacer.mdl"; }
 
-	void UseAmmo(int count);
 	BOOL CanFireDisplacer( int count ) const;
 
 	enum DISPLACER_FIREMODE { FIREMODE_FORWARD = 1, FIREMODE_BACKWARD };
@@ -1460,7 +1462,7 @@ public:
 	void PrimaryAttack(void);
 	void SecondaryAttack(void);
 	BOOL Deploy(void);
-	void Holster(int skiplocal = 0);
+	void Holster();
 	void Reload(void);
 	void WeaponIdle(void);
 	void CreateChargeEffect(void);
@@ -1504,7 +1506,7 @@ public:
 	int Swing(int fFirst);
 	BOOL Deploy(void);
 	void WeaponIdle();
-	void Holster(int skiplocal = 0);
+	void Holster();
 	void Stab();
 
 	int m_iSwing;

@@ -27,6 +27,9 @@
 #include <stdio.h>
 
 #include "ammohistory.h"
+#if USE_VGUI
+#include "vgui_TeamFortressViewport.h"
+#endif
 
 WEAPON *gpActiveSel;	// NULL means off, 1 means just the menu bar, otherwise
 						// this points to the active weapon menu item
@@ -356,7 +359,7 @@ void CHudAmmo::Think( void )
 		{
 			WEAPON *p = gWR.GetWeapon( i );
 
-			if( p )
+			if( p && p->iId )
 			{
 				if( gHUD.m_iWeaponBits & ( 1 << p->iId ) )
 					gWR.PickupWeapon( p );
@@ -673,10 +676,11 @@ int CHudAmmo::MsgFunc_WeaponList( const char *pszName, int iSize, void *pbuf )
 // Slot button pressed
 void CHudAmmo::SlotInput( int iSlot )
 {
+#if USE_VGUI
 	// Let the Viewport use it first, for menus
-//	if( gViewPort && gViewPort->SlotInput( iSlot ) )
-//		return;
-
+	if( gViewPort && gViewPort->SlotInput( iSlot ) )
+		return;
+#endif
 	gWR.SelectSlot(iSlot, FALSE, 1);
 }
 
@@ -861,12 +865,12 @@ int CHudAmmo::Draw( float flTime )
 
 	AmmoWidth = gHUD.GetSpriteRect( gHUD.m_HUD_number_0 ).right - gHUD.GetSpriteRect( gHUD.m_HUD_number_0 ).left;
 
-	a = (int)Q_max( MIN_ALPHA, m_fFade );
+	a = (int)Q_max( gHUD.MinHUDAlpha(), m_fFade );
 
 	if( m_fFade > 0 )
 		m_fFade -= ( (float)gHUD.m_flTimeDelta * 20.0f );
 
-	UnpackRGB( r, g, b, gHUD.m_iHUDColor );
+	UnpackRGB( r, g, b, gHUD.HUDColor() );
 
 	ScaleColors( r, g, b, a );
 
@@ -894,7 +898,7 @@ int CHudAmmo::Draw( float flTime )
 
 			x += AmmoWidth / 2;
 
-			UnpackRGB( r,g,b, gHUD.m_iHUDColor );
+			UnpackRGB( r,g,b, gHUD.HUDColor() );
 
 			// draw the | bar
 			FillRGBA( x, y, iBarWidth, gHUD.m_iFontHeight, r, g, b, a );
@@ -964,7 +968,7 @@ int DrawBar( int x, int y, int width, int height, float f )
 		width -= w;
 	}
 
-	UnpackRGB( r, g, b, gHUD.m_iHUDColor );
+	UnpackRGB( r, g, b, gHUD.HUDColor() );
 
 	FillRGBA( x, y, width, height, r, g, b, 128 );
 
@@ -1032,7 +1036,7 @@ int CHudAmmo::DrawWList( float flTime )
 	{
 		int iWidth;
 
-		UnpackRGB( r, g, b, gHUD.m_iHUDColor );
+		UnpackRGB( r, g, b, gHUD.HUDColor() );
 
 		if( iActiveSlot == i )
 			a = 255;
@@ -1083,7 +1087,7 @@ int CHudAmmo::DrawWList( float flTime )
 				if( !p || !p->iId )
 					continue;
 
-				UnpackRGB( r, g, b, gHUD.m_iHUDColor );
+				UnpackRGB( r, g, b, gHUD.HUDColor() );
 
 				// if active, then we must have ammo.
 				if( gpActiveSel == p )
@@ -1120,7 +1124,7 @@ int CHudAmmo::DrawWList( float flTime )
 		else
 		{
 			// Draw Row of weapons.
-			UnpackRGB( r, g, b, gHUD.m_iHUDColor );
+			UnpackRGB( r, g, b, gHUD.HUDColor() );
 
 			for( int iPos = 0; iPos < MAX_WEAPON_POSITIONS; iPos++ )
 			{
@@ -1131,7 +1135,7 @@ int CHudAmmo::DrawWList( float flTime )
 
 				if( gWR.HasAmmo( p ) )
 				{
-					UnpackRGB( r, g, b, gHUD.m_iHUDColor );
+					UnpackRGB( r, g, b, gHUD.HUDColor() );
 					a = 128;
 				}
 				else

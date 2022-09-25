@@ -90,8 +90,6 @@ public:
 
 	int m_afMemory;
 
-	int m_iMaxHealth;// keeps track of monster's maximum health value (for re-healing, etc)
-
 	Vector m_vecEnemyLKP;// last known position of enemy. (enemy's origin)
 
 	int m_cAmmoLoaded;		// how much ammo is in the weapon (used to trigger reload anim sequences)
@@ -102,8 +100,6 @@ public:
 
 	int m_bitsDamageType;	// what types of damage has monster (player) taken
 	BYTE m_rgbTimeBasedDamage[CDMG_TIMEBASED];
-
-	int m_lastDamageAmount;// how much damage did monster (player) last take
 										// time based damage counters, decr. 1 per 2 seconds
 	int m_bloodColor;		// color of blood particless
 
@@ -152,6 +148,7 @@ public:
 	void Listen( void );
 
 	virtual BOOL IsAlive( void ) { return ( pev->deadflag != DEAD_DEAD ); }
+	virtual bool IsFullyAlive( void );
 	virtual BOOL ShouldFadeOnDeath( void );
 
 	// Basic Monster AI functions
@@ -203,7 +200,7 @@ public:
 	BOOL FScheduleValid( void );
 	void ClearSchedule( void );
 	BOOL FScheduleDone( void );
-	void ChangeSchedule( Schedule_t *pNewSchedule );
+	void ChangeSchedule(Schedule_t *pNewSchedule , bool isSuggested = false);
 	virtual void OnChangeSchedule( Schedule_t *pNewSchedule ) {}
 	void NextScheduledTask( void );
 	Schedule_t *ScheduleInList( const char *pName, Schedule_t **pList, int listCount );
@@ -217,6 +214,14 @@ public:
 	virtual Schedule_t *GetScheduleOfType( int Type );
 	virtual Schedule_t *GetSchedule( void );
 	Schedule_t* GetFreeroamSchedule();
+	Schedule_t* GetSuggestedSchedule();
+	bool SuggestSchedule(int schedule, CBaseEntity *spotEntity = 0, float minDist = 0.0f, float maxDist = 0.0f, int flags = 0);
+	float SuggestedMinDist(float defaultValue) const;
+	float SuggestedMaxDist(float defaultValue) const;
+	bool CalcSuggestedSpot(Vector *outVec, Vector *viewOffset = NULL);
+	Activity GetSuggestedMovementActivity(Activity defaultActivity);
+	void ClearSuggestedSchedule();
+
 	virtual void ScheduleChange( void ) {}
 	// virtual int CanPlaySequence( void ) { return ((m_pCine == NULL) && (m_MonsterState == MONSTERSTATE_NONE || m_MonsterState == MONSTERSTATE_IDLE || m_IdealMonsterState == MONSTERSTATE_IDLE)); }
 	virtual int CanPlaySequence( BOOL fDisregardState, int interruptLevel );
@@ -250,7 +255,7 @@ public:
 	inline int MovementIsComplete( void ) { return ( m_movementGoal == MOVEGOAL_NONE ); }
 
 	int IScheduleFlags( void );
-	BOOL FRefreshRoute( void );
+	BOOL FRefreshRoute( int buildRouteFlags = 0 );
 	BOOL FRouteClear( void );
 	void RouteSimplify( CBaseEntity *pTargetEnt );
 	void AdvanceRoute( float distance );
@@ -258,14 +263,19 @@ public:
 	Vector FTriangulateToNearest(const Vector &vecStart , const Vector &vecEnd, float flDist, CBaseEntity *pTargetEnt, Vector& apex);
 	void MakeIdealYaw( Vector vecTarget );
 	virtual void SetYawSpeed( void ) { return; };// allows different yaw_speeds for each activity
-	BOOL BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget );
+	BOOL BuildRoute( const Vector &vecGoal, int iMoveFlag, CBaseEntity *pTarget, int buildRouteFlags = 0 );
 	virtual BOOL BuildNearestRoute( Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist );
 	int RouteClassify( int iMoveFlag );
 	void InsertWaypoint( Vector vecLocation, int afMoveFlags );
 
+	BOOL FindLateralCover( const Vector &vecThreat, const Vector &vecViewOffset, float minDist, float maxDist, int flags );
 	BOOL FindLateralCover( const Vector &vecThreat, const Vector &vecViewOffset );
-	virtual BOOL FindCover( Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist );
-	virtual BOOL FindRunAway( Vector vecThreat, float flMinDist, float flMaxDist );
+	BOOL FindLateralSpotAway( const Vector &vecThreat, float minDist, float maxDist, int flags );
+	BOOL FindStraightSpotAway( const Vector &vecThreat, float minDist, float maxDist, int flags );
+	BOOL FindSpotAway(Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist, int flags, const char* displayName);
+	BOOL FindCover(Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist, int flags);
+	BOOL FindCover(Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist);
+	BOOL FindSpotAway(Vector vecThreat, float flMinDist, float flMaxDist, int flags);
 	virtual BOOL FValidateCover( const Vector &vecCoverLocation ) { return TRUE; };
 	virtual float CoverRadius( void ) { return 784; } // Default cover radius
 
@@ -286,7 +296,8 @@ public:
 
 	BOOL MoveToNode( Activity movementAct, float waitTime, const Vector &goal );
 	BOOL MoveToTarget( Activity movementAct, float waitTime, bool closest = false );
-	BOOL MoveToLocation( Activity movementAct, float waitTime, const Vector &goal );
+	BOOL MoveToLocation( Activity movementAct, float waitTime, const Vector &goal, int buildRouteFlags = 0 );
+	BOOL MoveToLocationClosest( Activity movementAct, float waitTime, const Vector &goal, int buildRouteFlags = 0 );
 	BOOL MoveToEnemy( Activity movementAct, float waitTime );
 
 	// Returns the time when the door will be open
@@ -321,6 +332,7 @@ public:
 
 	BOOL GetEnemy( bool forcePopping );
 	void MakeDamageBloodDecal( int cCount, float flNoise, TraceResult *ptr, const Vector &vecDir );
+	virtual float HeadHitGroupDamageMultiplier();
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
 	// combat functions
@@ -338,6 +350,7 @@ public:
 	virtual void FadeMonster( void );	// Called instead of GibMonster() when gibs are disabled
 
 	Vector ShootAtEnemy( const Vector &shootOrigin );
+	Vector SpitAtEnemy(const Vector& vecSpitOrigin, float dirRandomDeviation = 0.05f, float* distance = 0 );
 	virtual Vector BodyTarget( const Vector &posSrc ) { return Center() * 0.75 + EyePosition() * 0.25; };		// position to shoot at
 
 	virtual	Vector GetGunPosition( void );
@@ -375,6 +388,7 @@ public:
 	void SetMyModel( const char* model );
 	void PrecacheMyModel( const char* model );
 	void SetMyBloodColor( int bloodColor );
+	void SetMyFieldOfView(const float defaultFieldOfView );
 
 	int Classify();
 	virtual int DefaultClassify();
@@ -400,8 +414,11 @@ public:
 
 	// Allows to set a head via monstermaker before spawn
 	virtual void SetHead(int head) {}
+	virtual void HandleBlocker(CBaseEntity* pBlocker, bool duringMovement) {}
 
 	bool IsFreeToManipulate();
+
+	virtual bool CanRoamAfterCombat() { return true; }
 
 	//
 	// Glowshell effects
@@ -434,6 +451,15 @@ public:
 	float m_flLastTimeObservedEnemy;
 
 	short m_sizeForGrapple;
+
+	short m_suggestedSchedule;
+	EHANDLE m_suggestedScheduleEntity;
+	Vector m_suggestedScheduleOrigin;
+	float m_suggestedScheduleMinDist;
+	float m_suggestedScheduleMaxDist;
+	int m_suggestedScheduleFlags;
+
+	short m_gibPolicy;
 
 	float m_flLastYawTime;
 

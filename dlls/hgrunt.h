@@ -86,7 +86,7 @@ public:
 	int Restore( CRestore &restore );
 
 	CBaseEntity *Kick( void );
-	void KickImpl(float damage, float zpunch = 0);
+	void PerformKick(float damage, float zpunch = 0);
 	Schedule_t *GetSchedule( void );
 	Schedule_t *GetScheduleOfType( int Type );
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
@@ -104,6 +104,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_MEDIUM; }
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return VEC_HUMAN_HULL_MIN; }
 	Vector DefaultMaxHullSize() { return VEC_HUMAN_HULL_MAX; }
 	int MonsterCategory() { return MONSTER_CATEGORY_MILITARY_HUMAN; }

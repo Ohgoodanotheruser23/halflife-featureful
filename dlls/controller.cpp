@@ -25,6 +25,7 @@
 #include	"schedule.h"
 #include	"weapons.h"
 #include	"squadmonster.h"
+#include	"scripted.h"
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -91,6 +92,7 @@ public:
 	void OnDying();
 	void GibMonster( void );
 
+	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() { return Vector( -32.0f, -32.0f, 0.0f ); }
 	Vector DefaultMaxHullSize() { return Vector( 32.0f, 32.0f, 64.0f ); }
 
@@ -311,7 +313,14 @@ void CController::HandleAnimEvent( MonsterEvent_t *pEvent )
 			CBaseMonster *pBall = (CBaseMonster*)Create( "controller_head_ball", vecStart, pev->angles, edict() );
 
 			pBall->pev->velocity = Vector( 0.0f, 0.0f, 32.0f );
-			pBall->m_hEnemy = m_hEnemy;
+			if (m_pCine)
+			{
+				pBall->m_hEnemy = m_hTargetEnt;
+			}
+			else
+			{
+				pBall->m_hEnemy = m_hEnemy;
+			}
 
 			m_iBall[0] = 0;
 			m_iBall[1] = 0;
@@ -362,7 +371,7 @@ void CController::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_GREEN );
 	SetMyHealth( gSkillData.controllerHealth );
 	pev->view_ofs		= Vector( 0.0f, 0.0f, -2.0f );// position of the eyes relative to monster's origin.
-	m_flFieldOfView		= VIEW_FIELD_FULL;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(VIEW_FIELD_FULL);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 
 	MonsterInit();
@@ -631,17 +640,32 @@ void CController::RunTask( Task_t *pTask )
 			Vector vecSrc = vecHand + pev->velocity * ( m_flShootTime - gpGlobals->time );
 			Vector vecDir;
 
-			if( m_hEnemy != 0 )
+			if( m_pCine != 0 || m_hEnemy != 0 )
 			{
-				if( HasConditions( bits_COND_SEE_ENEMY ) )
+				if (m_pCine != 0) // LRC- is this a script that's telling it to fire?
 				{
-					m_vecEstVelocity = m_vecEstVelocity * 0.5f + m_hEnemy->pev->velocity * 0.5f;
+					if (m_hTargetEnt != 0 && m_pCine->PreciseAttack())
+					{
+						vecDir = (m_hTargetEnt->pev->origin - pev->origin).Normalize() * gSkillData.controllerSpeedBall;
+					}
+					else
+					{
+						UTIL_MakeVectors(pev->angles);
+						vecDir = gpGlobals->v_forward * gSkillData.controllerSpeedBall;
+					}
 				}
-				else
+				else if (m_hEnemy != 0)
 				{
-					m_vecEstVelocity = m_vecEstVelocity * 0.8f;
+					if( HasConditions( bits_COND_SEE_ENEMY ) )
+					{
+						m_vecEstVelocity = m_vecEstVelocity * 0.5f + m_hEnemy->pev->velocity * 0.5f;
+					}
+					else
+					{
+						m_vecEstVelocity = m_vecEstVelocity * 0.8f;
+					}
+					vecDir = Intersect( vecSrc, m_hEnemy->BodyTarget( pev->origin ), m_vecEstVelocity, gSkillData.controllerSpeedBall );
 				}
-				vecDir = Intersect( vecSrc, m_hEnemy->BodyTarget( pev->origin ), m_vecEstVelocity, gSkillData.controllerSpeedBall );
 				float delta = 0.03490f; // +-2 degree
 				vecDir = vecDir + Vector( RANDOM_FLOAT( -delta, delta ), RANDOM_FLOAT( -delta, delta ), RANDOM_FLOAT( -delta, delta ) ) * gSkillData.controllerSpeedBall;
 
@@ -1100,6 +1124,29 @@ void CController::MoveExecute( CBaseEntity *pTargetEnt, const Vector &vecDir, fl
 	m_velocity = m_velocity * 0.8f + m_flGroundSpeed * vecDir * 0.2f;
 
 	UTIL_MoveToOrigin( ENT( pev ), pev->origin + m_velocity, m_velocity.Length() * flInterval, MOVE_STRAFE );	
+}
+
+class CControllerDead : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void ) { return	CLASS_ALIEN_MILITARY; }
+
+	const char* getPos(int pos) const;
+};
+
+const char* CControllerDead::getPos(int pos) const
+{
+	return "die1";
+}
+
+LINK_ENTITY_TO_CLASS( monster_alien_controller_dead, CControllerDead )
+
+void CControllerDead :: Spawn( )
+{
+	SpawnHelper("models/controller.mdl", BLOOD_COLOR_YELLOW, gSkillData.controllerHealth/2);
+	MonsterInitDead();
+	pev->frame = 255;
 }
 
 //=========================================================

@@ -79,7 +79,7 @@ BOOL CCrowbar::Deploy()
 	return DefaultDeploy( "models/v_crowbar.mdl", "models/p_crowbar.mdl", CROWBAR_DRAW, "crowbar" );
 }
 
-void CCrowbar::Holster( int skiplocal /* = 0 */ )
+void CCrowbar::Holster()
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 	SendWeaponAnim( CROWBAR_HOLSTER );
@@ -190,9 +190,7 @@ int CCrowbar::Swing( int fFirst )
 		{
 			// miss
 			m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.5;
-#if FEATURE_CROWBAR_IDLE_ANIM
 			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 6, 10 );
-#endif
 			// player "shoot" animation
 			m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
 		}
@@ -313,13 +311,10 @@ int CCrowbar::Swing( int fFirst )
 #endif
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.25f;
 	}
-#if FEATURE_CROWBAR_IDLE_ANIM
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10, 15 );
-#endif
 	return fDidHit;
 }
 
-#if FEATURE_CROWBAR_IDLE_ANIM
 void CCrowbar::WeaponIdle( void )
 {
 	if( m_flTimeWeaponIdle < UTIL_WeaponTimeBase() )
@@ -347,4 +342,3 @@ void CCrowbar::WeaponIdle( void )
 		SendWeaponAnim( iAnim );
 	}
 }
-#endif

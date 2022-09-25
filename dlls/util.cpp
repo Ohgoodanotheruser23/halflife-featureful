@@ -589,6 +589,11 @@ CBaseEntity *UTIL_FindEntityGeneric( const char *szWhatever, Vector &vecSrc, flo
 	return pEntity;
 }
 
+bool UTIL_HasClassnameOrTargetname(entvars_t *pevToucher, const char* name )
+{
+	return FClassnameIs(pevToucher, name) || (!FStringNull(pevToucher->targetname) && FStrEq(STRING(pevToucher->targetname), name));
+}
+
 // returns a CBaseEntity pointer to a player by index.  Only returns if the player is spawned and connected
 // otherwise returns NULL
 // Index is 1 based
@@ -2706,6 +2711,25 @@ char *memfgets( byte *pMemFile, int fileSize, int &filePos, char *pBuffer, int b
 
 	// No data read, bail
 	return NULL;
+}
+
+void ReportAIStateByClassname(const char* name)
+{
+	if (!name || !*name) {
+		ALERT(at_console, "Must provide a classname!\n");
+		return;
+	}
+	CBaseEntity* pEntity = 0;
+	ALERT(at_console, "Listing all monsters of \"%s\" classname\n", name);
+	while ( ( pEntity = UTIL_FindEntityByClassname(pEntity, name) ) != 0 ) {
+		CBaseMonster* pMonster = pEntity->MyMonsterPointer();
+		if (pMonster) {
+			pMonster->ReportAIState(at_console);
+			const bool clientInPVS = !FNullEnt(FIND_CLIENT_IN_PVS( pMonster->edict() ));
+			ALERT(at_console, "Position in the world: (%3.1f, %3.1f, %3.1f). ", pMonster->pev->origin.x, pMonster->pev->origin.y, pMonster->pev->origin.z);
+			ALERT(at_console, "Client in PVS: %s\n\n", clientInPVS ? "yes" : "no");
+		}
+	}
 }
 
 

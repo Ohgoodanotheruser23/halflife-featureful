@@ -50,6 +50,13 @@ CBaseEntity
 // UNDONE: This will ignore transition volumes (trigger_transition), but not the PVS!!!
 #define		FCAP_FORCE_TRANSITION		0x00000080		// ALWAYS goes across transitions
 
+enum
+{
+	PLAYER_USE_POLICY_DEFAULT = 0,
+	PLAYER_USE_POLICY_DIRECT,
+	PLAYER_USE_POLICY_VISIBLE,
+};
+
 #include "saverestore.h"
 #include "schedule.h"
 
@@ -236,7 +243,8 @@ public:
 	virtual void StopSneaking( void ) {}
 	virtual BOOL OnControls( entvars_t *pev ) { return FALSE; }
 	virtual BOOL IsSneaking( void ) { return FALSE; }
-	virtual BOOL IsAlive( void ) { return (pev->deadflag == DEAD_NO) && pev->health > 0; }
+	virtual BOOL IsAlive( void ) { return IsFullyAlive(); }
+	virtual bool IsFullyAlive() { return (pev->deadflag == DEAD_NO) && pev->health > 0; } // IsAlive returns true for DEAD_DYING monsters. Use this when checking if monster is not dead and not dying
 	virtual BOOL IsBSPModel( void ) { return pev->solid == SOLID_BSP || pev->movetype == MOVETYPE_PUSHSTEP; }
 	virtual BOOL ReflectGauss( void ) { return ( IsBSPModel() && !pev->takedamage ); }
 	virtual BOOL HasTarget( string_t targetname ) { return FStrEq(STRING(targetname), STRING(pev->target) ); }
@@ -383,9 +391,13 @@ public:
 	virtual void AddFloatPoints( float score, BOOL bAllowNegativeScore ) {}
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_NOT_A_TARGET; }
 	virtual int SizeForGrapple() { return DefaultSizeForGrapple(); }
+	virtual bool IsDisplaceable() { return false; }
 	virtual CBasePlayerWeapon* MyWeaponPointer() {return NULL;}
 
 	virtual bool IsAlienMonster() { return false; }
+	virtual float InputByMonster(CBaseMonster* pMonster) { return 0.0f; }
+	virtual NODE_LINKENT HandleLinkEnt(int afCapMask, bool nodeQueryStatic) { return NLE_PROHIBIT; }
+
 	virtual int ItemCategory() { return ITEM_CATEGORY_NULL; }
 };
 
@@ -486,6 +498,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 	// common member functions
 	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, float value );
+	static void DelayedUse(float delay, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, string_t target, string_t killTarget = iStringNull, float value = 0.0f );
 	void EXPORT DelayThink( void );
 	float GetTriggerDelay();
 };
@@ -524,6 +537,7 @@ public:
 	float m_flLastEventCheck;	// last time the event list was checked
 	BOOL m_fSequenceFinished;// flag set when StudioAdvanceFrame moves across a frame boundry
 	BOOL m_fSequenceLoops;	// true if the sequence loops
+	int m_minAnimEventFrame;
 };
 
 //
@@ -549,7 +563,6 @@ public:
 	Vector				m_vecAngle1;
 	Vector				m_vecAngle2;
 
-	int					m_cTriggersLeft;		// trigger_counter only, # of activations remaining
 	float				m_flHeight;
 	void (CBaseToggle::*m_pfnCallWhenMoveDone)(void);
 	Vector				m_vecFinalDest;
@@ -615,10 +628,12 @@ public:
 
 #define bits_CAP_DOORS_GROUP    (bits_CAP_USE | bits_CAP_AUTO_DOORS | bits_CAP_OPEN_DOORS)
 
+#define bits_CAP_MONSTERCLIPPED ( 1 << 31 )
+
 // used by suit voice to indicate damage sustained and repaired type to player
 
 #include "dmg_types.h"
-#define DMG_TIMEBASED		(~(0x3fff))	// mask for time-based damage
+#define DMG_TIMEBASED		(DMG_PARALYZE|DMG_NERVEGAS|DMG_POISON|DMG_RADIATION|DMG_DROWNRECOVER|DMG_ACID|DMG_SLOWBURN|DMG_SLOWFREEZE|DMG_TIMEDNONLETHAL)	// mask for time-based damage
 
 // these are the damage types that are allowed to gib corpses
 #define DMG_GIB_CORPSE		( DMG_CRUSH | DMG_FALL | DMG_BLAST | DMG_SONIC | DMG_CLUB )
@@ -674,6 +689,15 @@ class CSound;
 
 const char *ButtonSound( int sound );				// get string of button sound number
 
+enum
+{
+	BUTTON_USE_OFF = -1,
+	BUTTON_USE_TOGGLE = 0,
+	BUTTON_USE_ON = 1,
+	BUTTON_USE_ON_OFF = 2,
+	BUTTON_USE_OFF_ON = 3,
+};
+
 //
 // Generic Button
 //
@@ -704,6 +728,7 @@ public:
 	BUTTON_CODE ButtonResponseToTouch( void );
 	void OnLocked();
 	bool IsSparkingButton();
+	USE_TYPE UseType(bool returning);
 	
 	static	TYPEDESCRIPTION m_SaveData[];
 	// Buttons that don't take damage can be IMPULSE used
@@ -729,6 +754,9 @@ public:
 	string_t m_unlockedSoundOverride;
 	string_t m_lockedSentenceOverride;
 	string_t m_unlockedSentenceOverride;
+
+	short m_iDirectUse;
+	BOOL m_fNonMoving;
 };
 
 //

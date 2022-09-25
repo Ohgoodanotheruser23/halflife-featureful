@@ -831,6 +831,10 @@ public:
 
 	inline BOOL	UseOnly( void ) { return (pev->spawnflags & SF_PLAYEREQUIP_USEONLY) ? TRUE : FALSE; }
 
+	virtual int		Save( CSave &save );
+	virtual int		Restore( CRestore &restore );
+	static	TYPEDESCRIPTION m_SaveData[];
+
 private:
 	void		EquipPlayer( CBaseEntity *pPlayer );
 
@@ -839,6 +843,14 @@ private:
 };
 
 LINK_ENTITY_TO_CLASS( game_player_equip, CGamePlayerEquip )
+
+TYPEDESCRIPTION CGamePlayerEquip::m_SaveData[] =
+{
+	DEFINE_ARRAY( CGamePlayerEquip, m_weaponNames, FIELD_STRING, MAX_EQUIP ),
+	DEFINE_ARRAY( CGamePlayerEquip, m_weaponCount, FIELD_INTEGER, MAX_EQUIP ),
+};
+
+IMPLEMENT_SAVERESTORE( CGamePlayerEquip, CRulePointEntity )
 
 void CGamePlayerEquip::KeyValue( KeyValueData *pkvd )
 {
@@ -1077,13 +1089,13 @@ void CGamePlayerSettings::EquipPlayer(CBaseEntity *pPlayer)
 		player->GiveNamedItem("item_suit", (m_suitLogon ? (1 << (m_suitLogon-1)) : m_suitLogon) | SF_ITEM_NOFALL);
 		if (pev->spawnflags & SF_PLAYER_SETTINGS_LONGJUMP)
 		{
-			player->GiveNamedItem("item_longjump");
+			player->GiveNamedItem("item_longjump", SF_ITEM_NOFALL);
 		}
 	}
 
 #if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
 	if (pev->spawnflags & SF_PLAYER_SETTINGS_FLASHLIGHT)
-		player->GiveNamedItem("item_flashlight");
+		player->GiveNamedItem("item_flashlight", SF_ITEM_NOFALL);
 #endif
 
 	const int weaponFlags[] = {
@@ -1198,4 +1210,37 @@ void CGamePlayerSettings::EquipPlayer(CBaseEntity *pPlayer)
 
 	if (!hadWeapons)
 		player->SwitchToBestWeapon();
+
+	SUB_UseTargets(pPlayer, USE_TOGGLE, 0.0f);
 }
+
+
+class CGameAutosave : public CPointEntity
+{
+public:
+	void Spawn();
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+
+void CGameAutosave::Spawn()
+{
+	if( g_pGameRules->IsMultiplayer() )
+	{
+		REMOVE_ENTITY( ENT( pev ) );
+		return;
+	}
+	CPointEntity::Spawn();
+}
+
+void CGameAutosave::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if (pev->health > 0) {
+		CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
+		if (pPlayer != 0 && pev->health > pPlayer->pev->health)
+			return;
+	}
+
+	SERVER_COMMAND( "autosave\n" );
+}
+
+LINK_ENTITY_TO_CLASS( game_autosave, CGameAutosave )

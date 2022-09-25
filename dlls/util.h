@@ -173,10 +173,10 @@ inline BOOL FStringNull(int iString)			{ return iString == iStringNull; }
 #define cchMapNameMost 32
 
 // Dot products for view cone checking
-#define VIEW_FIELD_FULL		(float)-1.0 // +-180 degrees
-#define	VIEW_FIELD_WIDE		(float)-0.7 // +-135 degrees 0.1 // +-85 degrees, used for full FOV checks 
-#define	VIEW_FIELD_NARROW	(float)0.7 // +-45 degrees, more narrow check used to set up ranged attacks
-#define	VIEW_FIELD_ULTRA_NARROW	(float)0.9 // +-25 degrees, more narrow check used to set up ranged attacks
+#define VIEW_FIELD_FULL		-1.0f // +-180 degrees
+#define	VIEW_FIELD_WIDE		-0.7f // +-135 degrees 0.1 // +-85 degrees, used for full FOV checks
+#define	VIEW_FIELD_NARROW	0.7f // +-45 degrees, more narrow check used to set up ranged attacks
+#define	VIEW_FIELD_ULTRA_NARROW	0.9f // +-25 degrees, more narrow check used to set up ranged attacks
 
 // All monsters need this data
 #define		DONT_BLEED			-1
@@ -207,6 +207,12 @@ typedef enum
 	TS_GOING_UP,
 	TS_GOING_DOWN
 } TOGGLE_STATE;
+
+typedef enum {
+	NLE_PROHIBIT = 0,
+	NLE_ALLOW,
+	NLE_NEEDS_INPUT
+} NODE_LINKENT;
 
 // Misc useful
 inline BOOL FStrEq(const char*sz1, const char*sz2)
@@ -239,6 +245,7 @@ extern CBaseEntity	*UTIL_FindEntityByClassname(CBaseEntity *pStartEntity, const 
 extern CBaseEntity	*UTIL_FindEntityByTargetname(CBaseEntity *pStartEntity, const char *szName );
 extern CBaseEntity	*UTIL_FindEntityByTargetname(CBaseEntity *pStartEntity, const char *szName, CBaseEntity *pActivator );
 extern CBaseEntity	*UTIL_FindEntityGeneric(const char *szName, Vector &vecSrc, float flRadius );
+extern bool UTIL_HasClassnameOrTargetname(entvars_t *pevToucher, const char* name);
 
 // returns a CBaseEntity pointer to a player by index.  Only returns if the player is spawned and connected
 // otherwise returns NULL
@@ -390,6 +397,8 @@ extern void			UTIL_LogPrintf( const char *fmt, ... );
 extern float UTIL_DotPoints ( const Vector &vecSrc, const Vector &vecCheck, const Vector &vecDir );
 
 extern void UTIL_StripToken( const char *pKey, char *pDest );// for redundant keynames
+
+extern void EntvarsKeyvalue( entvars_t *pev, KeyValueData *pkvd );
 
 // Misc functions
 extern void SetMovedir(entvars_t* pev);
@@ -593,6 +602,8 @@ void UTIL_CleanSpawnPoint( Vector origin, float dist );
 void UTIL_MuzzleLight( Vector vecSrc, float flRadius, byte r, byte g, byte b, float flTime, float flDecay );
 
 char *memfgets( byte *pMemFile, int fileSize, int &filePos, char *pBuffer, int bufferSize );
+
+void ReportAIStateByClassname(const char* name);
 
 //TODO: move this to movewith.h later
 extern void			UTIL_AssignOrigin		( CBaseEntity* pEntity, const Vector vecOrigin );

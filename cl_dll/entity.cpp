@@ -7,6 +7,8 @@
 
 // Client side entity management functions
 
+#include <memory.h>
+
 #include "hud.h"
 #include "cl_util.h"
 #include "const.h"
@@ -223,7 +225,7 @@ void DLLEXPORT HUD_TxferPredictionData( struct entity_state_s *ps, const struct 
 	VectorCopy( ppcd->vuser3, pcd->vuser3 );
 	VectorCopy( ppcd->vuser4, pcd->vuser4 );
 
-	memcpy( wd, pwd, 32 * sizeof(weapon_data_t) );
+	memcpy( wd, pwd, MAX_WEAPONS * sizeof(weapon_data_t) );
 }
 
 /*
@@ -589,6 +591,10 @@ void DLLEXPORT HUD_CreateEntities( void )
 	// Add in any game specific objects
 	Game_AddObjects();
 	CL_UpdateLaserSpot();
+
+#if USE_VGUI
+	GetClientVoiceMgr()->CreateEntities();
+#endif
 }
 
 /*

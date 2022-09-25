@@ -38,6 +38,7 @@
 #include	"soundent.h"
 #include	"effects.h"
 #include	"customentity.h"
+#include	"scripted.h"
 #include	"decals.h"
 #include	"gamerules.h"
 #include	"hgrunt.h"
@@ -357,11 +358,11 @@ BOOL CHGrunt::CheckMeleeAttack1( float flDot, float flDist )
 	if( m_hEnemy != 0 )
 	{
 		pEnemy = m_hEnemy->MyMonsterPointer();
+	}
 
-		if( !pEnemy )
-		{
-			return FALSE;
-		}
+	if( !pEnemy )
+	{
+		return FALSE;
 	}
 
 	if( flDist <= 64.0f && flDot >= 0.7f &&
@@ -760,7 +761,7 @@ CBaseEntity *CHGrunt::Kick( void )
 	return NULL;
 }
 
-void CHGrunt::KickImpl(float damage, float zpunch)
+void CHGrunt::PerformKick(float damage, float zpunch)
 {
 	CBaseEntity* pHurt = Kick();
 	if (pHurt)
@@ -873,7 +874,22 @@ void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 		{
 			UTIL_MakeVectors( pev->angles );
 			// CGrenade::ShootTimed( pev, pev->origin + gpGlobals->v_forward * 34 + Vector( 0, 0, 32 ), m_vecTossVelocity, 3.5 );
-			CGrenade::ShootTimed( pev, GetGunPosition(), m_vecTossVelocity, 3.5 );
+			//LRC - a bit of a hack. Ideally the grunts would work out in advance whether it's ok to throw.
+			if (m_pCine)
+			{
+				Vector vecToss = g_vecZero;
+				if (m_hTargetEnt != 0 && m_pCine->PreciseAttack())
+				{
+					vecToss = VecCheckToss( pev, GetGunPosition(), m_hTargetEnt->pev->origin, 0.5 );
+				}
+				if (vecToss == g_vecZero)
+				{
+					vecToss = (gpGlobals->v_forward*0.5+gpGlobals->v_up*0.5).Normalize()*gSkillData.hgruntGrenadeSpeed;
+				}
+				CGrenade::ShootTimed( pev, GetGunPosition(), vecToss, 3.5 );
+			}
+			else
+				CGrenade::ShootTimed( pev, GetGunPosition(), m_vecTossVelocity, 3.5 );
 
 			m_fThrowGrenade = FALSE;
 			m_flNextGrenadeCheck = gpGlobals->time + 6;// wait six seconds before even looking again to see if a grenade can be thrown.
@@ -883,7 +899,22 @@ void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 		case HGRUNT_AE_GREN_LAUNCH:
 		{
 			EMIT_SOUND( ENT( pev ), CHAN_WEAPON, "weapons/glauncher.wav", 0.8, ATTN_NORM );
-			CGrenade::ShootContact( pev, GetGunPosition(), m_vecTossVelocity );
+			//LRC: firing due to a script?
+			if (m_pCine)
+			{
+				Vector vecToss;
+				if (m_hTargetEnt != 0 && m_pCine->PreciseAttack())
+					vecToss = VecCheckThrow( pev, GetGunPosition(), m_hTargetEnt->pev->origin, gSkillData.hgruntGrenadeSpeed, 0.5 );
+				else
+				{
+					// just shoot diagonally up+forwards
+					UTIL_MakeVectors(pev->angles);
+					vecToss = (gpGlobals->v_forward*0.5 + gpGlobals->v_up*0.5).Normalize() * gSkillData.hgruntGrenadeSpeed;
+				}
+				CGrenade::ShootContact( pev, GetGunPosition(), vecToss );
+			}
+			else
+				CGrenade::ShootContact( pev, GetGunPosition(), m_vecTossVelocity );
 			m_fThrowGrenade = FALSE;
 			if( g_iSkillLevel == SKILL_HARD )
 				m_flNextGrenadeCheck = gpGlobals->time + RANDOM_FLOAT( 2.0f, 5.0f );// wait a random amount of time before shooting again
@@ -919,7 +950,7 @@ void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 			break;
 		case HGRUNT_AE_KICK:
 		{
-			KickImpl(gSkillData.hgruntDmgKick);
+			PerformKick(gSkillData.hgruntDmgKick);
 		}
 			break;
 		case HGRUNT_AE_CAUGHT_ENEMY:
@@ -953,7 +984,7 @@ void CHGrunt::SpawnHelper(const char* modelName, int health, int bloodColor)
 	SetMyBloodColor( bloodColor );
 	pev->effects		= 0;
 	SetMyHealth( health );
-	m_flFieldOfView		= 0.2;// indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState		= MONSTERSTATE_NONE;
 	m_flNextGrenadeCheck	= gpGlobals->time + 1;
 	m_flNextPainTime	= gpGlobals->time;
@@ -1292,6 +1323,7 @@ Schedule_t slGruntCombatFail[] =
 Task_t tlGruntVictoryDance[] =
 {
 	{ TASK_STOP_MOVING, (float)0 },
+	{ TASK_SET_ACTIVITY, (float)ACT_IDLE },
 	{ TASK_FACE_ENEMY, (float)0 },
 	{ TASK_WAIT, 1.5f },
 	{ TASK_GET_PATH_TO_ENEMY_CORPSE, 64.0f },
@@ -1307,6 +1339,7 @@ Schedule_t slGruntVictoryDance[] =
 		tlGruntVictoryDance,
 		ARRAYSIZE( tlGruntVictoryDance ),
 		bits_COND_NEW_ENEMY		|
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE	|
 		bits_COND_HEAVY_DAMAGE,
 		0,
@@ -2373,7 +2406,7 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	const int knownFlags =
 			SF_MONSTER_GAG | SF_MONSTER_HITMONSTERCLIP | SF_MONSTER_PRISONER |
 			SF_MONSTER_DONT_DROP_GUN | SF_SQUADMONSTER_LEADER | SF_MONSTER_PREDISASTER |
-			SF_MONSTER_FADECORPSE | SF_MONSTER_NONSOLID_CORPSE;
+			SF_MONSTER_FADECORPSE | SF_MONSTER_NONSOLID_CORPSE | SF_MONSTER_ACT_OUT_OF_PVS;
 	const int flagsToSet = knownFlags & pev->spawnflags;
 	SetBits(pEntity->pev->spawnflags, flagsToSet);
 
@@ -2385,6 +2418,7 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	pGrunt->m_iClass = m_iClass;
 	pGrunt->m_reverseRelationship = m_reverseRelationship;
 	pGrunt->SetMyBloodColor(m_bloodColor);
+	pGrunt->SetMyFieldOfView(m_flFieldOfView);
 	pGrunt->m_gibModel = m_gibModel;
 	pGrunt->m_iszTriggerTarget = m_iszTriggerTarget;
 	pGrunt->m_iTriggerCondition = m_iTriggerCondition;
@@ -2395,6 +2429,7 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	pGrunt->m_freeRoam = m_freeRoam;
 	pGrunt->m_activeAfterCombat = m_activeAfterCombat;
 	pGrunt->m_sizeForGrapple = m_sizeForGrapple;
+	pGrunt->m_gibPolicy = m_gibPolicy;
 	PrepareBeforeSpawn(pEntity);
 	DispatchSpawn(pEntity->edict());
 	pGrunt->pev->movetype = MOVETYPE_FLY;

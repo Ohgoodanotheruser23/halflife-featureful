@@ -29,6 +29,13 @@
 #define PLAYER_MIN_BOUNCE_SPEED		200
 #define PLAYER_FALL_PUNCH_THRESHHOLD (float)350 // won't punch player's screen/make scrape noise unless player falling at least this fast.
 
+#define STRIP_WEAPONS_ONLY 0
+#define STRIP_SUIT 1
+#define STRIP_FLASHLIGHT 2
+#define STRIP_LONGJUMP 4
+#define STRIP_DONT_TURNOFF_FLASHLIGHT 8
+#define STRIP_ALL_ITEMS (STRIP_SUIT | STRIP_FLASHLIGHT | STRIP_LONGJUMP)
+
 #define SF_DISPLACER_TARGET_DISABLED 1
 
 //
@@ -145,9 +152,10 @@ public:
 	int					m_afButtonPressed;
 	int					m_afButtonReleased;
 
-	edict_t			   *m_pentSndLast;			// last sound entity to modify player room type
-	float				m_flSndRoomtype;		// last roomtype set by sound entity
+	edict_t				*m_pentSndLast;			// last sound entity to modify player room type
+	int					m_SndRoomtype;		// last roomtype set by sound entity
 	float				m_flSndRange;			// dist from player to sound entity
+	int					m_ClientSndRoomtype;
 
 	float				m_flFallVelocity;
 
@@ -247,7 +255,7 @@ public:
 	virtual void StartSneaking( void ) { m_tSneaking = gpGlobals->time - 1; }
 	virtual void StopSneaking( void ) { m_tSneaking = gpGlobals->time + 30; }
 	virtual BOOL IsSneaking( void ) { return m_tSneaking <= gpGlobals->time; }
-	virtual BOOL IsAlive( void ) { return (pev->deadflag == DEAD_NO && pev->health > 0); }
+	virtual BOOL IsAlive( void ) { return IsFullyAlive(); }
 	virtual BOOL ShouldFadeOnDeath( void ) { return FALSE; }
 	virtual	BOOL IsPlayer( void ) { return !( pev->flags & FL_SPECTATOR );}			// Spectators should return FALSE for this, they aren't "players" as far as game logic is concerned
 	BOOL IsPlayerAlive( void ) { return IsPlayer() && IsAlive(); }
@@ -260,7 +268,7 @@ public:
 	virtual int		Restore( CRestore &restore );
 	void RenewItems(void);
 	void PackDeadPlayerItems( void );
-	void RemoveAllItems( BOOL removeSuit );
+	void RemoveAllItems( int stripFlags );
 	BOOL SwitchWeapon( CBasePlayerWeapon *pWeapon );
 	BOOL SwitchToBestWeapon();
 
@@ -336,7 +344,8 @@ public:
 
 	void ResetAutoaim( void );
 	Vector GetAutoaimVector( float flDelta  );
-	Vector AutoaimDeflection( Vector &vecSrc, float flDist, float flDelta  );
+	Vector GetAutoaimVectorFromPoint( const Vector& vecSrc,float flDelta  );
+	Vector AutoaimDeflection( const Vector &vecSrc, float flDist, float flDelta  );
 
 	void ForceClientDllUpdate( void );  // Forces all client .dll specific data to be resent to client.
 
@@ -470,6 +479,8 @@ public:
 	bool SetClosestOriginOnRope(const Vector& vecPos);
 #endif
 	BOOL m_settingsLoaded;
+	BOOL m_buddha;
+
 	float m_flSemclipTime;
 };
 

@@ -100,6 +100,7 @@ struct skilldata_t
 	float slaveDmgClawrake;
 	float slaveDmgZap;
 	float slaveZapRate;
+	float slaveRevival;
 
 	float ichthyosaurHealth;
 	float ichthyosaurDmgShake;
@@ -148,6 +149,10 @@ struct skilldata_t
 
 #if FEATURE_OTIS
 	float otisHealth;
+#endif
+
+#if FEATURE_KATE
+	float kateHealth;
 #endif
 
 #if FEATURE_ROBOGRUNT

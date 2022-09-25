@@ -37,16 +37,22 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	virtual void KeyValue( KeyValueData *pkvd );
+	float InputByMonster(CBaseMonster* pMonster);
+	NODE_LINKENT HandleLinkEnt(int afCapMask, bool nodeQueryStatic);
 	virtual void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	virtual void Blocked( CBaseEntity *pOther );
 
 	virtual int ObjectCaps( void ) 
-	{ 
-		if( pev->spawnflags & SF_ITEM_USE_ONLY )
-			return ( CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION ) | FCAP_IMPULSE_USE |
-					(m_iDirectUse ? FCAP_ONLYDIRECT_USE : 0);
-		else
-			return (CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION);
+	{
+		int objectCaps = ( CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION );
+		if( pev->spawnflags & SF_ITEM_USE_ONLY ) {
+			objectCaps |= FCAP_IMPULSE_USE;
+			if (m_iDirectUse == PLAYER_USE_POLICY_DIRECT)
+				objectCaps |= FCAP_ONLYDIRECT_USE;
+			else if (m_iDirectUse == PLAYER_USE_POLICY_VISIBLE)
+				objectCaps |= FCAP_ONLYVISIBLE_USE;
+		}
+		return objectCaps;
 	};
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -76,7 +82,7 @@ public:
 	BYTE m_bUnlockedSound;	
 	BYTE m_bUnlockedSentence;
 
-	BOOL	m_iDirectUse;
+	short	m_iDirectUse;
 	BOOL	m_fIgnoreTargetname;
 	short	m_iObeyTriggerMode;
 
@@ -95,6 +101,8 @@ public:
 	string_t m_unlockedSoundOverride;
 	string_t m_lockedSentenceOverride;
 	string_t m_unlockedSentenceOverride;
+
+	float m_returnSpeed;
 
 	float SoundAttenuation() const
 	{
@@ -117,7 +125,7 @@ TYPEDESCRIPTION	CBaseDoor::m_SaveData[] =
 	DEFINE_FIELD( CBaseDoor, m_bUnlockedSound, FIELD_CHARACTER ),
 	DEFINE_FIELD( CBaseDoor, m_bUnlockedSentence, FIELD_CHARACTER ),
 
-	DEFINE_FIELD( CBaseDoor, m_iDirectUse, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CBaseDoor, m_iDirectUse, FIELD_SHORT ),
 	DEFINE_FIELD( CBaseDoor, m_fIgnoreTargetname, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CBaseDoor, m_iObeyTriggerMode, FIELD_SHORT ),
 
@@ -137,6 +145,8 @@ TYPEDESCRIPTION	CBaseDoor::m_SaveData[] =
 	DEFINE_FIELD( CBaseDoor, m_unlockedSoundOverride, FIELD_STRING ),
 	DEFINE_FIELD( CBaseDoor, m_lockedSentenceOverride, FIELD_STRING ),
 	DEFINE_FIELD( CBaseDoor, m_unlockedSentenceOverride, FIELD_STRING ),
+
+	DEFINE_FIELD( CBaseDoor, m_returnSpeed, FIELD_FLOAT ),
 };
 
 IMPLEMENT_SAVERESTORE( CBaseDoor, CBaseToggle )
@@ -283,7 +293,7 @@ void CBaseDoor::KeyValue( KeyValueData *pkvd )
 	}
 	else if (FStrEq(pkvd->szKeyName, "directuse"))
 	{
-		m_iDirectUse = atoi(pkvd->szValue) != 0;
+		m_iDirectUse = atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else if (FStrEq(pkvd->szKeyName, "m_fIgnoreTargetname"))
@@ -359,6 +369,16 @@ void CBaseDoor::KeyValue( KeyValueData *pkvd )
 	else if( FStrEq( pkvd->szKeyName, "unlocked_sentence_override" ) )
 	{
 		m_unlockedSentenceOverride = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq(pkvd->szKeyName, "return_speed") )
+	{
+		m_returnSpeed = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "soundradius" ) )
+	{
+		m_soundRadius = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -437,6 +457,10 @@ void CBaseDoor::Spawn()
 	}
 
 	m_toggle_state = TS_AT_BOTTOM;
+
+	if (m_fIgnoreTargetname) {
+		pev->spawnflags |= SF_DOOR_FORCETOUCHABLE;
+	}
 
 	// if the door is flagged for USE button activation only, use NULL touch function
 	if( FBitSet( pev->spawnflags, SF_DOOR_USE_ONLY ) &&
@@ -745,6 +769,65 @@ void CBaseDoor::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 		DoorActivate();
 }
 
+float CBaseDoor::InputByMonster(CBaseMonster *pMonster)
+{
+	if (FBitSet(pev->spawnflags, SF_DOOR_NOMONSTERS))
+		return 0.0f;
+
+	short originalTriggerMode = m_iObeyTriggerMode;
+	m_iObeyTriggerMode = 2;
+	Use(pMonster, pMonster, USE_ON, 0.0f);
+	m_iObeyTriggerMode = originalTriggerMode;
+	return pev->nextthink - pev->ltime;
+}
+
+NODE_LINKENT CBaseDoor::HandleLinkEnt(int afCapMask, bool nodeQueryStatic)
+{
+	if (nodeQueryStatic) {
+		return NLE_ALLOW;
+	}
+
+	const int toggleState = GetToggleState();
+
+	// monster should try for it if the door is open and looks as if it will stay that way
+	if( toggleState == TS_AT_TOP && (( pev->spawnflags & SF_DOOR_NO_AUTO_RETURN ) || (m_flWait == -1.0f)) )
+	{
+		return NLE_ALLOW;
+	}
+
+	if (!UTIL_IsMasterTriggered( m_sMaster, this )) {
+		return NLE_PROHIBIT;
+	}
+
+	if( ( pev->spawnflags & SF_DOOR_USE_ONLY ) )
+	{
+		// door is use only.
+		if( ( afCapMask & bits_CAP_OPEN_DOORS ) )
+		{
+			// let monster right through if he can open doors
+			if (!( pev->spawnflags & SF_DOOR_NOMONSTERS ))
+				return NLE_NEEDS_INPUT;
+		}
+		return NLE_PROHIBIT;
+	}
+	else
+	{
+		// door must be opened with a button or trigger field.
+		if( ( afCapMask & bits_CAP_OPEN_DOORS ) )
+		{
+			if (!FStringNull(pev->targetname) && !FBitSet(pev->spawnflags, SF_DOOR_FORCETOUCHABLE))
+			{
+				return NLE_PROHIBIT;
+			}
+			if( !( pev->spawnflags & SF_DOOR_NOMONSTERS ) ) {
+				return NLE_NEEDS_INPUT;
+			}
+		}
+
+		return NLE_PROHIBIT;
+	}
+}
+
 //
 // Causes the door to "do its thing", i.e. start moving, and cascade activation.
 //
@@ -909,9 +992,9 @@ void CBaseDoor::DoorGoDown( void )
 
 	SetMoveDone( &CBaseDoor::DoorHitBottom );
 	if( FClassnameIs( pev, "func_door_rotating" ) )//rotating door
-		AngularMove( m_vecAngle1, pev->speed );
+		AngularMove( m_vecAngle1, m_returnSpeed <= 0.0f ? pev->speed : m_returnSpeed );
 	else
-		LinearMove( m_vecPosition1, pev->speed );
+		LinearMove( m_vecPosition1, m_returnSpeed <= 0.0f ? pev->speed : m_returnSpeed );
 
 	if ( pev->spawnflags & SF_DOOR_START_OPEN )
 	{

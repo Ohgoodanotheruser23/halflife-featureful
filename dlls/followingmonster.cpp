@@ -11,8 +11,16 @@
 #include "soundent.h"
 #include "gamerules.h"
 
+TYPEDESCRIPTION	CFollowingMonster::m_SaveData[] =
+{
+	DEFINE_FIELD( CFollowingMonster, m_followFailPolicy, FIELD_SHORT ),
+};
+
+IMPLEMENT_SAVERESTORE( CFollowingMonster, CSquadMonster )
+
 Task_t tlFollow[] =
 {
+	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_FOLLOW_FAILED },
 	{ TASK_MOVE_NEAREST_TO_TARGET_RANGE, (float)128.0f },	// Move within 128 of target ent (client)
 	{ TASK_SET_SCHEDULE, (float)SCHED_TARGET_REACHED },
 };
@@ -23,12 +31,60 @@ Schedule_t slFollow[] =
 		tlFollow,
 		ARRAYSIZE( tlFollow ),
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_HEAR_SOUND |
 		bits_COND_PROVOKED,
 		bits_SOUND_DANGER,
 		"Follow"
+	},
+};
+
+Task_t tlFollowCautious[] =
+{
+	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_FOLLOW_FAILED },
+	{ TASK_MOVE_NEAREST_TO_TARGET_RANGE, (float)128.0f },	// Move within 128 of target ent (client)
+};
+
+Schedule_t slFollowCautious[] =
+{
+	{
+		tlFollowCautious,
+		ARRAYSIZE( tlFollowCautious ),
+		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
+		bits_COND_LIGHT_DAMAGE |
+		bits_COND_HEAVY_DAMAGE |
+		bits_COND_HEAR_SOUND |
+		bits_COND_PROVOKED,
+		bits_SOUND_COMBAT |
+		bits_SOUND_DANGER,
+		"Follow (Cautious)"
+	},
+};
+
+Task_t tlFollowTargetNearest[] =
+{
+	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_FAIL_PVS_INDEPENDENT },
+	{ TASK_GET_NEAREST_PATH_TO_TARGET, 64.0f },
+	{ TASK_RUN_PATH, (float)0 },
+	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },
+};
+
+Schedule_t slFollowTargetNearest[] =
+{
+	{
+		tlFollowTargetNearest,
+		ARRAYSIZE( tlFollowTargetNearest ),
+		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
+		bits_COND_LIGHT_DAMAGE |
+		bits_COND_HEAVY_DAMAGE |
+		bits_COND_HEAR_SOUND |
+		bits_COND_PROVOKED,
+		bits_SOUND_DANGER,
+		"FollowTargetNearest"
 	},
 };
 
@@ -46,6 +102,7 @@ Schedule_t slFaceTarget[] =
 		tlFaceTarget,
 		ARRAYSIZE( tlFaceTarget ),
 		bits_COND_CLIENT_PUSH |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_NEW_ENEMY |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
@@ -71,7 +128,8 @@ Schedule_t slMoveAway[] =
 	{
 		tlMoveAway,
 		ARRAYSIZE( tlMoveAway ),
-		0,
+		bits_COND_LIGHT_DAMAGE|
+		bits_COND_HEAVY_DAMAGE,
 		0,
 		"MoveAway"
 	},
@@ -109,27 +167,67 @@ Schedule_t slMoveAwayFollow[] =
 	{
 		tlMoveAwayFollow,
 		ARRAYSIZE( tlMoveAwayFollow ),
-		0,
+		bits_COND_LIGHT_DAMAGE|
+		bits_COND_HEAVY_DAMAGE,
 		0,
 		"MoveAwayFollow"
+	},
+};
+
+Task_t tlStopFollowing[] =
+{
+	{ TASK_CANT_FOLLOW, 0.0f },
+};
+
+Schedule_t slStopFollowing[] =
+{
+	{
+		tlStopFollowing,
+		ARRAYSIZE( tlStopFollowing ),
+		0,
+		0,
+		"StopFollowing"
+	},
+};
+
+// Like regular fail, but without waiting for PVS
+Task_t tlPVSIndependentFail[] =
+{
+	{ TASK_STOP_MOVING, 0 },
+	{ TASK_SET_ACTIVITY, (float)ACT_IDLE },
+	{ TASK_WAIT, (float)2 },
+};
+
+Schedule_t slPVSIndependentFail[] =
+{
+	{
+		tlPVSIndependentFail,
+		ARRAYSIZE( tlPVSIndependentFail ),
+		bits_COND_CAN_ATTACK,
+		0,
+		"PVS Independent Fail"
 	},
 };
 
 DEFINE_CUSTOM_SCHEDULES( CFollowingMonster )
 {
 	slFollow,
+	slFollowTargetNearest,
+	slFollowCautious,
 	slFaceTarget,
 	slMoveAway,
 	slMoveAwayFollow,
 	slMoveAwayFail,
+	slStopFollowing,
+	slPVSIndependentFail,
 };
 
 IMPLEMENT_CUSTOM_SCHEDULES( CFollowingMonster, CSquadMonster )
 
-bool CFollowingMonster::CanBePushedByClient(CBaseEntity *pOther)
+bool CFollowingMonster::CanBePushed(CBaseEntity *pPusher)
 {
 	// Ignore if pissed at player
-	return IRelationship(pOther) == R_AL;
+	return !FBitSet(pev->spawnflags, SF_MONSTER_IGNORE_PLAYER_PUSH) && IRelationship(pPusher) == R_AL;
 }
 
 void CFollowingMonster::Touch( CBaseEntity *pOther )
@@ -137,7 +235,7 @@ void CFollowingMonster::Touch( CBaseEntity *pOther )
 	// Did the player touch me?
 	if( pOther->IsPlayer() )
 	{
-		if( !CanBePushedByClient(pOther) )
+		if( !CanBePushed(pOther) )
 			return;
 
 		// Heuristic for determining if the player is pushing me away
@@ -145,14 +243,15 @@ void CFollowingMonster::Touch( CBaseEntity *pOther )
 		if( speed > 50.0f )
 		{
 			SetConditions( bits_COND_CLIENT_PUSH );
-			MakeIdealYaw( pOther->pev->origin );
+			if ( m_MonsterState != MONSTERSTATE_SCRIPT )
+				MakeIdealYaw( pOther->pev->origin );
 		}
 	}
 }
 
 void CFollowingMonster::OnDying()
 {
-	m_hTargetEnt = 0;
+	ClearFollowedPlayer();
 	SetUse( NULL );
 	CSquadMonster::OnDying();
 }
@@ -167,6 +266,17 @@ int CFollowingMonster::ObjectCaps()
 	return caps;
 }
 
+void CFollowingMonster::KeyValue( KeyValueData *pkvd )
+{
+	if( FStrEq( pkvd->szKeyName, "followfailpolicy" ) )
+	{
+		m_followFailPolicy = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CSquadMonster::KeyValue( pkvd );
+}
+
 Schedule_t *CFollowingMonster::GetScheduleOfType( int Type )
 {
 	switch( Type )
@@ -175,14 +285,60 @@ Schedule_t *CFollowingMonster::GetScheduleOfType( int Type )
 		return slMoveAway;
 	case SCHED_MOVE_AWAY_FOLLOW:
 		return slMoveAwayFollow;
+	case SCHED_RETREAT_FROM_SPOT_FAILED:
 	case SCHED_MOVE_AWAY_FAIL:
-		return slMoveAwayFail;
+		if (m_lastMoveBlocker != 0)
+		{
+			CBaseMonster* blockerMonster = m_lastMoveBlocker->MyMonsterPointer();
+			if (blockerMonster) {
+				CFollowingMonster* followingMonster = blockerMonster->MyFollowingMonsterPointer();
+				if (followingMonster && followingMonster->CanBePushed(this)) {
+					followingMonster->SuggestSchedule(SCHED_RETREAT_FROM_SPOT, this, 0.0f, 256.0f);
+				}
+			}
+			m_lastMoveBlocker = 0;
+		}
+		if (Type == SCHED_MOVE_AWAY_FAIL)
+			return slMoveAwayFail;
+		else
+			return CSquadMonster::GetScheduleOfType(Type);
 	case SCHED_TARGET_FACE:
 	case SCHED_TARGET_REACHED:
 		return slFaceTarget;
 	case SCHED_TARGET_CHASE:
 	case SCHED_FOLLOW:
 		return slFollow;
+	case SCHED_FOLLOW_CAUTIOUS:
+		return slFollowCautious;
+	case SCHED_FOLLOW_NEAREST:
+		return slFollowTargetNearest;
+	case SCHED_FOLLOW_FAILED:
+	{
+		FOLLOW_FAIL_POLICY failPolicy = FollowFailPolicy();
+		if (failPolicy == FOLLOW_FAIL_STOP)
+		{
+			return GetScheduleOfType(SCHED_CANT_FOLLOW);
+		}
+		else if (failPolicy == FOLLOW_FAIL_TRY_NEAREST)
+		{
+			return GetScheduleOfType(SCHED_FOLLOW_NEAREST);
+		}
+		else
+		{
+			return GetScheduleOfType(SCHED_FAIL_PVS_INDEPENDENT);
+		}
+	}
+	case SCHED_CANT_FOLLOW:
+	{
+		return slStopFollowing;
+	}
+	case SCHED_FAIL_PVS_INDEPENDENT:
+	{
+		if (NpcFollowOutOfPvs()) {
+			return slPVSIndependentFail;
+		}
+		return GetScheduleOfType(SCHED_FAIL);
+	}
 	default:
 		return CSquadMonster::GetScheduleOfType(Type);
 	}
@@ -202,26 +358,120 @@ void CFollowingMonster::StartTask( Task_t *pTask )
 		{
 			Vector dir = pev->angles;
 			dir.y = pev->ideal_yaw + 180;
-			Vector move;
+			Vector vecBackward;
+			Vector vecLeft;
 
-			UTIL_MakeVectorsPrivate( dir, move, NULL, NULL );
-			dir = pev->origin + move * pTask->flData;
-			if( MoveToLocation( ACT_WALK, 2, dir ) )
+			m_lastMoveBlocker = 0;
+
+			UTIL_MakeVectorsPrivate( dir, vecBackward, vecLeft, NULL );
+			if( MoveToLocation( ACT_WALK, 2, pev->origin + vecBackward * pTask->flData, BUILDROUTE_NO_NODEROUTE|BUILDROUTE_NO_TRIANGULATION ) )
 			{
 				TaskComplete();
 			}
-			else if( FindCover( pev->origin, pev->view_ofs, 0, CoverRadius() ) )
+			if( !TaskIsComplete() && MoveToLocation( ACT_WALK, 2, pev->origin + vecBackward * pTask->flData * 0.5f, BUILDROUTE_NO_NODEROUTE|BUILDROUTE_NO_TRIANGULATION ) )
 			{
-				// then try for plain ole cover
-				m_flMoveWaitFinished = gpGlobals->time + 2.0f;
 				TaskComplete();
 			}
 			else
 			{
-				// nowhere to go?
+				HandleBlocker(CBaseEntity::Instance( gpGlobals->trace_ent ), false);
+			}
+
+			if (!TaskIsComplete())
+			{
+				if( MoveToLocation( ACT_WALK, 2, pev->origin + vecLeft * pTask->flData * 0.5f, BUILDROUTE_NO_NODEROUTE|BUILDROUTE_NO_TRIANGULATION ) )
+				{
+					TaskComplete();
+				}
+				if( !TaskIsComplete() && MoveToLocation( ACT_WALK, 2, pev->origin - vecLeft * pTask->flData * 0.5f, BUILDROUTE_NO_NODEROUTE|BUILDROUTE_NO_TRIANGULATION ) )
+				{
+					TaskComplete();
+				}
+				else
+				{
+					if (m_lastMoveBlocker == 0)
+						HandleBlocker(CBaseEntity::Instance( gpGlobals->trace_ent ), false);
+				}
+			}
+
+			if( !TaskIsComplete() )
+			{
+				if ( FindSpotAway( pev->origin, 0, Q_max(256.0f, pTask->flData), FINDSPOTAWAY_WALK ) )
+				{
+					// then try for plain ole cover
+					m_flMoveWaitFinished = gpGlobals->time + 2.0f;
+					TaskComplete();
+				}
+				else
+				{
+					// nowhere to go?
+					TaskFail("can't move away");
+				}
+			}
+		}
+		break;
+	case TASK_FIND_MOVE_AWAY:
+		// The task is not used now. It's for future improvements
+		{
+			Vector vecSpot;
+
+			float minDist = COVER_DELTA;
+			float maxDist = 140.0f;
+
+			CalcSuggestedSpot(&vecSpot);
+
+			if (vecSpot == pev->origin)
+			{
+				Vector dir = pev->angles;
+				dir.y = pev->ideal_yaw + 180;
+				Vector move;
+				UTIL_MakeVectorsPrivate( dir, move, NULL, NULL );
+
+				vecSpot = pev->origin - move;
+
+				maxDist = 100.0f;
+			}
+
+			const int moveFlag = FBitSet(m_suggestedScheduleFlags, SUGGEST_SCHEDULE_FLAG_RUN) ? FINDSPOTAWAY_RUN : FINDSPOTAWAY_WALK;
+			if ( FindStraightSpotAway( vecSpot, SuggestedMinDist(minDist), SuggestedMaxDist(maxDist), moveFlag ) )
+			{
+				m_flMoveWaitFinished = gpGlobals->time;
+				TaskComplete();
+			}
+			else if( FindLateralSpotAway( vecSpot, SuggestedMinDist(minDist), SuggestedMaxDist(maxDist), moveFlag ) )
+			{
+				m_flMoveWaitFinished = gpGlobals->time;
+				TaskComplete();
+			}
+			else if ( FindSpotAway( vecSpot, SuggestedMinDist(minDist), SuggestedMaxDist(maxDist), moveFlag ) )
+			{
+				m_flMoveWaitFinished = gpGlobals->time;
+				TaskComplete();
+			}
+			else
+			{
 				TaskFail("can't move away");
 			}
 		}
+		break;
+	case TASK_GET_NEAREST_PATH_TO_TARGET:
+		{
+			CBaseEntity* pTarget = m_hTargetEnt;
+			if (pTarget == 0)
+				TaskFail("no target ent");
+			else if( BuildNearestRoute( pTarget->pev->origin, pev->view_ofs, pTask->flData, ( pTarget->pev->origin - pev->origin ).Length2D() ) )
+			{
+				TaskComplete();
+			}
+			else
+			{
+				TaskFail("can't build nearest route to target");
+			}
+		}
+		break;
+	case TASK_CANT_FOLLOW:
+		StopFollowing( FALSE, false );
+		TaskComplete();
 		break;
 	default:
 		CSquadMonster::StartTask( pTask );
@@ -359,11 +609,11 @@ BOOL CFollowingMonster::AbleToFollow()
 	{
 		if( !m_pCine )
 			return FALSE;
-		if( !m_pCine->CanInterrupt() )
+		if( !m_pCine->CanInterruptByPlayerCall() )
 			return FALSE;
 	}
 
-	if( !IsAlive() )
+	if( !IsFullyAlive() )
 		return FALSE;
 	return TRUE;
 }
@@ -397,7 +647,7 @@ bool CFollowingMonster::InScriptedSentence()
 
 Schedule_t* CFollowingMonster::GetFollowingSchedule(bool ignoreEnemy)
 {
-	if( (ignoreEnemy || m_hEnemy == 0 || !m_hEnemy->IsAlive()) && IsFollowingPlayer() )
+	if( (ignoreEnemy || m_hEnemy == 0 || !m_hEnemy->IsFullyAlive()) && IsFollowingPlayer() )
 	{
 		if( !FollowedPlayer()->IsAlive() )
 		{
@@ -443,9 +693,6 @@ int CFollowingMonster::DoFollowerUse(CBaseEntity *pCaller, bool saySentence, USE
 		if (rel >= R_DL || rel == R_FR)
 			return FOLLOWING_DISCARDED;
 
-		if (!AbleToFollow())
-			return FOLLOWING_NOTALLOWED;
-
 		// Pre-disaster followers can't be used unless they've got a master to override their behaviour...
 		if (ShouldDeclineFollowing())
 		{
@@ -453,6 +700,9 @@ int CFollowingMonster::DoFollowerUse(CBaseEntity *pCaller, bool saySentence, USE
 				DeclineFollowing(pCaller);
 			return FOLLOWING_DECLINED;
 		}
+
+		if (!AbleToFollow())
+			return FOLLOWING_NOTALLOWED;
 
 		const bool isFollowing = IsFollowingPlayer();
 		if (isFollowing && useType == USE_ON)
@@ -520,4 +770,40 @@ void CFollowingMonster::ReportAIState(ALERT_TYPE level)
 	CSquadMonster::ReportAIState(level);
 	if (IsFollowingPlayer())
 		ALERT(level, "Following a player. ");
+	ALERT(level, "Follow fail policy: ");
+	switch (FollowFailPolicy()) {
+	case FOLLOW_FAIL_STOP:
+		ALERT(level, "Stop on fail. ");
+		break;
+	case FOLLOW_FAIL_TRY_NEAREST:
+		ALERT(level, "Try nearest node on fail. ");
+		break;
+	default:
+		ALERT(level, "Regular. ");
+		break;
+	}
+}
+
+void CFollowingMonster::HandleBlocker(CBaseEntity* pBlocker, bool duringMovement)
+{
+	if (!pBlocker)
+		return;
+
+	//ALERT(at_console, "%s's blocker is %s\n", STRING(pev->classname), STRING(pBlocker->pev->classname));
+
+	CBaseMonster* blockerMonster = pBlocker->MyMonsterPointer();
+	if (blockerMonster) {
+		CFollowingMonster* followingMonster = blockerMonster->MyFollowingMonsterPointer();
+		if (followingMonster && followingMonster->CanBePushed(this)) {
+			//ALERT(at_console, "%s sets %s as blocker\n", STRING(pev->classname), STRING(pBlocker->pev->classname));
+			m_lastMoveBlocker = pBlocker;
+		}
+	}
+}
+
+bool CFollowingMonster::CanRoamAfterCombat()
+{
+	if (IsFollowingPlayer())
+		return false;
+	return CSquadMonster::CanRoamAfterCombat();
 }

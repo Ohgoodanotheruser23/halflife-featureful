@@ -18,8 +18,8 @@
 #include "cbase.h"
 #include "monsters.h"
 #include "weapons.h"
-#include "nodes.h"
 #include "player.h"
+#include "gamerules.h"
 
 #if FEATURE_MEDKIT
 
@@ -117,7 +117,7 @@ int CMedkit::GetItemInfo(ItemInfo *p)
 	p->iId = m_iId = WEAPON_MEDKIT;
 	p->iWeight = MEDKIT_WEIGHT;
 	
-	if (gSkillData.plrMedkitTime != 0) {
+	if (CanRecharge()) {
 		p->iFlags = ITEM_FLAG_NOAUTOSWITCHEMPTY | ITEM_FLAG_NOAUTORELOAD;
 	} else {
 		p->iFlags = ITEM_FLAG_NOAUTORELOAD;
@@ -137,13 +137,13 @@ BOOL CMedkit::Deploy()
 	return DefaultDeploy("models/v_tfc_medkit.mdl", "models/p_medkit.mdl", MEDKIT_DRAW, "trip");
 }
 
-void CMedkit::Holster(int skiplocal /*= 0*/)
+void CMedkit::Holster()
 {
 	m_flSoundDelay = 0;
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
 	
 	//HACKHACK - can't select medkit if it's empty! no way to get ammo for it, either
-	if( gSkillData.plrMedkitTime != 0 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) {
+	if( CanRecharge() && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) {
 		m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] = 1;
 	}
 	
@@ -200,7 +200,7 @@ void CMedkit::Reload( void )
 {
 	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= MEDKIT_MAX_CARRY )
 		return;
-	if( gSkillData.plrMedkitTime != 0 && m_flRechargeTime < gpGlobals->time )
+	if( CanRecharge() && m_flRechargeTime < gpGlobals->time )
 	{
 		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]++;
 		m_flRechargeTime = gpGlobals->time + gSkillData.plrMedkitTime;
@@ -265,5 +265,21 @@ BOOL CMedkit::PlayEmptySound(void)
 		return 0;
 	}
 	return 0;
+}
+
+bool CMedkit::CanRecharge()
+{
+#if CLIENT_DLL
+	if( bIsMultiplayer() )
+#else
+	if( g_pGameRules->IsMultiplayer() )
+#endif
+	{
+		return gSkillData.plrMedkitTime != 0;
+	}
+	else
+	{
+		return false;
+	}
 }
 #endif

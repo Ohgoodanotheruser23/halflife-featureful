@@ -65,12 +65,18 @@ typedef struct
 
 typedef struct cvar_s cvar_t;
 
+extern cvar_t* cl_weapon_sparks;
+extern cvar_t* cl_weapon_wallpuff;
+
 #define HUD_ACTIVE	1
 #define HUD_INTERMISSION 2
 
 #define MAX_PLAYER_NAME_LENGTH		32
 
 #define	MAX_MOTD_LENGTH				1536
+
+#define MAX_SERVERNAME_LENGTH	64
+#define MAX_TEAMNAME_SIZE 32
 
 //
 //-----------------------------------------------------
@@ -98,6 +104,9 @@ struct HUDLIST
 
 //
 //-----------------------------------------------------
+#if USE_VGUI
+#include "voice_status.h" // base voice handling class
+#endif
 #include "hud_spectator.h"
 
 //
@@ -205,11 +214,7 @@ private:
 	int m_iPos;
 };
 
-//
-//-----------------------------------------------------
-//
-// REMOVED: Vgui has replaced this.
-//
+#if !USE_VGUI || USE_NOVGUI_MOTD
 class CHudMOTD : public CHudBase
 {
 public:
@@ -231,7 +236,9 @@ protected:
 	int m_iLines;
 	int m_iMaxLength;
 };
+#endif
 
+#if !USE_VGUI || USE_NOVGUI_SCOREBOARD
 class CHudScoreboard : public CHudBase
 {
 public:
@@ -258,6 +265,7 @@ public:
 
 	void GetAllPlayersInfo( void );
 };
+#endif
 
 //
 //-----------------------------------------------------
@@ -291,41 +299,6 @@ protected:
 	// an array of colors...one color for each line
 	float *m_pflNameColors[MAX_STATUSBAR_LINES];
 };
-
-//
-//-----------------------------------------------------
-//
-// REMOVED: Vgui has replaced this.
-//
-/*
-class CHudScoreboard : public CHudBase
-{
-public:
-	int Init( void );
-	void InitHUDData( void );
-	int VidInit( void );
-	int Draw( float flTime );
-	int DrawPlayers( int xoffset, float listslot, int nameoffset = 0, char *team = NULL ); // returns the ypos where it finishes drawing
-	void UserCmd_ShowScores( void );
-	void UserCmd_HideScores( void );
-	int MsgFunc_ScoreInfo( const char *pszName, int iSize, void *pbuf );
-	int MsgFunc_TeamInfo( const char *pszName, int iSize, void *pbuf );
-	int MsgFunc_TeamScore( const char *pszName, int iSize, void *pbuf );
-	void DeathMsg( int killer, int victim );
-
-	int m_iNumTeams;
-
-	int m_iLastKilledBy;
-	int m_fLastKillTime;
-	int m_iPlayerNum;
-	int m_iShowscoresHeld;
-
-	void GetAllPlayersInfo( void );
-
-private:
-	struct cvar_s *cl_showpacketloss;
-};
-*/
 
 struct extra_player_info_t
 {
@@ -470,24 +443,37 @@ public:
 	int MsgFunc_Nightvision( const char *pszName, int iSize, void *pbuf );
 	void DrawCSNVG(float flTime);
 	void DrawOpforNVG(float flTime);
+	dlight_t* MakeDynLight(float flTime, int r, int g, int b);
+	void UpdateDynLight(dlight_t* dynLight, float radius, const Vector &origin);
 	void RemoveCSdlight();
-	void UserCmd_ToggleNVGStyle();
+	void RemoveOFdlight();
+	void SetFilterMode();
+	void ResetFilterMode();
 	void UserCmd_NVGAdjustDown();
 	void UserCmd_NVGAdjustUp();
-
+#if FEATURE_CS_NIGHTVISION
+	float CSNvgRadius();
+#endif
+#if FEATURE_OPFOR_NIGHTVISION_DLIGHT
+	float OpforNvgRadius();
+#endif
+#if FEATURE_FILTER_NIGHTVISION
+	float FilterBrightness();
+#endif
+	bool IsOn();
 private:
 	int m_fOn;
-#if FEATURE_CS_NIGHTVISION && FEATURE_OPFOR_NIGHTVISION
-	bool m_nvgStyle;
-#endif
 #if FEATURE_CS_NIGHTVISION
-	dlight_t* m_pLight;
+	dlight_t* m_pLightCS;
+#endif
+#if FEATURE_OPFOR_NIGHTVISION_DLIGHT
+	dlight_t* m_pLightOF;
 #endif
 #if FEATURE_OPFOR_NIGHTVISION
 	HSPRITE m_hSprite;
-	wrect_t *m_prc;
 	int m_iFrame, m_nFrameCount;
 #endif
+	bool m_filterModeSet;
 };
 //
 //-----------------------------------------------------
@@ -683,8 +669,10 @@ public:
 	int DrawHudStringLen( const char *szIt );
 	void DrawDarkRectangle( int x, int y, int wide, int tall );
 
+	int HUDColor();
 	int m_iHUDColor;
 
+	int MinHUDAlpha();
 private:
 	// the memory for these arrays are allocated in the first call to CHud::VidInit(), when the hud.txt and associated sprites are loaded.
 	// freed in ~CHud()
@@ -724,8 +712,12 @@ public:
 	CHudAmmoSecondary	m_AmmoSecondary;
 	CHudTextMessage m_TextMessage;
 	CHudStatusIcons m_StatusIcons;
+#if !USE_VGUI || USE_NOVGUI_SCOREBOARD
 	CHudScoreboard	m_Scoreboard;
+#endif
+#if !USE_VGUI || USE_NOVGUI_MOTD
 	CHudMOTD	m_MOTD;
+#endif
 	CHudNightvision m_Nightvision;
 
 	void Init( void );
@@ -765,6 +757,8 @@ public:
 	void AddHudElem( CHudBase *p );
 
 	float GetSensitivity();
+
+	void GetAllPlayersInfo( void );
 
 	bool m_iHardwareMode;
 	FogProperties fog;

@@ -27,6 +27,8 @@
 #include	"soundent.h"
 #include	"mod_features.h"
 
+#define FEATURE_SCIENTIST_PLFEAR 0
+
 #define		NUM_SCIENTIST_HEADS		4 // four heads available for scientist model, used when randoming a scientist head
 
 // used for body change when scientist uses the needle
@@ -36,7 +38,6 @@
 #define		NUM_SCIENTIST_BODIES 4
 #endif
 
-#define SF_SCI_DONT_STOP_FOLLOWING SF_MONSTER_SPECIAL_FLAG
 #define SF_SCI_SITTING_DONT_DROP SF_MONSTER_SPECIAL_FLAG // Don't drop to the floor. We can re-use the same value as sitting scientists can't follow
 
 enum
@@ -115,8 +116,13 @@ public:
 	Schedule_t *GetSchedule( void );
 	MONSTERSTATE GetIdealState( void );
 
+	virtual FOLLOW_FAIL_POLICY DefaultFollowFailPolicy() {
+		return FOLLOW_FAIL_STOP;
+	}
+
 	void DeathSound( void );
 	void PainSound( void );
+	virtual void PlayPainSound();
 
 	void TalkInit( void );
 
@@ -172,6 +178,7 @@ Schedule_t slFollowScared[] =
 		tlFollowScared,
 		ARRAYSIZE( tlFollowScared ),
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_HEAR_SOUND |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE,
@@ -193,25 +200,10 @@ Schedule_t slFaceTargetScared[] =
 		tlFaceTargetScared,
 		ARRAYSIZE( tlFaceTargetScared ),
 		bits_COND_HEAR_SOUND |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_NEW_ENEMY,
 		bits_SOUND_DANGER,
 		"FaceTargetScared"
-	},
-};
-
-Task_t tlStopFollowing[] =
-{
-	{ TASK_CANT_FOLLOW, 0.0f },
-};
-
-Schedule_t slStopFollowing[] =
-{
-	{
-		tlStopFollowing,
-		ARRAYSIZE( tlStopFollowing ),
-		0,
-		0,
-		"StopFollowing"
 	},
 };
 
@@ -256,6 +248,7 @@ Schedule_t slSciFaceTarget[] =
 		ARRAYSIZE( tlSciFaceTarget ),
 		bits_COND_CLIENT_PUSH |
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_HEAR_SOUND,
 		bits_SOUND_COMBAT |
 		bits_SOUND_DANGER,
@@ -297,6 +290,7 @@ Schedule_t slIdleSciStand[] =
 		tlIdleSciStand,
 		ARRAYSIZE( tlIdleSciStand ),
 		bits_COND_NEW_ENEMY |
+		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE |
 		bits_COND_HEAVY_DAMAGE |
 		bits_COND_HEAR_SOUND |
@@ -319,7 +313,7 @@ Task_t tlScientistCover[] =
 {
 	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_PANIC },		// If you fail, just panic!
 	{ TASK_STOP_MOVING, 0.0f },
-	{ TASK_FIND_RUN_AWAY_FROM_ENEMY, 0.0f },
+	{ TASK_FIND_SPOT_AWAY_FROM_ENEMY, 0.0f },
 	{ TASK_RUN_PATH_SCARED, 0.0f },
 	{ TASK_TURN_LEFT, 179.0f },
 	{ TASK_SET_SCHEDULE, (float)SCHED_HIDE },
@@ -432,7 +426,6 @@ DEFINE_CUSTOM_SCHEDULES( CScientist )
 	slScientistHide,
 	slScientistStartle,
 	slHeal,
-	slStopFollowing,
 	slSciPanic,
 	slFollowScared,
 	slFaceTargetScared,
@@ -737,7 +730,7 @@ void CScientist::SciSpawnHelper(const char* modelName, float health, int headCou
 	SetMyBloodColor( BLOOD_COLOR_RED );
 	SetMyHealth( health );
 	pev->view_ofs = Vector( 0, 0, 50 );// position of the eyes relative to monster's origin.
-	m_flFieldOfView = VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so scientists will notice player and say hello
+	SetMyFieldOfView(VIEW_FIELD_WIDE); // NOTE: we need a wide field of view so scientists will notice player and say hello
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	//m_flDistTooFar = 256.0;
@@ -815,10 +808,14 @@ void CScientist::TalkInit()
 	m_szGrp[TLK_MORTAL] = "SC_MORTAL";
 
 	m_szGrp[TLK_SHOT] = NULL;
+#if FEATURE_SCIENTIST_PLFEAR
+	m_szGrp[TLK_MAD] = "SC_PLFEAR";
+#else
 	m_szGrp[TLK_MAD] = NULL;
+#endif
 
 	// get voice for head
-	switch( pev->body % NUM_SCIENTIST_BODIES )
+	switch( pev->body % NUM_SCIENTIST_HEADS )
 	{
 	default:
 	case HEAD_GLASSES:
@@ -863,6 +860,11 @@ void CScientist::PainSound( void )
 
 	m_painTime = gpGlobals->time + RANDOM_FLOAT( 0.5f, 0.75f );
 
+	PlayPainSound();
+}
+
+void CScientist::PlayPainSound()
+{
 	switch( RANDOM_LONG( 0, 4 ) )
 	{
 	case 0:
@@ -888,7 +890,7 @@ void CScientist::PainSound( void )
 //=========================================================
 void CScientist::DeathSound( void )
 {
-	PainSound();
+	PlayPainSound();
 }
 
 void CScientist::SetActivity( Activity newActivity )
@@ -910,15 +912,10 @@ Schedule_t *CScientist::GetScheduleOfType( int Type )
 	// Hook these to make a looping schedule
 	case SCHED_TARGET_FACE:
 		return slSciFaceTarget;
-	case SCHED_TARGET_CHASE:
-		if (FBitSet(pev->spawnflags, SF_SCI_DONT_STOP_FOLLOWING))
-			return CTalkMonster::GetScheduleOfType(SCHED_FOLLOW);
-		else
-			return CTalkMonster::GetScheduleOfType(SCHED_FOLLOW_FALLIBLE);
-	case SCHED_CANT_FOLLOW:
-		return slStopFollowing;
 	case SCHED_PANIC:
 		return slSciPanic;
+	case SCHED_TARGET_CHASE:
+		return CTalkMonster::GetScheduleOfType(SCHED_FOLLOW_CAUTIOUS);
 	case SCHED_TARGET_CHASE_SCARED:
 		return slFollowScared;
 	case SCHED_TARGET_FACE_SCARED:
@@ -975,7 +972,7 @@ Schedule_t *CScientist::GetSchedule( void )
 			}
 		}
 
-		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
+		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) && CanIdleFlinch() )
 		{
 			// flinch if hurt
 			return GetScheduleOfType( SCHED_SMALL_FLINCH );
@@ -1134,7 +1131,7 @@ MONSTERSTATE CScientist::GetIdealState( void )
 
 BOOL CScientist::CanHeal( void )
 { 
-	if( ( m_healTime > gpGlobals->time ) || ( m_hTargetEnt == 0 ) || ( !m_hTargetEnt->IsAlive() ) ||
+	if( ( m_healTime > gpGlobals->time ) || ( m_hTargetEnt == 0 ) || ( !m_hTargetEnt->IsFullyAlive() ) ||
 			( m_hTargetEnt->IsPlayer() ? m_hTargetEnt->pev->health > ( m_hTargetEnt->pev->max_health * 0.5f ) :
 			  m_hTargetEnt->pev->health >= m_hTargetEnt->pev->max_health ) )
 		return FALSE;
@@ -1300,7 +1297,7 @@ void CSittingScientist::SciSpawnHelper(const char* modelName)
 	SetMyHealth( 50 );
 	
 	SetMyBloodColor( BLOOD_COLOR_RED );
-	m_flFieldOfView = VIEW_FIELD_WIDE; // indicates the width of this monster's forward view cone ( as a dotproduct result )
+	SetMyFieldOfView(VIEW_FIELD_WIDE); // indicates the width of this monster's forward view cone ( as a dotproduct result )
 
 	m_afCapability= bits_CAP_HEAR | bits_CAP_TURN_HEAD;
 
@@ -1598,7 +1595,7 @@ public:
 	const char* ScreamSentence() { return "RO_SCREAM"; }
 	const char* FearSentence() { return "RO_FEAR"; }
 	const char* PlayerFearSentence() { return "RO_PLFEAR"; }
-	void PainSound();
+	void PlayPainSound();
 
 #if FEATURE_ROSENBERG_DECAY
 	BOOL CanHeal() { return false; }
@@ -1670,18 +1667,17 @@ void CRosenberg::TalkInit()
 	m_szGrp[TLK_MORTAL] = "RO_MORTAL";
 
 	m_szGrp[TLK_SHOT] = NULL;
+#if FEATURE_SCIENTIST_PLFEAR
+	m_szGrp[TLK_MAD] = "RO_PLFEAR";
+#else
 	m_szGrp[TLK_MAD] = NULL;
+#endif
 
 	m_voicePitch = 100;
 }
 
-void CRosenberg::PainSound()
+void CRosenberg::PlayPainSound()
 {
-	if( gpGlobals->time < m_painTime )
-		return;
-
-	m_painTime = gpGlobals->time + RANDOM_FLOAT( 0.5, 0.75 );
-
 	const char* painSound = NULL;
 	switch( RANDOM_LONG( 0, 8 ) )
 	{
@@ -1818,12 +1814,39 @@ public:
 	const char* FearSentence() { return "DK_FEAR"; }
 	const char* PlayerFearSentence() { return "DK_PLFEAR"; }
 	void PainSound();
+	void DeathSound();
 
 	BOOL CanHeal() { return false; }
 	bool ReadyToHeal() {return false; }
+
+protected:
+	static const char* pPainSounds[];
+	static const char* pDeathSounds[];
 };
 
 LINK_ENTITY_TO_CLASS( monster_wheelchair, CKeller )
+
+const char* CKeller::pPainSounds[] =
+{
+	"keller/dk_pain1.wav",
+	"keller/dk_pain2.wav",
+	"keller/dk_pain3.wav",
+	"keller/dk_pain4.wav",
+	"keller/dk_pain5.wav",
+	"keller/dk_pain6.wav",
+	"keller/dk_pain7.wav",
+};
+
+const char* CKeller::pDeathSounds[] =
+{
+	"keller/dk_die1.wav",
+	"keller/dk_die2.wav",
+	"keller/dk_die3.wav",
+	"keller/dk_die4.wav",
+	"keller/dk_die5.wav",
+	"keller/dk_die6.wav",
+	"keller/dk_die7.wav",
+};
 
 void CKeller::Spawn()
 {
@@ -1834,13 +1857,8 @@ void CKeller::Spawn()
 void CKeller::Precache()
 {
 	PrecacheMyModel("models/wheelchair_sci.mdl");
-	PRECACHE_SOUND( "keller/dk_pain1.wav" );
-	PRECACHE_SOUND( "keller/dk_pain2.wav" );
-	PRECACHE_SOUND( "keller/dk_pain3.wav" );
-	PRECACHE_SOUND( "keller/dk_pain4.wav" );
-	PRECACHE_SOUND( "keller/dk_pain5.wav" );
-	PRECACHE_SOUND( "keller/dk_pain6.wav" );
-	PRECACHE_SOUND( "keller/dk_pain7.wav" );
+	PRECACHE_SOUND_ARRAY( pPainSounds );
+	PRECACHE_SOUND_ARRAY( pDeathSounds );
 
 	PRECACHE_SOUND( "wheelchair/wheelchair_jog.wav" );
 	PRECACHE_SOUND( "wheelchair/wheelchair_run.wav" );
@@ -1877,7 +1895,7 @@ void CKeller::TalkInit()
 	m_szGrp[TLK_WOUND] = NULL;
 	m_szGrp[TLK_MORTAL] = NULL;
 
-	m_szGrp[TLK_SHOT] = NULL;
+	m_szGrp[TLK_SHOT] = "DK_PLFEAR";
 	m_szGrp[TLK_MAD] = NULL;
 
 	m_voicePitch = 100;
@@ -1890,31 +1908,11 @@ void CKeller::PainSound()
 
 	m_painTime = gpGlobals->time + RANDOM_FLOAT( 0.5, 0.75 );
 
-	const char* painSound = NULL;
-	switch( RANDOM_LONG( 1, 7 ) )
-	{
-	case 1:
-		painSound ="keller/dk_pain1.wav";
-		break;
-	case 2:
-		painSound ="keller/dk_pain2.wav";
-		break;
-	case 3:
-		painSound ="keller/dk_pain3.wav";
-		break;
-	case 4:
-		painSound ="keller/dk_pain4.wav";
-		break;
-	case 5:
-		painSound ="keller/dk_pain5.wav";
-		break;
-	case 6:
-		painSound ="keller/dk_pain6.wav";
-		break;
-	case 7:
-		painSound ="keller/dk_pain7.wav";
-		break;
-	}
-	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, painSound, 1, ATTN_NORM, 0, GetVoicePitch() );
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pPainSounds ), 1, ATTN_NORM, 0, GetVoicePitch() );
+}
+
+void CKeller::DeathSound()
+{
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( pDeathSounds ), 1, ATTN_NORM, 0, GetVoicePitch() );
 }
 #endif

@@ -66,7 +66,7 @@ void CRecruit::Spawn()
 	SetMyBloodColor( BLOOD_COLOR_RED );
 	SetMyHealth( gSkillData.barneyHealth );
 	pev->view_ofs = Vector ( 0, 0, 50 );// position of the eyes relative to monster's origin.
-	m_flFieldOfView = VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so npc will notice player and say hello
+	SetMyFieldOfView(VIEW_FIELD_WIDE); // NOTE: we need a wide field of view so npc will notice player and say hello
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	m_afCapability = bits_CAP_HEAR | bits_CAP_TURN_HEAD | bits_CAP_DOORS_GROUP;
@@ -205,7 +205,7 @@ Schedule_t* CRecruit::GetSchedule()
 		}
 		if( HasConditions( bits_COND_HEAR_SOUND ) )
 			return GetScheduleOfType( SCHED_TAKE_COVER_FROM_BEST_SOUND );	// Cower and panic from the scary sound!
-		return GetScheduleOfType( SCHED_RUN_AWAY_FROM_ENEMY );			// Run & Cower
+		return GetScheduleOfType( SCHED_RETREAT_FROM_ENEMY );			// Run & Cower
 	}
 		break;
 	default:

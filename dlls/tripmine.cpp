@@ -69,7 +69,8 @@ TYPEDESCRIPTION	CTripmineGrenade::m_SaveData[] =
 	DEFINE_FIELD( CTripmineGrenade, m_vecEnd, FIELD_POSITION_VECTOR ),
 	DEFINE_FIELD( CTripmineGrenade, m_flBeamLength, FIELD_FLOAT ),
 	DEFINE_FIELD( CTripmineGrenade, m_hOwner, FIELD_EHANDLE ),
-	DEFINE_FIELD( CTripmineGrenade, m_pBeam, FIELD_CLASSPTR ),
+	//Don't save, recreate.
+	//DEFINE_FIELD( CTripmineGrenade, m_pBeam, FIELD_CLASSPTR ),
 	DEFINE_FIELD( CTripmineGrenade, m_posOwner, FIELD_POSITION_VECTOR ),
 	DEFINE_FIELD( CTripmineGrenade, m_angleOwner, FIELD_VECTOR ),
 	DEFINE_FIELD( CTripmineGrenade, m_pRealOwner, FIELD_EDICT ),
@@ -251,6 +252,8 @@ void CTripmineGrenade::MakeBeam( void )
 	Vector vecTmpEnd = pev->origin + m_vecDir * 2048.0f * m_flBeamLength;
 
 	m_pBeam = CBeam::BeamCreate( g_pModelNameLaser, 10 );
+	//Mark as temporary so the beam will be recreated on save game load and level transitions.
+	m_pBeam->pev->spawnflags |= SF_BEAM_TEMPORARY;
 	m_pBeam->PointEntInit( vecTmpEnd, entindex() );
 	m_pBeam->SetColor( 0, 214, 198 );
 	m_pBeam->SetScrollRate( 255 );
@@ -360,7 +363,12 @@ void CTripmine::Spawn()
 	m_iId = WEAPON_TRIPMINE;
 	SET_MODEL( ENT( pev ), MyWModel() );
 	pev->frame = 0;
+
+#ifdef CLIENT_DLL
+	pev->body = 0;
+#else
 	pev->body = 3;
+#endif
 	pev->sequence = TRIPMINE_GROUND;
 	// ResetSequenceInfo();
 	pev->framerate = 0;
@@ -413,7 +421,7 @@ BOOL CTripmine::Deploy()
 	return DefaultDeploy( "models/v_tripmine.mdl", "models/p_tripmine.mdl", TRIPMINE_DRAW, "trip" );
 }
 
-void CTripmine::Holster( int skiplocal /* = 0 */ )
+void CTripmine::Holster()
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
 
@@ -447,7 +455,7 @@ void CTripmine::PrimaryAttack( void )
 #else
 	flags = 0;
 #endif
-	PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usTripFire, 0.0f, g_vecZero, g_vecZero, 0.0f, 0.0f, 0, 0, 0, 0 );
+	PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usTripFire, 0.0f, g_vecZero, g_vecZero, 0.0f, 0.0f, 0, 0, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] == 1, 0 );
 
 	if( tr.flFraction < 1.0f )
 	{
@@ -486,6 +494,8 @@ void CTripmine::PrimaryAttack( void )
 
 void CTripmine::WeaponIdle( void )
 {
+	pev->body = 0;
+
 	if( m_flTimeWeaponIdle > UTIL_WeaponTimeBase() )
 		return;
 

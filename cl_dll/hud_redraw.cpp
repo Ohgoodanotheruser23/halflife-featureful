@@ -21,6 +21,10 @@
 #include "cl_util.h"
 //#include "triangleapi.h"
 
+#if USE_VGUI
+#include "vgui_TeamFortressViewport.h"
+#endif
+
 #define MAX_LOGO_FRAMES 56
 
 int grgLogoFrame[MAX_LOGO_FRAMES] =
@@ -39,6 +43,11 @@ extern cvar_t *sensitivity;
 // Think
 void CHud::Think( void )
 {
+#if USE_VGUI
+	m_scrinfo.iSize = sizeof(m_scrinfo);
+	GetScreenInfo(&m_scrinfo);
+#endif
+
 	int newfov;
 	HUDLIST *pList = m_pHudList;
 
@@ -105,13 +114,40 @@ int CHud::Redraw( float flTime, int intermission )
 	if( m_flTimeDelta < 0 )
 		m_flTimeDelta = 0;
 
+#if USE_VGUI
+	// Bring up the scoreboard during intermission
+	if (gViewPort)
+	{
+		if( m_iIntermission && !intermission )
+		{
+			// Have to do this here so the scoreboard goes away
+			m_iIntermission = intermission;
+			gViewPort->HideCommandMenu();
+			gViewPort->HideScoreBoard();
+			gViewPort->UpdateSpectatorPanel();
+		}
+		else if( !m_iIntermission && intermission )
+		{
+			m_iIntermission = intermission;
+			gViewPort->HideCommandMenu();
+			gViewPort->HideVGUIMenu();
+#if !USE_NOVGUI_SCOREBOARD
+			gViewPort->ShowScoreBoard();
+#endif
+			gViewPort->UpdateSpectatorPanel();
+			// Take a screenshot if the client's got the cvar set
+			if( CVAR_GET_FLOAT( "hud_takesshots" ) != 0 )
+				m_flShotTime = flTime + 1.0;	// Take a screenshot in a second
+		}
+	}
+#else
 	if( !m_iIntermission && intermission )
 	{
 		// Take a screenshot if the client's got the cvar set
 		if( CVAR_GET_FLOAT( "hud_takesshots" ) != 0 )
 			m_flShotTime = flTime + 1.0f;	// Take a screenshot in a second
 	}
-
+#endif
 	if( m_flShotTime && m_flShotTime < flTime )
 	{
 		gEngfuncs.pfnClientCmd( "snapshot\n" );
@@ -144,6 +180,7 @@ int CHud::Redraw( float flTime, int intermission )
 			pList = pList->pNext;
 		}
 	}
+	m_Nightvision.Draw( flTime );
 
 	// are we in demo mode? do we need to draw the logo in the top corner?
 	if( m_iLogo )
@@ -193,6 +230,8 @@ int CHud::Redraw( float flTime, int intermission )
 
 void ScaleColors( int &r, int &g, int &b, int a )
 {
+	a = Q_min(a, 255);
+
 	float x = (float)a / 255;
 	r = (int)( r * x );
 	g = (int)( g * x );
@@ -406,4 +445,26 @@ void CHud::DrawDarkRectangle( int x, int y, int wide, int tall )
 	FillRGBA( x, y, 1, tall - 1, 255, 140, 0, 255 );
 	FillRGBA( x + wide - 1, y + 1, 1, tall - 1, 255, 140, 0, 255 );
 	FillRGBA( x, y + tall - 1, wide - 1, 1, 255, 140, 0, 255 );
+}
+
+int CHud::HUDColor()
+{
+	int result = m_iHUDColor;
+#if FEATURE_NIGHTVISION && FEATURE_NIGHTVISION_WHITE_HUD
+	if (this == &gHUD && gHUD.m_Nightvision.IsOn()) {
+		result = 0x00FFFFFF;
+	}
+#endif
+	return result;
+}
+
+int CHud::MinHUDAlpha()
+{
+	int result = MIN_ALPHA;
+#if FEATURE_NIGHTVISION && FEATURE_NIGHTVISION_WHITE_HUD
+	if (this == &gHUD && gHUD.m_Nightvision.IsOn()) {
+		result = 192;
+	}
+#endif
+	return result;
 }

@@ -1101,7 +1101,7 @@ void CHalfLifeMultiplay::ClientDisconnected( edict_t *pClient )
 					GETPLAYERUSERID( pPlayer->edict() ) );
 			}
 
-			pPlayer->RemoveAllItems( TRUE );// destroy all of the players weapons and items
+			pPlayer->RemoveAllItems( STRIP_ALL_ITEMS );// destroy all of the players weapons and items
 		}
 	}
 }
@@ -1565,6 +1565,12 @@ void CHalfLifeMultiplay::DeathNotice( CBasePlayer *pVictim, entvars_t *pKiller, 
 //=========================================================
 void CHalfLifeMultiplay::PlayerGotWeapon( CBasePlayer *pPlayer, CBasePlayerWeapon *pWeapon )
 {
+}
+
+//
+bool CHalfLifeMultiplay::PlayerCanDropWeapon(CBasePlayer *pPlayer)
+{
+	return weaponstay.value == 0 && dropweapons.value > 0;
 }
 
 //=========================================================
