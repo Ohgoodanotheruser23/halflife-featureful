@@ -593,6 +593,7 @@ void CBaseMonster::Killed( entvars_t *pevAttacker, int iGib )
 		return;
 	}
 
+	pev->iuser3 = -1;
 	Remember( bits_MEMORY_KILLED );
 
 	// clear the deceased's sound channels.(may have been firing or reloading when killed)
