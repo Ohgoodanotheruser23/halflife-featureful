@@ -248,6 +248,7 @@ void CTentacle::Spawn()
 	pev->effects = 0;
 	pev->health = 75;
 	pev->sequence = 0;
+	pev->iuser3 = -2;
 
 	SET_MODEL( ENT( pev ), "models/tentacle2.mdl" );
 	UTIL_SetSize( pev, Vector( -32, -32, 0 ), Vector( 32, 32, 64 ) );
