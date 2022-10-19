@@ -252,7 +252,6 @@ void CTentacle::Spawn()
 	pev->effects = 0;
 	pev->health = 75;
 	pev->sequence = 0;
-	pev->iuser3 = -2;
 
 	if (FBitSet(pev->spawnflags, SF_TENTACLE_USE_TENTACLE3))
 		SET_MODEL( ENT( pev ), "models/tentacle3.mdl" );
@@ -322,6 +321,8 @@ void CTentacle::Precache()
 	PRECACHE_SOUND_ARRAY( pHitSilo );
 	PRECACHE_SOUND_ARRAY( pHitDirt );
 	PRECACHE_SOUND_ARRAY( pHitWater );
+
+	pev->iuser3 = -2;
 }
 
 CTentacle::CTentacle()
