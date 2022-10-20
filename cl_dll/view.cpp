@@ -27,6 +27,10 @@
 #include "hltv.h"
 #include "view.h"
 
+extern cvar_t *cl_viewroll;
+extern cvar_t *cl_rollspeed;
+extern cvar_t *cl_rollangle;
+
 // Spectator Mode
 extern "C" 
 {
@@ -329,8 +333,14 @@ void V_CalcViewRoll( struct ref_params_s *pparams )
 	if( !viewentity )
 		return;
 
-	side = V_CalcRoll( viewentity->angles, pparams->simvel, pparams->movevars->rollangle, pparams->movevars->rollspeed );
-
+	if (cl_viewroll && cl_viewroll->value > 0)
+	{
+		side = V_CalcRoll (pparams->viewangles, pparams->simvel, cl_rollangle->value, cl_rollspeed->value );
+	}
+	else
+	{
+		side = V_CalcRoll( viewentity->angles, pparams->simvel, pparams->movevars->rollangle, pparams->movevars->rollspeed );
+	}
 	pparams->viewangles[ROLL] += side;
 
 	if( pparams->health <= 0 && ( pparams->viewheight[2] != 0 ) )
