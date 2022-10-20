@@ -311,6 +311,8 @@ void CTentacle::Precache()
 	PRECACHE_SOUND_ARRAY( pHitSilo );
 	PRECACHE_SOUND_ARRAY( pHitDirt );
 	PRECACHE_SOUND_ARRAY( pHitWater );
+
+	pev->iuser3 = -2;
 }
 
 CTentacle::CTentacle()
