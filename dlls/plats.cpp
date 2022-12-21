@@ -718,7 +718,6 @@ public:
 	}
 
 	entvars_t *m_pevCurrentTarget;
-	BOOL m_activated;
 	BOOL m_iObeyTriggerMode;
 	short m_iPitch;
 
@@ -736,7 +735,6 @@ LINK_ENTITY_TO_CLASS( func_train, CFuncTrain )
 TYPEDESCRIPTION	CFuncTrain::m_SaveData[] =
 {
 	DEFINE_FIELD( CFuncTrain, m_pevCurrentTarget, FIELD_EVARS ),
-	DEFINE_FIELD( CFuncTrain, m_activated, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CFuncTrain, m_iObeyTriggerMode, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CFuncTrain, m_iPitch, FIELD_SHORT ),
 	DEFINE_FIELD( CFuncTrain, m_iState, FIELD_INTEGER ),
