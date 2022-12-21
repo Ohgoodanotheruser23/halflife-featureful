@@ -54,6 +54,7 @@
 #define SF_TRIGGER_HURT_CLIENTONLYFIRE	16// trigger hurt will only fire its target if it is hurting a client
 #define SF_TRIGGER_HURT_CLIENTONLYTOUCH 32// only clients may touch this trigger.
 #define SF_TRIGGER_HURT_AFFECT_NON_MOVING_MONSTERS 64 // hack to affect non-moving monsters
+#define SF_TRIGGER_HURT_FULL_DAMAGE_EVERY_HALF_SECOND 128
 
 extern DLL_GLOBAL BOOL		g_fGameOver;
 
@@ -583,6 +584,59 @@ void CMultiTrigger::Spawn( void )
 			break;
 	}
 	CMultiManager::Spawn();
+	/* Set multi_manager classname so multisource will check this entity too
+	 * This should be ok, since save/restore data is the same.
+	 */
+	pev->classname = MAKE_STRING("multi_manager");
+}
+
+class CMultiSequence : public CMultiTrigger
+{
+public:
+	void Spawn( void );
+};
+
+LINK_ENTITY_TO_CLASS( multi_sequence, CMultiSequence )
+
+void CMultiSequence::Spawn()
+{
+	int i;
+	for (i=0; i<MAX_MULTI_TARGETS; ++i)
+	{
+		if (!m_iTargetName[i])
+		{
+			for (int j=i+1; j<MAX_MULTI_TARGETS; ++j)
+			{
+				if (m_iTargetName[j])
+				{
+					m_iTargetName[i] = m_iTargetName[j];
+					m_flTargetDelay[i] = m_flTargetDelay[j];
+					m_iTargetUseType[i] = m_iTargetUseType[j];
+					m_iTargetName[j] = iStringNull;
+					break;
+				}
+			}
+		}
+		if (m_iTargetName[i])
+			m_cTargets = i+1;
+		else
+			break;
+	}
+
+	// Adjust delays so they work as in multi_manager
+	for (i=1; i<m_cTargets; ++i)
+	{
+		m_flTargetDelay[i] += m_flTargetDelay[i-1];
+	}
+
+	pev->solid = SOLID_NOT;
+	SetUse( &CMultiManager::ManagerUse );
+	SetThink( &CMultiManager::ManagerThink );
+
+	//for (int i=0; i<m_cTargets; ++i) {
+	//	ALERT(at_console, "Target: %s. Adjusted delay: %f\n", STRING(m_iTargetName[i]), m_flTargetDelay[i]);
+	//}
+
 	/* Set multi_manager classname so multisource will check this entity too
 	 * This should be ok, since save/restore data is the same.
 	 */
@@ -1123,7 +1177,7 @@ void CTriggerHurt::HurtNonMovingMonsters()
 	for (int i=0; i<count; ++i) {
 		CBaseMonster* pMonster = pList[i]->MyMonsterPointer();
 		if (pMonster && CanHurt(pMonster) && !pMonster->IsMoving()) {
-			const float flDmg = pev->dmg * 0.5f;
+			const float flDmg = FBitSet(pev->spawnflags, SF_TRIGGER_HURT_FULL_DAMAGE_EVERY_HALF_SECOND) ? pev->dmg : pev->dmg * 0.5f;
 			if (flDmg < 0)
 				pMonster->TakeHealth( this, -flDmg, m_bitsDamageInflict );
 			else
@@ -1258,7 +1312,10 @@ void CTriggerHurt::HurtTouch( CBaseEntity *pOther )
 	// while touching the trigger.  Player continues taking damage for a while after
 	// leaving the trigger
 
-	fldmg = pev->dmg * 0.5f;	// 0.5 seconds worth of damage, pev->dmg is damage/second
+	if (FBitSet(pev->spawnflags, SF_TRIGGER_HURT_FULL_DAMAGE_EVERY_HALF_SECOND))
+		fldmg = pev->dmg;
+	else
+		fldmg = pev->dmg * 0.5f;	// 0.5 seconds worth of damage, pev->dmg is damage/second
 
 	// JAY: Cut this because it wasn't fully realized.  Damage is simpler now.
 #if 0
@@ -2790,12 +2847,12 @@ void CTriggerCamera::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 		m_flReturnTime = gpGlobals->time;
 		return;
 	}
-	if( !pActivator || !pActivator->IsPlayer() )
-	{
-		pActivator = CBaseEntity::Instance( g_engfuncs.pfnPEntityOfEntIndex( 1 ) );
-	}
+	CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
+	if (!pPlayer)
+		return;
 
-	m_hPlayer = pActivator;
+	pActivator = pPlayer;
+	m_hPlayer = pPlayer;
 
 	m_flReturnTime = gpGlobals->time + m_flWait;
 	pev->speed = m_initialSpeed;
@@ -2818,7 +2875,7 @@ void CTriggerCamera::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 
 	if( FBitSet( pev->spawnflags, SF_CAMERA_PLAYER_TAKECONTROL ) )
 	{
-		( (CBasePlayer *)pActivator )->EnableControl( FALSE );
+		pPlayer->EnableControl( FALSE );
 	}
 
 	if( m_sPath )
@@ -2855,7 +2912,7 @@ void CTriggerCamera::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 
 	SET_VIEW( pActivator->edict(), edict() );
 
-	( (CBasePlayer *)pActivator )->m_hViewEntity = this;
+	pPlayer->m_hViewEntity = this;
 
 	SET_MODEL( ENT( pev ), STRING( pActivator->pev->model ) );
 
@@ -2987,6 +3044,8 @@ void CTriggerCamera::Move()
 #define SF_TRIGGER_RANDOM_TIMED 8
 #define SF_TRIGGER_RANDOM_UNIQUE 16
 #define SF_TRIGGER_RANDOM_DONT_REPEAT 32
+#define SF_TRIGGER_RANDOM_PREDETERMINED 64
+#define SF_TRIGGER_RANDOM_PREDETERMINED_TIMED 128
 
 class CTriggerRandom : public CPointEntity
 {
@@ -3003,6 +3062,7 @@ public:
 	string_t ChooseTarget();
 	float GetRandomDelay();
 	int TargetCount();
+	void DoUnique();
 
 	int m_targetCount;
 	string_t m_targets[TRIGGER_RANDOM_MAX_COUNT];
@@ -3013,6 +3073,27 @@ public:
 	float m_maxDelay;
 	string_t m_lastTarget;
 	string_t m_triggerOnLimit;
+	string_t m_triggerOnExhaust;
+	int m_firstPreferredTarget;
+
+	unsigned int m_randomSeed;
+	unsigned int m_delayRandomSeed;
+
+	int RandomizeIndex(int low, int high) {
+		if (m_firstPreferredTarget > 0 && m_firstPreferredTarget <= TargetCount()) {
+			const int result = m_firstPreferredTarget - 1;
+			m_firstPreferredTarget = 0;
+			return result;
+		}
+
+		if (HasPredeterminedTargets()) {
+			const int index = UTIL_SharedRandomLong(m_randomSeed, low, high);
+			m_randomSeed = UTIL_SharedRandomLong(m_randomSeed, 0, 1<<15);
+			return index;
+		} else {
+			return RANDOM_LONG(low, high);
+		}
+	}
 
 	inline bool IsActive() { return pev->spawnflags & SF_TRIGGER_RANDOM_START_ON; }
 	inline void SetActive(bool active)
@@ -3025,6 +3106,13 @@ public:
 		{
 			ClearBits(pev->spawnflags, SF_TRIGGER_RANDOM_START_ON);
 		}
+	}
+
+	bool HasPredeterminedTargets() const {
+		return FBitSet(pev->spawnflags, SF_TRIGGER_RANDOM_PREDETERMINED);
+	}
+	bool HasPrederminedDelays() const {
+		return FBitSet(pev->spawnflags, SF_TRIGGER_RANDOM_PREDETERMINED_TIMED);
 	}
 };
 
@@ -3045,6 +3133,10 @@ TYPEDESCRIPTION	CTriggerRandom::m_SaveData[] =
 	DEFINE_FIELD( CTriggerRandom, m_maxDelay, FIELD_FLOAT ),
 	DEFINE_FIELD( CTriggerRandom, m_lastTarget, FIELD_STRING ),
 	DEFINE_FIELD( CTriggerRandom, m_triggerOnLimit, FIELD_STRING ),
+	DEFINE_FIELD( CTriggerRandom, m_triggerOnExhaust, FIELD_STRING ),
+	DEFINE_FIELD( CTriggerRandom, m_firstPreferredTarget, FIELD_INTEGER ),
+	DEFINE_FIELD( CTriggerRandom, m_randomSeed, FIELD_INTEGER ),
+	DEFINE_FIELD( CTriggerRandom, m_delayRandomSeed, FIELD_INTEGER ),
 };
 
 IMPLEMENT_SAVERESTORE( CTriggerRandom, CPointEntity )
@@ -3078,21 +3170,21 @@ void CTriggerRandom::KeyValue( KeyValueData *pkvd )
 		}
 		pkvd->fHandled = TRUE;
 	} else if ( strncmp(pkvd->szKeyName, "target", 6) == 0 && isdigit(pkvd->szKeyName[6])) {
-		pkvd->fHandled = FALSE;
-		char buf[10] = "target";
-		for (int i=0; i<TRIGGER_RANDOM_MAX_COUNT; ++i) {
-			sprintf(buf+6, "%d", i+1);
-			if (strcmp(buf+6, pkvd->szKeyName+6) == 0) {
-				m_targets[i] = ALLOC_STRING( pkvd->szValue );
-				pkvd->fHandled = TRUE;
-				break;
-			}
-		}
-		if (pkvd->fHandled == FALSE) {
-			CBaseEntity::KeyValue( pkvd );
-		}
+		const int num = atoi(pkvd->szKeyName+6);
+		if (num <= 0 || num > TRIGGER_RANDOM_MAX_COUNT)
+			return;
+
+		const int index = num - 1;
+		m_targets[index] = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
 	} else if ( FStrEq( pkvd->szKeyName, "trigger_on_limit") ) {
 		m_triggerOnLimit = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	} else if ( FStrEq( pkvd->szKeyName, "trigger_on_exhaust") ) {
+		m_triggerOnExhaust = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	} else if ( FStrEq( pkvd->szKeyName, "first_target") ) {
+		m_firstPreferredTarget = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	} else {
 		CBaseEntity::KeyValue( pkvd );
@@ -3117,6 +3209,7 @@ void CTriggerRandom::Spawn()
 	}
 
 	m_triggerCounter = 0;
+	TargetCount(); // call in case it needs to be evaluated
 	if (FBitSet(pev->spawnflags, SF_TRIGGER_RANDOM_UNIQUE)) {
 		m_uniqueTargetsLeft = TargetCount();
 	}
@@ -3126,6 +3219,13 @@ void CTriggerRandom::Spawn()
 			SetThink(&CTriggerRandom::TimedThink);
 			pev->nextthink = gpGlobals->time + GetRandomDelay() + 0.1;
 		}
+	}
+
+	if (HasPredeterminedTargets()) {
+		m_randomSeed = RANDOM_LONG(0, (1<<15));
+	}
+	if (HasPrederminedDelays()) {
+		m_delayRandomSeed = RANDOM_LONG(0, (1<<15));
 	}
 }
 
@@ -3141,28 +3241,31 @@ void CTriggerRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 			m_triggerCounter = 0;
 		}
 	} else {
-		const int chosenTarget = ChooseTarget();
+		string_t chosenTarget = ChooseTarget();
 		if (!FStringNull(chosenTarget)) {
 			FireTargets(STRING(chosenTarget), pActivator, this, USE_TOGGLE, value);
 		}
+		DoUnique();
 	}
 }
 
 void CTriggerRandom::TimedThink()
 {
 	if (IsActive()) {
-		int chosenTarget = ChooseTarget();
+		string_t chosenTarget = ChooseTarget();
 		if (!FStringNull(chosenTarget)) {
 			FireTargets(STRING(chosenTarget), this, this, USE_TOGGLE, 0);
-			if (m_triggerNumberLimit) {
-				m_triggerCounter++;
-				if (m_triggerCounter >= m_triggerNumberLimit) {
-					SetActive(false);
-					m_triggerCounter = 0;
+		}
+		DoUnique();
 
-					if (!FStringNull(m_triggerOnLimit))
-						FireTargets(STRING(m_triggerOnLimit), this, this, USE_TOGGLE, 0.0f);
-				}
+		if (m_triggerNumberLimit) {
+			m_triggerCounter++;
+			if (m_triggerCounter >= m_triggerNumberLimit) {
+				SetActive(false);
+				m_triggerCounter = 0;
+
+				if (!FStringNull(m_triggerOnLimit))
+					FireTargets(STRING(m_triggerOnLimit), this, this, USE_TOGGLE, 0.0f);
 			}
 		}
 
@@ -3182,7 +3285,7 @@ string_t CTriggerRandom::ChooseTarget()
 
 	if (pev->spawnflags & SF_TRIGGER_RANDOM_UNIQUE) {
 		if (m_uniqueTargetsLeft) {
-			chosenTargetIndex = RANDOM_LONG(0, m_uniqueTargetsLeft - 1);
+			chosenTargetIndex = RandomizeIndex(0, m_uniqueTargetsLeft - 1);
 			chosenTarget = m_targets[chosenTargetIndex];
 
 			if (chosenTarget == m_lastTarget && FBitSet(pev->spawnflags, SF_TRIGGER_RANDOM_DONT_REPEAT) && m_uniqueTargetsLeft > 1)
@@ -3193,18 +3296,14 @@ string_t CTriggerRandom::ChooseTarget()
 
 			m_targets[chosenTargetIndex] = m_targets[m_uniqueTargetsLeft-1];
 			m_targets[m_uniqueTargetsLeft-1] = chosenTarget;
-			m_uniqueTargetsLeft--;
 
-			if (!m_uniqueTargetsLeft && (pev->spawnflags & SF_TRIGGER_RANDOM_REUSABLE) ) {
-				m_uniqueTargetsLeft = TargetCount();
-			}
 			m_lastTarget = chosenTarget;
 			return chosenTarget;
 		}
 	} else {
 		const int targetCount = TargetCount();
 		if (targetCount) {
-			chosenTargetIndex = RANDOM_LONG(0, targetCount - 1);
+			chosenTargetIndex = RandomizeIndex(0, targetCount - 1);
 			chosenTarget = m_targets[chosenTargetIndex];
 			if (chosenTarget == m_lastTarget && FBitSet(pev->spawnflags, SF_TRIGGER_RANDOM_DONT_REPEAT) && targetCount > 1)
 			{
@@ -3221,7 +3320,15 @@ string_t CTriggerRandom::ChooseTarget()
 
 float CTriggerRandom::GetRandomDelay()
 {
-	return RANDOM_FLOAT(m_minDelay, Q_max(m_maxDelay, m_minDelay));
+	const float minDelay = m_minDelay;
+	const float maxDelay = Q_max(m_maxDelay, m_minDelay);
+	if (HasPrederminedDelays())
+	{
+		const float delay = UTIL_SharedRandomFloat(m_delayRandomSeed, minDelay, maxDelay);
+		m_delayRandomSeed = UTIL_SharedRandomLong(m_delayRandomSeed, 0, 1<<15);
+		return delay;
+	}
+	return RANDOM_FLOAT(minDelay, maxDelay);
 }
 
 int CTriggerRandom::TargetCount()
@@ -3237,6 +3344,20 @@ int CTriggerRandom::TargetCount()
 		}
 	}
 	return 0;
+}
+
+void CTriggerRandom::DoUnique()
+{
+	if (pev->spawnflags & SF_TRIGGER_RANDOM_UNIQUE) {
+		m_uniqueTargetsLeft--;
+
+		if (!m_uniqueTargetsLeft) {
+			if (!FStringNull(m_triggerOnExhaust))
+				FireTargets(STRING(m_triggerOnExhaust), this, this, USE_TOGGLE, 0.0f);
+			if ((pev->spawnflags & SF_TRIGGER_RANDOM_REUSABLE))
+				m_uniqueTargetsLeft = TargetCount();
+		}
+	}
 }
 #endif
 
@@ -3557,6 +3678,7 @@ void CTriggerKillMonster::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE
 
 #define SF_TRIGGER_TIMER_START_ON 1
 #define SF_TRIGGER_TIMER_NO_FIRST_DELAY 32
+#define SF_TRIGGER_TIMER_PREDETERMINED_TIMED 128
 
 class CTriggerTimer : public CPointEntity
 {
@@ -3573,12 +3695,17 @@ public:
 	float GetRandomDelay();
 	void SetActive(BOOL active);
 
+	bool HasPredeterminedDelays() const {
+		return FBitSet(pev->spawnflags, SF_TRIGGER_TIMER_PREDETERMINED_TIMED);
+	}
+
 	int m_triggerNumberLimit;
 	int m_triggerCounter;
 	float m_minDelay;
 	float m_maxDelay;
 	BOOL m_active;
 	string_t m_triggerOnLimit;
+	unsigned int m_delayRandomSeed;
 };
 
 LINK_ENTITY_TO_CLASS( trigger_timer, CTriggerTimer )
@@ -3591,6 +3718,7 @@ TYPEDESCRIPTION	CTriggerTimer::m_SaveData[] =
 	DEFINE_FIELD( CTriggerTimer, m_maxDelay, FIELD_FLOAT ),
 	DEFINE_FIELD( CTriggerTimer, m_active, FIELD_BOOLEAN ),
 	DEFINE_FIELD( CTriggerTimer, m_triggerOnLimit, FIELD_STRING ),
+	DEFINE_FIELD( CTriggerTimer, m_delayRandomSeed, FIELD_INTEGER ),
 };
 
 IMPLEMENT_SAVERESTORE( CTriggerTimer, CPointEntity )
@@ -3629,6 +3757,10 @@ void CTriggerTimer::Spawn()
 	m_active = FALSE;
 	SetThink(&CTriggerTimer::TimerThink);
 
+	if (HasPredeterminedDelays()) {
+		m_delayRandomSeed = RANDOM_LONG(0, (1<<15));
+	}
+
 	if (pev->spawnflags & SF_TRIGGER_TIMER_START_ON) {
 		SetActive(TRUE);
 		pev->nextthink += 0.1; // some little delay of spawn
@@ -3655,14 +3787,15 @@ void CTriggerTimer::TimerThink()
 	if (m_active) {
 		if (!FStringNull(pev->target)) {
 			FireTargets(STRING(pev->target), this, this, USE_TOGGLE, 0);
-			if (m_triggerNumberLimit) {
-				m_triggerCounter++;
-				if (m_triggerCounter >= m_triggerNumberLimit) {
-					SetActive(FALSE);
-					if (!FStringNull(m_triggerOnLimit))
-						FireTargets(STRING(m_triggerOnLimit), this, this, USE_TOGGLE, 0.0f);
-					return;
-				}
+		}
+
+		if (m_triggerNumberLimit) {
+			m_triggerCounter++;
+			if (m_triggerCounter >= m_triggerNumberLimit) {
+				SetActive(FALSE);
+				if (!FStringNull(m_triggerOnLimit))
+					FireTargets(STRING(m_triggerOnLimit), this, this, USE_TOGGLE, 0.0f);
+				return;
 			}
 		}
 
@@ -3672,7 +3805,15 @@ void CTriggerTimer::TimerThink()
 
 float CTriggerTimer::GetRandomDelay()
 {
-	return RANDOM_FLOAT(m_minDelay, Q_max(m_maxDelay, m_minDelay));
+	const float minDelay = m_minDelay;
+	const float maxDelay = Q_max(m_maxDelay, m_minDelay);
+	if (HasPredeterminedDelays())
+	{
+		const float delay = UTIL_SharedRandomFloat(m_delayRandomSeed, minDelay, maxDelay);
+		m_delayRandomSeed = UTIL_SharedRandomLong(m_delayRandomSeed, 0, 1<<15);
+		return delay;
+	}
+	return RANDOM_FLOAT(minDelay, maxDelay);
 }
 
 void CTriggerTimer::SetActive(BOOL active)
@@ -4198,6 +4339,8 @@ void CTriggerMotion::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 //===========================================================
 //LRC- motion_manager
 //===========================================================
+#define SF_MOTION_REQUIRES_ACTIVATOR ( 1 << 24 )
+
 class CMotionThread : public CPointEntity
 {
 public:
@@ -4227,7 +4370,8 @@ public:
 		FACEMODE_DIRECTION = 0,
 		FACEMODE_ROTATE,
 		FACEMODE_ROTATE_BY_VALUES,
-		FACEMODE_SETAVEL,
+		FACEMODE_SET_ANGULAR_VELOCITY,
+		FACEMODE_SET_VELOCITY,
 	};
 };
 LINK_ENTITY_TO_CLASS( motion_thread, CMotionThread )
@@ -4254,7 +4398,7 @@ void CMotionThread::MotionThink( void )
 {
 	const bool debug = pev->spawnflags & SF_MOTION_DEBUG;
 
-	if( m_hLocus == 0 || m_hTarget == 0 )
+	if( (m_hLocus == 0 && FBitSet(pev->spawnflags, SF_MOTION_REQUIRES_ACTIVATOR)) || m_hTarget == 0 )
 	{
 		if (debug)
 			ALERT(at_console, "motion_thread expires\n");
@@ -4366,13 +4510,13 @@ void CMotionThread::MotionThink( void )
 			if (debug)
 				Motion_PrintVectors("DEBUG: Rotate angles", vecOld, m_hTarget->pev->angles);
 			break;
-		case FACEMODE_SETAVEL: // set avelocity
+		case FACEMODE_SET_ANGULAR_VELOCITY: // set avelocity
 			UTIL_StringToRandomVector( vecTemp, STRING(m_iszFacing) );
 			if (debug)
 				Motion_PrintVectors("DEBUG: Set avelocity", m_hTarget->pev->avelocity, vecTemp);
 			UTIL_SetAvelocity(m_hTarget, vecTemp);
 			break;
-		case 4:
+		case FACEMODE_SET_VELOCITY:
 		{
 			CBaseEntity *pCalc = UTIL_FindEntityByTargetname(NULL, STRING(m_iszFacing), m_hLocus);
 			if (pCalc != NULL)
@@ -4500,6 +4644,11 @@ void CMotionManager::Affect( CBaseEntity *pTarget, CBaseEntity *pActivator )
 	pThread->m_iFaceMode = m_iFaceMode;
 	pThread->pev->spawnflags = pev->spawnflags;
 	pThread->pev->nextthink = gpGlobals->time;
+
+	if (UTIL_TargetnameIsActivator(m_iszPosition) || UTIL_TargetnameIsActivator(m_iszFacing))
+	{
+		pThread->pev->spawnflags |= SF_MOTION_REQUIRES_ACTIVATOR;
+	}
 }
 
 void CMotionManager::UpdateOnRemove()

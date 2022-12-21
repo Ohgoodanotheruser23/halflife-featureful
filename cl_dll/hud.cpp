@@ -104,6 +104,9 @@ cvar_t *cl_rollangle = NULL;
 cvar_t* cl_weapon_sparks = NULL;
 cvar_t* cl_weapon_wallpuff = NULL;
 
+cvar_t* cl_muzzlelight = NULL;
+cvar_t* cl_muzzlelight_monsters = NULL;
+
 #if FEATURE_NIGHTVISION_STYLES
 cvar_t *cl_nvgstyle = NULL;
 #endif
@@ -120,12 +123,21 @@ cvar_t *cl_nvgradius_of = NULL;
 cvar_t *cl_nvgfilterbrightness = NULL;
 #endif
 
+cvar_t* cl_flashlight_custom = NULL;
+cvar_t* cl_flashlight_radius = NULL;
+cvar_t* cl_flashlight_fade_distance = NULL;
+
 void ShutdownInput( void );
 
 //DECLARE_MESSAGE( m_Logo, Logo )
 int __MsgFunc_Logo( const char *pszName, int iSize, void *pbuf )
 {
 	return gHUD.MsgFunc_Logo( pszName, iSize, pbuf );
+}
+
+int __MsgFunc_Items(const char* pszName, int iSize, void* pbuf)
+{
+	return gHUD.MsgFunc_Items(pszName, iSize, pbuf);
 }
 
 int __MsgFunc_HUDColor(const char *pszName, int iSize, void *pbuf)
@@ -391,6 +403,7 @@ void CHud::Init( void )
 	HOOK_MESSAGE( ViewMode );
 	HOOK_MESSAGE( SetFOV );
 	HOOK_MESSAGE( Concuss );
+	HOOK_MESSAGE( Items );
 	HOOK_MESSAGE( HUDColor );
 	HOOK_MESSAGE( SetFog );
 
@@ -439,7 +452,7 @@ void CHud::Init( void )
 	m_iLogo = 0;
 	m_iFOV = 0;
 
-	m_iHUDColor = RGB_YELLOWISH;
+	m_iHUDColor = RGB_HUD_DEFAULT;
 
 	CVAR_CREATE( "zoom_sensitivity_ratio", "1.2", FCVAR_ARCHIVE );
 	CVAR_CREATE( "cl_autowepswitch", "1", FCVAR_ARCHIVE | FCVAR_USERINFO );
@@ -454,6 +467,9 @@ void CHud::Init( void )
 
 	cl_weapon_sparks = gEngfuncs.pfnRegisterVariable( "cl_weapon_sparks", "0", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
 	cl_weapon_wallpuff = gEngfuncs.pfnRegisterVariable( "cl_weapon_wallpuff", "0", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
+
+	cl_muzzlelight = CVAR_CREATE( "cl_muzzlelight", "0", FCVAR_ARCHIVE );
+	cl_muzzlelight_monsters = CVAR_CREATE( "cl_muzzlelight_monsters", "0", FCVAR_ARCHIVE );
 
 #if FEATURE_NIGHTVISION_STYLES
 	cl_nvgstyle = CVAR_CREATE( "cl_nvgstyle", "0", FCVAR_ARCHIVE );
@@ -470,6 +486,10 @@ void CHud::Init( void )
 #if FEATURE_FILTER_NIGHTVISION
 	cl_nvgfilterbrightness = CVAR_CREATE( "cl_nvgfilterbrightness", "0.6", FCVAR_ARCHIVE );
 #endif
+
+	cl_flashlight_custom = CVAR_CREATE( "cl_flashlight_custom", "0", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
+	cl_flashlight_radius = CVAR_CREATE( "cl_flashlight_radius", "100", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
+	cl_flashlight_fade_distance = CVAR_CREATE( "cl_flashlight_fade_distance", "600", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
 
 	m_pSpriteList = NULL;
 
@@ -612,8 +632,8 @@ void CHud::VidInit( void )
 					sprintf( sz, "sprites/%s.spr", p->szSprite );
 					m_rghSprites[index] = SPR_Load( sz );
 					m_rgrcRects[index] = p->rc;
-					strncpy( &m_rgszSpriteNames[index * MAX_SPRITE_NAME_LENGTH], p->szName, MAX_SPRITE_NAME_LENGTH );
-
+					strncpy( &m_rgszSpriteNames[index * MAX_SPRITE_NAME_LENGTH], p->szName, MAX_SPRITE_NAME_LENGTH - 1 );
+					m_rgszSpriteNames[index * MAX_SPRITE_NAME_LENGTH + ( MAX_SPRITE_NAME_LENGTH - 1 )] = '\0';
 					index++;
 				}
 
@@ -655,8 +675,8 @@ void CHud::VidInit( void )
 				sprintf( sz, "sprites/%s.spr", p->szSprite );
 				m_rghSprites[index] = SPR_Load( sz );
 				m_rgrcRects[index] = p->rc;
-				strncpy( &m_rgszSpriteNames[index * MAX_SPRITE_NAME_LENGTH], p->szName, MAX_SPRITE_NAME_LENGTH );
-
+				strncpy( &m_rgszSpriteNames[index * MAX_SPRITE_NAME_LENGTH], p->szName, MAX_SPRITE_NAME_LENGTH - 1 );
+				m_rgszSpriteNames[index * MAX_SPRITE_NAME_LENGTH + ( MAX_SPRITE_NAME_LENGTH - 1 )] = '\0';
 				index++;
 			}
 
@@ -720,6 +740,13 @@ int CHud::MsgFunc_Logo( const char *pszName,  int iSize, void *pbuf )
 	// update Train data
 	m_iLogo = READ_BYTE();
 
+	return 1;
+}
+
+int CHud::MsgFunc_Items(const char *pszName,  int iSize, void *pbuf)
+{
+	BEGIN_READ( pbuf, iSize );
+	m_iItemBits = READ_LONG();
 	return 1;
 }
 
@@ -944,45 +971,48 @@ int CHudMoveMode::VidInit()
 	m_hSpriteCrouch = gHUD.GetSprite(HUD_mode_crouch);
 	m_hSpriteJump = gHUD.GetSprite(HUD_mode_jump);
 
-	m_prcStand = &gHUD.GetSpriteRect(HUD_mode_stand);
-	m_prcRun = &gHUD.GetSpriteRect(HUD_mode_run);
-	m_prcCrouch = &gHUD.GetSpriteRect(HUD_mode_crouch);
-	m_prcJump = &gHUD.GetSpriteRect(HUD_mode_jump);
+	m_prcStand = gHUD.GetSpriteRectPointer(HUD_mode_stand);
+	m_prcRun = gHUD.GetSpriteRectPointer(HUD_mode_run);
+	m_prcCrouch = gHUD.GetSpriteRectPointer(HUD_mode_crouch);
+	m_prcJump = gHUD.GetSpriteRectPointer(HUD_mode_jump);
 
 	return 1;
 }
 
 int CHudMoveMode::Draw(float flTime)
 {
-	if ( gHUD.m_fPlayerDead || (gHUD.m_iHideHUDDisplay & HIDEHUD_ALL)
-		 || !( gHUD.m_iWeaponBits & (1 << (WEAPON_SUIT))) )
+	if ( gHUD.m_fPlayerDead || (gHUD.m_iHideHUDDisplay & HIDEHUD_ALL) || !gHUD.HasSuit() )
 	{
 		return 1;
 	}
 	int r, g, b, x, y;
-	wrect_t rc;
+	wrect_t* prc;
 	HSPRITE sprite;
-	UnpackRGB( r,g,b, RGB_YELLOWISH );
+	UnpackRGB( r,g,b, gHUD.HUDColor() );
 
 	switch (m_movementState) {
 	case MovementRun:
 		sprite = m_hSpriteRun;
-		rc = *m_prcRun;
+		prc = m_prcRun;
 		break;
 	case MovementCrouch:
 		sprite = m_hSpriteCrouch;
-		rc = *m_prcCrouch;
+		prc = m_prcCrouch;
 		break;
 	case MovementJump:
 		sprite = m_hSpriteJump;
-		rc = *m_prcJump;
+		prc = m_prcJump;
 		break;
 	default:
 		sprite = m_hSpriteStand;
-		rc = *m_prcStand;
+		prc = m_prcStand;
 		break;
 	}
 
+	if (!sprite || !prc)
+		return 1;
+
+	const wrect_t rc = *prc;
 	int width = rc.right - rc.left;
 	y = ( rc.bottom - rc.top ) * 2;
 	x = ScreenWidth - width - width / 2;

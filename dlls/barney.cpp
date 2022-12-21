@@ -67,7 +67,6 @@ public:
 
 	void DeathSound( void );
 	void PainSound( void );
-	virtual void PlayKillSentence();
 
 	void TalkInit( void );
 
@@ -221,7 +220,7 @@ void CBarney::AlertSound( void )
 	{
 		if( FOkToSpeak(SPEAK_DISREGARD_ENEMY) && !m_hEnemy->IsPlayer() )
 		{
-			PlaySentence( "BA_ATTACK", RANDOM_FLOAT( 2.8f, 3.2f ), VOL_NORM, ATTN_IDLE );
+			PlaySentence( m_szGrp[TLK_ATTACK], RANDOM_FLOAT( 2.8f, 3.2f ), VOL_NORM, ATTN_IDLE );
 		}
 	}
 }
@@ -358,8 +357,6 @@ void CBarney::HandleAnimEvent( MonsterEvent_t *pEvent )
 //=========================================================
 void CBarney::SpawnImpl(const char* modelName, float health)
 {
-	Precache();
-
 	SetMyModel( modelName );
 	SetMySize( DefaultMinHullSize(), DefaultMaxHullSize() );
 
@@ -418,6 +415,7 @@ void CBarney::Precache()
 	// when a level is loaded, nobody will talk (time is reset to 0)
 	TalkInit();
 	CTalkMonster::Precache();
+	RegisterTalkMonster();
 }	
 
 // Init talk data
@@ -453,6 +451,9 @@ void CBarney::TalkInit()
 
 	m_szGrp[TLK_SHOT] = "BA_SHOT";
 	m_szGrp[TLK_MAD] = "BA_MAD";
+
+	m_szGrp[TLK_KILL] = "BA_KILL";
+	m_szGrp[TLK_ATTACK] = "BA_ATTACK";
 
 	// get voice for head - just one barney voice for now
 	m_voicePitch = 100;
@@ -491,11 +492,6 @@ void CBarney::PainSound( void )
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barney/ba_pain3.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
 		break;
 	}
-}
-
-void CBarney::PlayKillSentence()
-{
-	PlaySentence( "BA_KILL", 4, VOL_NORM, ATTN_NORM );
 }
 
 //=========================================================
@@ -612,7 +608,7 @@ Schedule_t *CBarney::GetSchedule()
 	}
 	if( HasConditions( bits_COND_ENEMY_DEAD ) && FOkToSpeak(SPEAK_DISREGARD_ENEMY) )
 	{
-		PlayKillSentence();
+		PlaySentence( m_szGrp[TLK_KILL], 4, VOL_NORM, ATTN_NORM );
 	}
 
 	switch( m_MonsterState )
@@ -717,8 +713,6 @@ public:
 	void TalkInit( void );
 	const char* DefaultDisplayName() { return "Otis"; }
 	const char* ReverseRelationshipModel() { return "models/otisf.mdl"; }
-	void AlertSound( void );
-	void PlayKillSentence();
 
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	void OnDying();
@@ -735,7 +729,7 @@ LINK_ENTITY_TO_CLASS( monster_otis, COtis )
 
 void COtis::Spawn()
 {
-	Precache( );
+	Precache();
 	SpawnImpl("models/otis.mdl", gSkillData.otisHealth);
 	if ( m_iHead == -1 )
 		SetBodygroup(2, RANDOM_LONG(0, 1));
@@ -757,6 +751,7 @@ void COtis::Precache()
 	PRECACHE_SOUND("weapons/desert_eagle_fire.wav");
 	TalkInit();
 	CTalkMonster::Precache();
+	RegisterTalkMonster();
 }
 
 void COtis::TalkInit()
@@ -791,23 +786,10 @@ void COtis::TalkInit()
 	m_szGrp[TLK_SHOT] = "OT_SHOT";
 	m_szGrp[TLK_MAD] = "OT_MAD";
 	
+	m_szGrp[TLK_KILL] = "OT_KILL";
+	m_szGrp[TLK_ATTACK] = "OT_ATTACK";
+
 	m_voicePitch = 100;
-}
-
-void COtis :: AlertSound( void )
-{
-	if ( m_hEnemy != 0 )
-	{
-		if ( FOkToSpeak(SPEAK_DISREGARD_ENEMY) && !m_hEnemy->IsPlayer() )
-		{
-			PlaySentence( "OT_ATTACK", RANDOM_FLOAT(2.8, 3.2), VOL_NORM, ATTN_IDLE );
-		}
-	}
-}
-
-void COtis::PlayKillSentence()
-{
-	PlaySentence( "OT_KILL", 4, VOL_NORM, ATTN_NORM );
 }
 
 void COtis::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
@@ -924,10 +906,8 @@ public:
 	const char* DefaultDisplayName() { return "Barniel"; }
 	const char* ReverseRelationshipModel() { return NULL; }
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
-	void AlertSound( void );
 	void DeathSound( void );
 	void PainSound( void );
-	void PlayKillSentence();
 
 	void OnDying();
 };
@@ -960,6 +940,7 @@ void CBarniel::Precache()
 
 	TalkInit();
 	CTalkMonster::Precache();
+	RegisterTalkMonster();
 }
 
 void CBarniel::TalkInit()
@@ -994,6 +975,9 @@ void CBarniel::TalkInit()
 	m_szGrp[TLK_SHOT] = "BN_SHOT";
 	m_szGrp[TLK_MAD] = "BN_MAD";
 
+	m_szGrp[TLK_KILL] = "BN_KILL";
+	m_szGrp[TLK_ATTACK] = "BN_ATTACK";
+
 	m_voicePitch = 100;
 }
 
@@ -1009,17 +993,6 @@ void CBarniel::HandleAnimEvent( MonsterEvent_t *pEvent )
 	}
 }
 
-void CBarniel::AlertSound()
-{
-	if( m_hEnemy != 0 )
-	{
-		if( FOkToSpeak(SPEAK_DISREGARD_ENEMY) && !m_hEnemy->IsPlayer() )
-		{
-			PlaySentence( "BN_ATTACK", RANDOM_FLOAT( 2.8f, 3.2f ), VOL_NORM, ATTN_IDLE );
-		}
-	}
-}
-
 void CBarniel::DeathSound( void )
 {
 	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barniel/bn_die1.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
@@ -1032,11 +1005,6 @@ void CBarniel::PainSound()
 
 	m_painTime = gpGlobals->time + RANDOM_FLOAT( 0.5f, 0.75f );
 	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "barniel/bn_pain1.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
-}
-
-void CBarniel::PlayKillSentence()
-{
-	PlaySentence( "BN_KILL", 4, VOL_NORM, ATTN_NORM );
 }
 
 void CBarniel::OnDying()
@@ -1094,10 +1062,8 @@ public:
 	int LookupActivity(int activity);
 	int DefaultToleranceLevel() { return TOLERANCE_AVERAGE; }
 	BOOL CheckMeleeAttack1( float flDot, float flDist );
-	void AlertSound( void );
 	void DeathSound( void );
 	void PainSound( void );
-	void PlayKillSentence();
 
 	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	void OnDying();
@@ -1178,6 +1144,9 @@ void CKate::TalkInit()
 
 	m_szGrp[TLK_SHOT] = "KA_SHOT";
 	m_szGrp[TLK_MAD] = "KA_MAD";
+
+	m_szGrp[TLK_KILL] = "KA_KILL";
+	m_szGrp[TLK_ATTACK] = "KA_ATTACK";
 
 	m_voicePitch = 100;
 }
@@ -1281,17 +1250,6 @@ BOOL CKate::CheckMeleeAttack1(float flDot, float flDist)
 	return FALSE;
 }
 
-void CKate::AlertSound()
-{
-	if( m_hEnemy != 0 )
-	{
-		if( FOkToSpeak(SPEAK_DISREGARD_ENEMY) && !m_hEnemy->IsPlayer() )
-		{
-			PlaySentence( "KA_ATTACK", RANDOM_FLOAT( 2.8f, 3.2f ), VOL_NORM, ATTN_IDLE );
-		}
-	}
-}
-
 void CKate::DeathSound( void )
 {
 	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "kate/ka_die1.wav", 1, ATTN_NORM, 0, GetVoicePitch() );
@@ -1313,11 +1271,6 @@ void CKate::PainSound()
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "kate/ka_pain2.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
 		break;
 	}
-}
-
-void CKate::PlayKillSentence()
-{
-	PlaySentence( "KA_KILL", 4, VOL_NORM, ATTN_NORM );
 }
 
 void CKate::OnDying()

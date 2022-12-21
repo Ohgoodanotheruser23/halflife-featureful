@@ -487,6 +487,12 @@ void CMultiSource::Register( void )
 	pev->spawnflags &= ~SF_MULTI_INIT;
 }
 
+static const char* const g_sparkSounds[] =
+{
+	"buttons/spark1.wav", "buttons/spark2.wav", "buttons/spark3.wav",
+	"buttons/spark4.wav", "buttons/spark5.wav", "buttons/spark6.wav"
+};
+
 int CBaseButton::ObjectCaps( void )
 {
 	int objectCaps = (CBaseToggle:: ObjectCaps() & ~FCAP_ACROSS_TRANSITION);
@@ -518,6 +524,10 @@ TYPEDESCRIPTION CBaseButton::m_SaveData[] =
 	DEFINE_FIELD( CBaseButton, m_unlockedSoundOverride, FIELD_STRING ),
 	DEFINE_FIELD( CBaseButton, m_lockedSentenceOverride, FIELD_STRING ),
 	DEFINE_FIELD( CBaseButton, m_unlockedSentenceOverride, FIELD_STRING ),
+	DEFINE_FIELD( CBaseButton, m_triggerOnReturn, FIELD_STRING ),
+	DEFINE_FIELD( CBaseButton, m_triggerBeforeMove, FIELD_STRING ),
+	DEFINE_FIELD( CBaseButton, m_waitBeforeToggleAgain, FIELD_FLOAT ),
+	DEFINE_FIELD( CBaseButton, m_toggleAgainTime, FIELD_TIME ),
 	DEFINE_FIELD( CBaseButton, m_iDirectUse, FIELD_SHORT ),
 	DEFINE_FIELD( CBaseButton, m_fNonMoving, FIELD_BOOLEAN ),
 };
@@ -530,12 +540,7 @@ void CBaseButton::Precache( void )
 
 	if( IsSparkingButton() )// this button should spark in OFF state
 	{
-		PRECACHE_SOUND( "buttons/spark1.wav" );
-		PRECACHE_SOUND( "buttons/spark2.wav" );
-		PRECACHE_SOUND( "buttons/spark3.wav" );
-		PRECACHE_SOUND( "buttons/spark4.wav" );
-		PRECACHE_SOUND( "buttons/spark5.wav" );
-		PRECACHE_SOUND( "buttons/spark6.wav" );
+		PRECACHE_SOUND_ARRAY(g_sparkSounds);
 	}
 
 	// get door button sounds, for doors which require buttons to open
@@ -704,6 +709,21 @@ void CBaseButton::KeyValue( KeyValueData *pkvd )
 	else if( FStrEq( pkvd->szKeyName, "unlocked_sentence_override" ) )
 	{
 		m_unlockedSentenceOverride = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "trigger_on_return" ) )
+	{
+		m_triggerOnReturn = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "trigger_before_move" ) )
+	{
+		m_triggerBeforeMove = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "wait_toggle" ) )
+	{
+		m_waitBeforeToggleAgain = atof( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else if (FStrEq(pkvd->szKeyName, "directuse"))
@@ -948,28 +968,8 @@ void DoSpark( entvars_t *pev, const Vector &location )
 	Vector tmp = location + pev->size * 0.5f;
 	UTIL_Sparks( tmp );
 
-	float flVolume = RANDOM_FLOAT( 0.25f, 0.75f ) * 0.4f;//random volume range
-	switch( (int)( RANDOM_FLOAT( 0.0f, 1.0f ) * 6.0f ) )
-	{
-		case 0:
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "buttons/spark1.wav", flVolume, ATTN_NORM );
-			break;
-		case 1:
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "buttons/spark2.wav", flVolume, ATTN_NORM );
-			break;
-		case 2:
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "buttons/spark3.wav", flVolume, ATTN_NORM );
-			break;
-		case 3:
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "buttons/spark4.wav", flVolume, ATTN_NORM );
-			break;
-		case 4:
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "buttons/spark5.wav", flVolume, ATTN_NORM );
-			break;
-		case 5:
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, "buttons/spark6.wav", flVolume, ATTN_NORM );
-			break;
-	}
+	const float flVolume = RANDOM_FLOAT( 0.25f, 0.75f ) * 0.4f;//random volume range
+	EMIT_SOUND( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( g_sparkSounds ), flVolume, ATTN_NORM );
 }
 
 void CBaseButton::ButtonSpark( void )
@@ -988,6 +988,9 @@ void CBaseButton::ButtonUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	// Ignore touches if button is moving, or pushed-in and waiting to auto-come-out.
 	// UNDONE: Should this use ButtonResponseToTouch() too?
 	if( m_toggle_state == TS_GOING_UP || m_toggle_state == TS_GOING_DOWN )
+		return;
+
+	if (FBitSet( pev->spawnflags, SF_BUTTON_TOGGLE ) && m_toggleAgainTime > gpGlobals->time)
 		return;
 
 	m_hActivator = pActivator;
@@ -1091,6 +1094,11 @@ void CBaseButton::ButtonActivate()
 	ASSERT( m_toggle_state == TS_AT_BOTTOM );
 	m_toggle_state = TS_GOING_UP;
 	
+	if (!FStringNull(m_triggerBeforeMove))
+	{
+		FireTargets(STRING(m_triggerBeforeMove), m_hActivator, this, USE_TOGGLE, 0.0f );
+	}
+
 	if (m_fNonMoving)
 	{
 		TriggerAndWait();
@@ -1157,6 +1165,8 @@ void CBaseButton::TriggerAndWait( void )
 	pev->frame = 1;			// use alternate textures
 
 	SUB_UseTargets( m_hActivator, UseType(false), 0 );
+	if (FBitSet( pev->spawnflags, SF_BUTTON_TOGGLE ))
+		m_toggleAgainTime = gpGlobals->time + m_waitBeforeToggleAgain;
 }
 
 //
@@ -1237,6 +1247,9 @@ void CBaseButton::ButtonBackHome( void )
 	{
 		DontThink();
 	}
+
+	if (!FStringNull(m_triggerOnReturn))
+		FireTargets(STRING(m_triggerOnReturn), m_hActivator, this, USE_TOGGLE, 0.0f);
 }
 
 bool CBaseButton::IsSparkingButton()
@@ -1685,12 +1698,7 @@ void CEnvSpark::Spawn( void )
 
 void CEnvSpark::Precache( void )
 {
-	PRECACHE_SOUND( "buttons/spark1.wav" );
-	PRECACHE_SOUND( "buttons/spark2.wav" );
-	PRECACHE_SOUND( "buttons/spark3.wav" );
-	PRECACHE_SOUND( "buttons/spark4.wav" );
-	PRECACHE_SOUND( "buttons/spark5.wav" );
-	PRECACHE_SOUND( "buttons/spark6.wav" );
+	PRECACHE_SOUND_ARRAY(g_sparkSounds);
 }
 
 void CEnvSpark::KeyValue( KeyValueData *pkvd )
@@ -1711,7 +1719,7 @@ void CEnvSpark::KeyValue( KeyValueData *pkvd )
 		CBaseEntity::KeyValue( pkvd );
 }
 
-void EXPORT CEnvSpark::SparkCyclic(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+void CEnvSpark::SparkCyclic(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	if (m_pfnThink == NULL)
 	{
@@ -1725,12 +1733,12 @@ void EXPORT CEnvSpark::SparkCyclic(CBaseEntity *pActivator, CBaseEntity *pCaller
 	}
 }
 
-void EXPORT CEnvSpark::SparkWait(void)
+void CEnvSpark::SparkWait(void)
 {
 	SetThink( NULL );
 }
 
-void EXPORT CEnvSpark::SparkThink( void )
+void CEnvSpark::SparkThink( void )
 {
 	DoSpark( pev, pev->origin );
 	if (pev->spawnflags & SF_SPARK_CYCLIC)
@@ -1743,14 +1751,14 @@ void EXPORT CEnvSpark::SparkThink( void )
 	}
 }
 
-void EXPORT CEnvSpark::SparkStart( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+void CEnvSpark::SparkStart( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	SetUse( &CEnvSpark::SparkStop );
 	SetThink( &CEnvSpark::SparkThink );
 	pev->nextthink = gpGlobals->time + 0.1f + RANDOM_FLOAT( 0.0f, m_flDelay );
 }
 
-void EXPORT CEnvSpark::SparkStop( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+void CEnvSpark::SparkStop( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	SetUse( &CEnvSpark::SparkStart);
 	SetThink( NULL );

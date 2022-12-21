@@ -133,6 +133,9 @@ class CBaseMonster;
 class CBasePlayerWeapon;
 class CSquadMonster;
 
+#define SF_ITEM_TOUCH_ONLY 128
+#define SF_ITEM_USE_ONLY 256
+
 #define	SF_NORESPAWN	( 1 << 30 )// !!!set this bit on guns and stuff that should never respawn.
 
 enum
@@ -215,6 +218,8 @@ public:
 
 	virtual void ThinkCorrection( void );
 
+	byte m_EFlags;
+
 	virtual bool	CalcPosition( CBaseEntity *pLocus, Vector* outResult )	{ *outResult = pev->origin; return true; }
 	virtual bool	CalcVelocity( CBaseEntity *pLocus, Vector* outResult )	{ *outResult = pev->velocity; return true; }
 	virtual bool	CalcRatio( CBaseEntity *pLocus, float* outResult )	{ *outResult = 0; return true; }
@@ -243,6 +248,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	virtual void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void ApplyTraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	virtual int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	virtual int TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamageType );
 	virtual void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
@@ -338,7 +344,11 @@ public:
 		return pEnt; 
 	}
 
-	static CBaseEntity *Instance( entvars_t *pev ) { return Instance( ENT( pev ) ); }
+	static CBaseEntity *Instance( entvars_t *pev ) {
+		if ( !pev )
+			return Instance(ENT( 0 ));
+		return Instance( ENT( pev ) );
+	}
 	static CBaseEntity *Instance( int eoffset) { return Instance( ENT( eoffset) ); }
 
 	CBaseMonster *GetMonsterPointer( entvars_t *pevMonster ) 
@@ -419,6 +429,7 @@ public:
 	virtual CBasePlayerWeapon* MyWeaponPointer() {return NULL;}
 
 	virtual bool IsAlienMonster() { return false; }
+	virtual bool IsMachine() { return DefaultClassify() == CLASS_MACHINE; }
 	virtual float InputByMonster(CBaseMonster* pMonster) { return 0.0f; }
 	virtual NODE_LINKENT HandleLinkEnt(int afCapMask, bool nodeQueryStatic) { return NLE_PROHIBIT; }
 };
@@ -659,7 +670,7 @@ public:
 // used by suit voice to indicate damage sustained and repaired type to player
 
 #include "dmg_types.h"
-#define DMG_TIMEBASED		(DMG_PARALYZE|DMG_NERVEGAS|DMG_POISON|DMG_RADIATION|DMG_DROWNRECOVER|DMG_ACID|DMG_SLOWBURN|DMG_SLOWFREEZE|DMG_TIMEDNONLETHAL)	// mask for time-based damage
+#define DMG_TIMEBASED		(DMG_PARALYZE|DMG_NERVEGAS|DMG_POISON|DMG_RADIATION|DMG_DROWNRECOVER|DMG_ACID|DMG_SLOWBURN|DMG_SLOWFREEZE)	// mask for time-based damage
 
 // these are the damage types that are allowed to gib corpses
 #define DMG_GIB_CORPSE		( DMG_CRUSH | DMG_FALL | DMG_BLAST | DMG_SONIC | DMG_CLUB )
@@ -781,6 +792,12 @@ public:
 	string_t m_unlockedSoundOverride;
 	string_t m_lockedSentenceOverride;
 	string_t m_unlockedSentenceOverride;
+
+	string_t m_triggerOnReturn;
+	string_t m_triggerBeforeMove;
+
+	float m_waitBeforeToggleAgain;
+	float m_toggleAgainTime;
 
 	short m_iDirectUse;
 	BOOL m_fNonMoving;

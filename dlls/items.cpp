@@ -31,9 +31,6 @@
 #include "gamerules.h"
 #include "animation.h"
 
-#define SF_ITEM_TOUCH_ONLY 128
-#define SF_ITEM_USE_ONLY 256
-
 extern int gmsgItemPickup;
 
 class CWorldItem : public CBaseEntity
@@ -158,6 +155,8 @@ void CItemRandomProxy::SpawnItem()
 
 #define ITEM_RANDOM_MAX_COUNT 16
 
+#define SF_ITEM_RANDOM_PREDETERMINED 64
+
 class CItemRandom : public CPointEntity
 {
 public:
@@ -172,6 +171,7 @@ public:
 	string_t m_itemNames[ITEM_RANDOM_MAX_COUNT];
 	float m_itemProbabilities[ITEM_RANDOM_MAX_COUNT];
 	int m_itemCount;
+	unsigned int m_randomSeed;
 
 	static bool IsAppropriateItemName(const char* name);
 	static bool IsNullItem(const char* name);
@@ -189,6 +189,7 @@ TYPEDESCRIPTION CItemRandom::m_SaveData[] =
 	DEFINE_ARRAY( CItemRandom, m_itemNames, FIELD_STRING, ITEM_RANDOM_MAX_COUNT ),
 	DEFINE_ARRAY( CItemRandom, m_itemProbabilities, FIELD_FLOAT, ITEM_RANDOM_MAX_COUNT ),
 	DEFINE_FIELD( CItemRandom, m_itemCount, FIELD_INTEGER ),
+	DEFINE_FIELD( CItemRandom, m_randomSeed, FIELD_INTEGER ),
 };
 IMPLEMENT_SAVERESTORE( CItemRandom, CBaseEntity )
 
@@ -226,6 +227,10 @@ void CItemRandom::Spawn()
 	Precache();
 	pev->solid = SOLID_NOT;
 	pev->effects = EF_NODRAW;
+
+	if (FBitSet(pev->spawnflags, SF_ITEM_RANDOM_PREDETERMINED))
+		m_randomSeed = RANDOM_LONG(0, (1<<15));
+
 	if (FStringNull(pev->targetname))
 	{
 		SpawnItem(pev->origin, pev->angles, pev->target);
@@ -250,7 +255,16 @@ void CItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 
 void CItemRandom::SpawnItem(const Vector &origin, const Vector &angles, string_t target)
 {
-	const float choice = RANDOM_FLOAT(0, m_probabilitySum);
+	float choice;
+	if (FBitSet(pev->spawnflags, SF_ITEM_RANDOM_PREDETERMINED))
+	{
+		choice = UTIL_SharedRandomFloat(m_randomSeed, 0, m_probabilitySum);
+		m_randomSeed = UTIL_SharedRandomLong(m_randomSeed, 0, 1<<15);
+	}
+	else
+	{
+		choice = RANDOM_FLOAT(0, m_probabilitySum);
+	}
 	float sum = 0;
 	for (int i=0; i<m_itemCount; ++i)
 	{
@@ -289,7 +303,8 @@ void CInfoItemRandom::Spawn()
 void CInfoItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	// Was called by SOLID_BSP entity, e.g. func_breakable
-	if (pActivator->IsBSPModel())
+	const char* model = FStringNull(pActivator->pev->model) ? NULL : STRING(pActivator->pev->model);
+	if (model && *model == '*')
 	{
 		SpawnItem(VecBModelOrigin( pActivator->pev ), pActivator->pev->angles, iStringNull);
 	}
@@ -301,16 +316,67 @@ void CInfoItemRandom::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 
 //=========
 
-static bool AppliedByTouch(CItem* item)
+int CPickup::ObjectCaps()
 {
-	return !FBitSet(item->pev->spawnflags, SF_ITEM_USE_ONLY) &&
-			(FBitSet(item->pev->spawnflags, SF_ITEM_TOUCH_ONLY) || !NeedUseToTake());
+	if (IsPickableByUse() && !(pev->effects & EF_NODRAW)) {
+		return CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE;
+	} else {
+		return CBaseEntity::ObjectCaps();
+	}
 }
 
-static bool AppliedByUse(CItem* item)
+void CPickup::SetObjectCollisionBox()
 {
-	return !FBitSet(item->pev->spawnflags, SF_ITEM_TOUCH_ONLY) &&
-			(FBitSet(item->pev->spawnflags, SF_ITEM_USE_ONLY) || NeedUseToTake());
+	pev->absmin = pev->origin + Vector( -16, -16, 0 );
+	pev->absmax = pev->origin + Vector( 16, 16, 16 );
+}
+
+bool CPickup::IsPickableByTouch()
+{
+	return !FBitSet(pev->spawnflags, SF_ITEM_USE_ONLY) &&
+			(FBitSet(pev->spawnflags, SF_ITEM_TOUCH_ONLY) || !NeedUseToTake());
+}
+
+bool CPickup::IsPickableByUse()
+{
+	return !FBitSet(pev->spawnflags, SF_ITEM_TOUCH_ONLY) &&
+			(FBitSet(pev->spawnflags, SF_ITEM_USE_ONLY) || NeedUseToTake());
+}
+
+void CPickup::FallThink()
+{
+	pev->nextthink = gpGlobals->time + 0.1;
+	if( pev->flags & FL_ONGROUND )
+	{
+		pev->solid = SOLID_TRIGGER;
+		UTIL_SetOrigin( pev, pev->origin );
+		ResetThink();
+	}
+}
+
+CBaseEntity* CPickup::Respawn( void )
+{
+	SetTouch( NULL );
+	pev->effects |= EF_NODRAW;
+
+	UTIL_SetOrigin( pev, MyRespawnSpot() );// blip to whereever you should respawn.
+
+	SetThink( &CPickup::Materialize );
+	pev->nextthink = MyRespawnTime();
+	return this;
+}
+
+void CPickup::Materialize( void )
+{
+	if( pev->effects & EF_NODRAW )
+	{
+		// changing from invisible state to visible.
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "items/suitchargeok1.wav", 1, ATTN_NORM, 0, 150 );
+		pev->effects &= ~EF_NODRAW;
+		pev->effects |= EF_MUZZLEFLASH;
+	}
+
+	OnMaterialize();
 }
 
 extern int gEvilImpulse101;
@@ -341,41 +407,15 @@ void CItem::Spawn( void )
 
 void CItem::ItemTouch( CBaseEntity *pOther )
 {
-	if (AppliedByTouch(this)) {
+	if (IsPickableByTouch()) {
 		TouchOrUse(pOther);
 	}
 }
 
-void CItem::FallThink()
-{
-	pev->nextthink = gpGlobals->time + 0.1;
-	if( pev->flags & FL_ONGROUND )
-	{
-		pev->solid = SOLID_TRIGGER;
-		UTIL_SetOrigin( pev, pev->origin );
-		ResetThink();
-	}
-}
-
-int CItem::ObjectCaps()
-{
-	if (AppliedByUse(this) && !(pev->effects & EF_NODRAW)) {
-		return CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE;
-	} else {
-		return CBaseEntity::ObjectCaps();
-	}
-}
-
-void CItem::SetObjectCollisionBox()
-{
-	pev->absmin = pev->origin + Vector( -16, -16, 0 );
-	pev->absmax = pev->origin + Vector( 16, 16, 16 );
-}
-
 void CItem::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	if (AppliedByUse(this) && !(pev->effects & EF_NODRAW)) {
-		TouchOrUse(pActivator);
+	if (IsPickableByUse() && !(pev->effects & EF_NODRAW)) {
+		TouchOrUse(pCaller);
 	}
 }
 
@@ -418,28 +458,18 @@ void CItem::TouchOrUse(CBaseEntity *pOther)
 	}
 }
 
-CBaseEntity* CItem::Respawn( void )
+Vector CItem::MyRespawnSpot()
 {
-	SetTouch( NULL );
-	pev->effects |= EF_NODRAW;
-
-	UTIL_SetOrigin( pev, g_pGameRules->VecItemRespawnSpot( this ) );// blip to whereever you should respawn.
-
-	SetThink( &CItem::Materialize );
-	pev->nextthink = g_pGameRules->FlItemRespawnTime( this ); 
-	return this;
+	return g_pGameRules->VecItemRespawnSpot( this );
 }
 
-void CItem::Materialize( void )
+float CItem::MyRespawnTime()
 {
-	if( pev->effects & EF_NODRAW )
-	{
-		// changing from invisible state to visible.
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "items/suitchargeok1.wav", 1, ATTN_NORM, 0, 150 );
-		pev->effects &= ~EF_NODRAW;
-		pev->effects |= EF_MUZZLEFLASH;
-	}
+	return g_pGameRules->FlItemRespawnTime( this );
+}
 
+void CItem::OnMaterialize()
+{
 	SetTouch( &CItem::ItemTouch );
 	SetThink( NULL );
 }
@@ -483,7 +513,7 @@ public:
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
-		if( pPlayer->pev->weapons & ( 1<<WEAPON_SUIT ) )
+		if( pPlayer->HasSuit() )
 			return FALSE;
 
 		if ( pev->spawnflags & SF_SUIT_NOLOGON )
@@ -499,11 +529,11 @@ public:
 			EMIT_SOUND_SUIT( pPlayer->edict(), "!HEV_AAx" );	// long version of suit logon
 		}
 
-		pPlayer->pev->weapons |= ( 1 << WEAPON_SUIT );
+		pPlayer->m_iItemsBits |= PLAYER_ITEM_SUIT;
 #if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
 		if (FBitSet(pev->spawnflags, SF_SUIT_FLASHLIGHT))
 		{
-			pPlayer->pev->weapons |= ( 1 << WEAPON_FLASHLIGHT );
+			pPlayer->m_iItemsBits |= PLAYER_ITEM_FLASHLIGHT;
 		}
 #endif
 		return TRUE;
@@ -533,8 +563,7 @@ public:
 			return FALSE;
 		}
 
-		if( ( pPlayer->pev->armorvalue < MAX_NORMAL_BATTERY ) &&
-			( pPlayer->pev->weapons & ( 1 << WEAPON_SUIT ) ) )
+		if( ( pPlayer->pev->armorvalue < MAX_NORMAL_BATTERY ) && pPlayer->HasSuit() )
 		{
 			pPlayer->pev->armorvalue += pev->health > 0 ? pev->health : DefaultCapacity();
 			pPlayer->pev->armorvalue = Q_min( pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY );
@@ -696,7 +725,7 @@ class CItemLongJump : public CItem
 			return FALSE;
 		}
 
-		if( ( pPlayer->pev->weapons & ( 1 << WEAPON_SUIT ) ) )
+		if( pPlayer->HasSuit() )
 		{
 			pPlayer->m_fLongJump = TRUE;// player now has longjump module
 
@@ -731,9 +760,9 @@ class CItemFlashlight : public CItem
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
-		if ( pPlayer->pev->weapons & (1<<WEAPON_FLASHLIGHT) )
+		if ( pPlayer->HasFlashlight() )
 			return FALSE;
-		pPlayer->pev->weapons |= (1<<WEAPON_FLASHLIGHT);
+		pPlayer->m_iItemsBits |= PLAYER_ITEM_FLASHLIGHT;
 		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
 			WRITE_STRING( STRING(pev->classname) );
 		MESSAGE_END();
@@ -866,21 +895,16 @@ void CItemGeneric::SetObjectCollisionBox()
 
 void CItemGeneric::StartupThink(void)
 {
-	// Try to look for a sequence to play.
-	int iSequence = LookupSequence(STRING(m_iszSequenceName));
-
-	// Validate sequence.
-	if (iSequence != -1)
+	pev->sequence = LookupSequence(STRING(m_iszSequenceName));
+	if (pev->sequence == ACTIVITY_NOT_AVAILABLE)
 	{
-		pev->sequence = iSequence;
-		SetThink(&CItemGeneric::SequenceThink);
-		pev->nextthink = gpGlobals->time + 0.01f;
+		ALERT(at_console, "Can't find a sequence \"%s\" in model \"%s\"\n", STRING(m_iszSequenceName), STRING(pev->model));
+		pev->sequence = 0;
 	}
-	else
-	{
-		// Cancel play sequence.
-		SetThink(NULL);
-	}
+	pev->frame = 0;
+	ResetSequenceInfo();
+	SetThink(&CItemGeneric::SequenceThink);
+	pev->nextthink = gpGlobals->time + 0.01f;
 }
 
 void CItemGeneric::SequenceThink(void)
@@ -900,15 +924,7 @@ void CItemGeneric::SequenceThink(void)
 
 		if (!m_fSequenceLoops)
 		{
-			// Prevent from calling ItemThink.
 			SetThink(NULL);
-			m_fSequenceFinished = TRUE;
-			return;
-		}
-		else
-		{
-			pev->frame = 0;
-			ResetSequenceInfo();
 		}
 	}
 }

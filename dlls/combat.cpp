@@ -298,7 +298,7 @@ void CGib::SpawnRandomClientGibs(entvars_t *pevVictim, int cGibs, const char *gi
 
 	if (gmsgRandomGibs)
 	{
-		MESSAGE_BEGIN( MSG_PVS, gmsgRandomGibs, NULL );
+		MESSAGE_BEGIN( MSG_PVS, gmsgRandomGibs, pevVictim->origin );
 			// position
 			WRITE_COORD( pevVictim->absmin.x );
 			WRITE_COORD( pevVictim->absmin.y );
@@ -1079,6 +1079,10 @@ int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 		return DeadTakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
 	}
 
+	const short takeDamagePolicy = m_pCine ? m_pCine->m_takeDamagePolicy : 0;
+	if (takeDamagePolicy == SCRIPT_TAKE_DAMAGE_POLICY_INVULNERABLE)
+		return 0;
+
 	if( pev->deadflag == DEAD_NO && flDamage > 0 )
 	{
 		// no pain sound during death animation.
@@ -1139,6 +1143,9 @@ int CBaseMonster::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, f
 	// HACKHACK Don't kill monsters in a script.  Let them break their scripts first
 	if( m_MonsterState == MONSTERSTATE_SCRIPT )
 	{
+		if (takeDamagePolicy == SCRIPT_TAKE_DAMAGE_POLICY_NONLETHAL && pev->health <= 0.0f)
+			pev->health = 1.0f;
+
 		if ( m_pCine && m_pCine->m_interruptionPolicy == SCRIPT_INTERRUPTION_POLICY_ONLY_DEATH )
 		{
 			if (pev->health <= 0.0f)
@@ -1336,9 +1343,7 @@ void RadiusDamage( Vector vecSrc, entvars_t *pevInflictor, entvars_t *pevAttacke
 				// ALERT( at_console, "hit %s\n", STRING( pEntity->pev->classname ) );
 				if( tr.flFraction != 1.0f )
 				{
-					ClearMultiDamage();
-					pEntity->TraceAttack( pevInflictor, flAdjustedDamage, ( tr.vecEndPos - vecSrc ).Normalize(), &tr, bitsDamageType );
-					ApplyMultiDamage( pevInflictor, pevAttacker );
+					pEntity->ApplyTraceAttack( pevInflictor, pevAttacker, flAdjustedDamage, ( tr.vecEndPos - vecSrc ).Normalize(), &tr, bitsDamageType );
 				}
 				else
 				{
@@ -1369,6 +1374,11 @@ void CBaseMonster::RadiusDamage( Vector vecSrc, entvars_t *pevInflictor, entvars
 //=========================================================
 CBaseEntity* CBaseMonster::CheckTraceHullAttack( float flDist, int iDamage, int iDmgType )
 {
+	return CheckTraceHullAttack( flDist, iDamage, iDmgType, pev->size.z * 0.5f );
+}
+
+CBaseEntity* CBaseMonster::CheckTraceHullAttack( float flDist, int iDamage, int iDmgType, float height )
+{
 	TraceResult tr;
 
 	if( IsPlayer() )
@@ -1377,7 +1387,7 @@ CBaseEntity* CBaseMonster::CheckTraceHullAttack( float flDist, int iDamage, int 
 		UTIL_MakeAimVectors( pev->angles );
 
 	Vector vecStart = pev->origin;
-	vecStart.z += pev->size.z * 0.5f;
+	vecStart.z += height;
 	Vector vecEnd = vecStart + ( gpGlobals->v_forward * flDist );
 
 	UTIL_TraceHull( vecStart, vecEnd, dont_ignore_monsters, head_hull, ENT( pev ), &tr );
@@ -1533,6 +1543,13 @@ void CBaseEntity::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vec
 			TraceBleed( flDamage, vecDir, ptr, bitsDamageType );
 		}
 	}
+}
+
+void CBaseEntity::ApplyTraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
+{
+	ClearMultiDamage();
+	TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	ApplyMultiDamage(pevInflictor, pevAttacker);
 }
 
 /*
@@ -1708,6 +1725,8 @@ void CBaseEntity::FireBullets( ULONG cShots, Vector vecSrc, Vector vecDirShootin
 
 	ClearMultiDamage();
 	gMultiDamage.type = DMG_BULLET | DMG_NEVERGIB;
+
+	UTIL_MuzzleLight(vecSrc);
 
 	for( ULONG iShot = 1; iShot <= cShots; iShot++ )
 	{

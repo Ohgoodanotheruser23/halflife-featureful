@@ -24,6 +24,7 @@
 #include	"schedule.h"
 #include	"effects.h"
 #include	"weapons.h"
+#include	"player.h"
 #include	"soundent.h"
 #include	"mod_features.h"
 
@@ -231,7 +232,7 @@ void CChargeToken::Precache()
 
 void CChargeToken::ArmorPieceTouch(CBaseEntity *pOther)
 {
-	if (pOther->IsPlayer() && ( pOther->pev->weapons & ( 1 << WEAPON_SUIT ) ))
+	if (pOther->IsPlayer() && (static_cast<CBasePlayer*>(pOther))->HasSuit())
 	{
 		pOther->pev->armorvalue += pev->health;
 		pOther->pev->armorvalue = Q_min(pOther->pev->armorvalue, MAX_NORMAL_BATTERY);
@@ -417,7 +418,7 @@ public:
 	void ArmBeam(int side );
 	void ArmBeamMessage(int side );
 	void WackBeam( int side, CBaseEntity *pEntity );
-	void ZapBeam( int side );
+	CBaseEntity* ZapBeam( int side );
 	void BeamGlow( void );
 	void HandsGlowOn(int brightness = 224);
 	void HandGlowOn(CSprite* handGlow, int brightness = 224);
@@ -492,8 +493,6 @@ public:
 		}
 		return pev->origin + gpGlobals->v_forward * 36 + Vector(0,0,20);
 	}
-
-	bool CanSpawnBeams() const;
 
 	int m_iBravery;
 
@@ -830,21 +829,18 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				Vector vecSrc = pev->origin + gpGlobals->v_forward * 2;
 				MakeDynamicLight(vecSrc, 12, (int)(20/pev->framerate));
 			}
-			if (CanSpawnBeams())
+			if( CanRevive() )
 			{
-				if( CanRevive() )
-				{
-					WackBeam( ISLAVE_LEFT_ARM, m_hDead );
-					WackBeam( ISLAVE_RIGHT_ARM, m_hDead );
-				}
-				else
-				{
-					ArmBeam( ISLAVE_LEFT_ARM );
-					ArmBeam( ISLAVE_RIGHT_ARM );
-					BeamGlow();
-				}
-				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM, 0, 100 + m_iBeams * 10 );
+				WackBeam( ISLAVE_LEFT_ARM, m_hDead );
+				WackBeam( ISLAVE_RIGHT_ARM, m_hDead );
 			}
+			else
+			{
+				ArmBeam( ISLAVE_LEFT_ARM );
+				ArmBeam( ISLAVE_RIGHT_ARM );
+				BeamGlow();
+			}
+			EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM, 0, 100 + m_iBeams * 10 );
 		}
 			break;
 		case ISLAVE_AE_ZAP_SHOOT:
@@ -962,6 +958,8 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 					}
 				}
 				UTIL_EmitAmbientSound( ENT( pev ), pev->origin, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG( 140, 160 ) );
+
+				m_flNextAttack = gpGlobals->time + RANDOM_FLOAT( 1.0, 4.0 );
 			} else {
 				Forget(bits_MEMORY_ISLAVE_LAST_ATTACK_WAS_COIL);
 				UTIL_MakeAimVectors( pev->angles );
@@ -972,9 +970,9 @@ void CISlave::HandleAnimEvent( MonsterEvent_t *pEvent )
 				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG( 130, 160 ) );
 				// STOP_SOUND( ENT( pev ), CHAN_WEAPON, "debris/zap4.wav" );
 				ApplyMultiDamage( pev, pev );
-			}
 
-			m_flNextAttack = gpGlobals->time + RANDOM_FLOAT( 0.5, 4.0 );
+				m_flNextAttack = gpGlobals->time + RANDOM_FLOAT( 0.5, 4.0 );
+			}
 		}
 			break;
 		case ISLAVE_AE_ZAP_DONE:
@@ -1155,6 +1153,10 @@ void CISlave::StartTask( Task_t *pTask )
 		}
 		break;
 	}
+	case TASK_WAIT_FOR_MOVEMENT:
+		// a hack to prevent vortigaunts running with beams caused by dangling events from the attack animation
+		m_IdealActivity = ACT_IDLE;
+		// fallthrough
 	default:
 		CFollowingMonster::StartTask( pTask );
 		break;
@@ -1805,14 +1807,17 @@ void CISlave::WackBeam( int side, CBaseEntity *pEntity )
 //=========================================================
 // ZapBeam - heavy damage directly forward
 //=========================================================
-void CISlave::ZapBeam( int side )
+CBaseEntity *CISlave::ZapBeam( int side )
 {
 	Vector vecSrc, vecAim;
 	TraceResult tr;
 	CBaseEntity *pEntity;
 
 	if( m_iBeams >= ISLAVE_MAX_BEAMS )
-		return;
+	{
+		ALERT(at_warning, "Vort didn't zap because too many beams!\n");
+		return NULL;
+	}
 
 	vecSrc = pev->origin + gpGlobals->v_up * 36;
 	if (IsValidHealTarget(m_hWounded)) {
@@ -1828,7 +1833,7 @@ void CISlave::ZapBeam( int side )
 
 	m_pBeam[m_iBeams] = CBeam::BeamCreate( "sprites/lgtning.spr", 50 );
 	if( !m_pBeam[m_iBeams] )
-		return;
+		return NULL;
 
 	const Vector zapColor = GetZapColor();
 	m_pBeam[m_iBeams]->PointEntInit( tr.vecEndPos, entindex() );
@@ -1838,6 +1843,7 @@ void CISlave::ZapBeam( int side )
 	m_pBeam[m_iBeams]->SetNoise( 20 );
 	m_iBeams++;
 
+	CBaseEntity* pResult = NULL;
 	pEntity = CBaseEntity::Instance( tr.pHit );
 	if( pEntity != NULL && pEntity->pev->takedamage )
 	{
@@ -1866,8 +1872,10 @@ void CISlave::ZapBeam( int side )
 			}
 #endif
 		}
+		pResult = pEntity;
 	}
 	UTIL_EmitAmbientSound( ENT( pev ), tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG( 140, 160 ) );
+	return pResult;
 }
 
 //=========================================================
@@ -1994,7 +2002,7 @@ void CISlave::StartMeleeAttackGlow(int side)
 	HandGlowOn(handGlow);
 	int brightness;
 	const Vector armBeamColor = GetArmBeamColor(brightness);
-	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY );
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, pev->origin );
 		WRITE_BYTE( TE_BEAMFOLLOW );
 		WRITE_SHORT( entindex() + 0x1000 * (AttachmentFromSide(side)) );
 		WRITE_SHORT( m_iTrailTexture );
@@ -2142,12 +2150,6 @@ Vector CISlave::GetArmBeamColor(int &brightness)
 #endif
 	brightness = 64;
 	return Vector(ISLAVE_ARMBEAM_RED, ISLAVE_ARMBEAM_GREEN, ISLAVE_ARMBEAM_BLUE);
-}
-
-bool CISlave::CanSpawnBeams() const
-{
-	// TODO: Not sure if this is good
-	return m_pSchedule == slSlaveAttack1 || m_pSchedule == slSlaveHealOrReviveAttack;
 }
 
 void CISlave::PlayUseSentence()

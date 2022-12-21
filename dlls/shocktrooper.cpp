@@ -24,6 +24,7 @@
 #include	"soundent.h"
 #include	"effects.h"
 #include	"customentity.h"
+#include	"scripted.h"
 #include	"decals.h"
 #include	"gamerules.h"
 #include	"hgrunt.h"
@@ -305,7 +306,22 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t *pEvent)
 
 	case STROOPER_AE_GREN_TOSS:
 	{
-		CSpore::CreateSpore(pev->origin + Vector(0, 0, 98), pev->angles, m_vecTossVelocity, this, CSpore::GRENADE, true, false);
+		const Vector vecOrigin = pev->origin + Vector(0, 0, 98);
+		if (m_pCine)
+		{
+			Vector vecToss = g_vecZero;
+			if (m_hTargetEnt != 0 && m_pCine->PreciseAttack())
+			{
+				vecToss = VecCheckToss( pev, GetGunPosition(), m_hTargetEnt->pev->origin, 0.5 );
+			}
+			if (vecToss == g_vecZero)
+			{
+				vecToss = (gpGlobals->v_forward*0.5+gpGlobals->v_up*0.5).Normalize()*gSkillData.strooperGrenadeSpeed;
+			}
+			CSpore::CreateSpore(vecOrigin, pev->angles, vecToss, this, CSpore::GRENADE, true, false);
+		}
+		else
+			CSpore::CreateSpore(vecOrigin, pev->angles, m_vecTossVelocity, this, CSpore::GRENADE, true, false);
 
 		m_fThrowGrenade = FALSE;
 		m_flNextGrenadeCheck = gpGlobals->time + 6;// wait six seconds before even looking again to see if a grenade can be thrown.
@@ -319,7 +335,7 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t *pEvent)
 
 	case STROOPER_AE_BURST1:
 	{
-		if (m_hEnemy)
+		if (m_hEnemy != 0 || m_pCine != 0)
 		{
 			Vector	vecGunPos;
 			Vector	vecGunAngles;
@@ -349,9 +365,9 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t *pEvent)
 			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/shock_fire.wav", 1, ATTN_NORM);
 			CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 384, 0.3);
 		}
-		else
+		else if (m_pSchedule)
 		{
-			ALERT(at_aiconsole, "Shooting with no enemy! Schedule: %s\n", m_pSchedule->pName);
+			ALERT(at_aiconsole, "%s: shooting with no enemy! Schedule: %s\n", STRING(pev->classname), m_pSchedule->pName);
 		}
 	}
 	break;
@@ -359,7 +375,7 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t *pEvent)
 	case STROOPER_AE_KICK:
 	{
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "zombie/claw_miss2.wav", 1.0, ATTN_NORM, 0, PITCH_NORM + RANDOM_LONG( -5, 5 ) );
-		KickImpl(gSkillData.strooperDmgKick, (m_bRightClaw) ? -10 : 10);
+		PerformKick(gSkillData.strooperDmgKick, (m_bRightClaw) ? -10 : 10);
 
 		m_bRightClaw = !m_bRightClaw;
 	}

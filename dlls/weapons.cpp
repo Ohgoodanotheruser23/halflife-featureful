@@ -595,16 +595,28 @@ CBaseEntity* CBasePlayerWeapon::Respawn( void )
 	return pNewWeapon;
 }
 
+static bool IsPickableByTouch(CBaseEntity* pEntity)
+{
+	return !FBitSet(pEntity->pev->spawnflags, SF_ITEM_USE_ONLY) &&
+			(FBitSet(pEntity->pev->spawnflags, SF_ITEM_TOUCH_ONLY) || !NeedUseToTake());
+}
+
+static bool IsPickableByUse(CBaseEntity* pEntity)
+{
+	return !FBitSet(pEntity->pev->spawnflags, SF_ITEM_TOUCH_ONLY) &&
+			(FBitSet(pEntity->pev->spawnflags, SF_ITEM_USE_ONLY) || NeedUseToTake());
+}
+
 void CBasePlayerWeapon::DefaultTouch( CBaseEntity *pOther )
 {
-	if (!NeedUseToTake()) {
+	if (IsPickableByTouch(this)) {
 		TouchOrUse(pOther);
 	}
 }
 
 int CBasePlayerWeapon::ObjectCaps()
 {
-	if (NeedUseToTake() && !(pev->effects & EF_NODRAW)) {
+	if (IsPickableByUse(this) && !(pev->effects & EF_NODRAW)) {
 		return CBaseAnimating::ObjectCaps() | FCAP_IMPULSE_USE;
 	} else {
 		return CBaseAnimating::ObjectCaps();
@@ -613,8 +625,8 @@ int CBasePlayerWeapon::ObjectCaps()
 
 void CBasePlayerWeapon::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	if (NeedUseToTake() && !(pev->effects & EF_NODRAW) ) {
-		TouchOrUse(pActivator);
+	if (IsPickableByUse(this) && !(pev->effects & EF_NODRAW) ) {
+		TouchOrUse(pCaller);
 	}
 }
 
@@ -642,100 +654,6 @@ void CBasePlayerWeapon::TouchOrUse(CBaseEntity *pOther )
 	}
 
 	SUB_UseTargets( pOther, USE_TOGGLE, 0 ); // UNDONE: when should this happen?
-}
-
-BOOL CanAttack( float attack_time, float curtime, BOOL isPredicted )
-{
-#if CLIENT_WEAPONS
-	if( !isPredicted )
-#else
-	if( 1 )
-#endif
-	{
-		return ( attack_time <= curtime ) ? TRUE : FALSE;
-	}
-	else
-	{
-		return ( (static_cast<int>(::floor(attack_time * 1000.0f)) * 1000.0f) <= 0.0f) ? TRUE : FALSE;
-	}
-}
-
-void CBasePlayerWeapon::ItemPostFrame( void )
-{
-	if( ( m_fInReload ) && ( m_pPlayer->m_flNextAttack <= UTIL_WeaponTimeBase() ) )
-	{
-		// complete the reload. 
-		int j = Q_min( iMaxClip() - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);	
-
-		// Add them to the clip
-		m_iClip += j;
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= j;
-
-		m_fInReload = FALSE;
-	}
-
-	if( !(m_pPlayer->pev->button & IN_ATTACK ) )
-	{
-		m_flLastFireTime = 0.0f;
-	}
-
-	if( ( m_pPlayer->pev->button & IN_ATTACK2 ) && CanAttack( m_flNextSecondaryAttack, gpGlobals->time, UseDecrement() ) )
-	{
-		if( pszAmmo2() && !m_pPlayer->m_rgAmmo[SecondaryAmmoIndex()] )
-		{
-			m_fFireOnEmpty = TRUE;
-		}
-
-		SecondaryAttack();
-		m_pPlayer->pev->button &= ~IN_ATTACK2;
-	}
-	else if( ( m_pPlayer->pev->button & IN_ATTACK ) && CanAttack( m_flNextPrimaryAttack, gpGlobals->time, UseDecrement() ) )
-	{
-		if( ( m_iClip == 0 && pszAmmo1() ) || ( iMaxClip() == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
-		{
-			m_fFireOnEmpty = TRUE;
-		}
-
-		PrimaryAttack();
-	}
-	else if( m_pPlayer->pev->button & IN_RELOAD && iMaxClip() != WEAPON_NOCLIP && !m_fInReload ) 
-	{
-		// reload when reload is pressed, or if no buttons are down and weapon is empty.
-		Reload();
-	}
-	else if( !( m_pPlayer->pev->button & ( IN_ATTACK | IN_ATTACK2 ) ) )
-	{
-		// no fire buttons down
-		m_fFireOnEmpty = FALSE;
-
-		if( !IsUseable() && m_flNextPrimaryAttack < ( UseDecrement() ? 0.0f : gpGlobals->time ) ) 
-		{
-			// weapon isn't useable, switch.
-			if( !( iFlags() & ITEM_FLAG_NOAUTOSWITCHEMPTY ) && g_pGameRules->GetNextBestWeapon( m_pPlayer, this ) )
-			{
-				m_flNextPrimaryAttack = ( UseDecrement() ? 0.0f : gpGlobals->time ) + 0.3f;
-				return;
-			}
-		}
-		else
-		{
-			// weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
-			if( m_iClip == 0 && !(iFlags() & ITEM_FLAG_NOAUTORELOAD ) && m_flNextPrimaryAttack < ( UseDecrement() ? 0.0f : gpGlobals->time ) )
-			{
-				Reload();
-				return;
-			}
-		}
-
-		WeaponIdle();
-		return;
-	}
-
-	// catch all
-	if( ShouldWeaponIdle() )
-	{
-		WeaponIdle();
-	}
 }
 
 void CBasePlayerWeapon::DestroyItem( void )
@@ -822,6 +740,8 @@ int CBasePlayerWeapon::AddToPlayer( CBasePlayer *pPlayer )
 		m_iPrimaryAmmoType = pPlayer->GetAmmoIndex( pszAmmo1() );
 		m_iSecondaryAmmoType = pPlayer->GetAmmoIndex( pszAmmo2() );
 	}
+	// Remove weapon's global name to avoid problems with carrying the weapon to other maps
+	pev->globalname = iStringNull;
 
 	return AddWeapon();
 }
@@ -998,36 +918,6 @@ BOOL CBasePlayerWeapon::IsUseable( void )
 	return FALSE;
 }
 
-BOOL CBasePlayerWeapon::CanDeploy( void )
-{
-	BOOL bHasAmmo = 0;
-
-	if( !pszAmmo1() )
-	{
-		// this weapon doesn't use ammo, can always deploy.
-		return TRUE;
-	}
-
-	if( pszAmmo1() )
-	{
-		bHasAmmo |= ( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] != 0 );
-	}
-	if( pszAmmo2() )
-	{
-		bHasAmmo |= ( m_pPlayer->m_rgAmmo[m_iSecondaryAmmoType] != 0 );
-	}
-	if( m_iClip > 0 )
-	{
-		bHasAmmo |= 1;
-	}
-	if( !bHasAmmo )
-	{
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
 BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int body )
 {
 	if( !CanDeploy() )
@@ -1045,27 +935,6 @@ BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWe
 	return TRUE;
 }
 
-BOOL CBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay, int body )
-{
-	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 )
-		return FALSE;
-
-	int j = Q_min( iClipSize - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
-
-	if( j == 0 )
-		return FALSE;
-
-	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + fDelay;
-
-	//!!UNDONE -- reload sound goes here !!!
-	SendWeaponAnim( iAnim );
-
-	m_fInReload = TRUE;
-
-	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.0f;
-	return TRUE;
-}
-
 BOOL CBasePlayerWeapon::PlayEmptySound( void )
 {
 	if( m_iPlayEmptySound )
@@ -1075,11 +944,6 @@ BOOL CBasePlayerWeapon::PlayEmptySound( void )
 		return 0;
 	}
 	return 0;
-}
-
-void CBasePlayerWeapon::ResetEmptySound( void )
-{
-	m_iPlayEmptySound = 1;
 }
 
 //=========================================================
@@ -1217,7 +1081,7 @@ TYPEDESCRIPTION	CWeaponBox::m_SaveData[] =
 	DEFINE_FIELD( CWeaponBox, m_cAmmoTypes, FIELD_INTEGER ),
 };
 
-IMPLEMENT_SAVERESTORE( CWeaponBox, CBaseEntity )
+IMPLEMENT_SAVERESTORE( CWeaponBox, CBaseDelay )
 
 //=========================================================
 //
@@ -1231,16 +1095,20 @@ void CWeaponBox::Precache( void )
 //=========================================================
 void CWeaponBox::KeyValue( KeyValueData *pkvd )
 {
-	if( m_cAmmoTypes < MAX_AMMO_SLOTS )
+	CBaseDelay::KeyValue(pkvd);
+	if (!pkvd->fHandled)
 	{
-		PackAmmo( ALLOC_STRING( pkvd->szKeyName ), atoi( pkvd->szValue ) );
-		m_cAmmoTypes++;// count this new ammo type.
+		if( m_cAmmoTypes < MAX_AMMO_SLOTS )
+		{
+			PackAmmo( ALLOC_STRING( pkvd->szKeyName ), atoi( pkvd->szValue ) );
+			m_cAmmoTypes++;// count this new ammo type.
 
-		pkvd->fHandled = TRUE;
-	}
-	else
-	{
-		ALERT( at_console, "WeaponBox too full! only %d ammotypes allowed\n", MAX_AMMO_SLOTS );
+			pkvd->fHandled = TRUE;
+		}
+		else
+		{
+			ALERT( at_console, "WeaponBox too full! only %d ammotypes allowed\n", MAX_AMMO_SLOTS );
+		}
 	}
 }
 
@@ -1294,14 +1162,14 @@ void CWeaponBox::Kill( void )
 
 void CWeaponBox::Touch( CBaseEntity *pOther )
 {
-	if (!NeedUseToTake()) {
+	if (IsPickableByTouch(this)) {
 		TouchOrUse(pOther);
 	}
 }
 
 int CWeaponBox::ObjectCaps()
 {
-	if (NeedUseToTake() && !(pev->effects & EF_NODRAW)) {
+	if (IsPickableByUse(this) && !(pev->effects & EF_NODRAW)) {
 		return CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE;
 	} else {
 		return CBaseEntity::ObjectCaps();
@@ -1310,8 +1178,8 @@ int CWeaponBox::ObjectCaps()
 
 void CWeaponBox::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	if (NeedUseToTake() && !(pev->effects & EF_NODRAW) ) {
-		TouchOrUse(pActivator);
+	if (IsPickableByUse(this) && !(pev->effects & EF_NODRAW) ) {
+		TouchOrUse(pCaller);
 	}
 }
 
@@ -1380,10 +1248,7 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 	if (shouldRemove) {
 		EMIT_SOUND( pOther->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 		SetTouch( NULL );
-		if (!FStringNull(pev->target))
-		{
-			FireTargets(STRING(pev->target), pOther, this, USE_TOGGLE, 0.0f);
-		}
+		SUB_UseTargets( pOther, USE_TOGGLE, 0 );
 		UTIL_Remove(this);
 	}
 }

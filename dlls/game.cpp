@@ -47,6 +47,7 @@ cvar_t explosionfix	= { "explosionfix", "1", FCVAR_SERVER };
 cvar_t monsteryawspeedfix	= { "monsteryawspeedfix", "1", FCVAR_SERVER };
 cvar_t animeventfix = {"animeventfix", "0", FCVAR_SERVER };
 cvar_t corpsephysics = { "corpsephysics", "0", FCVAR_SERVER };
+cvar_t pushablemode = { "pushablemode", "0", FCVAR_SERVER };
 cvar_t forcerespawn	= { "mp_forcerespawn","1", FCVAR_SERVER };
 cvar_t respawndelay	= { "mp_respawndelay","0", FCVAR_SERVER };
 cvar_t flashlight	= { "mp_flashlight","0", FCVAR_SERVER };
@@ -107,6 +108,7 @@ cvar_t keepinventory	= { "mp_keepinventory","0", FCVAR_SERVER }; // keep invento
 
 // Engine Cvars
 cvar_t *g_psv_gravity = NULL;
+cvar_t *g_psv_maxspeed = NULL;
 cvar_t *g_psv_aim = NULL;
 cvar_t *g_footsteps = NULL;
 cvar_t *g_enable_cheats = NULL;
@@ -436,7 +438,7 @@ DECLARE_SKILL_VALUE(sk_plr_762_bullet, "0")
 
 #if FEATURE_MEDKIT
 // Medkit
-DECLARE_SKILL_VALUE(sk_plr_medkitshot, "0")
+DECLARE_SKILL_VALUE(sk_plr_medkitshot, "10")
 
 DECLARE_SKILL_VALUE3(sk_plr_medkittime, "3", "5", "0")
 #endif
@@ -503,6 +505,11 @@ DECLARE_SKILL_VALUE(sk_flashlight_charge_time, "20")
 
 // END Cvars for Skill Level settings
 
+void Cmd_ReportAIState()
+{
+	ReportAIStateByClassname(CMD_ARGV( 1 ));
+}
+
 // Register your console variables here
 // This gets called one time when the game is initialied
 void GameDLLInit( void )
@@ -512,12 +519,14 @@ void GameDLLInit( void )
 		g_fIsXash3D = TRUE;
 
 	g_psv_gravity = CVAR_GET_POINTER( "sv_gravity" );
+	g_psv_maxspeed = CVAR_GET_POINTER( "sv_maxspeed" );
 	g_psv_aim = CVAR_GET_POINTER( "sv_aim" );
 	g_footsteps = CVAR_GET_POINTER( "mp_footsteps" );
 
 	g_psv_developer = CVAR_GET_POINTER( "developer" );
 
 	g_enable_cheats = CVAR_GET_POINTER( "sv_cheats" );
+
 
 	CVAR_REGISTER( &displaysoundlist );
 	CVAR_REGISTER( &allow_spectators );
@@ -571,6 +580,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER( &monsteryawspeedfix );
 	CVAR_REGISTER( &animeventfix );
 	CVAR_REGISTER( &corpsephysics );
+	CVAR_REGISTER( &pushablemode );
 	CVAR_REGISTER( &forcerespawn );
 	CVAR_REGISTER( &respawndelay );
 	CVAR_REGISTER( &flashlight );
@@ -980,5 +990,8 @@ void GameDLLInit( void )
 #if FEATURE_OPFOR_SKILL
 	SERVER_COMMAND( "exec skillopfor.cfg\n" );
 #endif
+
+	// Register server commands
+	g_engfuncs.pfnAddServerCommand("report_ai_state", Cmd_ReportAIState);
 }
 

@@ -650,8 +650,26 @@ void CBigMomma::LaunchMortar( void )
 	Vector startPos = pev->origin;
 	startPos.z += 180.0f;
 
+	Vector vecLaunch = g_vecZero;
+
+	if (m_pCine) // is a scripted_action making me shoot?
+	{
+		if (m_hTargetEnt != 0) // don't check m_fTurnType- bigmomma can fire in any direction.
+		{
+			vecLaunch = VecCheckSplatToss( pev, startPos, m_hTargetEnt->pev->origin, RANDOM_FLOAT( 150, 500 ) );
+		}
+		if (vecLaunch == g_vecZero)
+		{
+			vecLaunch = pev->movedir;
+		}
+	}
+	else
+	{
+		vecLaunch = pev->movedir;
+	}
+
 	EMIT_SOUND_DYN( edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY( pSackSounds ), 1.0f, ATTN_NORM, 0, 100 + RANDOM_LONG( -5, 5 ) );
-	CBMortar *pBomb = CBMortar::Shoot( edict(), startPos, pev->movedir );
+	CBMortar *pBomb = CBMortar::Shoot( edict(), startPos, vecLaunch );
 	pBomb->pev->gravity = 1.0f;
 	MortarSpray( startPos, Vector( 0.0f, 0.0f, 1.0f ), gSpitSprite, 24 );
 }
@@ -1087,9 +1105,6 @@ Vector VecCheckSplatToss( entvars_t *pev, const Vector &vecSpot1, Vector vecSpot
 	}
 
 	// Don't worry about actually hitting the target, this won't hurt us!
-
-	// TODO: Need another way to calculate height because current calculation is completely wrong
-	// and there posible crash.
 
 	// How high should the grenade travel (subtract 15 so the grenade doesn't hit the ceiling)?
 	const float height = vecApex.z - vecSpot1.z - 15.0f;

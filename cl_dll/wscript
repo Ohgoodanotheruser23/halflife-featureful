@@ -28,6 +28,7 @@ def build(bld):
 		'hl/*.cpp'
 	])
 	source += bld.path.parent.ant_glob([
+		'dlls/weapons_shared.cpp',
 		'dlls/crossbow.cpp',
 		'dlls/crowbar.cpp',
 		'dlls/egon.cpp',
@@ -63,6 +64,7 @@ def build(bld):
 		'ammohistory.cpp',
 		'battery.cpp',
 		'cdll_int.cpp',
+		'cl_msg_fx.cpp',
 		'com_weapons.cpp',
 		'death.cpp',
 		'demo.cpp',
@@ -86,7 +88,6 @@ def build(bld):
 		'menu.cpp',
 		'message.cpp',
 		'nightvision.cpp',
-		'overview.cpp',
 		'parsemsg.cpp',
 		'saytext.cpp',
 		'scoreboard.cpp',

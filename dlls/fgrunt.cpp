@@ -20,6 +20,7 @@
 #include	"weapons.h"
 #include	"soundent.h"
 #include	"customentity.h"
+#include	"scripted.h"
 #include	"decals.h"
 #include	"hgrunt.h"
 #include	"mod_features.h"
@@ -216,7 +217,7 @@ public:
 	CUSTOM_SCHEDULES
 
 protected:
-	void KickImpl(float kickDamage);
+	void PerformKick(float kickDamage);
 	void PrecacheHelper();
 	void SpawnHelper(const char* defaultModel, float defaultHealth);
 	const char* SentenceByNumber(int sentence) {
@@ -357,7 +358,7 @@ void CHFGrunt :: KeyValue( KeyValueData *pkvd )
 BOOL CHFGrunt :: FOkToSpeak( void )
 {
 // if someone else is talking, don't speak
-	if (gpGlobals->time <= CTalkMonster::g_talkWaitTime)
+	if ( CTalkMonster::SomeoneIsTalking() )
 		return FALSE;
 
 	// if in the grip of a barnacle, don't speak
@@ -473,6 +474,7 @@ Schedule_t	slFGruntCombatFail[] =
 Task_t	tlFGruntVictoryDance[] =
 {
 	{ TASK_STOP_MOVING,						(float)0					},
+	{ TASK_SET_ACTIVITY, (float)ACT_IDLE },
 	{ TASK_FACE_ENEMY,						(float)0					},
 	{ TASK_WAIT,							1.5f					},
 	{ TASK_GET_PATH_TO_ENEMY_CORPSE,		64.0f					},
@@ -1156,9 +1158,6 @@ void CHFGrunt :: RunTask( Task_t *pTask )
 //=========================================================
 void CHFGrunt :: GibMonster ( void )
 {
-	Vector	vecGunPos;
-	Vector	vecGunAngles;
-
 	if ( GetBodygroup( FG_GUN_GROUP ) != FG_GUN_NONE )
 	{// throw a gun if the grunt has one
 		DropMyItems(TRUE);
@@ -1581,7 +1580,7 @@ CBaseEntity *CHFGrunt :: Kick( void )
 	return NULL;
 }
 
-void CHFGrunt::KickImpl(float kickDamage)
+void CHFGrunt::PerformKick(float kickDamage)
 {
 	CBaseEntity *pHurt = Kick();
 
@@ -1701,9 +1700,6 @@ void CHFGrunt :: M249 ( void )
 //=========================================================
 void CHFGrunt :: HandleAnimEvent( MonsterEvent_t *pEvent )
 {
-	Vector	vecShootDir;
-	Vector	vecShootOrigin;
-
 	switch( pEvent->event )
 	{
 		case HGRUNT_ALLY_AE_DROP_GUN:
@@ -1729,7 +1725,22 @@ void CHFGrunt :: HandleAnimEvent( MonsterEvent_t *pEvent )
 		{
 			UTIL_MakeVectors( pev->angles );
 			// CGrenade::ShootTimed( pev, pev->origin + gpGlobals->v_forward * 34 + Vector (0, 0, 32), m_vecTossVelocity, 3.5 );
-			CGrenade::ShootTimed( pev, GetGunPosition(), m_vecTossVelocity, 3.5 );
+			//LRC - a bit of a hack. Ideally the grunts would work out in advance whether it's ok to throw.
+			if (m_pCine)
+			{
+				Vector vecToss = g_vecZero;
+				if (m_hTargetEnt != 0 && m_pCine->PreciseAttack())
+				{
+					vecToss = VecCheckToss( pev, GetGunPosition(), m_hTargetEnt->pev->origin, 0.5 );
+				}
+				if (vecToss == g_vecZero)
+				{
+					vecToss = (gpGlobals->v_forward*0.5+gpGlobals->v_up*0.5).Normalize()*gSkillData.fgruntGrenadeSpeed;
+				}
+				CGrenade::ShootTimed( pev, GetGunPosition(), vecToss, 3.5 );
+			}
+			else
+				CGrenade::ShootTimed( pev, GetGunPosition(), m_vecTossVelocity, 3.5 );
 
 			m_fThrowGrenade = FALSE;
 			m_flNextGrenadeCheck = gpGlobals->time + 6;// wait six seconds before even looking again to see if a grenade can be thrown.
@@ -1740,7 +1751,22 @@ void CHFGrunt :: HandleAnimEvent( MonsterEvent_t *pEvent )
 		case HGRUNT_ALLY_AE_GREN_LAUNCH:
 		{
 			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/glauncher.wav", 0.8, ATTN_NORM);
-			CGrenade::ShootContact( pev, GetGunPosition(), m_vecTossVelocity );
+			//LRC: firing due to a script?
+			if (m_pCine)
+			{
+				Vector vecToss;
+				if (m_hTargetEnt != 0 && m_pCine->PreciseAttack())
+					vecToss = VecCheckThrow( pev, GetGunPosition(), m_hTargetEnt->pev->origin, gSkillData.fgruntGrenadeSpeed, 0.5 );
+				else
+				{
+					// just shoot diagonally up+forwards
+					UTIL_MakeVectors(pev->angles);
+					vecToss = (gpGlobals->v_forward*0.5 + gpGlobals->v_up*0.5).Normalize() * gSkillData.fgruntGrenadeSpeed;
+				}
+				CGrenade::ShootContact( pev, GetGunPosition(), vecToss );
+			}
+			else
+				CGrenade::ShootContact( pev, GetGunPosition(), m_vecTossVelocity );
 			m_fThrowGrenade = FALSE;
 			if (g_iSkillLevel == SKILL_EASY)
 				m_flNextGrenadeCheck = gpGlobals->time + RANDOM_FLOAT( 2, 5 );// wait a random amount of time before shooting again
@@ -1796,7 +1822,7 @@ void CHFGrunt :: HandleAnimEvent( MonsterEvent_t *pEvent )
 
 		case HGRUNT_ALLY_AE_KICK:
 		{
-			KickImpl(gSkillData.fgruntDmgKick);
+			PerformKick(gSkillData.fgruntDmgKick);
 		}
 		break;
 
@@ -1950,6 +1976,7 @@ void CHFGrunt :: Precache()
 	}
 
 	CTalkMonster::Precache();
+	RegisterTalkMonster();
 }
 
 void CHFGrunt::PrecacheHelper()
@@ -1994,6 +2021,9 @@ void CHFGrunt :: TalkInit()
 
 	m_szGrp[TLK_SHOT] = "FG_SHOT";
 	m_szGrp[TLK_MAD] = "FG_MAD";
+
+	m_szGrp[TLK_KILL] = "FG_KILL";
+	m_szGrp[TLK_ATTACK] = "FG_ATTACK";
 }
 
 //=========================================================
@@ -2012,7 +2042,7 @@ void CHFGrunt::AlertSound()
 {
 	if (m_hEnemy !=0 && FOkToSpeak())
 	{
-		SENTENCEG_PlayRndSz( ENT(pev), "FG_ATTACK", FGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+		PlaySentence(m_szGrp[TLK_ATTACK], RandomSentenceDuraion(), VOL_NORM, ATTN_NORM);
 	}
 }
 
@@ -2116,7 +2146,6 @@ Schedule_t* CHFGrunt :: GetScheduleOfType ( int Type )
 {
 	switch( Type )
 	{
-	// Hook these to make a looping schedule
 	case SCHED_TAKE_COVER_FROM_ENEMY:
 		{
 			return &slFGruntTakeCover[ 0 ];
@@ -2427,7 +2456,7 @@ Schedule_t *CHFGrunt :: GetSchedule ( void )
 
 	if ( HasConditions( bits_COND_ENEMY_DEAD ) && FOkToSpeak() )
 	{
-		PlaySentence( "FG_KILL", 4, VOL_NORM, ATTN_NORM );
+		PlaySentence( m_szGrp[TLK_KILL], 4, VOL_NORM, ATTN_NORM );
 	}
 
 	switch( m_MonsterState )
@@ -2935,6 +2964,7 @@ void CTorch::Precache()
 	TalkInit();
 	m_voicePitch = 95;
 	CTalkMonster::Precache();
+	RegisterTalkMonster();
 }
 
 void CTorch::HandleAnimEvent(MonsterEvent_t *pEvent)
@@ -3003,7 +3033,7 @@ void CTorch::HandleAnimEvent(MonsterEvent_t *pEvent)
 		break;
 	case HGRUNT_ALLY_AE_KICK:
 	{
-		KickImpl(gSkillData.torchDmgKick);
+		PerformKick(gSkillData.torchDmgKick);
 	}
 	break;
 	default:
@@ -3649,6 +3679,8 @@ void CMedic::Precache()
 	else
 		m_voicePitch = 105;
 	CTalkMonster::Precache();
+	RegisterTalkMonster();
+	RegisterMedic();
 }
 
 void CMedic::HandleAnimEvent(MonsterEvent_t *pEvent)
@@ -3703,7 +3735,7 @@ void CMedic::HandleAnimEvent(MonsterEvent_t *pEvent)
 		break;
 	case HGRUNT_ALLY_AE_KICK:
 	{
-		KickImpl(gSkillData.medicDmgKick);
+		PerformKick(gSkillData.medicDmgKick);
 	}
 	break;
 	default:

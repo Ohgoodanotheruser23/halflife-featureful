@@ -576,19 +576,55 @@ void CBaseMonster::RunTask( Task_t *pTask )
 		break;
 	case TASK_WAIT_FOR_SCRIPT:
 		{
-			if( m_pCine->m_iDelay <= 0 && gpGlobals->time >= m_pCine->m_startTime )
+			if (m_pCine)
 			{
-				TaskComplete();
-				m_pCine->StartSequence( (CBaseMonster *)this, m_pCine->m_iszPlay, TRUE );
-				if( m_fSequenceFinished )
-					ClearSchedule();
-				pev->framerate = 1.0;
-				//ALERT( at_aiconsole, "Script %s has begun for %s\n", STRING( m_pCine->m_iszPlay ), STRING( pev->classname ) );
-			}
-			else if ( FBitSet(m_pCine->pev->spawnflags, SF_SCRIPT_FORCE_IDLE_LOOPING) && !FStringNull( m_pCine->m_iszIdle) )
-			{
-				if ( m_fSequenceFinished )
-					m_pCine->StartSequence( this, m_pCine->m_iszIdle, FALSE );
+				if( m_pCine->m_iDelay <= 0 && gpGlobals->time >= m_pCine->m_startTime )
+				{
+					TaskComplete();
+					if (m_pCine->IsAction())
+					{
+						switch( m_pCine->m_fAction )
+						{
+						case SCRIPT_ACT_RANGE_ATTACK:
+							m_IdealActivity = ACT_RANGE_ATTACK1;
+							break;
+						case SCRIPT_ACT_RANGE_ATTACK2:
+							m_IdealActivity = ACT_RANGE_ATTACK2;
+							break;
+						case SCRIPT_ACT_MELEE_ATTACK:
+							m_IdealActivity = ACT_MELEE_ATTACK1;
+							break;
+						case SCRIPT_ACT_MELEE_ATTACK2:
+							m_IdealActivity = ACT_MELEE_ATTACK2;
+							break;
+						case SCRIPT_ACT_SPECIAL_ATTACK:
+							m_IdealActivity = ACT_SPECIAL_ATTACK1;
+							break;
+						case SCRIPT_ACT_SPECIAL_ATTACK2:
+							m_IdealActivity = ACT_SPECIAL_ATTACK2;
+							break;
+						case SCRIPT_ACT_RELOAD:
+							m_IdealActivity = ACT_RELOAD;
+							break;
+						case SCRIPT_ACT_JUMP:
+							m_IdealActivity = ACT_HOP;
+							break;
+						}
+					}
+					else
+					{
+						m_pCine->StartSequence( (CBaseMonster *)this, m_pCine->m_iszPlay, TRUE );
+						if( m_fSequenceFinished )
+							ClearSchedule();
+					}
+					pev->framerate = 1.0;
+					//ALERT( at_aiconsole, "Script %s has begun for %s\n", STRING( m_pCine->m_iszPlay ), STRING( pev->classname ) );
+				}
+				else if ( FBitSet(m_pCine->pev->spawnflags, SF_SCRIPT_FORCE_IDLE_LOOPING) && !FStringNull( m_pCine->m_iszIdle) && !m_pCine->IsAction() )
+				{
+					if ( m_fSequenceFinished )
+						m_pCine->StartSequence( this, m_pCine->m_iszIdle, FALSE );
+				}
 			}
 			break;
 		}
@@ -596,23 +632,28 @@ void CBaseMonster::RunTask( Task_t *pTask )
 		{
 			if( m_fSequenceFinished )
 			{
-				if( m_pCine->m_iRepeatsLeft > 0 )
+				if (m_pCine)
 				{
-					m_pCine->m_iRepeatsLeft--;
-					pev->frame = m_pCine->m_fRepeatFrame;
-					ResetSequenceInfo();
+					if( m_pCine->m_iRepeatsLeft > 0 )
+					{
+						m_pCine->m_iRepeatsLeft--;
+						pev->frame = m_pCine->m_fRepeatFrame;
+						ResetSequenceInfo();
+					}
+					else
+					{
+						m_pCine->SequenceDone( this );
+					}
 				}
 				else
-				{
-					m_pCine->SequenceDone( this );
-				}
+					TaskComplete();
 			}
 			break;
 		}
-	case TASK_RUN_TO_TARGET_RADIUS:
-	case TASK_WALK_TO_TARGET_RADIUS:
+	case TASK_RUN_TO_SCRIPT_RADIUS:
+	case TASK_WALK_TO_SCRIPT_RADIUS:
 		{
-			if( m_hTargetEnt == 0 )
+			if( m_pGoalEnt == 0 )
 				TaskFail("no target ent");
 			else
 			{
@@ -622,7 +663,7 @@ void CBaseMonster::RunTask( Task_t *pTask )
 					checkDistance = m_pCine->m_flMoveToRadius;
 				}
 
-				float distance = ( m_hTargetEnt->pev->origin - pev->origin ).Length2D();
+				float distance = ( m_pGoalEnt->pev->origin - pev->origin ).Length2D();
 
 				if( distance <= checkDistance )
 				{
@@ -634,7 +675,7 @@ void CBaseMonster::RunTask( Task_t *pTask )
 					TaskFail("completed movement before reaching the radius");
 					RouteClear();
 				}
-				else if ( pTask->iTask == TASK_RUN_TO_TARGET_RADIUS )
+				else if ( pTask->iTask == TASK_RUN_TO_SCRIPT_RADIUS )
 					m_movementActivity = ACT_RUN;
 				else
 					m_movementActivity = ACT_WALK;
@@ -1069,18 +1110,18 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			}
 			break;
 		}
-	case TASK_RUN_TO_TARGET:
-	case TASK_WALK_TO_TARGET:
+	case TASK_RUN_TO_SCRIPT:
+	case TASK_WALK_TO_SCRIPT:
 		{
 			Activity newActivity;
 
-			if ( m_hTargetEnt == 0 )
-				TaskFail("no target ent");
-			else if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < 1 )
+			if ( m_pGoalEnt == 0 )
+				TaskFail("no move target ent");
+			else if( ( m_pGoalEnt->pev->origin - pev->origin ).Length() < 1 )
 				TaskComplete();
 			else
 			{
-				if( pTask->iTask == TASK_WALK_TO_TARGET )
+				if( pTask->iTask == TASK_WALK_TO_SCRIPT )
 					newActivity = ACT_WALK;
 				else
 					newActivity = ACT_RUN;
@@ -1090,17 +1131,21 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					TaskComplete();
 				else 
 				{
-					if (m_hTargetEnt == 0)
+					if (m_pGoalEnt != 0)
 					{
-						TaskFail("no target ent");
-						RouteClear();
-					}
-					else if( !MoveToTarget( newActivity, 2 ) )
-					{
-						if (m_pCine) {
-							m_pCine->OnMoveFail();
+						const Vector vecDest = m_pGoalEnt->pev->origin;
+						if( !MoveToLocation( newActivity, 2, vecDest ) )
+						{
+							if (m_pCine) {
+								m_pCine->OnMoveFail();
+							}
+							TaskFail("failed to reach script");
+							RouteClear();
 						}
-						TaskFail("failed to reach target ent");
+					}
+					else
+					{
+						TaskFail("no move target ent");
 						RouteClear();
 					}
 				}
@@ -1108,8 +1153,8 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			TaskComplete();
 			break;
 		}
-	case TASK_RUN_TO_TARGET_RADIUS:
-	case TASK_WALK_TO_TARGET_RADIUS:
+	case TASK_RUN_TO_SCRIPT_RADIUS:
+	case TASK_WALK_TO_SCRIPT_RADIUS:
 		{
 			float radius = pTask->flData;
 			if (m_pCine != 0 && m_pCine->m_flMoveToRadius >= 1.0f)
@@ -1121,13 +1166,13 @@ void CBaseMonster::StartTask( Task_t *pTask )
 
 			Activity newActivity;
 
-			if ( m_hTargetEnt == 0 )
-				TaskFail("no target ent");
-			else if( ( m_hTargetEnt->pev->origin - pev->origin ).Length() < radius )
+			if ( m_pGoalEnt == 0 )
+				TaskFail("no move target ent");
+			else if( ( m_pGoalEnt->pev->origin - pev->origin ).Length2D() <= radius )
 				TaskComplete();
 			else
 			{
-				if( pTask->iTask == TASK_RUN_TO_TARGET_RADIUS )
+				if( pTask->iTask == TASK_RUN_TO_SCRIPT_RADIUS )
 					newActivity = ACT_WALK;
 				else
 					newActivity = ACT_RUN;
@@ -1137,9 +1182,9 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					TaskComplete();
 				else
 				{
-					if( m_hTargetEnt == 0 || !MoveToTarget( newActivity, 2, true ) )
+					if( m_pGoalEnt == 0 || !MoveToLocationClosest( newActivity, 2, m_pGoalEnt->pev->origin ) )
 					{
-						TaskFail("failed to reach target ent");
+						TaskFail("failed to reach move target ent");
 						RouteClear();
 					}
 				}
@@ -1508,7 +1553,7 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_WAIT_FOR_SCRIPT:
 		{
-			if( m_pCine->m_iszIdle )
+			if( m_pCine && m_pCine->m_iszIdle && !m_pCine->IsAction() )
 			{
 				m_pCine->StartSequence( (CBaseMonster *)this, m_pCine->m_iszIdle, FALSE );
 				if( FStrEq( STRING( m_pCine->m_iszIdle ), STRING( m_pCine->m_iszPlay ) ) )
@@ -1529,7 +1574,8 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_ENABLE_SCRIPT:
 		{
-			m_pCine->DelayStart( 0 );
+			if (m_pCine)
+				m_pCine->DelayStart( 0 );
 			TaskComplete();
 			break;
 		}
@@ -1542,9 +1588,9 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					if (m_hTargetEnt != 0)
 					{
 						UTIL_SetOrigin( pev, m_hTargetEnt->pev->origin );
-						if (m_pCine->m_fTurnType == 0)
+						if (m_pCine->m_fTurnType == SCRIPT_TURN_MATCH_ANGLE)
 							pev->angles.y = m_hTargetEnt->pev->angles.y;
-						else if (m_pCine->m_fTurnType == 1)
+						else if (m_pCine->m_fTurnType == SCRIPT_TURN_FACE)
 							pev->angles.y = UTIL_VecToYaw(m_hTargetEnt->pev->origin - pev->origin);
 						pev->ideal_yaw = pev->angles.y;
 
@@ -1554,9 +1600,9 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					}
 				}
 			}
-			if( m_hTargetEnt != 0 )
+			if( m_pGoalEnt != 0 )
 			{
-				pev->origin = m_hTargetEnt->pev->origin;	// Plant on target
+				pev->origin = m_pGoalEnt->pev->origin;
 			}
 
 			TaskComplete();
@@ -1568,17 +1614,20 @@ void CBaseMonster::StartTask( Task_t *pTask )
 			{
 				if (m_hTargetEnt != 0)
 				{
-					ALERT(at_aiconsole, "Forcibly teleporting the monster to script after %d attempts\n", m_pCine->m_moveFailCount );
-					UTIL_SetOrigin( pev, m_hTargetEnt->pev->origin );
-					if (m_pCine->m_fTurnType == 0)
+					if (m_pCine->m_fTurnType == SCRIPT_TURN_MATCH_ANGLE)
 						pev->angles.y = m_hTargetEnt->pev->angles.y;
-					else if (m_pCine->m_fTurnType == 1)
+					else if (m_pCine->m_fTurnType == SCRIPT_TURN_FACE)
 						pev->angles.y = UTIL_VecToYaw(m_hTargetEnt->pev->origin - pev->origin);
 					pev->ideal_yaw = pev->angles.y;
 
 					pev->avelocity = Vector( 0, 0, 0 );
 					pev->velocity = Vector( 0, 0, 0 );
 					pev->effects |= EF_NOINTERP;
+				}
+				if( m_pGoalEnt != 0 )
+				{
+					ALERT(at_aiconsole, "Forcibly teleporting the monster to script after %d attempts\n", m_pCine->m_moveFailCount );
+					UTIL_SetOrigin( pev, m_pGoalEnt->pev->origin );
 				}
 				m_pCine->m_moveFailCount = 0;
 			}
@@ -1587,15 +1636,18 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		}
 	case TASK_FACE_SCRIPT:
 		{
-			if ( m_pCine != 0 && m_pCine->m_fMoveTo != 0)
+			if ( m_pCine != 0 && m_pCine->m_fMoveTo != SCRIPT_MOVE_NO)
 			{
 				switch (m_pCine->m_fTurnType)
 				{
-				case 0:
+				case SCRIPT_TURN_MATCH_ANGLE:
 					pev->ideal_yaw = UTIL_AngleMod( m_pCine->pev->angles.y );
 					break;
-				case 1:
-					MakeIdealYaw ( m_pCine->pev->origin );
+				case SCRIPT_TURN_FACE:
+					if (m_hTargetEnt)
+						MakeIdealYaw ( m_hTargetEnt->pev->origin );
+					else
+						MakeIdealYaw ( m_pCine->pev->origin );
 					break;
 				}
 			}
@@ -2106,7 +2158,6 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 		}
 	case MONSTERSTATE_SCRIPT:
 		{
-			ASSERT( m_pCine != NULL );
 			if( !m_pCine )
 			{
 				ALERT( at_aiconsole, "Script failed for %s\n", STRING( pev->classname ) );

@@ -32,11 +32,18 @@
 #define SF_SCRIPT_NOSCRIPTMOVEMENT	128
 #define SF_SCRIPT_CONTINUOUS		256
 #define SF_SCRIPT_APPLYNEWANGLES		512
+#define SF_SCRIPT_AUTOSEARCH		1024
 #define SF_SCRIPT_FORCE_IDLE_LOOPING 2048
 #define SF_SCRIPT_TRY_ONCE	4096
 #define SF_SCRIPT_DONT_RESET_HEAD	8192
 
 #define SCRIPT_BREAK_CONDITIONS		(bits_COND_LIGHT_DAMAGE|bits_COND_HEAVY_DAMAGE)
+
+//LRC - rearranged into flags
+#define SS_INTERRUPT_IDLE		0x0
+#define SS_INTERRUPT_ALERT		0x1
+#define SS_INTERRUPT_ANYSTATE	0x2
+#define SS_INTERRUPT_SCRIPTS	0x4
 
 enum SCRIPT_MOVE_TYPE
 {
@@ -48,11 +55,24 @@ enum SCRIPT_MOVE_TYPE
 	SCRIPT_MOVE_TELEPORT = 7,
 };
 
-enum SS_INTERRUPT
+enum SCRIPT_TURN_TYPE
 {
-	SS_INTERRUPT_IDLE = 0,
-	SS_INTERRUPT_BY_NAME,
-	SS_INTERRUPT_AI
+	SCRIPT_TURN_MATCH_ANGLE = 0,
+	SCRIPT_TURN_FACE,
+	SCRIPT_TURN_NO
+};
+
+enum SCRIPT_ACTION
+{
+	SCRIPT_ACT_RANGE_ATTACK = 0,
+	SCRIPT_ACT_RANGE_ATTACK2,
+	SCRIPT_ACT_MELEE_ATTACK,
+	SCRIPT_ACT_MELEE_ATTACK2,
+	SCRIPT_ACT_SPECIAL_ATTACK,
+	SCRIPT_ACT_SPECIAL_ATTACK2,
+	SCRIPT_ACT_RELOAD,
+	SCRIPT_ACT_JUMP,
+	SCRIPT_ACT_NO_ACTION,
 };
 
 #define SCRIPT_REQUIRED_FOLLOWER_STATE_UNSPECIFIED 0
@@ -79,6 +99,13 @@ enum
 	SCRIPT_SEARCH_POLICY_CLASSNAME_ONLY = 2,
 };
 
+enum
+{
+	SCRIPT_TAKE_DAMAGE_POLICY_DEFAULT = 0,
+	SCRIPT_TAKE_DAMAGE_POLICY_INVULNERABLE = 1,
+	SCRIPT_TAKE_DAMAGE_POLICY_NONLETHAL = 2,
+};
+
 // when a monster finishes an AI scripted sequence, we can choose
 // a schedule to place them in. These defines are the aliases to
 // resolve worldcraft input to real schedules (sjb)
@@ -95,6 +122,7 @@ public:
 	virtual void Touch( CBaseEntity *pOther );
 	virtual int	 ObjectCaps( void ) { return (CBaseMonster :: ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
 	virtual void Activate( void );
+	virtual void UpdateOnRemove();
 
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
@@ -108,9 +136,25 @@ public:
 	void DelayStart( int state );
 	CBaseMonster *FindEntity( void );
 	bool TryFindAndPossessEntity();
-	bool IsAppropriateTarget(CBaseMonster* pTarget, int interruptLevel, bool shouldCheckRadius);
+	bool MayReportInappropriateTarget(int checkFail);
+	bool IsAppropriateTarget(CBaseMonster* pTarget, int interruptFlags, bool shouldCheckRadius, int* pCheckFail = 0);
 	bool AcceptedFollowingState(CBaseMonster* pMonster);
 	virtual void PossessEntity( void );
+
+	inline bool IsAction( void ) { return FClassnameIs(pev, "scripted_action"); }; //LRC
+
+	//LRC: Should the monster do a precise attack for this scripted_action?
+	// (Do a precise attack if we'll be turning to face the target, but we haven't just walked to the target.)
+	bool PreciseAttack( void )
+	{
+	//	if (m_fTurnType != 1) { ALERT(at_console,"preciseattack fails check 1\n"); return FALSE; }
+	//	if (m_fMoveTo == 0) { ALERT(at_console,"preciseattack fails check 2\n"); return FALSE; }
+	//	if (m_fMoveTo != 5 && m_iszAttack == 0) { ALERT(at_console,"preciseattack fails check 3\n"); return FALSE; }
+	//	ALERT(at_console,"preciseattack passes!\n");
+	//	return TRUE;
+		return m_fTurnType == SCRIPT_TURN_FACE && ( m_fMoveTo == SCRIPT_MOVE_FACE || (m_fMoveTo != SCRIPT_MOVE_NO && !FStrEq(STRING(m_iszAttack), STRING(m_iszMoveTarget)) ));
+	};
+
 
 	void ReleaseEntity( CBaseMonster *pEntity );
 	void CancelScript( void );
@@ -126,10 +170,15 @@ public:
 	virtual bool	ShouldResetOnGroundFlag();
 	void OnMoveFail();
 	bool MoveFailAttemptsExceeded() const;
+	bool IsAutoSearch() const;
+	CBaseEntity* GetActivator(CBaseEntity *pMonster);
 
 	string_t m_iszIdle;		// string index for idle animation
 	string_t m_iszPlay;		// string index for scripted animation
 	string_t m_iszEntity;	// entity that is wanted for this script
+	string_t m_iszAttack;	// entity to attack
+	string_t m_iszMoveTarget; // entity to move to
+	string_t m_iszFireOnBegin; // entity to fire when the sequence _starts_.
 	int m_fMoveTo;
 	int m_iFinishSchedule;
 	float m_flRadius;		// range to search
@@ -137,6 +186,7 @@ public:
 	int m_iRepeats; //LRC - number of times to repeat the animation
 	int m_iRepeatsLeft; //LRC
 	float m_fRepeatFrame; //LRC
+	int m_iPriority;
 
 	int m_iDelay;
 	float m_startTime;
@@ -150,6 +200,7 @@ public:
 	string_t m_iszFireOnAnimStart;
 	short m_targetActivator;
 	short m_fTurnType;
+	short m_fAction;
 	float m_flMoveToRadius;
 	short m_requiredFollowerState;
 	short m_applySearchRadius;
@@ -159,6 +210,7 @@ public:
 	short m_interruptionPolicy;
 	short m_searchPolicy;
 	short m_requiredState;
+	short m_takeDamagePolicy;
 
 	bool m_cantFindReported; // no need to save
 	bool m_cantPlayReported;

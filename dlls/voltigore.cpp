@@ -25,6 +25,7 @@
 #include	"effects.h"
 #include	"decals.h"
 #include	"soundent.h"
+#include	"scripted.h"
 #include	"game.h"
 #include	"squadmonster.h"
 #include	"weapons.h"
@@ -624,7 +625,11 @@ void CVoltigore::HandleAnimEvent(MonsterEvent_t *pEvent)
 		GetAttachment(3, vecBoltOrigin, vecAngles);
 
 		Vector vecEnemyPosition;
-		if (m_hEnemy != 0)
+		if (m_pCine && m_hTargetEnt != 0 && m_pCine->PreciseAttack()) // LRC- are we being told to do this by a scripted_action?
+		{
+			vecEnemyPosition = m_hTargetEnt->pev->origin;
+		}
+		else if (m_hEnemy != 0)
 		{
 			if (HasConditions(bits_COND_ENEMY_OCCLUDED))
 			{
@@ -1255,7 +1260,7 @@ void CBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case VOLTIGORE_AE_PUNCH_SINGLE:
 	{
-		CBaseEntity *pHurt = CheckTraceHullAttack(70, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB | DMG_ALWAYSGIB);
+		CBaseEntity *pHurt = CheckTraceHullAttack(64, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB, pev->size.z);
 		if (pHurt)
 		{
 			if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
@@ -1281,7 +1286,7 @@ void CBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case VOLTIGORE_AE_PUNCH_BOTH:
 	{
-		CBaseEntity *pHurt = CheckTraceHullAttack(70, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB | DMG_ALWAYSGIB);
+		CBaseEntity *pHurt = CheckTraceHullAttack(64, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB, pev->size.z);
 		if (pHurt)
 		{
 			if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
@@ -1399,6 +1404,7 @@ Schedule_t *CBabyVoltigore::GetSchedule(void)
 Schedule_t *CBabyVoltigore::GetScheduleOfType(int Type)
 {
 	switch (Type) {
+	// TODO:
 	// For some cryptic reason baby voltigore tries to start the range attack even though its model does not have sequence with range attack activity. 
 	// This hack is for preventing baby voltigore to do this.
 	case SCHED_RANGE_ATTACK1:

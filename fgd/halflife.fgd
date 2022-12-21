@@ -97,8 +97,6 @@
 	angles(string) : "Pitch Yaw Roll (Y Z X)" : "0 0 0" : "Sets the pitch (up / down), yaw (left / right) and roll (bank) respectively. The compass in Jackhammer corresponds to Yaw. The settings are not always (or not all) used."
 ]
 
-@BaseClass size(0 0 0, 32 32 32) color(80 0 200) base(Appearflags) = Ammo []
-
 @BaseClass = Targetname
 [
 	targetname(target_source) : "Name" : : "Property used to identify entities."
@@ -111,28 +109,42 @@
 [
 	target(target_destination) : "Target" : : "When an entity is activated, it triggers the entity with the name specified by Target."
 ]
+@BaseClass = Delay
+[
+	delay(string) : "Delay before trigger" : "0" : "Usually the time in seconds before an entity should trigger its target (after being triggered itself). Under other SmartEdit names, delay might also be the time to wait before performing some other action."
+]
 @BaseClass = Scalable
 [
 	scale(string) : "Scale (1.0 = normal size)"
-]
-@BaseClass size(-16 -16 0, 16 16 32) color(0 0 200) base(Targetname, Appearflags, Angles) = Weapon []
-@BaseClass size(-16 -16 0, 16 16 32) color(0 0 200) base(Targetname, Appearflags, Angles) = Item
-[
-	model(studio) : "Custom Model"
-	spawnflags(Flags) =
-	[
-		128 : "TOUCH Only" : 0
-		256 : "USE Only" : 0
-	]
 ]
 @BaseClass = Global
 [
 	globalname(string) : "Global Entity Name"
 ]
 
-@BaseClass base(Target) = Targetx
+@BaseClass = TargetOnPickup
 [
-	delay(string) : "Delay before trigger" : "0" : "Usually the time in seconds before an entity should trigger its target (after being triggered itself). Under other SmartEdit names, delay might also be the time to wait before performing some other action."
+	target(target_destination) : "Target on pickup" : : "When the item is picked up, trigger the entity with the specified name."
+	killtarget(target_destination) : "KillTarget on pickup" : : "When the item is picked up, remove the entity specified by this property from the game."
+]
+
+@BaseClass size(-16 -16 0, 16 16 32) color(0 0 200) base(Targetname, TargetOnPickup, Delay, Appearflags, Angles, Global, Scalable) = Pickup
+[
+	spawnflags(Flags) =
+	[
+		128 : "TOUCH Only" : 0
+		256 : "USE Only" : 0
+	]
+]
+@BaseClass size(-16 -16 0, 16 16 32) color(0 0 200) base(Pickup) = Weapon []
+@BaseClass base(Pickup) = Item
+[
+	model(studio) : "Custom Model"
+]
+@BaseClass size(-16 -16 0, 16 16 32) color(80 0 200) base(Pickup) = Ammo []
+
+@BaseClass base(Target, Delay) = Targetx
+[
 	killtarget(target_destination) : "KillTarget" : : "When an entity is triggered, it will remove from the game the entity specified by this property."
 ]
 
@@ -239,7 +251,7 @@
 [
 	prisonerto(choices) : "Act as Prisoner to" : : "Ignore and get ignored by this class" =
 	[
-		0 : "Default"
+		0 : "Nobody"
 		1 : "Machine"
 		2 : "Player"
 		3 : "Human passive"
@@ -820,8 +832,17 @@
 	]
 	minRange(string) : "Minmum target range"
 	maxRange(string) : "Maximum target range"
+	bulletCount(integer) : "Bullet count" : : "Less or equal to 0 means infinite number of bullets"
+	m_iClass(choices) : "Behavior" =
+	[
+		 0: "Attack only players"
+		11: "Security guard"
+		 4: "Human Military"
+		 5: "Alien Military"
+		15 : "Race X shock"
+		16 : "Opfor ally"
+	]
 	_minlight(string) : "Minimum light level"
-	bulletCount(integer) : "Bullet count" : 0 : "Less or equal to 0 means infinite number of bullets"
 ]
 
 @BaseClass base(SoundRadius) = PlatSounds
@@ -921,8 +942,15 @@
 	m_iszEntity(string) : "Target Monster [LE]"
 	m_iszPlay(string) : "Action Animation"
 	m_iszIdle(string) : "Idle Animation"
+	m_iszFireOnBegin(target_destination): "Fire after moving"
 	m_iszFireOnAnimStart(target_destination) : "Fire on Animation start" : : "Fire at the beginning of Action Animation"
 	m_flRadius(integer) : "Search Radius" : 512
+	m_iPriority(choices) : "Priority" =
+	[
+		0 : "Normal"
+		4 : "Override other sequences"
+	]
+	m_iszMoveTarget(string) : "Move target (blank = this) [LE]"
 	m_fMoveTo(choices) : "Move to Position" : 0 =
 	[
 		0 : "No"
@@ -946,18 +974,20 @@
 		128: "No Script Movement" : 0
 		256: "Continuous animation" : 0 : "Don't reset to idle between animations"
 		512: "Apply new angles" : 0 : "If the animation includes changing of monster's angles, set them after it finished. For smoother transition and better looks."
+		1024: "Auto-search" : 0 : "Act as if scripted sequence doesn't have a targetname: start searching for the monster in the script radius."
 		2048: "Force idle looping" : 0 : "Force idle animation looping. Use it when you want to loop an animation that does not have a loop flag"
 		4096: "Try once" : 0 : "By default once triggered the script will continue to search for the target monster if it could not find one instantly. This flag prevents such behavior"
 		8192: "Don't reset head turn" : 0 : "Don't reset head turn for talk monsters"
 	]
-	m_targetActivator(choices) : "Target's Activator" =
+	m_targetActivator(choices) : "Activator for targets" : : "Activator for Target, Fire after moving, Fire on Animation start" =
 	[
-		0 : "No (Default)"
+		0 : "None (Default)"
 		1 : "This script"
 		2 : "Possessed Monster"
 		3 : "Forward my activator"
 	]
 	moveto_radius(string) : "Move to radius"
+	m_iszAttack(string) : "Turn target (blank = this) [LE]"
 	m_fTurnType(choices) : "Turn mode" =
 	[
 		0 : "Match Angle"
@@ -997,6 +1027,12 @@
 		0 : "Targetname, classname"
 		1 : "Targetname only"
 		2 : "Classname only"
+	]
+	m_takeDamagePolicy(choices) : "TakeDamage policy" =
+	[
+		0 : "As usual"
+		1 : "No (Invulnerable)"
+		2 : "Non-lethal damage"
 	]
 ]
 
@@ -1100,18 +1136,18 @@
 //
 
 
-@PointClass base(Weapon, Targetx) studio("models/w_9mmclip.mdl") = ammo_9mmclip : "Spawns a 9mm handgun ammo clip." : "http://twhl.info/wiki.php?id=1" []
-@PointClass base(Weapon, Targetx) studio("models/w_9mmarclip.mdl") = ammo_9mmAR : "Spawns ammo for the 9mm AR / handgun." : "http://twhl.info/wiki.php?id=2" []
-@PointClass base(Weapon, Targetx) studio("models/w_chainammo.mdl") = ammo_9mmbox : "Spawns a large amount (200) of 9mm ammo in a box." : "http://twhl.info/wiki.php?id=3" []
-@PointClass base(Weapon, Targetx) studio("models/w_argrenade.mdl") = ammo_ARgrenades : "Spawns 2 grenades for the 9mm AR's secondary fire." : "http://twhl.info/wiki.php?id=4" []
-@PointClass base(Weapon, Targetx) studio("models/w_shotbox.mdl") = ammo_buckshot : "Spawns ammo for the shotgun." : "http://twhl.info/wiki.php?id=7" []
-@PointClass base(Weapon, Targetx) studio("models/w_357ammobox.mdl") = ammo_357 : "Spawns ammo for the .357 Magnum." : "http://twhl.info/wiki.php?id=6" []
-@PointClass base(Weapon, Targetx) studio("models/w_rpgammo.mdl") = ammo_rpgclip : "Spawns rockets for the RPG." : "http://twhl.info/wiki.php?id=9" []
-@PointClass base(Weapon, Targetx) studio("models/w_gaussammo.mdl") = ammo_gaussclip : "Spawns ammo for the gauss and egon weapons." : "http://twhl.info/wiki.php?id=5" []
-@PointClass base(Weapon, Targetx) studio("models/w_crossbow_clip.mdl") = ammo_crossbow : "Spawns crossbow ammo." : "http://twhl.info/wiki.php?id=8" []
-@PointClass base(Weapon, Targetx) studio("models/w_saw_clip.mdl") = ammo_556 : "M249 Ammo" []
-@PointClass base(Weapon, Targetx) studio("models/w_m40a1clip.mdl") = ammo_762 : "Sniper Ammo" []
-@PointClass base(Weapon, Targetx) size(-16 -16 -16, 16 16 16) studio("models/spore_ammo.mdl") = ammo_spore : "Spore" []
+@PointClass base(Ammo) studio("models/w_9mmclip.mdl") = ammo_9mmclip : "Spawns a 9mm handgun ammo clip." : "http://twhl.info/wiki.php?id=1" []
+@PointClass base(Ammo) studio("models/w_9mmarclip.mdl") = ammo_9mmAR : "Spawns ammo for the 9mm AR / handgun." : "http://twhl.info/wiki.php?id=2" []
+@PointClass base(Ammo) studio("models/w_chainammo.mdl") = ammo_9mmbox : "Spawns a large amount (200) of 9mm ammo in a box." : "http://twhl.info/wiki.php?id=3" []
+@PointClass base(Ammo) studio("models/w_argrenade.mdl") = ammo_ARgrenades : "Spawns 2 grenades for the 9mm AR's secondary fire." : "http://twhl.info/wiki.php?id=4" []
+@PointClass base(Ammo) studio("models/w_shotbox.mdl") = ammo_buckshot : "Spawns ammo for the shotgun." : "http://twhl.info/wiki.php?id=7" []
+@PointClass base(Ammo) studio("models/w_357ammobox.mdl") = ammo_357 : "Spawns ammo for the .357 Magnum." : "http://twhl.info/wiki.php?id=6" []
+@PointClass base(Ammo) studio("models/w_rpgammo.mdl") = ammo_rpgclip : "Spawns rockets for the RPG." : "http://twhl.info/wiki.php?id=9" []
+@PointClass base(Ammo) studio("models/w_gaussammo.mdl") = ammo_gaussclip : "Spawns ammo for the gauss and egon weapons." : "http://twhl.info/wiki.php?id=5" []
+@PointClass base(Ammo) studio("models/w_crossbow_clip.mdl") = ammo_crossbow : "Spawns crossbow ammo." : "http://twhl.info/wiki.php?id=8" []
+@PointClass base(Ammo) studio("models/w_saw_clip.mdl") = ammo_556 : "M249 Ammo" []
+@PointClass base(Ammo) studio("models/w_m40a1clip.mdl") = ammo_762 : "Sniper Ammo" []
+@PointClass base(Targetname, Appearflags, Angles, Global) size(-16 -16 -16, 16 16 16) studio("models/spore_ammo.mdl") = ammo_spore : "Spore" []
 
 @SolidClass base(Target, ZHLT, RenderFields) = button_target : "Target Button"
 [
@@ -1685,7 +1721,7 @@
 		4: "Concrete"
 	]
 	scale(string) : "Gib Sprite Scale" : ""
-	skin(integer) : "Gib Skin" : 0
+	skin(integer) : "Gib Skin (-1 is random)" : 0
 	spawnflags(Flags) =
 	[
 		1 : "Repeatable" 	: 0
@@ -1866,7 +1902,7 @@
 	radius(integer) : "Shake and Beam Radius" : 192
 	scale(string) : "Sprite Scale"
 	framerate(string) : "Sprite Framerate"
-	warp_target(target_destination) : "Warp target [LE]"
+	warp_target(string) : "Warp position [LP]"
 	damage_delay(string) : "Damage delay"
 	beamcolor(color255) : "Beam color"
 	beamcount(integer) : "Max beam count" : 20
@@ -1971,8 +2007,17 @@
 		2 : "Visible only"
 	]
 ]
+@BaseClass = ButtonTrigger
+[
+	trigger_on_return(target_destination) : "Trigger on return"
+	trigger_before_move(target_destination) : "Trigger before move/rotate"
+]
+@BaseClass = ButtonWaitToggle
+[
+	wait_toggle(string) : "Delay before toggling again"
+]
 
-@SolidClass base(Global, Targetname, Targetx, MoveWith, RenderFields, Angles, ZHLT, BaseLockable, ButtonUseType, ButtonUsePolicy) = func_button : "Button"
+@SolidClass base(Global, Targetname, Targetx, MoveWith, RenderFields, Angles, ZHLT, BaseLockable, ButtonUseType, ButtonUsePolicy, ButtonTrigger, ButtonWaitToggle) = func_button : "Button"
 [
 	speed(integer) : "Speed" : 5
 	health(integer) : "Health (shootable if > 0)"
@@ -2166,7 +2211,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, MoveWith, Global, RenderFields, Angles, ZHLT, BaseLockable, ButtonUseType, ButtonUsePolicy) = func_rot_button : "RotatingButton"
+@SolidClass base(Targetname, MoveWith, Global, RenderFields, Angles, ZHLT, BaseLockable, ButtonUseType, ButtonUsePolicy, ButtonTrigger, ButtonWaitToggle) = func_rot_button : "RotatingButton"
 [
 	target(target_destination) : "Targetted object"
 	// changetarget will change the button's target's TARGET field to the button's changetarget.
@@ -2392,7 +2437,7 @@
 
 @PointClass base(Targetname) = game_autosave : "Point entity alternative to trigger_autosave"
 [
-	health(string) : "Minumum Hit Points" : : "Don't save when player has less than this many hitpoints."
+	health(string) : "Minimum Hit Points" : : "Don't save when player has less than this many hitpoints."
 ]
 
 @PointClass base(Targetname, Target) = game_counter : "Fires when it hits limit"
@@ -2631,6 +2676,10 @@
 	weapon_penguin(string) : "Penguins chance"
 	weapon_m249(string) : "M249 chance"
 	weapon_sniperrifle(string) : "Sniperrifle chance"
+	spawnflags(Flags) =
+	[
+		64 : "Predetermined" : 0
+	]
 ]
 
 @PointClass base(Targetname) size(-24 -24 0, 24 24 16) color(20 190 60) = info_bigmomma : "Big Mamma Node"
@@ -2695,16 +2744,16 @@
 // items
 //
 
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_oxygen.mdl") = item_airtank : "Oxygen tank" []
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/w_antidote.mdl") = item_antidote : "Poison antidote"
+@PointClass size(-16 -16 0, 16 16 36) base(Targetname, Appearflags, Angles, Global, Scalable) studio("models/w_oxygen.mdl") = item_airtank : "Oxygen tank" []
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_antidote.mdl") = item_antidote : "Poison antidote"
 [
 	noise(sound) : "Pickup sound" : "items/gunpickup4.wav"
 ]
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/w_battery.mdl") = item_battery : "HEV battery"
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_battery.mdl") = item_battery : "HEV battery"
 [
 	health(integer) : "Charge Supplied"
 ]
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/barney_vest.mdl") = item_armorvest : "Armor vest"
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/barney_vest.mdl") = item_armorvest : "Armor vest"
 [
 	sequence(choices) : "Placement" : 0 =
 	[
@@ -2714,7 +2763,7 @@
 		3 : "Reclining"
 	]
 ]
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/barney_helmet.mdl") = item_helmet : "Helmet"
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/barney_helmet.mdl") = item_helmet : "Helmet"
 [
 	sequence(choices) : "Placement" : 0 =
 	[
@@ -2723,19 +2772,19 @@
 		2 : "Lying upside-down"
 	]
 ]
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/w_flashlight.mdl") = item_flashlight : "Flashlight" []
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/w_medkit.mdl") = item_healthkit : "Small Health Kit"
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_flashlight.mdl") = item_flashlight : "Flashlight" []
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_medkit.mdl") = item_healthkit : "Small Health Kit"
 [
 	health(integer) : "Health Supplied"
 ]
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/w_longjump.mdl") = item_longjump : "Longjump Module" []
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/w_security.mdl") = item_security : "Security card"
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_longjump.mdl") = item_longjump : "Longjump Module" []
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_security.mdl") = item_security : "Security card"
 [
 	message(string) : "Message" : : "Message from titles.txt to show on pickup"
 	noise(sound) : "Pickup sound" : "items/gunpickup4.wav"
 	hudname(string) : "Hud name" : : "Custom name from hud.txt to show on pickup. The default is item_security"
 ]
-@PointClass size(-16 -16 0, 16 16 36) base(Item, Targetx, Scalable) studio("models/w_suit.mdl") = item_suit : "HEV Suit"
+@PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_suit.mdl") = item_suit : "HEV Suit"
 [
 	spawnflags(Flags) =
 	[
@@ -2744,8 +2793,8 @@
 	]
 ]
 
-@PointClass size(-16 -16 0, 16 16 36) base(Target, Angles, RandomItem) = item_random : "Random item" []
-@PointClass size(-16 -16 0, 16 16 36) color(140 115 65) base(Target, Angles) = item_random_proxy : "Random item proxy. Must be used with info_item_random."
+@PointClass size(-16 -16 0, 16 16 36) base(RandomItem, Target, Angles) = item_random : "Random item" []
+@PointClass size(-16 -16 0, 16 16 36) color(140 115 65) base(Targetname, Target, Angles) = item_random_proxy : "Random item proxy. Must be used with info_item_random."
 [
 	template(string) : "info_item_random entity"
 ]
@@ -6363,6 +6412,7 @@
 	]
 
 	spawnorigin(string) : "Position to place monster at [LP]" : : "By default acts as a typical position variable. When it starts with '@' the monstermaker will choose a random spot among ones with the same name (the rest of the string after '@'). It also applies the chosen entity angles."
+	spawndelay(string) : "Delay before spawn" : : "If larger then zero, the monster spawn will be delayed by specified amount of time (in seconds). The hull is created in place of the future monster's spawn to make sure that monster will have enough place to spawn. Recommended to use with 'Auto size BBox' flag and 'Warpball template'. Does not work well with 'Warp at monster's...'"
 	target_activator(choices) : "Target's Activator" : : "Activator for 'Target On Release'" =
 	[
 		-1 : "Don't pass activator"
@@ -6494,41 +6544,45 @@
 
 @PointClass base(Targetname, MultiManagerFlags) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager. Use type of targets can be configured by adding #0 (Off), #1 (On) or #2 (Kill) to their delay values." []
 
-@PointClass base(Targetname, MultiManagerFlags) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_trigger : "MultiTarget Trigger. Use this entity instead of multi_manager so JACK could draw connections to its targets."
+@BaseClass = MultiTarget
 [
+	delay1(string) : "Delay 1" : "0"
 	target1(target_destination) : "Target 1"
-	delay1(string) : "Delay 1"
+	delay2(string) : "Delay 2" : "0"
 	target2(target_destination) : "Target 2"
-	delay2(string) : "Delay 2"
-	target3(target_destination) : "Target 3"
 	delay3(string) : "Delay 3"
-	target4(target_destination) : "Target 4"
+	target3(target_destination) : "Target 3"
 	delay4(string) : "Delay 4"
-	target5(target_destination) : "Target 5"
+	target4(target_destination) : "Target 4"
 	delay5(string) : "Delay 5"
-	target6(target_destination) : "Target 6"
+	target5(target_destination) : "Target 5"
 	delay6(string) : "Delay 6"
-	target7(target_destination) : "Target 7"
+	target6(target_destination) : "Target 6"
 	delay7(string) : "Delay 7"
-	target8(target_destination) : "Target 8"
+	target7(target_destination) : "Target 7"
 	delay8(string) : "Delay 8"
-	target9(target_destination) : "Target 9"
+	target8(target_destination) : "Target 8"
 	delay9(string) : "Delay 9"
-	target10(target_destination) : "Target 10"
+	target9(target_destination) : "Target 9"
 	delay10(string) : "Delay 10"
-	target11(target_destination) : "Target 11"
+	target10(target_destination) : "Target 10"
 	delay11(string) : "Delay 11"
-	target12(target_destination) : "Target 12"
+	target11(target_destination) : "Target 11"
 	delay12(string) : "Delay 12"
-	target13(target_destination) : "Target 13"
+	target12(target_destination) : "Target 12"
 	delay13(string) : "Delay 13"
-	target14(target_destination) : "Target 14"
+	target13(target_destination) : "Target 13"
 	delay14(string) : "Delay 14"
-	target15(target_destination) : "Target 15"
+	target14(target_destination) : "Target 14"
 	delay15(string) : "Delay 15"
-	target16(target_destination) : "Target 16"
+	target15(target_destination) : "Target 15"
 	delay16(string) : "Delay 16"
+	target16(target_destination) : "Target 16"
 ]
+
+@PointClass base(Targetname, MultiManagerFlags, MultiTarget) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_trigger : "MultiTarget Trigger. Use this entity instead of multi_manager so JACK could draw connections to its targets." []
+
+@PointClass base(Targetname, MultiManagerFlags, MultiTarget) color(170 85 0) = multi_sequence : "Same as multi_trigger, but delays are relative between adjacent targets." []
 
 @PointClass base(Targetname, Target) color(128 255 128) iconsprite("sprites/multisource.spr") = multisource : "Multisource"
 [
@@ -6609,6 +6663,7 @@
 		2 : "Cover or retreat from spot"
 		3 : "Investigate spot"
 		4 : "Turn to spot"
+		5 : "Move to spot"
 	]
 	mindist(string) : "Min distance" : : "Minimum distance for schedule, when applicable. E.g. the minimum distance to go away from the spot. If not specified or zero, the schedule will use its default value"
 	maxdist(string) : "Max distance" : : "Maximum distance for schedule, when applicable. E.g. the maximum distance to go away from the spot. If not specified or zero, the schedule will use its default value"
@@ -6689,6 +6744,27 @@
 
 @PointClass base(ScriptedSequence) = scripted_sequence : "Scripted Sequence"
 [
+	spawnflags(Flags) =
+	[
+		64: "Override AI"	: 0
+	]
+]
+
+@PointClass base(ScriptedSequence) = scripted_action : "Scripted action"
+[
+	m_iszAttack(string) : "Entity to attack (blank = this) [LE]"
+	m_fAction(choices) : "Action to perform" : 0 =
+	[
+		0 : "Ranged Attack"
+		1 : "Ranged Attack 2"
+		2 : "Melee Attack"
+		3 : "Melee Attack 2"
+		4 : "Special Attack"
+		5 : "Special Attack 2"
+		6 : "Reload"
+		7 : "Jump"
+		8 : "No action"
+	]
 	spawnflags(Flags) =
 	[
 		64: "Override AI"	: 0
@@ -6782,7 +6858,7 @@
 @SolidClass base(Targetname) = trigger_autosave : "AutoSave Trigger"
 [
 	master(string) : "Master"
-	health(string) : "Minumum Hit Points" : : "Don't save when player has less than this many hitpoints."
+	health(string) : "Minimum Hit Points" : : "Don't save when player has less than this many hitpoints."
 ]
 
 @PointClass base(Targetx, Targetname) iconsprite("sprites/trigger_camera.spr") = trigger_camera : "Trigger Camera"
@@ -7084,9 +7160,10 @@
 		16:"FireClientOnly" : 0
 		32:"TouchClientOnly" : 0
 		64:"Affect non-moving NPC's" : 0 : "Uses entity's bounding box to find and hurt non-moving monsters. Will produce wrong results on non-cuboid brush shapes."
+		128:"Full dmg every 0.5 seconds" : 0 : "Do full damage (or healing) instead of halving the value. Recommended to use with odd values."
 	]
 	master(string) : "Master"
-	dmg(integer) : "Damage" : 10
+	dmg(integer) : "Damage" : 10 : "The damage is applied every 0.5 seconds. Negative value means healing. The value is getting halved, unless 'Full dmg every 0.5 seconds' spawnflag is set."
 	delay(string) : "Delay before trigger"
 	untouchable_ent_name(string) : "Untouchable entity name" : : "Don't hurt targets with this classname or targetname"
 	min_health(string) : "Minimum health threshold" : : "Don't decrease the toucher health beyond this value"
@@ -7258,11 +7335,15 @@
 		8 : "Timed" : 0
 		16 : "Unique" : 0
 		32 : "Not repetitive" : 0 : "Don't repeat the same target twice in a row. Targets still can be repeated if there're several with the same name."
+		64 : "Predetermined" : 0
+		128 : "Predetermined delays (Timed only)" : 0
 	]
 	min_delay(string) : "Minimum delay (Timed only)"
 	max_delay(string) : "Maximum delay (Timed only)"
-	trigger_number(integer) : "Trigger number limit (Timed only)" : : "Stop after triggering this number of targets. This was not in Sven Co-op and a special addition. A flexible replacement for Trigger Once flag."
+	trigger_number(integer) : "Trigger number limit (Timed only)" : : "Automatically stop after triggering this number of targets (including empty ones, if present). This was not in Sven Co-op and a special addition. A flexible replacement for Trigger Once flag."
 	trigger_on_limit(target_destination) : "Trigger on limit (Timed only)" : : "Trigger when the trigger limit is reached"
+	trigger_on_exhaust(target_destination) : "Trigger on exhaust (Unique only)" : : "Fire when last unique target is called. Will be fired again if trigger_random is Reusable and it drains the unique targets another time."
+	first_target(integer) : "Index of first target (1-16)" : : "First target to fire on the first entity call. 0 means no preference."
 ]
 
 @PointClass base(Targetname, Random) = trigger_random_time : "Trigger Random Time. Outdated entity for Sven Co-op 3.0 compatibility."
@@ -7327,10 +7408,11 @@
 	[
 		1 : "Start on" : 0 : "Automatically activate trigger_timer on the first map load"
 		32 : "Don't delay first fire" : 0 : "Don't use random delay on the first target fire upon the activation"
+		128 : "Predetermined delays" : 0
 	]
 	min_delay(string) : "Minimum delay"
 	max_delay(string) : "Maximum delay"
-	trigger_number(integer) : "Trigger number limit" : : "Stop after triggering this number of targets (after that trigger_timer can be reactivated again). 0 means no limit."
+	trigger_number(integer) : "Trigger number limit" : : "Automatically stop after triggering the target this number of times. After that trigger_timer can be reactivated again. 0 means no limit."
 	trigger_on_limit(target_destination) : "Trigger on limit" : : "Trigger when the trigger limit is reached"
 ]
 
@@ -7372,14 +7454,14 @@
 // weapons
 //
 
-@PointClass base(Weapon, Targetx) studio("models/w_crowbar.mdl") = weapon_crowbar : "Crowbar" []
-@PointClass base(Weapon, Targetx) studio("models/w_9mmhandgun.mdl") = weapon_9mmhandgun : "9mm Handgun" []
-@PointClass base(Weapon, Targetx) studio("models/w_357.mdl") = weapon_357 : "357 Handgun" []
-@PointClass base(Weapon, Targetx) studio("models/w_9mmar.mdl") = weapon_9mmAR : "9mm Assault Rifle" []
-@PointClass base(Weapon, Targetx) studio("models/w_shotgun.mdl") = weapon_shotgun : "Shotgun" []
-@PointClass base(Weapon, Targetx) studio("models/w_rpg.mdl") = weapon_rpg : "RPG" []
-@PointClass base(Weapon, Targetx) studio("models/w_gauss.mdl") = weapon_gauss : "Gauss Gun" []
-@PointClass base(Weapon, Targetx) studio("models/w_crossbow.mdl") = weapon_crossbow : "Crossbow"
+@PointClass base(Weapon) studio("models/w_crowbar.mdl") = weapon_crowbar : "Crowbar" []
+@PointClass base(Weapon) studio("models/w_9mmhandgun.mdl") = weapon_9mmhandgun : "9mm Handgun" []
+@PointClass base(Weapon) studio("models/w_357.mdl") = weapon_357 : "357 Handgun" []
+@PointClass base(Weapon) studio("models/w_9mmar.mdl") = weapon_9mmAR : "9mm Assault Rifle" []
+@PointClass base(Weapon) studio("models/w_shotgun.mdl") = weapon_shotgun : "Shotgun" []
+@PointClass base(Weapon) studio("models/w_rpg.mdl") = weapon_rpg : "RPG" []
+@PointClass base(Weapon) studio("models/w_gauss.mdl") = weapon_gauss : "Gauss Gun" []
+@PointClass base(Weapon) studio("models/w_crossbow.mdl") = weapon_crossbow : "Crossbow"
 [
 	sequence(choices) : "Placement" : 0 =
 	[
@@ -7387,11 +7469,11 @@
 		1 : "Realistic (tilted)"
 	]
 ]
-@PointClass base(Weapon, Targetx) studio("models/w_egon.mdl") = weapon_egon : "Egon Gun" []
-@PointClass base(Weapon, Targetx) studio("models/v_tripmine.mdl") body(3) sequence(8) size(-16 -16 -5, 16 16 27) = weapon_tripmine : "Tripmine Ammo" []
-@PointClass base(Weapon, Targetx) studio("models/w_satchel.mdl") = weapon_satchel : "Satchel Charge Ammo" []
-@PointClass base(Weapon, Targetx) studio("models/w_grenade.mdl") = weapon_handgrenade : "Handgrenade Ammo" []
-@PointClass base(Weapon, Targetx) studio("models/w_sqknest.mdl") = weapon_snark : "Squeak Grenade"
+@PointClass base(Weapon) studio("models/w_egon.mdl") = weapon_egon : "Egon Gun" []
+@PointClass base(Weapon) studio("models/v_tripmine.mdl") body(3) sequence(8) size(-16 -16 -5, 16 16 27) = weapon_tripmine : "Tripmine Ammo" []
+@PointClass base(Weapon) studio("models/w_satchel.mdl") = weapon_satchel : "Satchel Charge Ammo" []
+@PointClass base(Weapon) studio("models/w_grenade.mdl") = weapon_handgrenade : "Handgrenade Ammo" []
+@PointClass base(Weapon) studio("models/w_sqknest.mdl") = weapon_snark : "Squeak Grenade"
 [
 	sequence(Choices) : "Animation Sequence (editor)" : 1 =
 	[
@@ -7399,22 +7481,22 @@
 		1 : "idle"
 	]
 ]
-@PointClass base(Weapon, Targetx) studio("models/w_hgun.mdl") = weapon_hornetgun : "Hornet Gun" []
-@PointClass base(Target) size(-16 -16 0, 16 16 64) color(0 128 0) studio("models/w_weaponbox.mdl") =  weaponbox : "Weapon/Ammo Container" []
-@PointClass base(Weapon, Targetx) studio("models/w_desert_eagle.mdl") = weapon_eagle : "Desert Eagle" []
-@PointClass base(Weapon, Targetx) studio("models/w_penguinnest.mdl") = weapon_penguin : "Killer Penguin" []
-@PointClass base(Weapon, Targetx) studio("models/w_pipe_wrench.mdl") = weapon_pipewrench : "Pipe Wrench" []
-@PointClass base(Weapon, Targetx) studio("models/w_knife.mdl") = weapon_knife : "Knife" []
-@PointClass base(Weapon, Targetx) studio("models/w_bgrap.mdl") = weapon_grapple : "Barnacle Grapple" []
-@PointClass base(Weapon, Targetx) studio("models/w_shock.mdl") = weapon_shockrifle : "Shock Roach" []
-@PointClass base(Weapon, Targetx) studio("models/w_saw.mdl") = weapon_m249 : "M249 SAW" []
-@PointClass base(Weapon, Targetx) studio("models/w_m40a1.mdl") = weapon_sniperrifle : "Sniper Rifle" []
-@PointClass base(Weapon, Targetx) studio("models/w_displacer.mdl") = weapon_displacer : "Displacer" []
-@PointClass base(Weapon, Targetx) studio("models/w_spore_launcher.mdl") = weapon_sporelauncher : "Spore Launcher" []
-@PointClass base(Weapon, Targetx) studio("models/w_medkit.mdl") = weapon_medkit : "Medkit" []
-@PointClass base(Weapon, Targetx) studio("models/w_uzi.mdl") = weapon_uzi : "Single UZI" []
+@PointClass base(Weapon) studio("models/w_hgun.mdl") = weapon_hornetgun : "Hornet Gun" []
+@PointClass base(Pickup) size(-16 -16 0, 16 16 64) color(0 128 0) studio("models/w_weaponbox.mdl") =  weaponbox : "Weapon/Ammo Container" []
+@PointClass base(Weapon) studio("models/w_desert_eagle.mdl") = weapon_eagle : "Desert Eagle" []
+@PointClass base(Weapon) studio("models/w_penguinnest.mdl") = weapon_penguin : "Killer Penguin" []
+@PointClass base(Weapon) studio("models/w_pipe_wrench.mdl") = weapon_pipewrench : "Pipe Wrench" []
+@PointClass base(Weapon) studio("models/w_knife.mdl") = weapon_knife : "Knife" []
+@PointClass base(Weapon) studio("models/w_bgrap.mdl") = weapon_grapple : "Barnacle Grapple" []
+@PointClass base(Weapon) studio("models/w_shock.mdl") = weapon_shockrifle : "Shock Roach" []
+@PointClass base(Weapon) studio("models/w_saw.mdl") = weapon_m249 : "M249 SAW" []
+@PointClass base(Weapon) studio("models/w_m40a1.mdl") = weapon_sniperrifle : "Sniper Rifle" []
+@PointClass base(Weapon) studio("models/w_displacer.mdl") = weapon_displacer : "Displacer" []
+@PointClass base(Weapon) studio("models/w_spore_launcher.mdl") = weapon_sporelauncher : "Spore Launcher" []
+@PointClass base(Weapon) studio("models/w_medkit.mdl") = weapon_medkit : "Medkit" []
+@PointClass base(Weapon) studio("models/w_uzi.mdl") = weapon_uzi : "Single UZI" []
 
-@PointClass base(Weapon, Targetx) = world_items : "World Items" 
+@PointClass base(Pickup) = world_items : "World Items"
 [
 	type(choices) :"types" : 42 =
 	[

@@ -146,7 +146,7 @@ char *EV_HLDM_DamageDecal( physent_t *pe )
 	}
 	else if( pe->rendermode != kRenderNormal )
 	{
-		sprintf( decalname, "{bproof1" );
+		strcpy( decalname, "{bproof1" );
 	}
 	else
 	{
@@ -440,6 +440,11 @@ void EV_HLDM_FireBullets( int idx, float *forward, float *right, float *up, int 
 	pmtrace_t tr;
 	int iShot;
 	int tracer;
+
+	if( EV_IsLocal( idx ) )
+	{
+		EV_MuzzleLight(Vector(forward));
+	}
 
 	for( iShot = 1; iShot <= cShots; iShot++ )
 	{

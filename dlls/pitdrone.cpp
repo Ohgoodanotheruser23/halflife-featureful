@@ -22,6 +22,7 @@
 #include	"effects.h"
 #include	"decals.h"
 #include	"soundent.h"
+#include	"scripted.h"
 #include	"game.h"
 #include	"weapons.h"
 #include	"followingmonster.h"
@@ -174,7 +175,6 @@ void CPitdroneSpike::Shoot(entvars_t *pevOwner, Vector vecStart, Vector vecVeloc
 #define PITDRONE_HORNS5		5
 #define PITDRONE_HORNS6		6
 #define	PITDRONE_SPRINT_DIST			255
-#define PITDRONE_FLINCH_DELAY			2		// at most one flinch every n secs
 #define PITDRONE_MAX_HORNS	6
 #define PITDRONE_GIB_COUNT	5
 
@@ -256,7 +256,7 @@ public:
 
 	float	m_flLastHurtTime;
 	float	m_flNextSpitTime;// last time the PitDrone used the spit attack.
-	float	m_flNextFlinch;
+	float	m_flNextHopTime;
 	int m_iInitialAmmo;
 	bool shouldAttackWithLeftClaw;
 
@@ -278,6 +278,7 @@ TYPEDESCRIPTION	CPitdrone::m_SaveData[] =
 	DEFINE_FIELD(CPitdrone, m_iInitialAmmo, FIELD_INTEGER),
 	DEFINE_FIELD(CPitdrone, m_flLastHurtTime, FIELD_TIME),
 	DEFINE_FIELD(CPitdrone, m_flNextSpitTime, FIELD_TIME),
+	DEFINE_FIELD(CPitdrone, m_flNextHopTime, FIELD_TIME),
 };
 
 IMPLEMENT_SAVERESTORE(CPitdrone, CFollowingMonster)
@@ -305,18 +306,6 @@ int CPitdrone::IgnoreConditions(void)
 	{
 		// haven't been hurt in 20 seconds, so let the pitdrone care about stink.
 		iIgnore |= bits_COND_SMELL | bits_COND_SMELL_FOOD;
-	}
-
-	if ((m_Activity == ACT_MELEE_ATTACK1) || (m_Activity == ACT_MELEE_ATTACK2))
-	{
-			if (m_flNextFlinch >= gpGlobals->time)
-				iIgnore |= (bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE);
-	}
-
-	if ((m_Activity == ACT_SMALL_FLINCH) || (m_Activity == ACT_BIG_FLINCH))
-	{
-		if (m_flNextFlinch < gpGlobals->time)
-			m_flNextFlinch = gpGlobals->time + PITDRONE_FLINCH_DELAY;
 	}
 
 	return iIgnore;
@@ -551,7 +540,7 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t *pEvent)
 	{
 		float flGravity = g_psv_gravity->value;
 
-		// throw the squid up into the air on this frame.
+		// throw the pitdrone up into the air on this frame.
 		if( FBitSet( pev->flags, FL_ONGROUND ) )
 		{
 			pev->flags -= FL_ONGROUND;
@@ -567,37 +556,25 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t *pEvent)
 		m_cAmmoLoaded--;
 		BodyChange(m_cAmmoLoaded);
 
-		Vector	vecSpitOffset;
-		Vector	vecSpitDir;
-
 		UTIL_MakeAimVectors(pev->angles);
 
 		// !!!HACKHACK - the spot at which the spit originates (in front of the mouth) was measured in 3ds and hardcoded here.
 		// we should be able to read the position of bones at runtime for this info.
-		vecSpitOffset = (gpGlobals->v_forward * 15 + gpGlobals->v_up * 36);
-		vecSpitOffset = (pev->origin + vecSpitOffset);
-		//vecSpitDir = ((m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs) - vecSpitOffset).Normalize();
-		Vector vecEnemyPosition;
-		if (m_hEnemy != 0)
-			vecEnemyPosition = m_hEnemy->BodyTarget(pev->origin);
-		else
-			vecEnemyPosition = m_vecEnemyLKP;
-		vecSpitDir = (vecEnemyPosition - vecSpitOffset).Normalize();
+		const Vector vecSpitOffset = (gpGlobals->v_forward * 15 + gpGlobals->v_up * 36);
+		const Vector vecSpitOrigin = (pev->origin + vecSpitOffset);
 
-		vecSpitDir.x += RANDOM_FLOAT(-0.01, 0.01);
-		vecSpitDir.y += RANDOM_FLOAT(-0.01, 0.01);
-		vecSpitDir.z += RANDOM_FLOAT(-0.01, 0);
+		const Vector vecSpitDir = SpitAtEnemy(vecSpitOrigin, 0.01f);
 
 		// SOUND HERE! (in the pitdrone model)
 
-		CPitdroneSpike::Shoot(pev, vecSpitOffset, vecSpitDir * 900, UTIL_VecToAngles(vecSpitDir));
+		CPitdroneSpike::Shoot(pev, vecSpitOrigin, vecSpitDir * 900, UTIL_VecToAngles(vecSpitDir));
 
 		// spew the spittle temporary ents.
-		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpitOffset );
+		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpitOrigin );
 			WRITE_BYTE( TE_SPRITE_SPRAY );
-			WRITE_COORD( vecSpitOffset.x );	// pos
-			WRITE_COORD( vecSpitOffset.y );
-			WRITE_COORD( vecSpitOffset.z );
+			WRITE_COORD( vecSpitOrigin.x );	// pos
+			WRITE_COORD( vecSpitOrigin.y );
+			WRITE_COORD( vecSpitOrigin.z );
 			WRITE_COORD( vecSpitDir.x );	// dir
 			WRITE_COORD( vecSpitDir.y );
 			WRITE_COORD( vecSpitDir.z );
@@ -670,7 +647,7 @@ void CPitdrone::Spawn()
 	SetMyHealth( gSkillData.pitdroneHealth );
 	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
-	m_afCapability		= bits_CAP_SQUAD | bits_CAP_DOORS_GROUP;
+	m_afCapability		= bits_CAP_SQUAD;
 
 	m_flNextSpitTime = gpGlobals->time;
 
@@ -1032,7 +1009,7 @@ Schedule_t *CPitdrone::GetSchedule(void)
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_HUNT:
 	{
-		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
+		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) && gpGlobals->time >= m_flNextHopTime )
 		{
 			return GetScheduleOfType( SCHED_PDRONE_HURTHOP );
 		}
@@ -1157,6 +1134,7 @@ void CPitdrone::StartTask(Task_t *pTask)
 	{
 	case TASK_PDRONE_HOPTURN:
 	{
+		m_flNextHopTime = gpGlobals->time + 5.0f;
 		SetActivity( ACT_HOP );
 		MakeIdealYaw( m_vecEnemyLKP );
 		break;

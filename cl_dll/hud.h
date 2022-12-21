@@ -26,13 +26,15 @@
 
 #define FOG_LIMIT 30000
 
-#if FEATURE_OPFOR_SPECIFIC
-#define RGB_YELLOWISH 0x0000A000
-#else
 #define RGB_YELLOWISH 0x00FFA000 //255,160,0
-#endif
 #define RGB_REDISH 0x00FF1010 //255,160,0
 #define RGB_GREENISH 0x0000A000 //0,160,0
+
+#if FEATURE_OPFOR_SPECIFIC
+#define RGB_HUD_DEFAULT RGB_GREENISH
+#else
+#define RGB_HUD_DEFAULT RGB_YELLOWISH
+#endif
 
 #include "wrect.h"
 #include "cl_dll.h"
@@ -67,6 +69,13 @@ typedef struct cvar_s cvar_t;
 
 extern cvar_t* cl_weapon_sparks;
 extern cvar_t* cl_weapon_wallpuff;
+
+extern cvar_t* cl_muzzlelight;
+extern cvar_t* cl_muzzlelight_monsters;
+
+extern cvar_t* cl_flashlight_custom;
+extern cvar_t* cl_flashlight_radius;
+extern cvar_t* cl_flashlight_fade_distance;
 
 #define HUD_ACTIVE	1
 #define HUD_INTERMISSION 2
@@ -673,6 +682,21 @@ public:
 	int m_iHUDColor;
 
 	int MinHUDAlpha();
+
+	bool HasSuit() const
+	{
+		return (m_iItemBits & PLAYER_ITEM_SUIT) != 0;
+	}
+	bool HasFlashlight() const
+	{
+		if ((m_iItemBits & PLAYER_ITEM_FLASHLIGHT) != 0)
+			return true;
+#if FEATURE_SUIT_FLASHLIGHT
+		return HasSuit();
+#else
+		return false;
+#endif
+	}
 private:
 	// the memory for these arrays are allocated in the first call to CHud::VidInit(), when the hud.txt and associated sprites are loaded.
 	// freed in ~CHud()
@@ -690,6 +714,13 @@ public:
 	wrect_t& GetSpriteRect( int index )
 	{
 		return m_rgrcRects[index];
+	}
+
+	wrect_t* GetSpriteRectPointer( int index )
+	{
+		if (index < 0 || index >= m_iSpriteCount)
+			return NULL;
+		return &m_rgrcRects[index];
 	}
 	
 	int GetSpriteIndex( const char *SpriteName );	// gets a sprite index, for use in the m_rghSprites[] array
@@ -739,6 +770,7 @@ public:
 	int _cdecl MsgFunc_SetFOV( const char *pszName,  int iSize, void *pbuf );
 	int  _cdecl MsgFunc_Concuss( const char *pszName, int iSize, void *pbuf );
 
+	int _cdecl MsgFunc_Items(const char* pszName, int iSize, void* pbuf);
 	int _cdecl MsgFunc_HUDColor( const char *pszName, int iSize, void *pbuf );
 	int _cdecl MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf );
 
@@ -746,6 +778,7 @@ public:
 	SCREENINFO	m_scrinfo;
 
 	int	m_iWeaponBits;
+	int m_iItemBits;
 	int	m_fPlayerDead;
 	int m_iIntermission;
 
@@ -762,6 +795,8 @@ public:
 
 	bool m_iHardwareMode;
 	FogProperties fog;
+
+	bool m_bFlashlight;
 };
 
 extern CHud gHUD;

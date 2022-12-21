@@ -25,6 +25,9 @@
 #include "shake.h"
 #include "bullsquid.h"
 #include "soundradius.h"
+#include "studio.h"
+#include "gamerules.h"
+#include "player.h"
 #include "locus.h"
 #include "mod_features.h"
 
@@ -733,9 +736,7 @@ void CBeam::BeamDamage(TraceResult *ptr , entvars_t *pevAttacker)
 		CBaseEntity *pHit = CBaseEntity::Instance( ptr->pHit );
 		if( pHit )
 		{
-			ClearMultiDamage();
-			pHit->TraceAttack( pev, pev->dmg * ( gpGlobals->time - pev->dmgtime ), ( ptr->vecEndPos - pev->origin ).Normalize(), ptr, DMG_ENERGYBEAM );
-			ApplyMultiDamage( pev, pevAttacker ? pevAttacker : pev );
+			pHit->ApplyTraceAttack( pev, pevAttacker ? pevAttacker : pev, pev->dmg * ( gpGlobals->time - pev->dmgtime ), ( ptr->vecEndPos - pev->origin ).Normalize(), ptr, DMG_ENERGYBEAM );
 			if( pev->spawnflags & SF_BEAM_DECALS )
 			{
 				if( pHit->IsBSPModel() )
@@ -1903,7 +1904,16 @@ CGib *CEnvShooter::CreateGib( float lifeTime )
 		pGib->pev->scale = pev->scale;
 	}
 
-	pGib->pev->skin = pev->skin;
+	if (pev->skin < 0)
+	{
+		studiohdr_t *pstudiohdr = (studiohdr_t *)GET_MODEL_PTR( pGib->edict() );
+		if (pstudiohdr && pstudiohdr->ident == IDSTUDIOHEADER && pstudiohdr->numskinfamilies > 0)
+			pGib->pev->skin = RANDOM_LONG(0, pstudiohdr->numskinfamilies-1);
+	}
+	else
+	{
+		pGib->pev->skin = pev->skin;
+	}
 
 	return pGib;
 }
@@ -2102,15 +2112,9 @@ bool CBlood::CheckBloodPosition( CBaseEntity *pActivator, Vector& bloodPos )
 {
 	if( pev->spawnflags & SF_BLOOD_PLAYER )
 	{
-		edict_t *pPlayer;
-		if( pActivator && pActivator->IsPlayer() )
-		{
-			pPlayer = pActivator->edict();
-		}
-		else
-			pPlayer = g_engfuncs.pfnPEntityOfEntIndex( 1 );
+		CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
 		if( pPlayer ) {
-			bloodPos = ( pPlayer->v.origin + pPlayer->v.view_ofs ) + Vector( RANDOM_FLOAT( -10.0f, 10.0f ), RANDOM_FLOAT( -10.0f, 10.0f ), RANDOM_FLOAT( -10.0f, 10.0f ) );
+			bloodPos = ( pPlayer->pev->origin + pPlayer->pev->view_ofs ) + Vector( RANDOM_FLOAT( -10.0f, 10.0f ), RANDOM_FLOAT( -10.0f, 10.0f ), RANDOM_FLOAT( -10.0f, 10.0f ) );
 			return true;
 		}
 		return false;
@@ -2436,17 +2440,11 @@ void CMessage::KeyValue( KeyValueData *pkvd )
 
 void CMessage::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	CBaseEntity *pPlayer = NULL;
-
 	if( pev->spawnflags & SF_MESSAGE_ALL )
 		UTIL_ShowMessageAll( STRING( pev->message ) );
 	else
 	{
-		if( pActivator && pActivator->IsPlayer() )
-			pPlayer = pActivator;
-		else
-			pPlayer = CBaseEntity::Instance( g_engfuncs.pfnPEntityOfEntIndex( 1 ) );
-
+		CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
 		if( pPlayer )
 			UTIL_ShowMessage( STRING( pev->message ), pPlayer );
 	}
@@ -2831,7 +2829,6 @@ class CEnvWarpBall : public CBaseEntity
 public:
 	void Precache( void );
 	void Spawn( void ) { Precache(); }
-	void Think( void );
 	void KeyValue( KeyValueData *pkvd );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	virtual int ObjectCaps( void ) { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
@@ -2907,11 +2904,16 @@ public:
 		return pev->noise1 ? STRING(pev->noise1) : WARPBALL_SOUND1;
 	}
 	inline const char* WarpballSound2() {
+		if (FStringNull(pev->noise2))
+		{
 #if FEATURE_ALIEN_TELEPORT_SOUND
-		return pev->noise2 ? STRING(pev->noise2) : NULL;
+			return NULL;
 #else
-		return pev->noise2 ? STRING(pev->noise2) : WARPBALL_SOUND2;
+			return FStringNull(pev->noise1) ? WARPBALL_SOUND2 : NULL;
 #endif
+		}
+		else
+			return STRING(pev->noise2);
 	}
 	inline float SoundAttenuation() {
 		return ::SoundAttenuation((short)pev->impulse);
@@ -2920,7 +2922,6 @@ public:
 		return pev->framerate ? pev->framerate : 12;
 	}
 
-	Vector vecOrigin;
 	int m_beamTexture;
 };
 
@@ -3003,13 +3004,47 @@ void CEnvWarpBall::Precache( void )
 	else
 		PRECACHE_SOUND( WARPBALL_SOUND2 );
 #endif
+
+	UTIL_PrecacheOther("warpball_hurt");
+}
+
+class CWarpballHurt : public CPointEntity
+{
+public:
+	void Think();
+	static void SelfCreate(const Vector& vecOrigin, float dmg, int radius, float delay, edict_t* pOwner = 0);
+};
+
+LINK_ENTITY_TO_CLASS( warpball_hurt, CWarpballHurt )
+
+void CWarpballHurt::Think()
+{
+	::RadiusDamage(pev->origin, pev, pev, pev->dmg, pev->button, CLASS_NONE, DMG_SHOCK);
+	UTIL_Remove(this);
+}
+
+void CWarpballHurt::SelfCreate(const Vector& vecOrigin, float dmg, int radius, float delay, edict_t* pOwner)
+{
+	CWarpballHurt *pWarpballHurt = GetClassPtr((CWarpballHurt *)0);
+	if (pWarpballHurt)
+	{
+		pWarpballHurt->Spawn();
+		pWarpballHurt->pev->classname = MAKE_STRING("warpball_hurt");
+		UTIL_SetOrigin(pWarpballHurt->pev, vecOrigin);
+		pWarpballHurt->pev->dmg = dmg;
+		pWarpballHurt->pev->button = radius;
+		pWarpballHurt->pev->owner = pOwner;
+		pWarpballHurt->pev->nextthink = gpGlobals->time + delay;
+	}
 }
 
 void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	edict_t* playSoundEnt = NULL;
+	Vector vecOrigin;
+	edict_t* playSoundEnt = edict();
 	bool playSoundOnMyself = false;
 	string_t warpTarget = WarpTarget();
+	int inflictedRadius = 48;
 
 	if (useType == USE_SET && pev->dmg_inflictor != NULL)
 	{
@@ -3018,23 +3053,13 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	}
 	else if( !FStringNull( warpTarget ) )
 	{
-		CBaseEntity *pEntity = UTIL_FindEntityByTargetname( NULL, STRING( warpTarget ), pActivator );
-		if (pEntity)
-		{
-			vecOrigin = pEntity->pev->origin;
-			playSoundEnt = pEntity->edict();
-		}
-		else
-		{
-			ALERT(at_error, "Could not find a warp target %s for %s\n", STRING(warpTarget), STRING(pev->classname));
+		if (!TryCalcLocus_Position(this, pActivator, STRING(warpTarget), vecOrigin))
 			return;
-		}
 	}
 	else
 	{
 		//use myself as center
 		vecOrigin = pev->origin;
-		playSoundEnt = edict();
 		playSoundOnMyself = true;
 	}
 
@@ -3043,7 +3068,6 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		if (playSoundOnMyself)
 			EMIT_SOUND( edict(), CHAN_BODY, WarpballSound1(), SoundVolume(), SoundAttenuation() );
 		else
-			//EMIT_SOUND( playSoundEnt, CHAN_BODY, WarpballSound1(), SoundVolume(), SoundAttenuation() );
 			UTIL_EmitAmbientSound( playSoundEnt, vecOrigin, WarpballSound1(), SoundVolume(), SoundAttenuation(), 0, 100 );
 	}
 	
@@ -3091,7 +3115,6 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 			if (playSoundOnMyself)
 				EMIT_SOUND( edict(), CHAN_ITEM, warpballSound2, SoundVolume(), SoundAttenuation() );
 			else
-				//EMIT_SOUND( playSoundEnt, CHAN_ITEM, warpballSound2, SoundVolume(), SoundAttenuation() );
 				UTIL_EmitAmbientSound( playSoundEnt, vecOrigin, warpballSound2, SoundVolume(), SoundAttenuation(), 0, 100 );
 		}
 	}
@@ -3119,26 +3142,25 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	beamParams.alpha = 220;
 	DrawChaoticBeams(vecOrigin, ENT(pev), Radius(), beamParams, iBeams);
 
-	pev->nextthink = gpGlobals->time + DamageDelay();
-}
-
-void CEnvWarpBall::Think( void )
-{
 	SUB_UseTargets( this, USE_TOGGLE, 0 );
 
 	if( pev->spawnflags & SF_KILL_CENTER )
 	{
-		CBaseEntity *pMonster = NULL;
-
-		while( ( pMonster = UTIL_FindEntityInSphere( pMonster, vecOrigin, 72 ) ) != NULL )
+		const float damageDelay = DamageDelay();
+		if (damageDelay == 0)
 		{
-			if( FBitSet( pMonster->pev->flags, FL_MONSTER ) || FClassnameIs( pMonster->pev, "player" ) )
-				pMonster->TakeDamage ( pev, pev, 100, DMG_GENERIC );
+			::RadiusDamage(pev->origin, pev, pev, 300.0f, inflictedRadius, CLASS_NONE, DMG_SHOCK);
+		}
+		else
+		{
+			CWarpballHurt::SelfCreate(vecOrigin, 300.0f, inflictedRadius, damageDelay, edict());
 		}
 	}
+
 	if( pev->spawnflags & SF_REMOVE_ON_FIRE )
 		UTIL_Remove( this );
 }
+
 #endif
 //=========================================================
 // env_xenmaker

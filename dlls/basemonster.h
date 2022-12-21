@@ -213,8 +213,8 @@ public:
 
 	virtual void ScheduleChange( void ) {}
 	// virtual int CanPlaySequence( void ) { return ((m_pCine == NULL) && (m_MonsterState == MONSTERSTATE_NONE || m_MonsterState == MONSTERSTATE_IDLE || m_IdealMonsterState == MONSTERSTATE_IDLE)); }
-	virtual int CanPlaySequence( BOOL fDisregardState, int interruptLevel );
-	virtual int CanPlaySentence( BOOL fDisregardState ) { return IsAlive(); }
+	virtual int CanPlaySequence( int interruptFlags );
+	virtual int CanPlaySentence( BOOL fDisregardState ) { return m_MonsterState == MONSTERSTATE_SCRIPT ? IsAlive() : IsFullyAlive(); }
 	virtual bool PlaySentence( const char *pszSentence, float duration, float volume, float attenuation );
 	virtual void PlayScriptedSentence( const char *pszSentence, float duration, float volume, float attenuation, BOOL bConcurrent, CBaseEntity *pListener );
 
@@ -225,6 +225,7 @@ public:
 	virtual void SetActivity( Activity NewActivity );
 	void SetSequenceByName( const char *szSequence );
 	void SetState( MONSTERSTATE State );
+	static const char* MonsterStateDisplayString(MONSTERSTATE monsterState);
 	virtual void ReportAIState( ALERT_TYPE level );
 
 	void CheckAttacks( CBaseEntity *pTarget, float flDist, float flMeleeDist );
@@ -261,6 +262,7 @@ public:
 	BOOL FindLateralCover( const Vector &vecThreat, const Vector &vecViewOffset );
 	BOOL FindLateralSpotAway( const Vector &vecThreat, float minDist, float maxDist, int flags );
 	BOOL FindStraightSpotAway( const Vector &vecThreat, float minDist, float maxDist, int flags );
+	BOOL FindSpotAway(Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist, int flags, const char* displayName);
 	BOOL FindCover(Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist, int flags);
 	BOOL FindCover(Vector vecThreat, Vector vecViewOffset, float flMinDist, float flMaxDist);
 	BOOL FindSpotAway(Vector vecThreat, float flMinDist, float flMaxDist, int flags);
@@ -285,6 +287,7 @@ public:
 	BOOL MoveToNode( Activity movementAct, float waitTime, const Vector &goal );
 	BOOL MoveToTarget( Activity movementAct, float waitTime, bool closest = false );
 	BOOL MoveToLocation( Activity movementAct, float waitTime, const Vector &goal, int buildRouteFlags = 0 );
+	BOOL MoveToLocationClosest( Activity movementAct, float waitTime, const Vector &goal, int buildRouteFlags = 0 );
 	BOOL MoveToEnemy( Activity movementAct, float waitTime );
 
 	// Returns the time when the door will be open
@@ -306,6 +309,7 @@ public:
 	void Eat( float flFullDuration );// make the monster 'full' for a while.
 
 	CBaseEntity *CheckTraceHullAttack( float flDist, int iDamage, int iDmgType );
+	CBaseEntity *CheckTraceHullAttack( float flDist, int iDamage, int iDmgType, float height );
 	BOOL FacingIdeal( void );
 
 	BOOL FCheckAITrigger( void );// checks and, if necessary, fires the monster's trigger target.
@@ -337,6 +341,7 @@ public:
 	virtual void FadeMonster( void );	// Called instead of GibMonster() when gibs are disabled
 
 	Vector ShootAtEnemy( const Vector &shootOrigin );
+	Vector SpitAtEnemy(const Vector& vecSpitOrigin, float dirRandomDeviation = 0.05f, float* distance = 0 );
 	virtual Vector BodyTarget( const Vector &posSrc ) { return Center() * 0.75 + EyePosition() * 0.25; };		// position to shoot at
 
 	virtual	Vector GetGunPosition( void );

@@ -25,6 +25,7 @@
 #include	"player.h"
 #include	"bullsquid.h"
 #include	"decals.h"
+#include	"scripted.h"
 #include	"animation.h"
 #include	"studio.h"
 #include	"mod_features.h"
@@ -484,18 +485,7 @@ void CGonome::HandleAnimEvent(MonsterEvent_t *pEvent)
 
 		if (GetGonomeGuts(vecArmPos))
 		{
-			Vector	vecSpitDir;
-
-			Vector vecEnemyPosition;
-			if (m_hEnemy != 0)
-				vecEnemyPosition = (m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs);
-			else
-				vecEnemyPosition = m_vecEnemyLKP;
-			vecSpitDir = (vecEnemyPosition - vecArmPos).Normalize();
-
-			vecSpitDir.x += RANDOM_FLOAT(-0.05, 0.05);
-			vecSpitDir.y += RANDOM_FLOAT(-0.05, 0.05);
-			vecSpitDir.z += RANDOM_FLOAT(-0.05, 0);
+			const Vector vecSpitDir = SpitAtEnemy(vecArmPos);
 
 			m_pGonomeGuts->pev->body = 0;
 			m_pGonomeGuts->pev->skin = 0;
@@ -778,7 +768,7 @@ Schedule_t slGonomeRangeAttack1[] =
 // Chase enemy schedule
 Task_t tlGonomeChaseEnemy1[] =
 {
-	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_RANGE_ATTACK1 },// !!!OEM - this will stop nasty squid oscillation.
+	{ TASK_SET_FAIL_SCHEDULE, (float)SCHED_RANGE_ATTACK1 },
 	{ TASK_GET_PATH_TO_ENEMY, (float)0 },
 	{ TASK_RUN_PATH, (float)0 },
 	{ TASK_WAIT_FOR_MOVEMENT, (float)0 },

@@ -7,6 +7,9 @@
 
 // Triangle rendering, if any
 
+#include "windows_lean.h"
+#include "gl_dynamic.h"
+
 #include "hud.h"
 #include "cl_util.h"
 
@@ -16,7 +19,6 @@
 #include "entity_state.h"
 #include "cl_entity.h"
 #include "triangleapi.h"
-#include "gl_dynamic.h"
 
 extern int g_iWaterLevel;
 
@@ -53,9 +55,7 @@ void Draw_Triangles( void )
 
 	if( gHUD.m_hsprCursor == 0 )
 	{
-		char sz[256];
-		sprintf( sz, "sprites/cursor.spr" );
-		gHUD.m_hsprCursor = SPR_Load( sz );
+		gHUD.m_hsprCursor = SPR_Load( "sprites/cursor.spr" );
 	}
 
 	if( !gEngfuncs.pTriAPI->SpriteTexture( (struct model_s *)gEngfuncs.GetSpritePointer( gHUD.m_hsprCursor ), 0 ) )

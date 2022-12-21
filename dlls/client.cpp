@@ -113,7 +113,10 @@ void ClientDisconnect( edict_t *pEntity )
 
 	char text[256] = "";
 	if( pEntity->v.netname )
-		_snprintf( text, sizeof(text), "- %s has left the game\n", STRING( pEntity->v.netname ) );
+	{
+		_snprintf( text, sizeof(text) - 1, "- %s has left the game\n", STRING( pEntity->v.netname ) );
+		text[sizeof(text) - 1] = '\0';
+	}
 	MESSAGE_BEGIN( MSG_ALL, gmsgSayText, NULL );
 		WRITE_BYTE( ENTINDEX( pEntity ) );
 		WRITE_STRING( text );
@@ -356,13 +359,15 @@ void Host_Say( edict_t *pEntity, int teamonly )
 	{
 		if( CMD_ARGC() >= 2 )
 		{
-			sprintf( szTemp, "%s %s", (char *)pcmd, (char *)CMD_ARGS() );
+			_snprintf( szTemp, sizeof(szTemp) - 1, "%s %s", (char *)pcmd, (char *)CMD_ARGS() );
 		}
 		else
 		{
 			// Just a one word command, use the first word...sigh
-			sprintf( szTemp, "%s", (char *)pcmd );
+			strncpy( szTemp, (char *)pcmd, sizeof(szTemp) - 1 );
 		}
+		szTemp[sizeof(szTemp) - 1] = '\0';
+
 		p = szTemp;
 	}
 
@@ -378,11 +383,12 @@ void Host_Say( edict_t *pEntity, int teamonly )
 
 	// turn on color set 2  (color on,  no sound)
 	if( player->IsObserver() && ( teamonly ) )
-		sprintf( text, "%c(SPEC) %s: ", 2, STRING( pEntity->v.netname ) );
+		_snprintf( text, sizeof(text) - 1, "%c(SPEC) %s: ", 2, STRING( pEntity->v.netname ) );
 	else if( teamonly )
-		sprintf( text, "%c(TEAM) %s: ", 2, STRING( pEntity->v.netname ) );
+		_snprintf( text, sizeof(text) - 1, "%c(TEAM) %s: ", 2, STRING( pEntity->v.netname ) );
 	else
-		sprintf( text, "%c%s: ", 2, STRING( pEntity->v.netname ) );
+		_snprintf( text, sizeof(text) - 1, "%c%s: ", 2, STRING( pEntity->v.netname ) );
+	text[sizeof(text) - 1] = '\0';
 
 	j = sizeof( text ) - 2 - strlen( text );  // -2 for /n and null terminator
 	if( (int)strlen( p ) > j )
@@ -620,10 +626,6 @@ void ClientCommand( edict_t *pEntity )
 		if( pPlayer->IsObserver() )
 			pPlayer->Observer_FindNextPlayer( atoi( CMD_ARGV( 1 ) ) ? true : false );
 	}
-	else if ( FStrEq( pcmd, "report_ai_state" ) )
-	{
-		ReportAIStateByClassname((char *)CMD_ARGV( 1 ));
-	}
 	else if( g_pGameRules->ClientCommand( GetClassPtr( (CBasePlayer *)pev ), pcmd ) )
 	{
 		// MenuSelect returns true only if the command is properly handled,  so don't print a warning
@@ -646,7 +648,7 @@ void ClientCommand( edict_t *pEntity )
 		}
 		else
 		{
-			ALERT(at_console, "Syntax: hud_color RRR GGG BBB\n");
+			ClientPrint(&pEntity->v, HUD_PRINTCONSOLE, "Syntax: hud_color RRR GGG BBB\n");
 		}
 	}
 	else if ( FStrEq(pcmd, "buddha" ) )
@@ -656,10 +658,10 @@ void ClientCommand( edict_t *pEntity )
 			CBasePlayer *pPlayer = GetClassPtr( (CBasePlayer *)pev );
 			if (pPlayer->m_buddha) {
 				pPlayer->m_buddha = FALSE;
-				ALERT(at_console, "Buddha Mode off\n");
+				ClientPrint(&pEntity->v, HUD_PRINTCONSOLE, "Buddha Mode off\n");
 			} else {
 				pPlayer->m_buddha = TRUE;
-				ALERT(at_console, "Buddha Mode on\n");
+				ClientPrint(&pEntity->v, HUD_PRINTCONSOLE, "Buddha Mode on\n");
 			}
 		}
 	}
@@ -670,8 +672,8 @@ void ClientCommand( edict_t *pEntity )
 
 		// check the length of the command (prevents crash)
 		// max total length is 192 ...and we're adding a string below ("Unknown command: %s\n")
-		strncpy( command, pcmd, 127 );
-		command[127] = '\0';
+		strncpy( command, pcmd, sizeof(command) - 1);
+		command[sizeof(command) - 1] = '\0';
 
 		// tell the user they entered an unknown command
 		ClientPrint( &pEntity->v, HUD_PRINTCONSOLE, UTIL_VarArgs( "Unknown command: %s\n", command ) );
@@ -715,7 +717,8 @@ void ClientUserInfoChanged( edict_t *pEntity, char *infobuffer )
 		if( gpGlobals->maxClients > 1 )
 		{
 			char text[256];
-			_snprintf( text, 256, "* %s changed name to %s\n", STRING( pEntity->v.netname ), g_engfuncs.pfnInfoKeyValue( infobuffer, "name" ) );
+			_snprintf( text, sizeof(text) - 1, "* %s changed name to %s\n", STRING( pEntity->v.netname ), g_engfuncs.pfnInfoKeyValue( infobuffer, "name" ) );
+			text[sizeof(text) - 1] = '\0';
 			MESSAGE_BEGIN( MSG_ALL, gmsgSayText, NULL );
 				WRITE_BYTE( ENTINDEX( pEntity ) );
 				WRITE_STRING( text );
@@ -895,7 +898,7 @@ void StartFrame( void )
 
 	CheckAssistList(); //LRC
 	int oldBhopcap = g_bhopcap;
-	g_bhopcap = ( g_pGameRules->IsMultiplayer() && bhopcap.value != 0.0f ) ? 1 : 0;
+	g_bhopcap = ( g_pGameRules && g_pGameRules->IsMultiplayer() && bhopcap.value != 0.0f ) ? 1 : 0;
 	if( g_bhopcap != oldBhopcap )
 	{
 		MESSAGE_BEGIN( MSG_ALL, gmsgBhopcap, NULL );
@@ -1321,6 +1324,10 @@ int AddToFullPack( struct entity_state_s *state, int e, edict_t *ent, edict_t *h
 	if(ent->v.flags & FL_FLY )
 		state->eflags |= EFLAG_SLERP;
 	else state->eflags &= ~EFLAG_SLERP;
+
+	CBaseEntity* pEntity = (CBaseEntity*)GET_PRIVATE(ent);
+	if (pEntity)
+		state->eflags |= pEntity->m_EFlags;
 #endif
 
 	state->scale		= ent->v.scale;

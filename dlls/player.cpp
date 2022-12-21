@@ -126,6 +126,8 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 #if FEATURE_ROPE
 	DEFINE_FIELD(CBasePlayer, m_pRope, FIELD_CLASSPTR),
 #endif
+	DEFINE_FIELD(CBasePlayer, m_iItemsBits, FIELD_INTEGER),
+	DEFINE_ARRAY(CBasePlayer, m_timeBasedDmgModifiers, FIELD_CHARACTER, CDMG_TIMEBASED),
 	DEFINE_FIELD(CBasePlayer, m_settingsLoaded, FIELD_BOOLEAN),
 	DEFINE_FIELD(CBasePlayer, m_buddha, FIELD_BOOLEAN),
 
@@ -196,12 +198,14 @@ int gmsgGeigerRange = 0;
 int gmsgTeamNames = 0;
 int gmsgBhopcap = 0;
 int gmsgPlayMP3 = 0;
+int gmsgItems = 0;
 int gmsgHUDColor = 0;
 
 int gmsgStatusText = 0;
 int gmsgStatusValue = 0;
 
 int gmsgRandomGibs = 0;
+int gmsgMuzzleLight = 0;
 
 #if FEATURE_NIGHTVISION
 int gmsgNightvision = 0;
@@ -260,12 +264,14 @@ void LinkUserMessages( void )
 	gmsgTeamNames = REG_USER_MSG( "TeamNames", -1 );
 	gmsgBhopcap = REG_USER_MSG( "Bhopcap", 1 );
 	gmsgPlayMP3 = REG_USER_MSG( "PlayMP3", -1 );
+	gmsgItems = REG_USER_MSG( "Items", 4 );
 	gmsgHUDColor = REG_USER_MSG( "HUDColor", 4 );
 
 	gmsgStatusText = REG_USER_MSG( "StatusText", -1 );
 	gmsgStatusValue = REG_USER_MSG( "StatusValue", 3 );
 
 	gmsgRandomGibs = REG_USER_MSG( "RandomGibs", 27 );
+	gmsgMuzzleLight = REG_USER_MSG( "MuzzleLight", 6 );
 
 #if FEATURE_NIGHTVISION
 	gmsgNightvision = REG_USER_MSG( "Nightvision", 1 );
@@ -403,7 +409,7 @@ void CBasePlayer::DeathSound( void )
 // bitsDamageType indicates type of damage healed. 
 int CBasePlayer::TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamageType )
 {
-	const int healed = CBaseMonster::TakeHealth(pHealer, flHealth, bitsDamageType);
+	const int healed = CBaseMonster::TakeHealth(pHealer, (int)flHealth, bitsDamageType);
 #if FEATURE_MEDKIT
 	CBasePlayerWeapon* pPlayerMedkit = WeaponById(WEAPON_MEDKIT);
 	if ((bitsDamageType & HEAL_CHARGE) != 0 && pPlayerMedkit) {
@@ -493,6 +499,34 @@ void CBasePlayer::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector ve
 	etc are implemented with subsequent calls to TakeDamage using DMG_GENERIC.
 */
 
+static BYTE TBDModFromDmgType(int bitsDamageType)
+{
+	BYTE result = 0;
+	if (bitsDamageType & DMG_TIMEDNONLETHAL)
+	{
+		result |= DMG_TIMED_MOD_NONLETHAL;
+	}
+	if (bitsDamageType & DMG_IGNORE_ARMOR)
+	{
+		result |= DMG_TIMED_MOD_IGNORE_ARMOR;
+	}
+	return result;
+}
+
+static int DmgTypeFromTBDMod(BYTE timeBasedModifier)
+{
+	int result = 0;
+	if (timeBasedModifier & DMG_TIMED_MOD_NONLETHAL)
+	{
+		result |= DMG_NONLETHAL;
+	}
+	if (timeBasedModifier & DMG_TIMED_MOD_IGNORE_ARMOR)
+	{
+		result |= DMG_IGNORE_ARMOR;
+	}
+	return result;
+}
+
 int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
 {
 	// have suit diagnose the problem - ie: report damage type
@@ -532,7 +566,7 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 	m_lastDamageAmount = (int)flDamage;
 
 	// Armor. 
-	if( !( pev->flags & FL_GODMODE ) && pev->armorvalue && !( bitsDamageType & ( DMG_FALL | DMG_DROWN ) ) )// armor doesn't protect against fall or drown damage!
+	if( !( pev->flags & FL_GODMODE ) && pev->armorvalue && !( bitsDamageType & ( DMG_FALL | DMG_DROWN | DMG_IGNORE_ARMOR ) ) )// armor doesn't protect against fall or drown damage!
 	{
 		float flNew = flDamage * flRatio;
 
@@ -560,9 +594,13 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 
 	// reset damage time countdown for each type of time based damage player just sustained
 	{
+		const BYTE timeBasedModifier = TBDModFromDmgType(bitsDamageType);
 		for( int i = 0; i < CDMG_TIMEBASED; i++ )
 			if( bitsDamageType & ( DMG_PARALYZE << i ) )
+			{
 				m_rgbTimeBasedDamage[i] = 0;
+				m_timeBasedDmgModifiers[i] = timeBasedModifier;
+			}
 	}
 
 	// tell director about it
@@ -726,6 +764,8 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 			for (int i=0; i<TLK_CFRIENDS; ++i)
 			{
 				CTalkMonster::TalkFriend friendClass = CTalkMonster::m_szFriends[i];
+				if (!friendClass.name[0])
+					break;
 				if (friendClass.category == TALK_FRIEND_SOLDIER)
 				{
 					CBaseEntity* pEntity = NULL;
@@ -919,12 +959,12 @@ void CBasePlayer::RemoveAllItems( int stripFlags )
 		FlashlightTurnOff(false);
 	}
 
-	pev->weapons &= ~WEAPON_ALLWEAPONS;
+	pev->weapons = 0;
 	if( FBitSet(stripFlags, STRIP_SUIT) )
-		pev->weapons &= ~(1 << WEAPON_SUIT);
+		m_iItemsBits &= ~PLAYER_ITEM_SUIT;
 #if FEATURE_FLASHLIGHT_ITEM
 	if ( FBitSet(stripFlags, STRIP_FLASHLIGHT) )
-		pev->weapons &= ~(1 << WEAPON_FLASHLIGHT);
+		m_iItemsBits &= ~PLAYER_ITEM_FLASHLIGHT;
 #endif
 
 	if (FBitSet(stripFlags, STRIP_LONGJUMP)) {
@@ -2637,7 +2677,7 @@ void CBasePlayer::CheckTimeBasedDamage()
 				bDuration = NERVEGAS_DURATION;
 				break;
 			case itbd_Poison:
-				TakeDamage( pev, pev, POISON_DAMAGE, FBitSet(m_bitsDamageType, DMG_TIMEDNONLETHAL) ? DMG_NONLETHAL : DMG_GENERIC );
+				TakeDamage( pev, pev, POISON_DAMAGE, DMG_GENERIC | (DmgTypeFromTBDMod(m_timeBasedDmgModifiers[i])) );
 				bDuration = POISON_DURATION;
 				break;
 			case itbd_Radiation:
@@ -2690,6 +2730,7 @@ void CBasePlayer::CheckTimeBasedDamage()
 				if( !m_rgbTimeBasedDamage[i] || --m_rgbTimeBasedDamage[i] == 0 )
 				{
 					m_rgbTimeBasedDamage[i] = 0;
+					m_timeBasedDmgModifiers[i] = 0;
 
 					// if we're done, clear damage bits
 					m_bitsDamageType &= ~( DMG_PARALYZE << i );	
@@ -2770,7 +2811,11 @@ Things powered by the battery
 
 // if in range of radiation source, ping geiger counter
 
+#if FEATURE_GEIGER_SOUNDS_FIX
+#define GEIGERDELAY 0.28f
+#else
 #define GEIGERDELAY 0.25f
+#endif
 
 void CBasePlayer::UpdateGeigerCounter( void )
 {
@@ -2817,7 +2862,7 @@ void CBasePlayer::CheckSuitUpdate()
 	int isearch = m_iSuitPlayNext;
 
 	// Ignore suit updates if no suit
-	if( !( pev->weapons & ( 1 << WEAPON_SUIT ) ) )
+	if( !HasSuit() )
 		return;
 
 	// if in range of radiation source, ping geiger counter
@@ -2882,7 +2927,7 @@ void CBasePlayer::SetSuitUpdate( const char *name, int fgroup, int iNoRepeatTime
 	int iempty = -1;
 
 	// Ignore suit updates if no suit
-	if( !( pev->weapons & ( 1 << WEAPON_SUIT ) ) )
+	if( !HasSuit() )
 		return;
 
 #if FEATURE_SUIT_NO_SOUNDS
@@ -3856,10 +3901,10 @@ void CBasePlayer::FlashlightTurnOn( void )
 
 	bool hasFlashlight = false;
 #if FEATURE_FLASHLIGHT_ITEM
-	hasFlashlight = hasFlashlight || (pev->weapons & (1 << WEAPON_FLASHLIGHT));
+	hasFlashlight = hasFlashlight || HasFlashlight();
 #endif
 #if FEATURE_SUIT_FLASHLIGHT
-	hasFlashlight = hasFlashlight || (pev->weapons & (1 << WEAPON_SUIT));
+	hasFlashlight = hasFlashlight || HasSuit();
 #endif
 	if( hasFlashlight )
 	{
@@ -4054,28 +4099,28 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		gEvilImpulse101 = TRUE;
 		GiveNamedItem( "item_suit", SF_ITEM_NOFALL );
 #if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
-		GiveNamedItem( "item_flashlight" );
+		m_iItemsBits |= PLAYER_ITEM_FLASHLIGHT;
 #endif
 		GiveNamedItem( "item_battery", SF_ITEM_NOFALL );
 		GiveNamedItem( "weapon_crowbar" );
 		GiveNamedItem( "weapon_9mmhandgun" );
-		GiveNamedItem( "ammo_9mmclip" );
+		GiveAmmo(AMMO_GLOCKCLIP_GIVE, "9mm"); //GiveNamedItem( "ammo_9mmclip" );
 		GiveNamedItem( "weapon_shotgun" );
-		GiveNamedItem( "ammo_buckshot" );
+		GiveAmmo(AMMO_BUCKSHOTBOX_GIVE, "buckshot"); //GiveNamedItem( "ammo_buckshot" );
 		GiveNamedItem( "weapon_9mmAR" );
-		GiveNamedItem( "ammo_9mmAR" );
-		GiveNamedItem( "ammo_ARgrenades" );
+		GiveAmmo(AMMO_MP5CLIP_GIVE, "9mm"); //GiveNamedItem( "ammo_9mmAR" );
+		GiveAmmo(AMMO_M203BOX_GIVE, "ARgrenades"); //GiveNamedItem( "ammo_ARgrenades" );
 		GiveNamedItem( "weapon_handgrenade" );
 		GiveNamedItem( "weapon_tripmine" );
 		GiveNamedItem( "weapon_357" );
-		GiveNamedItem( "ammo_357" );
+		GiveAmmo(AMMO_357BOX_GIVE, "357"); //GiveNamedItem( "ammo_357" );
 		GiveNamedItem( "weapon_crossbow" );
-		GiveNamedItem( "ammo_crossbow" );
+		GiveAmmo(AMMO_CROSSBOWCLIP_GIVE, "bolts"); //GiveNamedItem( "ammo_crossbow" );
 		GiveNamedItem( "weapon_egon" );
 		GiveNamedItem( "weapon_gauss" );
-		GiveNamedItem( "ammo_gaussclip" );
+		GiveAmmo(AMMO_URANIUMBOX_GIVE, "uranium"); //GiveNamedItem( "ammo_gaussclip" );
 		GiveNamedItem( "weapon_rpg" );
-		GiveNamedItem( "ammo_rpgclip" );
+		GiveAmmo(AMMO_RPGCLIP_GIVE, "rockets"); //GiveNamedItem( "ammo_rpgclip" );
 		GiveNamedItem( "weapon_satchel" );
 		GiveNamedItem( "weapon_snark" );
 		GiveNamedItem( "weapon_hornetgun" );
@@ -4093,11 +4138,11 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 #endif
 #if FEATURE_M249
 		GiveNamedItem( "weapon_m249" );
-		GiveNamedItem( "ammo_556" );
+		GiveAmmo(AMMO_556CLIP_GIVE, "556");
 #endif
 #if FEATURE_SNIPERRIFLE
 		GiveNamedItem( "weapon_sniperrifle" );
-		GiveNamedItem( "ammo_762" );
+		GiveAmmo( AMMO_762BOX_GIVE, "762");
 #endif
 #if FEATURE_DISPLACER
 		GiveNamedItem( "weapon_displacer" );
@@ -4107,6 +4152,7 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 #endif
 #if FEATURE_SPORELAUNCHER
 		GiveNamedItem( "weapon_sporelauncher" );
+		GiveAmmo(5, "spores");
 #endif
 #if FEATURE_KNIFE
 		GiveNamedItem( "weapon_knife" );
@@ -4624,6 +4670,14 @@ void CBasePlayer::UpdateClientData( void )
 		// send "health" update message
 		MESSAGE_BEGIN( MSG_ONE, gmsgBattery, NULL, pev );
 			WRITE_SHORT( (int)pev->armorvalue );
+		MESSAGE_END();
+	}
+
+	if (m_iItemsBits != m_iClientItemsBits)
+	{
+		m_iClientItemsBits = m_iItemsBits;
+		MESSAGE_BEGIN( MSG_ONE, gmsgItems, NULL, pev );
+		WRITE_LONG( m_iItemsBits );
 		MESSAGE_END();
 	}
 

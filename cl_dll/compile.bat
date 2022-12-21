@@ -8,7 +8,8 @@ echo -- Compiler is MSVC6
 
 set XASH3DSRC=..\..\Xash3D_original
 set INCLUDES=-I../common -I../engine -I../pm_shared -I../game_shared -I../public -I../external -I../dlls -I../utils/fake_vgui/include
-set SOURCES=../dlls/crossbow.cpp ^
+set SOURCES=../dlls/weapons_shared.cpp ^
+	../dlls/crossbow.cpp ^
 	../dlls/crowbar.cpp ^
 	../dlls/egon.cpp ^
 	../dlls/gauss.cpp ^
@@ -42,6 +43,7 @@ set SOURCES=../dlls/crossbow.cpp ^
 	ammohistory.cpp ^
 	battery.cpp ^
 	cdll_int.cpp ^
+	cl_msg_fx.cpp ^
 	com_weapons.cpp ^
 	death.cpp ^
 	demo.cpp ^
@@ -65,7 +67,6 @@ set SOURCES=../dlls/crossbow.cpp ^
 	menu.cpp ^
 	message.cpp ^
 	nightvision.cpp ^
-	overview.cpp ^
 	parsemsg.cpp ^
 	../pm_shared/pm_debug.c ^
 	../pm_shared/pm_math.c ^

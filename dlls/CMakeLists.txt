@@ -165,6 +165,7 @@ set (SVDLL_SOURCES
 	util.cpp
 	voltigore.cpp
 	weapons.cpp
+	weapons_shared.cpp
 	world.cpp
 	xen.cpp
 	zombie.cpp

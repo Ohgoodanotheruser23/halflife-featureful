@@ -29,6 +29,7 @@
 #include	"decals.h"
 #include	"explode.h"
 #include	"func_break.h"
+#include	"scripted.h"
 #include	"followingmonster.h"
 #include	"gamerules.h"
 #include	"mod_features.h"
@@ -249,14 +250,15 @@ void CStomp::Think( void )
 		spriteScale *= 1.8;
 		maxNumOfSprites = 6;
 	}
-	const int freeEnts = NUMBER_OF_ENTITIES() - gpGlobals->maxEntities;
+	const int freeEnts = gpGlobals->maxEntities - NUMBER_OF_ENTITIES();
 	maxNumOfSprites = Q_min(maxNumOfSprites, freeEnts);
 
+	// TODO: make it into clint side effects?
 	// Move and spawn trails
 	while( gpGlobals->time - pev->dmgtime > stompInterval )
 	{
 		pev->origin = pev->origin + pev->movedir * pev->speed * stompInterval;
-		for( int i = 0; i < numOfSprites && maxNumOfSprites; i++ )
+		for( int i = 0; i < numOfSprites && maxNumOfSprites > 0; i++ )
 		{
 			maxNumOfSprites--;
 			CSprite *pSprite = CSprite::SpriteCreate( STRING(pev->model), pev->origin, TRUE );
@@ -813,9 +815,7 @@ void CGargantua::FlameDamage( Vector vecStart, Vector vecEnd, entvars_t *pevInfl
 				// ALERT( at_console, "hit %s\n", STRING( pEntity->pev->classname ) );
 				if( tr.flFraction != 1.0f )
 				{
-					ClearMultiDamage();
-					pEntity->TraceAttack( pevInflictor, flAdjustedDamage, ( tr.vecEndPos - vecSrc ).Normalize(), &tr, bitsDamageType );
-					ApplyMultiDamage( pevInflictor, pevAttacker );
+					pEntity->ApplyTraceAttack( pevInflictor, pevAttacker, flAdjustedDamage, ( tr.vecEndPos - vecSrc ).Normalize(), &tr, bitsDamageType );
 				}
 				else
 				{
@@ -1244,6 +1244,19 @@ void CGargantua::StartTask( Task_t *pTask )
 			AttackSound();
 		TaskComplete();
 		break;
+	// allow a scripted_action to make gargantua shoot flames.
+	case TASK_PLAY_SCRIPT:
+		if ( m_pCine->IsAction() && m_pCine->m_fAction == SCRIPT_ACT_MELEE_ATTACK2)
+		{
+			FlameCreate();
+			m_flWaitFinished = gpGlobals->time + 4.5f;
+			m_flameTime = gpGlobals->time + 6.0f;
+			m_flameX = 0;
+			m_flameY = 0;
+		}
+		else
+			CBaseMonster::StartTask( pTask );
+		break;
 	case TASK_DIE:
 		m_flWaitFinished = gpGlobals->time + 1.6f;
 		DeathEffect();
@@ -1331,6 +1344,31 @@ void CGargantua::RunTask( Task_t *pTask )
 		else
 			CFollowingMonster::RunTask( pTask );
 		break;
+	case TASK_PLAY_SCRIPT:
+		if (m_pCine->IsAction() && m_pCine->m_fAction == SCRIPT_ACT_MELEE_ATTACK2)
+		{
+			if (m_fSequenceFinished)
+			{
+				if (m_pCine->m_iRepeatsLeft > 0)
+					CBaseMonster::RunTask( pTask );
+				else
+				{
+					FlameOffSound();
+					FlameDestroy();
+					FlameControls( 0, 0 );
+					SetBoneController( 0, 0 );
+					SetBoneController( 1, 0 );
+					m_pCine->SequenceDone( this );
+				}
+				break;
+			}
+			//if not finished, drop through into task_flame_sweep!
+		}
+		else
+		{
+			CBaseMonster::RunTask( pTask );
+			break;
+		}
 	case TASK_FLAME_SWEEP:
 		if( gpGlobals->time > m_flWaitFinished )
 		{
@@ -1348,12 +1386,33 @@ void CGargantua::RunTask( Task_t *pTask )
 			Vector angles = g_vecZero;
 
 			FlameUpdate();
-			CBaseEntity *pEnemy = m_hEnemy;
-			if( pEnemy )
+
+			Vector org = pev->origin;
+			org.z += 64;
+			Vector dir = g_vecZero;
+
+			if (m_pCine) // LRC- are we obeying a scripted_action?
 			{
-				Vector org = pev->origin;
-				org.z += 64;
-				Vector dir = pEnemy->BodyTarget( org ) - org;
+				if (m_hTargetEnt != 0 && m_hTargetEnt != m_pGoalEnt)
+				{
+					dir = m_hTargetEnt->BodyTarget( org ) - org;
+				}
+				else
+				{
+					UTIL_MakeVectors( pev->angles );
+					dir = gpGlobals->v_forward;
+				}
+			}
+			else
+			{
+				CBaseEntity *pEnemy = m_hEnemy;
+				if (pEnemy)
+				{
+					dir = pEnemy->BodyTarget( org ) - org;
+				}
+			}
+			if( dir != g_vecZero )
+			{
 				angles = UTIL_VecToAngles( dir );
 				angles.x = -angles.x;
 				angles.y -= pev->angles.y;

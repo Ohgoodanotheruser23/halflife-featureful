@@ -36,7 +36,8 @@
 #define bit_saidHeard			(1<<6)
 #define bit_saidSmelled			(1<<7)
 
-#define TLK_CFRIENDS		11
+#define TLK_CFRIENDS		20
+#define NUM_MEDICS 5
 
 enum
 {
@@ -68,6 +69,8 @@ typedef enum
 	TLK_MORTAL,
 	TLK_SHOT,
 	TLK_MAD,
+	TLK_KILL,
+	TLK_ATTACK,
 
 	TLK_CGROUPS					// MUST be last entry
 } TALKGROUPNAMES;
@@ -201,16 +204,20 @@ public:
 
 	struct TalkFriend
 	{
-		const char* name;
+		char name[64];
 		bool canFollow;
-		bool canHeal;
 		short category;
 	};
 
 	static TalkFriend m_szFriends[TLK_CFRIENDS];		// array of friend names
+	static char m_szMedics[NUM_MEDICS][64];
 	static float g_talkWaitTime;
 	static bool SomeoneIsTalking();
-	
+	static void RegisterTalkMonster(const char* className, bool canFollow, short followerCategory);
+	void RegisterTalkMonster(bool canFollow = true);
+	static void RegisterMedic(const char* className);
+	void RegisterMedic();
+
 	int			m_bitsSaid;						// set bits for sentences we don't want repeated
 	int			m_nSpeak;						// number of times initiated talking
 	int			m_voicePitch;					// pitch of voice for this head

@@ -69,7 +69,7 @@ public:
 	void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 
 	MONSTERSTATE GetIdealState( void ) { return MONSTERSTATE_IDLE; };
-	int CanPlaySequence( BOOL fDisregardState ) { return TRUE; };
+	int CanPlaySequence( int interruptFlags ) { return TRUE; };
 
 	int DefaultClassify( void );
 
@@ -249,6 +249,8 @@ void CTentacle::Spawn()
 	pev->effects = 0;
 	SetMyHealth( 75 );
 	pev->sequence = 0;
+	//Always interpolate tentacles since they don't actually move.
+	m_EFlags |= EFLAG_SLERP;
 
 	SetMyModel( "models/tentacle2.mdl" );
 	UTIL_SetSize( pev, Vector( -32, -32, 0 ), Vector( 32, 32, 64 ) );
