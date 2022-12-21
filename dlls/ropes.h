@@ -38,7 +38,7 @@ public:
 	virtual void Precache();
 
 	virtual void Spawn();
-	void Activate();
+	void PostSpawn();
 
 	int ObjectCaps();
 
@@ -294,9 +294,6 @@ private:
 	int mDisallowPlayerAttachment;
 
 	bool m_bMakeSound;
-
-protected:
-	bool m_activated;
 };
 
 #endif //ROPES_H

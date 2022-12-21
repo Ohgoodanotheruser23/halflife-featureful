@@ -265,13 +265,9 @@ void CRope::Spawn()
 	m_activated = false;
 }
 
-void CRope::Activate()
+void CRope::PostSpawn()
 {
-	if (!m_activated)
-	{
-		InitRope();
-		m_activated = true;
-	}
+	InitRope();
 }
 
 int CRope::ObjectCaps()
@@ -1401,7 +1397,7 @@ public:
 	void Precache();
 
 	void Spawn();
-	void Activate();
+	void PostSpawn();
 
 	void EXPORT ElectrifiedRopeThink();
 
@@ -1539,13 +1535,9 @@ void CElectrifiedWire::Spawn()
 	pev->classname = MAKE_STRING( "env_electrified_wire" );
 }
 
-void CElectrifiedWire::Activate()
+void CElectrifiedWire::PostSpawn()
 {
-	if (!m_activated)
-	{
-		InitElectrifiedRope();
-		m_activated = true;
-	}
+	InitElectrifiedRope();
 }
 
 void CElectrifiedWire::InitElectrifiedRope()
