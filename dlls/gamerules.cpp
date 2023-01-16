@@ -254,6 +254,9 @@ void CGameRules::RefreshSkillData ( void )
 		gSkillData.massnHealth = GetSkillCvar( "sk_massassin_health", "sk_hgrunt_health" );
 		gSkillData.massnDmgKick = GetSkillCvar( "sk_massassin_kick", "sk_hgrunt_kick" );
 		gSkillData.massnGrenadeSpeed = GetSkillCvar( "sk_massassin_gspeed", "sk_hgrunt_gspeed" );
+		gSkillData.massnFlashHoldTime = GetSkillCvar( "sk_massassin_flash_holdtime" );
+		gSkillData.massnFlashFadeTime = GetSkillCvar( "sk_massassin_flash_fadetime" );
+		gSkillData.massnFlashRadius = GetSkillCvar( "sk_massassin_flash_radius" );
 	}
 #endif
 	// Nihilanth

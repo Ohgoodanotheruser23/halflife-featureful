@@ -120,6 +120,9 @@ struct skilldata_t
 	float massnHealth;
 	float massnDmgKick;
 	float massnGrenadeSpeed;
+	float massnFlashHoldTime;
+	float massnFlashFadeTime;
+	float massnFlashRadius;
 #endif
 
 	float nihilanthHealth;

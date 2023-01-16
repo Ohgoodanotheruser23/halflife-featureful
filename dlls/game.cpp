@@ -781,6 +781,9 @@ DECLARE_SKILL_VALUE(sk_controller_dmgball, "0")
 DECLARE_SKILL_VALUE(sk_massassin_health, "0")
 DECLARE_SKILL_VALUE(sk_massassin_kick, "0")
 DECLARE_SKILL_VALUE(sk_massassin_gspeed, "0")
+DECLARE_SKILL_VALUE(sk_massassin_flash_holdtime, "0.9")
+DECLARE_SKILL_VALUE(sk_massassin_flash_fadetime, "1.8")
+DECLARE_SKILL_VALUE(sk_massassin_flash_radius, "610")
 #endif
 
 // Nihilanth
@@ -1433,6 +1436,9 @@ void GameDLLInit( void )
 		REGISTER_SKILL_CVARS(sk_massassin_health);
 		REGISTER_SKILL_CVARS(sk_massassin_kick);
 		REGISTER_SKILL_CVARS(sk_massassin_gspeed);
+		REGISTER_SKILL_CVARS(sk_massassin_flash_holdtime);
+		REGISTER_SKILL_CVARS(sk_massassin_flash_fadetime);
+		REGISTER_SKILL_CVARS(sk_massassin_flash_radius);
 	}
 #endif
 

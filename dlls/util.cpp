@@ -777,7 +777,7 @@ static int CalculateFadeAlpha( const Vector& fadeSource, CBaseEntity* pEntity, i
 	UTIL_MakeVectors(pEntity->pev->v_angle);
 	const Vector a = gpGlobals->v_forward;
 	const Vector b = (fadeSource - (pEntity->pev->origin + pEntity->pev->view_ofs)).Normalize();
-	const float dot = DotProduct(a,b);
+	const float dot = DotProduct(a,b) + 0.25;
 	if (dot >= 0)
 		return (int)(baseAlpha*Q_min(dot+0.134, 1.0));
 	else
@@ -821,11 +821,15 @@ void UTIL_ScreenFade( CBaseEntity *pEntity, const Vector &color, float fadeTime,
 	UTIL_ScreenFadeWrite( fade, pEntity );
 }
 
-void UTIL_ScreenFade( const Vector& fadeSource, CBaseEntity *pEntity, const Vector &color, float fadeTime, float fadeHold, int alpha, int flags )
+bool UTIL_ScreenFade( const Vector& fadeSource, CBaseEntity *pEntity, const Vector &color, float fadeTime, float fadeHold, int alpha, int flags )
 {
 	alpha = CalculateFadeAlpha(fadeSource, pEntity, alpha);
 	if (alpha > 0)
+	{
 		UTIL_ScreenFade( pEntity, color, fadeTime, fadeHold, alpha, flags );
+		return true;
+	}
+	return false;
 }
 
 void UTIL_HudMessage( CBaseEntity *pEntity, const hudtextparms_t &textparms, const char *pMessage )
