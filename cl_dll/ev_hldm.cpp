@@ -120,13 +120,13 @@ float EV_HLDM_PlayTextureSound( int idx, pmtrace_t *ptr, float *vecSrc, float *v
 		// get texture from entity or world (world is ent(0))
 		pTextureName = (char *)gEngfuncs.pEventAPI->EV_TraceTexture( ptr->ent, vecSrc, vecEnd );
 
-		if( strcmp( pTextureName, "sky" ) == 0 )
-		{
-			isSky = true;
-		}
-
 		if ( pTextureName )
 		{
+			if( strcmp( pTextureName, "sky" ) == 0 )
+			{
+				isSky = true;
+			}
+
 			strcpy( texname, pTextureName );
 			pTextureName = texname;
 
