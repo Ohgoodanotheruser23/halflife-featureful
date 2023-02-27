@@ -562,6 +562,8 @@ void ReadServerFeatures()
 	g_engfuncs.pfnFreeFile( pMemFile );
 }
 
+BOOL g_hasFlashbangModel;
+
 cvar_t displaysoundlist = {"displaysoundlist","0"};
 
 // multiplayer server rules
@@ -1781,6 +1783,14 @@ void GameDLLInit( void )
 	g_engfuncs.pfnAddServerCommand("set_global_value", Cmd_SetGlobalValue);
 	g_engfuncs.pfnAddServerCommand("calc_ratio", Cmd_CalcRatio);
 	g_engfuncs.pfnAddServerCommand("calc_state", Cmd_CalcState);
+
+	int fgrenadeFileSize;
+	byte* pFgrenadeMemFile = g_engfuncs.pfnLoadFileForMe( "models/w_fgrenade.mdl", &fgrenadeFileSize );
+	g_hasFlashbangModel = pFgrenadeMemFile != 0;
+	if (pFgrenadeMemFile)
+		g_engfuncs.pfnFreeFile( pFgrenadeMemFile );
+
+	ALERT(at_aiconsole, "Flashbangs %s\n", g_hasFlashbangModel ? "enabled" : "disabled");
 }
 
 bool ItemsPickableByTouch()

@@ -12,6 +12,8 @@
 
 #if FEATURE_MASSN
 
+extern BOOL g_hasFlashbangModel;
+
 class CFlashGrenade : public CBaseMonster
 {
 public:
@@ -31,8 +33,7 @@ LINK_ENTITY_TO_CLASS( fgrenade, CFlashGrenade )
 void CFlashGrenade::Precache()
 {
 	PRECACHE_MODEL("models/w_fgrenade.mdl");
-	PRECACHE_SOUND("weapons/fgrenade_hit1.wav");
-	PRECACHE_SOUND("weapons/flashbang-1.wav");
+	PRECACHE_SOUND("debris/metal6.wav");
 }
 
 void CFlashGrenade::Spawn()
@@ -115,7 +116,7 @@ void CFlashGrenade::BounceTouch( CBaseEntity *pOther )
 	else
 	{
 		// play bounce sound
-		EMIT_SOUND( ENT( pev ), CHAN_VOICE, "weapons/fgrenade_hit1.wav", 0.25, ATTN_NORM );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "debris/metal6.wav", 0.20f, ATTN_NORM, 0, 85 );
 	}
 	pev->framerate = pev->velocity.Length() / 200.0f;
 	if( pev->framerate > 1.0f )
@@ -159,7 +160,7 @@ void CFlashGrenade::Detonate( void )
 	pev->solid = SOLID_NOT;// intangible
 	pev->takedamage = DAMAGE_NO;
 
-	EMIT_SOUND( ENT( pev ), CHAN_VOICE, "weapons/flashbang-1.wav", 1.0f, ATTN_NORM );
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "weapons/debris3.wav", 1.0f, ATTN_NORM, 0, 115 );
 
 	pev->effects |= EF_NODRAW;
 
@@ -550,7 +551,7 @@ void CMassn::HandleAnimEvent(MonsterEvent_t *pEvent)
 
 bool CMassn::CanThrowFlashGrenade()
 {
-	return FBitSet(pev->weapons, MASSN_FLASHGRENADE) && m_hEnemy != 0 && m_hEnemy->IsPlayer();
+	return g_hasFlashbangModel && FBitSet(pev->weapons, MASSN_FLASHGRENADE) && m_hEnemy != 0 && m_hEnemy->IsPlayer();
 }
 
 //=========================================================
@@ -593,7 +594,7 @@ void CMassn::Spawn()
 	}
 	m_cAmmoLoaded = m_cClipSize;
 
-	if (!FBitSet(pev->weapons, MASSN_GRENADELAUNCHER|MASSN_SNIPERRIFLE))
+	if (g_hasFlashbangModel && !FBitSet(pev->weapons, MASSN_GRENADELAUNCHER|MASSN_SNIPERRIFLE))
 	{
 		pev->weapons |= MASSN_FLASHGRENADE;
 	}
@@ -621,7 +622,8 @@ void CMassn::MonsterInit()
 void CMassn::Precache()
 {
 	PrecacheHelper("models/massn.mdl");
-	UTIL_PrecacheOther("fgrenade");
+	if (g_hasFlashbangModel)
+		UTIL_PrecacheOther("fgrenade");
 
 	PRECACHE_SOUND("weapons/sniper_fire.wav");
 
