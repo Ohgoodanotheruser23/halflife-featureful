@@ -1090,7 +1090,7 @@ void CFuncTankLaser::Fire( const Vector &barrelEnd, const Vector &forward, entva
 				if (pev->solid != SOLID_NOT)
 					SetBits(pev->flags, FL_ALWAYSTHINK);
 				m_pLaser->pev->dmgtime = gpGlobals->time - 1.0f;
-				m_pLaser->FireAtPoint( tr, pevAttacker );
+				m_pLaser->FireAtPoint( tr );
 				m_pLaser->pev->nextthink = 0;
 				RemoveBullet();
 			}
