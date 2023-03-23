@@ -2675,6 +2675,7 @@ void CEnvQuakeFx::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE u
 // overloaded pev->health, is now how many cans remain in the machine.
 //=========================================================
 #define DEFAULT_CAN_MODEL "models/can.mdl"
+#define SODACAN_SOUND "items/sodacan.wav"
 
 class CEnvBeverage : public CBaseDelay
 {
@@ -2688,6 +2689,7 @@ void CEnvBeverage::Precache( void )
 {
 	PRECACHE_MODEL( FStringNull( pev->model ) ? DEFAULT_CAN_MODEL : STRING( pev->model ) );
 	PRECACHE_SOUND( "weapons/g_bounce3.wav" );
+	PRECACHE_SOUND( SODACAN_SOUND );
 }
 
 LINK_ENTITY_TO_CLASS( env_beverage, CEnvBeverage )
@@ -2765,6 +2767,7 @@ void CItemSoda::Precache( void )
 {
 	PRECACHE_MODEL( FStringNull( pev->model ) ? DEFAULT_CAN_MODEL : STRING( pev->model ) );
 	PRECACHE_SOUND( "weapons/g_bounce3.wav" );
+	PRECACHE_SOUND( SODACAN_SOUND);
 }
 
 LINK_ENTITY_TO_CLASS( item_sodacan, CItemSoda )
@@ -2799,7 +2802,7 @@ void CItemSoda::CanTouch( CBaseEntity *pOther )
 		return;
 	}
 
-	// spoit sound here
+	EMIT_SOUND( ENT( pOther->pev ), CHAN_STATIC, SODACAN_SOUND, 1.0f, ATTN_NORM );
 	pOther->TakeHealth( this, pev->health ? pev->health : gSkillData.sodaHeal, DMG_GENERIC );// a bit of health.
 
 	if( !FNullEnt( pev->owner ) )
