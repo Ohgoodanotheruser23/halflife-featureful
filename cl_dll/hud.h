@@ -321,6 +321,8 @@ protected:
 	int sub_count;
 	bool captionsInit;
 	HSPRITE m_hVoiceIcon;
+	int voiceIconWidth;
+	int voiceIconHeight;
 };
 
 #define ACHIEVEMENT_COUNT 32
