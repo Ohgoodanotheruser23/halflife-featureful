@@ -60,7 +60,7 @@ int CHudCaption::MsgFunc_Caption(const char *pszName, int iSize, void *pbuf)
 	Subtitle_t sub;
 	memset(&sub, 0, sizeof(sub));
 
-	int holdTime = READ_BYTE();
+	float holdTime = READ_BYTE();
 	int radio = READ_BYTE();
 
 	const char* captionName = READ_STRING();
@@ -88,7 +88,7 @@ int CHudCaption::MsgFunc_Caption(const char *pszName, int iSize, void *pbuf)
 				perceivedLength ++;
 			++ptr;
 		}
-		holdTime = 2 + perceivedLength/40;
+		holdTime = 2 + perceivedLength/32.0f;
 	}
 	sub.timeLeft = holdTime;
 	sub.timeBeforeStart = caption->delay;
