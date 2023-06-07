@@ -223,6 +223,22 @@ int CHud::Redraw( float flTime, int intermission )
 	}
 	*/
 
+	if (m_pCvarCrosshair->value && !m_Achievements.m_iTabHeld && (m_iHideHUDDisplay & HIDEHUD_SHOW_FAKE_CROSSHAIR))
+	{
+		int r, g, b;
+		UnpackRGB( r, g, b, gHUD.HUDColor() );
+
+		const int crosshairSize = 4;
+		const int iCrossX = ScreenWidth / 2 - crosshairSize / 2;
+		const int iCrossY = ScreenHeight / 2 - crosshairSize / 2;
+
+		gEngfuncs.pfnFillRGBABlend( iCrossX, iCrossY-crosshairSize/2, crosshairSize, crosshairSize/2, r, g, b, 125 );
+		gEngfuncs.pfnFillRGBABlend( iCrossX, iCrossY+crosshairSize, crosshairSize, crosshairSize/2, r, g, b, 125 );
+		gEngfuncs.pfnFillRGBABlend( iCrossX-crosshairSize/2, iCrossY, crosshairSize*2, crosshairSize, r, g, b, 125 );
+
+		gEngfuncs.pfnFillRGBABlend( iCrossX, iCrossY, crosshairSize, crosshairSize, r, g, b, 200 );
+	}
+
 	return 1;
 }
 

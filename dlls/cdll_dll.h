@@ -39,6 +39,8 @@
 #define	HIDEHUD_ALL		( 1<<2 )
 #define HIDEHUD_HEALTH		( 1<<3 )
 
+#define HIDEHUD_SHOW_FAKE_CROSSHAIR ( 1<<7 )
+
 #define	MAX_AMMO_TYPES		32		// ???
 #define MAX_AMMO_SLOTS		32		// not really slots
 

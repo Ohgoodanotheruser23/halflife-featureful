@@ -5510,6 +5510,8 @@
 	target_on_fail(target_destination) : "Fire on fail"
 ]
 
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_fake_crosshair : "Toggle the fake crosshair" []
+
 @PointClass base(Targetname) color(255 0 255) = scripted_schedule : "Scripted Schedule"
 [
 	entity(string) : "Affected Monster"

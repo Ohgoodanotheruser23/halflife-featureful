@@ -6009,3 +6009,27 @@ void CPlayerIntVarTest::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_T
 		FireTargets(STRING(pev->message), pActivator, this, USE_TOGGLE, 0.0f);
 	}
 }
+
+class CPlayerFakeCrosshair : public CPointEntity
+{
+public:
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+
+void CPlayerFakeCrosshair::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
+	if (pPlayer)
+	{
+		bool state = pPlayer->m_iHideHUD & HIDEHUD_SHOW_FAKE_CROSSHAIR;
+		if (ShouldToggle(useType, state))
+		{
+			if (state)
+				pPlayer->m_iHideHUD &= ~HIDEHUD_SHOW_FAKE_CROSSHAIR;
+			else
+				pPlayer->m_iHideHUD |= HIDEHUD_SHOW_FAKE_CROSSHAIR;
+		}
+	}
+}
+
+LINK_ENTITY_TO_CLASS( player_fake_crosshair, CPlayerFakeCrosshair )
