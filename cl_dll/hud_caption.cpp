@@ -219,14 +219,19 @@ int CHudCaption::Draw(float flTime)
 	int ypos = ScreenHeight - hudNumberHeight - lineHeight - SUB_BORDER_LENGTH;
 
 	int i, j;
-	if(subtitles[0].timeLeft <= 0)
+
+	for (i=0; i<sub_count; ++i)
 	{
-		for (j=0; j<sub_count-1; ++j)
+		if(subtitles[i].timeLeft <= 0)
 		{
-			subtitles[j] = subtitles[j+1];
+			for (j=i; j<sub_count-1; ++j)
+			{
+				subtitles[j] = subtitles[j+1];
+			}
+			memset(&subtitles[sub_count-1], 0, sizeof(subtitles[0]));
+			sub_count--;
+			break;
 		}
-		memset(&subtitles[sub_count-1], 0, sizeof(subtitles[0]));
-		sub_count--;
 	}
 
 	if (!sub_count)
