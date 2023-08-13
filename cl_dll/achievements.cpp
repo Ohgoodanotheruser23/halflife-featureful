@@ -371,9 +371,9 @@ int CHudAchievements::MsgFunc_Achievement(const char *pszName, int iSize, void *
 
 bool CHudAchievements::ParseAchievements()
 {
-	const char* fileName = "achievements.txt";
+	const char* fileName = "achievements.en.txt";
 	int length = 0;
-	char* const pfile = (char *)gEngfuncs.COM_LoadFile( fileName, 5, &length );
+	char* pfile = (char *)gEngfuncs.COM_LoadFile( fileName, 5, &length );
 
 	if( !pfile )
 	{
@@ -443,8 +443,6 @@ bool CHudAchievements::ParseAchievements()
 
 			achievementCount++;
 
-			gEngfuncs.Con_DPrintf("%s: %s: %s\n", achievement.id, achievement.title, achievement.description);
-
 			if (achievementCount >= ACHIEVEMENT_COUNT)
 			{
 				break;
@@ -453,6 +451,92 @@ bool CHudAchievements::ParseAchievements()
 	}
 
 	gEngfuncs.COM_FreeFile(pfile);
+
+	fileName = "achievements.txt";
+	pfile = (char *)gEngfuncs.COM_LoadFile( fileName, 5, &length );
+	if (pfile)
+	{
+		gEngfuncs.Con_DPrintf("Parsing achievements localization from %s\n", fileName);
+
+		i = 0;
+		while ( i<length )
+		{
+			if (pfile[i] == ' ' || pfile[i] == '\r' || pfile[i] == '\n')
+			{
+				++i;
+			}
+			else if (pfile[i] == '/')
+			{
+				++i;
+				ConsumeLine(pfile, i, length);
+			}
+			else
+			{
+				const int idTokenStart = i;
+				ConsumeNonSpaceCharacters(pfile, i, length);
+
+				int tokenLength = i - idTokenStart;
+				if (!tokenLength || tokenLength >= ACHIEVEMENT_ID_SIZE)
+				{
+					break;
+				}
+
+				Achievement* existingAchievement = 0;
+				for (int j=0; j<achievementCount; ++j)
+				{
+					if (strncmp(achievements[j].id, pfile + idTokenStart, tokenLength) == 0)
+					{
+						existingAchievement = &achievements[j];
+					}
+				}
+				SkipSpaceCharacters(pfile, i, length);
+				if (existingAchievement)
+				{
+					Achievement& achievement = *existingAchievement;
+					const int titleTokenStart = i;
+					ConsumeLine(pfile, i, length);
+
+					tokenLength = i - titleTokenStart;
+					if (!tokenLength || tokenLength >= ACHIEVEMENT_TITLE_SIZE)
+					{
+						break;
+					}
+
+					strncpy(achievement.title, pfile + titleTokenStart, tokenLength);
+					achievement.title[tokenLength] = '\0';
+
+					SkipSpaceCharacters(pfile, i, length);
+
+					const int descriptionTokenStart = i;
+					ConsumeLine(pfile, i, length);
+
+					tokenLength = i - descriptionTokenStart;
+					if (!tokenLength || tokenLength >= ACHIEVEMENT_DESCRIPTION_SIZE)
+					{
+						break;
+					}
+
+					strncpy(achievement.description, pfile + descriptionTokenStart, tokenLength);
+					achievement.description[tokenLength] = '\0';
+				}
+				else
+				{
+					gEngfuncs.Con_DPrintf("Couldn't find the archivement with id '%.*s'\n", tokenLength, pfile + idTokenStart);
+					ConsumeLine(pfile, i, length);
+					SkipSpaceCharacters(pfile, i, length);
+					ConsumeLine(pfile, i, length);
+				}
+			}
+		}
+
+		gEngfuncs.COM_FreeFile(pfile);
+	}
+
+	for (i = 0; i<achievementCount; ++i)
+	{
+		Achievement& achievement = achievements[i];
+		gEngfuncs.Con_DPrintf("%s: %s: %s\n", achievement.id, achievement.title, achievement.description);
+	}
 
 	return true;
 }
