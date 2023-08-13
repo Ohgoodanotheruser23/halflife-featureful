@@ -475,6 +475,9 @@ public:
 	string_t m_loopedMp3;
 
 	int m_integerVariable;
+
+	bool GiveMoney(int amount);
+	int m_iMoney;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025

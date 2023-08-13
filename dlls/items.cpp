@@ -1239,3 +1239,80 @@ int CEyeScanner::TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 {
 	return 0;
 }
+
+#define SF_MONEY_NO_BRIGHT 2
+
+class CItemMoney : public CItem
+{
+public:
+	void KeyValue( KeyValueData *pkvd )
+	{
+		if( FStrEq( pkvd->szKeyName, "custom_amount" ) )
+		{
+			pev->impulse = atoi( pkvd->szValue );
+			pkvd->fHandled = TRUE;
+		}
+		else
+			CItem::KeyValue( pkvd );
+	}
+	void Spawn( void )
+	{
+		Precache();
+		SetMyModel( DefaultModel() );
+		CItem::Spawn();
+
+		const bool hasDefaultModel = FStrEq(STRING(pev->model), DefaultModel());
+		// Set appropriate body if model is default
+		if (!pev->impulse && hasDefaultModel)
+		{
+			if (pev->body > 5)
+			{
+				pev->body = 5;
+				pev->impulse = 6;
+			}
+			else if (pev->body >= 0)
+			{
+				pev->impulse = pev->body + 1;
+			}
+		}
+
+		if (hasDefaultModel && !FBitSet(pev->spawnflags, SF_MONEY_NO_BRIGHT))
+			pev->effects = EF_MODEL_BRIGHT;
+
+		if (pev->impulse <= 0)
+			pev->impulse = 1;
+	}
+	void Precache( void )
+	{
+		PrecacheMyModel( DefaultModel() );
+		PRECACHE_SOUND_ARRAY(pickupSounds);
+	}
+
+	void SetObjectCollisionBox()
+	{
+		pev->absmin = pev->origin + Vector( -12, -12, 0 );
+		pev->absmax = pev->origin + Vector( 12, 12, 12 );
+	}
+
+	virtual BOOL MyTouch( CBasePlayer *pPlayer )
+	{
+		if (pPlayer->GiveMoney(Amount()))
+		{
+			EMIT_SOUND( pPlayer->edict(), CHAN_STATIC, PickipSound(), 1, ATTN_NORM );
+			return TRUE;
+		}
+		return FALSE;
+	}
+
+	const char* DefaultModel() const { return "models/w_coins.mdl"; }
+	const char* PickipSound() { return RANDOM_SOUND_ARRAY(pickupSounds); }
+	int Amount() const {
+		return pev->impulse;
+	}
+
+	static const char* pickupSounds[2];
+};
+
+const char* CItemMoney::pickupSounds[] = {"items/coin_pickup1.wav", "items/coin_pickup2.wav"};
+
+LINK_ENTITY_TO_CLASS( item_money, CItemMoney )

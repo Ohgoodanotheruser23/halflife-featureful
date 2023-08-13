@@ -156,6 +156,8 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 	//DEFINE_ARRAY( CBasePlayer, m_rgAmmoLast, FIELD_INTEGER, MAX_AMMO_SLOTS ), // Don't need to restore
 	//DEFINE_FIELD( CBasePlayer, m_fOnTarget, FIELD_BOOLEAN ), // Don't need to restore
 	//DEFINE_FIELD( CBasePlayer, m_nCustomSprayFrames, FIELD_INTEGER ), // Don't need to restore
+
+	DEFINE_FIELD( CBasePlayer, m_iMoney, FIELD_INTEGER ),
 };	
 
 int giPrecacheGrunt = 0;
@@ -5648,6 +5650,12 @@ void CBasePlayer::SetLoopedMp3(string_t loopedMp3)
 	m_loopedMp3 = loopedMp3;
 }
 
+bool CBasePlayer::GiveMoney(int amount)
+{
+	m_iMoney += amount;
+	return true;
+}
+
 //=========================================================
 // Dead HEV suit prop
 //=========================================================
@@ -6033,3 +6041,18 @@ void CPlayerFakeCrosshair::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, US
 }
 
 LINK_ENTITY_TO_CLASS( player_fake_crosshair, CPlayerFakeCrosshair )
+
+class CPlayerCheckPlaycoins : public CPointEntity
+{
+public:
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+	{
+		CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(pActivator);
+		if (pPlayer && pPlayer->m_iMoney >= pev->impulse)
+		{
+			FireTargets(STRING(pev->target), pActivator, this);
+		}
+	}
+};
+
+LINK_ENTITY_TO_CLASS( player_check_playcoins, CPlayerCheckPlaycoins )

@@ -2942,6 +2942,23 @@
 	health(integer) : "Health Supplied"
 ]
 @PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_longjump.mdl") = item_longjump : "Longjump Module" []
+@PointClass size(-8 -8 0, 8 8 8) color(0 0 200) base(Item) studio("models/w_coins.mdl") = item_money : "Money"
+[
+	body(choices) : "Coin quantity" : 0 = 
+	[
+		0 : "1"
+		1 : "2"
+		2 : "3"
+		3 : "4"
+		4 : "5"
+		5 : "6"
+	]
+	custom_amount(integer) : "Custom money amount"
+	spawnflags(Flags) =
+	[
+		2 : "No bright effect" : 0
+	]
+]
 @PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_security.mdl") = item_security : "Security card"
 [
 	message(string) : "Message" : : "Message from titles.txt to show on pickup"
@@ -5511,6 +5528,11 @@
 ]
 
 @PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_fake_crosshair : "Toggle the fake crosshair" []
+
+@PointClass base(Targetname, Target) color(255 215 0) = player_check_playcoins : "Check the number of play coins"
+[
+	impulse(integer) : "Required coin amount" : 5
+]
 
 @PointClass base(Targetname) color(255 0 255) = scripted_schedule : "Scripted Schedule"
 [

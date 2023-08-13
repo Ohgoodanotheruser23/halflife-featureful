@@ -1175,7 +1175,10 @@ int CStudioModelRenderer::StudioDrawModel( int flags )
 		if (m_pCurrentEntity->curstate.effects & EF_MODEL_BRIGHT)
 		{
 			lighting.color = Vector(1.0f, 1.0f, 1.0f);
-			lighting.ambientlight = Q_max(240, lighting.ambientlight);
+			if (m_pCurrentEntity->curstate.solid == SOLID_TRIGGER)
+				lighting.ambientlight = Q_max(150, lighting.ambientlight);
+			else
+				lighting.ambientlight = Q_max(240, lighting.ambientlight);
 		}
 
 		IEngineStudio.StudioEntityLight( &lighting );
