@@ -563,7 +563,7 @@ cvar_t npc_patrol = { "npc_patrol", "1", FCVAR_SERVER };
 
 cvar_t mp_chattime	= { "mp_chattime","10", FCVAR_SERVER };
 
-cvar_t pickup_policy = { "pickup_policy","0", FCVAR_SERVER };
+cvar_t pickup_policy = { "pickup_policy","2", FCVAR_SERVER };
 
 #if FEATURE_GRENADE_JUMP_CVAR
 cvar_t grenade_jump = { "grenade_jump","1", FCVAR_SERVER };
