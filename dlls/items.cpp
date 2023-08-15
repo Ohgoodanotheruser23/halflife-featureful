@@ -1259,6 +1259,7 @@ public:
 	{
 		Precache();
 		SetMyModel( DefaultModel() );
+		pev->spawnflags |= SF_ITEM_NOFALL;
 		CItem::Spawn();
 
 		const bool hasDefaultModel = FStrEq(STRING(pev->model), DefaultModel());
