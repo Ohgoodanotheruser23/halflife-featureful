@@ -6398,18 +6398,6 @@
 ]
 @PointClass base(Weapon) studio("models/w_hgun.mdl") = weapon_hornetgun : "Hornet Gun" []
 @PointClass base(Pickup) size(-16 -16 0, 16 16 64) color(0 128 0) studio("models/w_weaponbox.mdl") =  weaponbox : "Weapon/Ammo Container" []
-@PointClass base(Weapon) studio("models/w_desert_eagle.mdl") = weapon_eagle : "Desert Eagle" []
-@PointClass base(Weapon) studio("models/w_penguinnest.mdl") = weapon_penguin : "Killer Penguin" []
-@PointClass base(Weapon) studio("models/w_pipe_wrench.mdl") = weapon_pipewrench : "Pipe Wrench" []
-@PointClass base(Weapon) studio("models/w_knife.mdl") = weapon_knife : "Knife" []
-@PointClass base(Weapon) studio("models/w_bgrap.mdl") = weapon_grapple : "Barnacle Grapple" []
-@PointClass base(Weapon) studio("models/w_shock_rifle.mdl") = weapon_shockrifle : "Shock Roach" []
-@PointClass base(Weapon) studio("models/w_saw.mdl") = weapon_m249 : "M249 SAW" []
-@PointClass base(Weapon) studio("models/w_m40a1.mdl") = weapon_sniperrifle : "Sniper Rifle" []
-@PointClass base(Weapon) studio("models/w_displacer.mdl") = weapon_displacer : "Displacer" []
-@PointClass base(Weapon) studio("models/w_spore_launcher.mdl") = weapon_sporelauncher : "Spore Launcher" []
-@PointClass base(Weapon) studio("models/w_medkit.mdl") = weapon_medkit : "Medkit" []
-@PointClass base(Weapon) studio("models/w_uzi.mdl") = weapon_uzi : "Single UZI" []
 
 @PointClass base(Pickup) = world_items : "World Items"
 [
