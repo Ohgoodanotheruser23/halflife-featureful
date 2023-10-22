@@ -326,7 +326,8 @@ void CSquadMonster::SquadMakeEnemy( CBaseEntity *pEnemy )
 			if( pMember->m_hEnemy != pEnemy && !pMember->HasConditions( bits_COND_SEE_ENEMY )
 					&& ( pMember->m_pSchedule && (pMember->m_pSchedule->iInterruptMask & bits_COND_NEW_ENEMY) )
 					// My enemy might be not an enemy for member of my squad, e.g. if I was provoked by player.
-					&& pMember->IRelationship(pEnemy) >= R_DL )
+					&& pMember->IRelationship(pEnemy) >= R_DL
+					&& !FBitSet(pMember->pev->spawnflags, SF_MONSTER_WAIT_FOR_SCRIPT) ) // don't set enemy if monster is waiting for script
 			{
 				// give them a new enemy
 				pMember->SetEnemy(pEnemy);
