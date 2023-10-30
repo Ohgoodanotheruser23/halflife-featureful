@@ -889,7 +889,7 @@ void CFuncTrain::Activate( void )
 
 		UTIL_SetOrigin( pev, DestinationVector(pevTarg) );
 
-		if( FStringNull( pev->targetname ) || (pev->spawnflags & SF_TRAIN_START_ON) )
+		if( FStringNull( pev->targetname ) /*|| (pev->spawnflags & SF_TRAIN_START_ON)*/ )
 		{	// not triggered, so start immediately
 			pev->nextthink = pev->ltime + 0.1f;
 			SetThink( &CFuncTrain::ThinkNext );
