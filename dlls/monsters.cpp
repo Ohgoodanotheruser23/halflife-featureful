@@ -4324,9 +4324,9 @@ BOOL CBaseMonster::ShouldFadeOnDeath( void )
 
 void CBaseMonster::SetMyHealth(const float health)
 {
-	if (!pev->health) {
+	//if (!pev->health) {
 		pev->health = health;
-	}
+	//}
 }
 
 void CBaseMonster::SetMyModel(const char *model)
