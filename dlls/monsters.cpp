@@ -4387,7 +4387,7 @@ int CBaseMonster::Classify()
 	if (m_iClass)
 		return m_iClass;
 	const int defaultClassify = DefaultClassify();
-	if (m_reverseRelationship)
+	/*if (m_reverseRelationship)
 	{
 		switch(defaultClassify)
 		{
@@ -4400,7 +4400,7 @@ int CBaseMonster::Classify()
 		default:
 			return CLASS_PLAYER_ALLY;
 		}
-	}
+	}*/
 	return defaultClassify;
 }
 
