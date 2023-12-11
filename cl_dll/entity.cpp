@@ -41,14 +41,6 @@ extern "C"
 
 #define FLASHLIGHT_DISTANCE 2048.0f
 
-#define FLASHLIGHT_FADE_DISTANCE 500.0f
-#define FLASHLIGHT_MIN_FADE_DISTANCE 500.0f
-#define FLASHLIGHT_MAX_FADE_DISTANCE FLASHLIGHT_DISTANCE
-
-#define FLASHLIGHT_RADIUS 100.0f
-#define FLASHLIGHT_MIN_RADIUS 80.0f
-#define FLASHLIGHT_MAX_RADIUS 200.0f
-
 static float boundValue(float min, float value, float max)
 {
 	if (value < min)
@@ -58,20 +50,10 @@ static float boundValue(float min, float value, float max)
 	return value;
 }
 
-static float GetFlashlightRadius()
-{
-	const float radius = cl_flashlight_radius && cl_flashlight_radius->value > 0.0f ? cl_flashlight_radius->value : FLASHLIGHT_RADIUS;
-	return boundValue(FLASHLIGHT_MIN_RADIUS, radius, FLASHLIGHT_MAX_RADIUS);
-}
-
-static float GetFadeDistance()
-{
-	const float distance = cl_flashlight_fade_distance && cl_flashlight_fade_distance->value > 0.0f ? cl_flashlight_fade_distance->value : FLASHLIGHT_FADE_DISTANCE;
-	return boundValue(FLASHLIGHT_MIN_FADE_DISTANCE, distance, FLASHLIGHT_MAX_FADE_DISTANCE);
-}
-
 void DrawFlashlight()
 {
+	const float distance = gHUD.FlashlightDistance();
+
 	Vector forward, vecSrc, vecEnd, origin, angles;
 	Vector view_ofs;
 	pmtrace_t tr;
@@ -89,7 +71,7 @@ void DrawFlashlight()
 	VectorCopy(pl->origin, vecSrc);
 	VectorAdd(vecSrc, view_ofs, vecSrc);
 
-	VectorMA(vecSrc, FLASHLIGHT_DISTANCE, forward, vecEnd);
+	VectorMA(vecSrc, distance, forward, vecEnd);
 
 	gEngfuncs.pEventAPI->EV_SetUpPlayerPrediction(0, 1);
 
@@ -104,9 +86,9 @@ void DrawFlashlight()
 
 	gEngfuncs.pEventAPI->EV_PopPMStates();
 
-	const float fadeDistance = GetFadeDistance();
+	const float fadeDistance = gHUD.FlashlightFadeDistance();
 
-	float falloff = tr.fraction * FLASHLIGHT_DISTANCE;
+	float falloff = tr.fraction * distance;
 	if( falloff < fadeDistance ) falloff = 1.0f;
 	else falloff = fadeDistance / falloff;
 	falloff *= falloff;
@@ -115,10 +97,11 @@ void DrawFlashlight()
 	if (dl)
 	{
 		dl->origin = tr.endpos;
-		dl->color.r = boundValue(0, falloff * 255, 255);
-		dl->color.g = boundValue(0, falloff * 255, 255);
-		dl->color.b = boundValue(0, falloff * 255, 255);
-		dl->radius = GetFlashlightRadius();
+		dl->color = gHUD.FlashlightColor();
+		dl->color.r *= falloff;
+		dl->color.g *= falloff;
+		dl->color.b *= falloff;
+		dl->radius = gHUD.FlashlightRadius();
 		dl->decay = 512; // Flashlight fade speed
 		dl->die = gEngfuncs.GetClientTime() + 0.1f;
 	}
@@ -247,7 +230,7 @@ void DLLEXPORT HUD_ProcessPlayerState( struct entity_state_s *dst, const struct 
 		g_iUser2 = src->iuser2;
 		g_iUser3 = src->iuser3;
 
-		if (cl_flashlight_custom && cl_flashlight_custom->value)
+		if (gHUD.CustomFlashlightEnabled())
 		{
 			if ((player->curstate.effects & EF_DIMLIGHT) != 0)
 			{
@@ -259,6 +242,8 @@ void DLLEXPORT HUD_ProcessPlayerState( struct entity_state_s *dst, const struct 
 				gHUD.m_bFlashlight = false;
 			}
 		}
+		else if (gHUD.m_bFlashlight)
+			gHUD.m_bFlashlight = false;
 	}
 }
 

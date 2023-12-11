@@ -33,9 +33,10 @@
 #define SF_SCRIPT_CONTINUOUS		256
 #define SF_SCRIPT_APPLYNEWANGLES		512
 #define SF_SCRIPT_AUTOSEARCH		1024
-#define SF_SCRIPT_FORCE_IDLE_LOOPING 2048
 #define SF_SCRIPT_TRY_ONCE	4096
 #define SF_SCRIPT_DONT_RESET_HEAD	8192
+#define SF_SCRIPT_FORCE_IDLE_LOOPING 16384
+#define SF_REMOVE_ON_INTERRUPTION	32768
 
 #define SCRIPT_BREAK_CONDITIONS		(bits_COND_LIGHT_DAMAGE|bits_COND_HEAVY_DAMAGE)
 
@@ -106,13 +107,20 @@ enum
 	SCRIPT_TAKE_DAMAGE_POLICY_NONLETHAL = 2,
 };
 
+enum
+{
+	SCRIPT_CANCELLATION_REASON_GENERIC = 0,
+	SCRIPT_CANCELLATION_REASON_INTERRUPTED = 1,
+	SCRIPT_CANCELLATION_REASON_STARTED_FOLLOWING = 2,
+};
+
 // when a monster finishes an AI scripted sequence, we can choose
 // a schedule to place them in. These defines are the aliases to
 // resolve worldcraft input to real schedules (sjb)
 #define SCRIPT_FINISHSCHED_DEFAULT	0
 #define SCRIPT_FINISHSCHED_AMBUSH	1
 
-class CCineMonster : public CBaseMonster
+class CCineMonster : public CBaseDelay
 {
 public:
 	void Spawn( void );
@@ -120,9 +128,15 @@ public:
 	virtual void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 	virtual void Blocked( CBaseEntity *pOther );
 	virtual void Touch( CBaseEntity *pOther );
-	virtual int	 ObjectCaps( void ) { return (CBaseMonster :: ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
+	virtual int	 ObjectCaps( void ) { return (CBaseDelay::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
 	virtual void Activate( void );
 	virtual void UpdateOnRemove();
+	BOOL IsLockedByMaster() {
+		if( m_sMaster && !UTIL_IsMasterTriggered( m_sMaster, m_hActivator ) )
+			return TRUE;
+		else
+			return FALSE;
+	}
 
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
@@ -157,7 +171,7 @@ public:
 
 
 	void ReleaseEntity( CBaseMonster *pEntity );
-	void CancelScript( void );
+	void CancelScript( int cancellationReason = SCRIPT_CANCELLATION_REASON_GENERIC );
 	virtual BOOL StartSequence( CBaseMonster *pTarget, int iszSeq, BOOL completeOnEmpty );
 	virtual BOOL FCanOverrideState ( void );
 	void SequenceDone ( CBaseMonster *pMonster );
@@ -165,6 +179,7 @@ public:
 	bool ForcedNoInterruptions();
 	BOOL	CanInterrupt( void );
 	bool	CanInterruptByPlayerCall();
+	bool	CanInterruptByBarnacle();
 	void	AllowInterrupt( BOOL fAllow );
 	int		IgnoreConditions( void );
 	virtual bool	ShouldResetOnGroundFlag();
@@ -172,6 +187,8 @@ public:
 	bool MoveFailAttemptsExceeded() const;
 	bool IsAutoSearch() const;
 	CBaseEntity* GetActivator(CBaseEntity *pMonster);
+
+	EHANDLE m_hTargetEnt;
 
 	string_t m_iszIdle;		// string index for idle animation
 	string_t m_iszPlay;		// string index for scripted animation
@@ -198,6 +215,7 @@ public:
 	BOOL m_interruptable;
 	BOOL m_firedOnAnimStart;
 	string_t m_iszFireOnAnimStart;
+	string_t m_iszFireOnPossessed;
 	short m_targetActivator;
 	short m_fTurnType;
 	short m_fAction;
@@ -211,6 +229,8 @@ public:
 	short m_searchPolicy;
 	short m_requiredState;
 	short m_takeDamagePolicy;
+
+	string_t m_sMaster;
 
 	bool m_cantFindReported; // no need to save
 	bool m_cantPlayReported;

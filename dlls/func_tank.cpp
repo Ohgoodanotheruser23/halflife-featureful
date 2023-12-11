@@ -558,8 +558,11 @@ void CFuncTank::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 	if( pev->spawnflags & SF_TANK_CANCONTROL )
 	{
 		// player controlled turret
-		if( pActivator->Classify() != CLASS_PLAYER )
+		if( !pActivator || pActivator->Classify() != CLASS_PLAYER )
+		{
+			ALERT(at_warning, "Triggering a controllable %s with non-player activator. Probably a mapping error?\n", STRING(pev->classname));
 			return;
+		}
 
 		if( value == 2 && useType == USE_SET )
 		{
@@ -909,7 +912,7 @@ void CFuncTank::Fire( const Vector &barrelEnd, const Vector &forward, entvars_t 
 			// Hack Hack, make it stick around for at least 100 ms.
 			pSprite->AbsoluteNextThink( pSprite->m_fNextThink + 0.1 );
 		}
-		SUB_UseTargets( this, USE_TOGGLE, 0 );
+		SUB_UseTargets( this );
 	}
 	m_fireLast = gpGlobals->time;
 }

@@ -41,6 +41,7 @@
 #include "movewith.h"
 #include "pm_shared.h"
 #include "nodes.h"
+#include "game.h"
 
 extern DLL_GLOBAL ULONG		g_ulModelIndexPlayer;
 extern DLL_GLOBAL BOOL		g_fGameOver;
@@ -50,17 +51,11 @@ extern DLL_GLOBAL ULONG		g_ulFrameCount;
 extern void CopyToBodyQue( entvars_t* pev );
 extern int giPrecacheGrunt;
 extern int gmsgSayText;
-extern int gmsgBhopcap;
-extern int gmsgPlayMP3;
-extern int gmsgHUDColor;
 
 extern cvar_t allow_spectators;
 extern cvar_t multibyte_only;
 
 extern int g_teamplay;
-
-extern cvar_t bhopcap;
-extern "C" int g_bhopcap;
 
 void LinkUserMessages( void );
 
@@ -134,7 +129,11 @@ void ClientDisconnect( edict_t *pEntity )
 	pEntity->v.takedamage = DAMAGE_NO;// don't attract autoaim
 	pEntity->v.solid = SOLID_NOT;// nonsolid
 	pEntity->v.effects = 0;// clear any effects
+	pEntity->v.flags = 0;// clear any flags
 	UTIL_SetOrigin( &pEntity->v, pEntity->v.origin );
+
+	const int clientIndex = ENTINDEX(pEntity) - 1;
+	g_PlayerFullyInitialized[clientIndex] = false;
 
 	g_pGameRules->ClientDisconnected( pEntity );
 }
@@ -504,12 +503,6 @@ void ClientCommand( edict_t *pEntity )
 	{
 		GetClassPtr( (CBasePlayer *)pev )->ForceClientDllUpdate();
 	}
-	else if( FStrEq(pcmd, "playaudio" ) )
-	{
-		MESSAGE_BEGIN( MSG_ONE, gmsgPlayMP3, NULL, ENT( pev ) );
-			WRITE_STRING( (char *)CMD_ARGV( 1 ) );
-		MESSAGE_END();
-	}
 	else if( FStrEq(pcmd, "give" ) )
 	{
 		if( g_enable_cheats->value != 0 )
@@ -525,7 +518,7 @@ void ClientCommand( edict_t *pEntity )
 			CBaseEntity *pPlayer = CBaseEntity::Instance( pEntity );
 			if( CMD_ARGC() > 1 )
 			{
-				FireTargets( CMD_ARGV( 1 ), pPlayer, pPlayer, USE_TOGGLE, 0 );
+				FireTargets( CMD_ARGV( 1 ), pPlayer, pPlayer );
 			}
 			else
 			{
@@ -581,6 +574,10 @@ void ClientCommand( edict_t *pEntity )
 	{
 		GetClassPtr( (CBasePlayer *)pev )->SelectLastItem();
 	}
+	else if( FStrEq( pcmd, "nightvision" ) )
+	{
+		GetClassPtr( (CBasePlayer *)pev )->NVGToggle();
+	}
 	else if( FStrEq( pcmd, "spectate" ) ) // clients wants to become a spectator
 	{
 		CBasePlayer *pPlayer = GetClassPtr( (CBasePlayer *)pev );
@@ -634,22 +631,6 @@ void ClientCommand( edict_t *pEntity )
 	{
 		// clear 'Unknown command: VModEnable' in singleplayer
 		return;
-	}
-	else if ( FStrEq(pcmd, "hud_color") )
-	{
-		if (CMD_ARGC() == 4)
-		{
-			int color = (atoi(CMD_ARGV(1)) & 0xFF) << 16;
-			color += (atoi(CMD_ARGV(2)) & 0xFF) << 8;
-			color += (atoi(CMD_ARGV(3)) & 0xFF);
-			MESSAGE_BEGIN( MSG_ONE, gmsgHUDColor, NULL, &pEntity->v );
-				WRITE_LONG(color);
-			MESSAGE_END();
-		}
-		else
-		{
-			ClientPrint(&pEntity->v, HUD_PRINTCONSOLE, "Syntax: hud_color RRR GGG BBB\n");
-		}
 	}
 	else if ( FStrEq(pcmd, "buddha" ) )
 	{
@@ -749,6 +730,7 @@ void ClientUserInfoChanged( edict_t *pEntity, char *infobuffer )
 	g_pGameRules->ClientUserInfoChanged( GetClassPtr( (CBasePlayer *)&pEntity->v ), infobuffer );
 }
 
+bool g_PlayerFullyInitialized[MAX_CLIENTS];
 static int g_serveractive = 0;
 
 void ServerDeactivate( void )
@@ -769,6 +751,7 @@ void ServerDeactivate( void )
 
 	// Peform any shutdown operations here...
 	//
+	memset(g_PlayerFullyInitialized, 0, sizeof(g_PlayerFullyInitialized));
 }
 
 void ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
@@ -897,15 +880,9 @@ void StartFrame( void )
 	g_ulFrameCount++;
 
 	CheckAssistList(); //LRC
-	int oldBhopcap = g_bhopcap;
-	g_bhopcap = ( g_pGameRules && g_pGameRules->IsMultiplayer() && bhopcap.value != 0.0f ) ? 1 : 0;
-	if( g_bhopcap != oldBhopcap )
-	{
-		MESSAGE_BEGIN( MSG_ALL, gmsgBhopcap, NULL );
-			WRITE_BYTE( g_bhopcap );
-		MESSAGE_END();
-	}
 }
+
+extern "C" int PM_IsThereSnowTexture();
 
 void ClientPrecache( void )
 {
@@ -973,6 +950,14 @@ void ClientPrecache( void )
 	PRECACHE_SOUND( "player/pl_wade3.wav" );
 	PRECACHE_SOUND( "player/pl_wade4.wav" );
 
+	if (PM_IsThereSnowTexture())
+	{
+		PRECACHE_SOUND( "player/pl_snow1.wav" );
+		PRECACHE_SOUND( "player/pl_snow2.wav" );
+		PRECACHE_SOUND( "player/pl_snow3.wav" );
+		PRECACHE_SOUND( "player/pl_snow4.wav" );
+	}
+
 	PRECACHE_SOUND( "debris/wood1.wav" );			// hit wood texture
 	PRECACHE_SOUND( "debris/wood2.wav" );
 	PRECACHE_SOUND( "debris/wood3.wav" );
@@ -987,6 +972,11 @@ void ClientPrecache( void )
 
 	PRECACHE_SOUND( SOUND_FLASHLIGHT_ON );
 	PRECACHE_SOUND( SOUND_FLASHLIGHT_OFF );
+
+	if (*g_modFeatures.nvg_sound_on)
+		PRECACHE_SOUND( g_modFeatures.nvg_sound_on );
+	if (*g_modFeatures.nvg_sound_off)
+		PRECACHE_SOUND( g_modFeatures.nvg_sound_off );
 
 	// player gib sounds
 	PRECACHE_SOUND( "common/bodysplat.wav" );
@@ -1162,6 +1152,9 @@ void SetupVisibility( edict_t *pViewEntity, edict_t *pClient, unsigned char **pv
 	{
 		pView = pViewEntity;
 	}
+
+	const int clientIndex = ENTINDEX(pClient) - 1;
+	g_PlayerFullyInitialized[clientIndex] = true;
 
 	if( pClient->v.flags & FL_PROXY )
 	{
@@ -1741,15 +1734,13 @@ int GetWeaponData( struct edict_s *player, struct weapon_data_s *info )
 			CBasePlayerWeapon *gun = pPlayerItem;
 			if( gun && gun->UseDecrement() )
 			{
-				ItemInfo II = {0};
-				// Get The ID.
-				gun->GetItemInfo( &II );
+				int weaponId = gun->m_iId;
 
-				if( II.iId >= 0 && II.iId < MAX_WEAPONS )
+				if( weaponId >= 0 && weaponId < MAX_WEAPONS )
 				{
-					item = &info[II.iId];
+					item = &info[weaponId];
 
-					item->m_iId			= II.iId;
+					item->m_iId			= weaponId;
 					item->m_iClip			= gun->m_iClip;
 
 					item->m_flTimeWeaponIdle	= Q_max( gun->m_flTimeWeaponIdle, -0.001f );
@@ -1855,10 +1846,7 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 				CBasePlayerWeapon *gun = pl->m_pActiveItem;
 				if( gun && gun->UseDecrement() )
 				{
-					ItemInfo II = {0};
-					gun->GetItemInfo( &II );
-
-					cd->m_iId = II.iId;
+					cd->m_iId = gun->m_iId;
 
 					cd->vuser3.z = gun->m_iSecondaryAmmoType;
 					cd->vuser4.x = gun->m_iPrimaryAmmoType;
@@ -1870,12 +1858,6 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 						cd->vuser2.y = ( (CRpg *)pl->m_pActiveItem )->m_fSpotActive;
 						cd->vuser2.z = ( (CRpg *)pl->m_pActiveItem )->m_cActiveRockets;
 					}
-#if FEATURE_PICKABLE_SATCHELS
-					else if( pl->m_pActiveItem->m_iId == WEAPON_SATCHEL )
-					{
-						cd->vuser2.y = pl->m_pActiveItem->m_chargeReady;
-					}
-#endif
 #if FEATURE_DESERT_EAGLE
 					else if( pl->m_pActiveItem->m_iId == WEAPON_EAGLE )
 					{

@@ -104,6 +104,7 @@ set (SVDLL_SOURCES
 	lights.cpp
 	locus.cpp
 	m249.cpp
+	mapconfig.cpp
 	maprules.cpp
 	massn.cpp
 	medkit.cpp
@@ -173,6 +174,7 @@ set (SVDLL_SOURCES
 	../pm_shared/pm_math.c
 	../pm_shared/pm_shared.c
 	../game_shared/tex_materials.c
+	../game_shared/parsetext.cpp
 )
 
 if(NOT MSVC)

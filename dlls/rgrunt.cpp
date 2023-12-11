@@ -7,6 +7,7 @@
 #include	"decals.h"
 #include	"hgrunt.h"
 #include	"mod_features.h"
+#include	"game.h"
 
 #if FEATURE_ROBOGRUNT
 
@@ -27,6 +28,7 @@ class CRGrunt : public CHGrunt
 public:
 	void Spawn();
 	void Precache();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("robogrunt"); }
 	int DefaultClassify() { return CLASS_MACHINE; }
 	const char* DefaultDisplayName() { return "Robo Grunt"; }
 	const char* ReverseRelationshipModel() { return "models/rgruntf.mdl"; }
@@ -48,7 +50,7 @@ public:
 
 	void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	void BecomeDead();
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
 	float m_flSparkTime;
 
@@ -59,6 +61,9 @@ public:
 protected:
 	static const char *pRoboSentences[HGRUNT_SENT_COUNT];
 	virtual const char* SentenceByNumber(int sentence);
+	bool AlertSentenceIsForPlayerOnly() {
+		return false;
+	}
 
 	void DoSpark(const Vector& sparkLocation, float flVolume);
 };
@@ -86,6 +91,7 @@ const char *CRGrunt::pRoboSentences[] =
 	"RB_IDLE",
 	"RB_CLEAR",
 	"RB_ANSWER",
+	"RB_HOSTILE",
 };
 
 const char* CRGrunt::SentenceByNumber(int sentence)
@@ -322,7 +328,7 @@ void CRGrunt::BecomeDead()
 
 #define ROBOGRUNT_DAMAGE (DMG_ENERGYBEAM|DMG_CRUSH|DMG_MORTAR|DMG_BLAST|DMG_SHOCK|DMG_FREEZE|DMG_ACID)
 
-void CRGrunt::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
+void CRGrunt::TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
 	if ((bitsDamageType & ROBOGRUNT_DAMAGE) == 0)
 	{
@@ -333,7 +339,7 @@ void CRGrunt::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir,
 		}
 		flDamage *= 0.2;
 	}
-	CSquadMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
+	CSquadMonster::TraceAttack( pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 }
 
 void CRGrunt::DoSpark(const Vector &sparkLocation, float flVolume)

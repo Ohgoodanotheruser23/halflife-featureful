@@ -18,9 +18,11 @@
 #include "cbase.h"
 #include "monsters.h"
 #include "weapons.h"
-#include "nodes.h"
 #include "player.h"
 #include "gamerules.h"
+#ifndef CLIENT_DLL
+#include "game.h"
+#endif
 
 #if FEATURE_PIPEWRENCH
 
@@ -66,6 +68,15 @@ void CPipeWrench::Precache(void)
 	PRECACHE_SOUND("weapons/pwrench_big_miss.wav");
 
 	m_usPWrench = PRECACHE_EVENT(1, "events/pipewrench.sc");
+}
+
+bool CPipeWrench::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_PIPEWRENCH);
+#else
+	return true;
+#endif
 }
 
 int CPipeWrench::GetItemInfo(ItemInfo *p)
@@ -229,7 +240,7 @@ int CPipeWrench::Swing(int fFirst)
 				flDamage = gSkillData.plrDmgPWrench * 0.5f;
 			}
 			// Send trace attack to player.
-			pEntity->TraceAttack(m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB);
+			pEntity->TraceAttack(m_pPlayer->pev, m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB);
 
 			ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
 
@@ -359,7 +370,7 @@ void CPipeWrench::BigSwing(void)
 			if (flDamage > 150.0f) {
 				flDamage = 150.0f;
 			}
-			pEntity->TraceAttack(m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB);
+			pEntity->TraceAttack(m_pPlayer->pev, m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB);
 
 			ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
 		}

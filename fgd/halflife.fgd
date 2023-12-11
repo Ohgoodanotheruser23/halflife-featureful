@@ -135,13 +135,23 @@
 		128 : "TOUCH Only" : 0
 		256 : "USE Only" : 0
 	]
+	movetype(choices) : "Gravity Setting" =
+	[
+		-1: "Unmoveable"
+		0: "Fall to the ground (default)"
+		5: "Hover in the air"
+		8: "Hover in the air, ignore brush collision"
+	]
 ]
 @BaseClass size(-16 -16 0, 16 16 32) color(0 0 200) base(Pickup) = Weapon []
 @BaseClass base(Pickup) = Item
 [
 	model(studio) : "Custom Model"
 ]
-@BaseClass size(-16 -16 0, 16 16 32) color(80 0 200) base(Pickup) = Ammo []
+@BaseClass size(-16 -16 0, 16 16 32) color(80 0 200) base(Pickup) = Ammo
+[
+	model(studio) : "Custom Model"
+]
 
 @BaseClass base(Target, Delay) = Targetx
 [
@@ -217,6 +227,17 @@
 	[
 		2 : "Don't drop to ground" : 0
 		4 : "Not solid"	: 0
+	]
+	effects(choices) : "Effects" =
+	[
+		0 : "No effects"
+		16 : "Invert light"
+	]
+	TriggerTarget(String) : "TriggerTarget" : : "The event to trigger when the TriggerCondition is met. Used by monsters."
+	TriggerCondition(Choices) : "Trigger Condition" : : "This controls the condition under which a monster will trigger its TriggerTarget. The options are:" =
+	[
+		0 : "No Trigger"
+		4 : "Corpse gibbing"
 	]
 ]
 
@@ -336,8 +357,9 @@
 	]
 ]
 
-@BaseClass base(Target, Targetname, RenderFields, Angles) = MonsterBase
+@BaseClass base(Targetname, RenderFields, Angles) = MonsterBase
 [
+	target(target_destination) : "Target patrol path"
 	TriggerTarget(String) : "TriggerTarget" : : "The event to trigger when the TriggerCondition is met. Used by monsters."
 	TriggerCondition(Choices) : "Trigger Condition" : : "This controls the condition under which a monster will trigger its TriggerTarget. The options are:" =
 	[
@@ -414,7 +436,18 @@
 	]
 ]
 
-@BaseClass base(Monster) = Repel
+@BaseClass = FollowingMonsterProps
+[
+	followfailpolicy(choices) : "Follow fail policy" : : "What to do when couldn't reach the target" = 
+	[
+		0 : "Default for monster"
+		1 : "Regular fail"
+		2 : "Stop following"
+		3 : "Try nearest path"
+	]
+]
+
+@BaseClass base(Monster, FollowingMonsterProps) = Repel
 [
 	gruntname(string) : "Grunt's name" : : "The target name of spawned grunt"
 ]
@@ -426,16 +459,9 @@
 	RefusalSentence(String) : "Refusal Sentence" : : "Special case: 'null' means no sentense"
 ]
 
-@BaseClass base() = FollowingMonster
+@BaseClass base(FollowingMonsterProps) = FollowingMonster
 [
 	master(string) : "Master" : : "Decline following if locked by master (for player ally monsters)"
-	followfailpolicy(choices) : "Follow fail policy" : : "What to do when couldn't reach the target" = 
-	[
-		0 : "Default for monster"
-		1 : "Regular fail"
-		2 : "Stop following"
-		3 : "Try nearest path"
-	]
 	spawnflags(Flags) =
 	[
 		524288 : "Ignore player push" : 0 : "Don't move away when player tries to push me"
@@ -454,11 +480,13 @@
 		5 : "Absolute" : "Never get provoked"
 		6 : "Absolute, don't alert friends" : "Never get provoked, don't alert friends upon death"
 	]
+	voicepitch(integer) : "Custom voice pitch [100 norm]"
 	suspicious(choices) : "Suspicious" =
 	[
 		0 : "No"
 		1 : "Yes"
 	]
+	SpeakAs(string) : "Speech Group"
 	spawnflags(Flags) =
 	[
 		131072 : "Don't greet player" : 0 : "Don't say hello to player upon seeing him"
@@ -492,7 +520,7 @@
 	attenuation(string) : "Rotor attenuation"
 ]
 
-@BaseClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = gibshooterbase
+@BaseClass base(Targetname, Angles) size(-8 -8 -8, 8 8 8) = gibshooterbase
 [
 	// how many pieces to create
 	m_iGibs(integer) : "Number of Gibs" : 3
@@ -564,6 +592,7 @@
 	]
 	delay(string) : "Delay before fire" : "0"
 	gibmodel(studio) : "Gib Model" : ""
+	m_iGibs(integer) : "Custom number of gibs"
 	spawnobject(choices) : "Spawn On Break" : 0 =
 	[
 		0: "Nothing"
@@ -608,6 +637,12 @@
 	]
 	explodemagnitude(integer) : "Explode Magnitude (0=none)" : 0
 	randomitem_template(string) : "info_item_random entity"
+	target_activator(choices) : "Target's Activator" =
+	[
+		0 : "No (Default)"
+		1 : "This breakable"
+		2 : "My attacker or activator"
+	]
 ]
 
 @BaseClass = BaseLockable
@@ -635,6 +670,11 @@
 		10: "Buzz"
 		13: "Latch Unlocked"
 		14: "Lightswitch"
+		21: "Squeaky"
+		22: "Squeaky Pneumatic"
+		23: "Ratchet Groan"
+		24: "Clean Ratchet"
+		25: "Gas Clunk"
 	]
 	locked_sentence(choices) : "Locked Sentence" : 0 =
 	[
@@ -944,6 +984,7 @@
 	m_iszIdle(string) : "Idle Animation"
 	m_iszFireOnBegin(target_destination): "Fire after moving"
 	m_iszFireOnAnimStart(target_destination) : "Fire on Animation start" : : "Fire at the beginning of Action Animation"
+	m_iszFireOnPossessed(target_destination) : "Fire on Possession" : : "Fire when monster is possessed by script"
 	m_flRadius(integer) : "Search Radius" : 512
 	m_iPriority(choices) : "Priority" =
 	[
@@ -975,9 +1016,10 @@
 		256: "Continuous animation" : 0 : "Don't reset to idle between animations"
 		512: "Apply new angles" : 0 : "If the animation includes changing of monster's angles, set them after it finished. For smoother transition and better looks."
 		1024: "Auto-search" : 0 : "Act as if scripted sequence doesn't have a targetname: start searching for the monster in the script radius."
-		2048: "Force idle looping" : 0 : "Force idle animation looping. Use it when you want to loop an animation that does not have a loop flag"
 		4096: "Try once" : 0 : "By default once triggered the script will continue to search for the target monster if it could not find one instantly. This flag prevents such behavior"
 		8192: "Don't reset head turn" : 0 : "Don't reset head turn for talk monsters"
+		16384: "Force idle looping" : 0 : "Force idle animation looping. Use it when you want to loop an animation that does not have a loop flag"
+		32768: "Remove on interruption" : 0 : "Remove scripted sequence when it's getting interrupted"
 	]
 	m_targetActivator(choices) : "Activator for targets" : : "Activator for Target, Fire after moving, Fire on Animation start" =
 	[
@@ -1034,6 +1076,7 @@
 		1 : "No (Invulnerable)"
 		2 : "Non-lethal damage"
 	]
+	master(string) : "Master" : : "Scripted sequence won't search for its target monster while master is locked"
 ]
 
 //
@@ -1149,7 +1192,7 @@
 @PointClass base(Ammo) studio("models/w_m40a1clip.mdl") = ammo_762 : "Sniper Ammo" []
 @PointClass base(Targetname, Appearflags, Angles, Global) size(-16 -16 -16, 16 16 16) studio("models/spore_ammo.mdl") = ammo_spore : "Spore" []
 
-@SolidClass base(Target, ZHLT, RenderFields) = button_target : "Target Button"
+@SolidClass base(Targetname, Target, ZHLT, RenderFields) = button_target : "Target Button"
 [
 	spawnflags(flags) =
 	[
@@ -1160,6 +1203,21 @@
 ]
 
 // calc entities
+
+@PointClass base(Targetname) color(170 221 85) size(-12 -12 -12, 12 12 12) = calc_eval_number : "Calculate number"
+[
+	left_operand(string) : "Left Operand [LR]"
+	right_operand(string) : "Right Operand [LR]"
+	operation(choices) : "Operation" : 0 =
+	[
+		0 : "Add"
+		1 : "Substruct"
+		2 : "Multiply"
+		3 : "Divide"
+	]
+	store_result(target_destination) : "Store result in"
+	target(target_destination) : "Trigger after operation"
+]
 
 @PointClass color(128 200 64) size(-12 -12 -12, 12 12 12) base(Targetname) = calc_position : "Calculate position"
 [
@@ -1331,6 +1389,8 @@
 		64: "Decal End" : 0
 		128: "Shade Start" : 0
 		256: "Shade End" : 0
+		512: "Draw Solid" : 0
+		1024: "Draw Sine" : 0
 	]
 ]
 
@@ -1400,6 +1460,7 @@
 		2: "Spore (Grenade)"
 		3: "Shock Beam"
 		4: "Displacer Ball"
+		5: "Squid toxic spit"
 	]
 	firetype(choices) :"Fire Type" : 1 =
 	[
@@ -1441,6 +1502,19 @@
 	noise(decal) : "Custom decal texture"
 ]
 
+@PointClass base(Targetname) = env_dlight : "Dynamic light effect"
+[
+	message(string) : "Position (blank = here) [LP]"
+	rendercolor(color255) : "Light Color (R G B)" : "255 255 255"
+	renderamt(integer) : "Radius" : 80
+	health(string) : "Duration (0 = until triggered)" : "0.0"
+	spawnflags(Flags) =
+	[
+		1 : "Only once" : 0
+		2 : "Start on"  : 0
+	]
+]
+
 @PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_explosion : "Explosion"
 [
 	target(string) : "Initial position (blank = here) [LP]"
@@ -1457,6 +1531,9 @@
 		64: "No Sound" : 0
 		128: "Activator is attacker" : 0
 	]
+	model(sprite) : "Custom Fireball Sprite"
+	smokesprite(sprite) : "Custom Smoke Sprite"
+	scale(string) : "Custom sprite scale"
 ]
 
 @PointClass base(Targetname) color(255 255 128) iconsprite("sprites/env_global.spr") = env_global : "Global State"
@@ -1464,10 +1541,12 @@
 	globalstate(string) : "Global State to Set"
 	triggermode(choices) : "Trigger Mode" : 0 =
 	[
-		0 : "Off"
-		1 : "On"
-		2 : "Dead"
-		3 : "Toggle"
+		0 : "State Off"
+		1 : "State On"
+		2 : "State Dead"
+		3 : "Toggle State"
+		4 : "Modify/Set value"
+		5 : "Set State: Obey Use-type"
 	]
 	initialstate(choices) : "Initial State" : 0 =
 	[
@@ -1475,9 +1554,11 @@
 		1 : "On"
 		2 : "Dead"
 	]
+	initialvalue(integer) : "Initial Value"
 	spawnflags(flags) =
 	[
 		1 : "Set Initial State" : 0
+		4 : "Act as Master" : 0
 	]
 ]
 
@@ -1502,7 +1583,7 @@
 	rendercolor(color255) : "Fade Color (R G B)" : "0 0 0"
 ]
 
-@PointClass base(Targetname) = env_fog : "Fog effect, DMC stylee"
+@PointClass base(Targetname) = env_fog : "Fog effect"
 [
 	fadein(integer) : "Fade in time" : 0
 	holdtime(string) : "Hold time (0 = permanent)" : "0"
@@ -1513,7 +1594,16 @@
 	spawnflags(flags) =
 	[
 		1 : "Start active"   : 0
+		2 : "Affect skybox"   : 0
 	]
+	fogtype(Choices) : "GL Fog type" =
+	[
+		0 : "Default (engine-dependent)"
+		1 : "Exponential"
+		2 : "Exponential2"
+		3 : "Linear"
+	]
+	density(string) : "Density" : 0.001
 ]
 
 @PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_funnel : "Large Portal Funnel"
@@ -1619,14 +1709,22 @@
 	]
 ]
 
-@PointClass base(Targetname, Target, RenderFields) size(-16 -16 -16, 16 16 16) color(100 100 0) = env_render : "Render Controls"
+@PointClass base(Targetname, RenderFields) size(-16 -16 -16, 16 16 16) color(100 100 0) = env_render : "Render Controls"
 [
+	target(target_destination) : "Target to affect [LE]"
+	message(string) : "FX Amount factor [LR]"
+	m_fScale(string) : "Scale (0 = no change) [LR]"
+	frags(string) : "Fade Time (secs)"
+	armorvalue(string) : "Fade Coarseness (secs)"
+	netname(target_destination) : "Trigger after fading"
 	spawnflags(flags) =
 	[
 		1: "No Renderfx" : 0
 		2: "No Renderamt" : 0
 		4: "No Rendermode" : 0
 		8: "No Rendercolor" : 0
+		32: "Remove target" : 0
+		64: "Remove self" : 0
 	]
 ]
 
@@ -1708,7 +1806,7 @@
 	]
 ]
 
-@PointClass base(gibshooterbase, RenderFields) size(-16 -16 -16, 16 16 16) = env_shooter : "Model Shooter"
+@PointClass base(gibshooterbase, RenderFields) color(184 90 164) = env_shooter : "Model Shooter"
 [
 	shootmodel(studio) : "Model or Sprite name" : ""
 	shootsounds(choices) :"Material Sound" : -1 =
@@ -1727,6 +1825,27 @@
 		1 : "Repeatable" 	: 0
 		2 : "Scale models" : 0
 		4 : "Don't wait till land" : 0 : "Start fading right after life time has expired"
+	]
+]
+
+@PointClass base(Targetname, RenderFields) size(-16 -16 -16, 16 16 16) = env_smoker : "Smoker"
+[
+	health(integer) : "Times to smoke" : 1
+	scale(string) : "Smoke Scale (decile)" : 10
+	dmg(string) : "Dispersion of smoke particles" : "0"
+	dmg_take(string) : "Min delay between smokes" : "0.4"
+	dmg_save(string) : "Max delay between smokes" : "0.6"
+	framerate(integer) : "Framerate"
+	speed(integer) : "Speed" : 30
+	scale_speed(string) : "Scale Speed"
+	model(sprite) : "Sprite"
+	frags(integer) : "Z offset"
+	target(target_destination) : "Target to smoke at"
+	spawnflags(Flags) =
+	[
+		1 : "Start On" : 0
+		4 : "Repeatable" : 0
+		8 : "Directed" : 0
 	]
 ]
 
@@ -1798,7 +1917,7 @@
 	]
 ]
 
-@PointClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = env_spark : "Spark"
+@PointClass base(Targetname, Angles, SoundRadius) size(-8 -8 -8, 8 8 8) color(255 220 15) = env_spark : "Spark"
 [
 	MaxDelay(string) : "Max Time between sparks"
 	spawnflags(flags) =
@@ -1828,6 +1947,7 @@
 		1: "Start on" : 0
 		2: "Play Once" : 0
 		4: "Once + Remove" : 0
+		8: "Don't mess Yaw" : 0
 	]
 	impulse(integer) : "Start frame" : : "Start frame for animation, negative value means random frame."
 ]
@@ -1866,7 +1986,7 @@
 	noise1(sound) : "Stop Sound"
 ]
 
-@PointClass base(Targetname) color(128 128 255) = env_state : "Local State"
+@PointClass base(Targetname) color(128 128 255) = env_state : "Local State. Can be used as Master entity"
 [
 	target(target_destination) : "Target (on & off)"
 	noise1(target_destination) : "Fire when turned on"
@@ -1881,6 +2001,40 @@
 	]
 ]
 
+@PointClass base(Targetname) color(128 128 255) = calc_state : "Calculate State using logical operators ('On' state is True and 'Off' state if false). Can be used as Master entity"
+[
+	left_operand(string) : "Operand 1 [LE]"
+	right_operand(string) : "Operand 2 [LE]"
+	operation(choices) : "Operation" : 0 =
+	[
+		0: "AND"
+		1 : "OR"
+		2 : "NAND"
+		3 : "NOR"
+		4 : "XOR"
+		5 : "NXOR"
+	]
+	left_fallback(choices) : "Operand 1 fallback" =
+	[
+		0 : "Treat as error"
+		1 : "Treat as Off"
+		2 : "Treat as On"
+	]
+	right_fallback(choices) : "Operand 2 fallback" =
+	[
+		0 : "Treat as error"
+		1 : "Treat as Off"
+		2 : "Treat as On"
+	]
+	target(target_destination) : "Target (on & off)"
+	fire_when_false(target_destination) : "Fire when eval to False"
+	fire_when_true(target_destination) : "Fire when eval to True"
+	spawnflags(flags) =
+	[
+		2 : "Debug Mode" : 0
+	]
+]
+
 @PointClass base(Targetname) = env_stompshooter : "Generate garg stomps on each fire. Should be placed on the floor."
 [
 	target(target_destination) : "Stomp target" : : "Optional. If not defined, the entity will shoot at the direction of its alignment"
@@ -1890,6 +2044,48 @@
 	spawnflags(flags) =
 	[
 		1 : "Fire once" : 0
+	]
+]
+
+@PointClass base(Targetname) = env_streak : "Streak splash"
+[
+	count(integer) : "Count" : 20
+	speed(integer) : "Speed" : 50
+	scale(string) : "Length" : 1.0
+	randomness(integer) : "Random velocity modifier" : 400
+	tracer_color(choices) : "Tracer color index" : 6 =
+	[
+		0: "White"
+		1: "Red"
+		2: "Green"
+		3: "Blue"
+		4: "Default (cvars)"
+		5: "Golden"
+		6: "Orange"
+		7: "Purple"
+		8: "Yellowish"
+		9: "Yellowish 2"
+		10: "Yellowish 3"
+		11: "Yellowish 4"
+	]
+	minlife : "Min life" : 0.1
+	maxlife : "Min life" : 0.5
+	pt_type(choices) : "Particel type" : 1 =
+	[
+		1 : "Gravity"
+		2 : "Slow gravity"
+		3 : "Fire"
+		4 : "Explode"
+		5 : "Explode 2"
+		6 : "Blob"
+		7 : "Blob 2"
+		8 : "Vox slow gravity"
+		9 : "Vox gravity"
+	]
+	message(string) : "Position (blank = here) [LP]"
+	spawnflags(flags) =
+	[
+		1: "Remove on fire" : 0
 	]
 ]
 
@@ -1917,6 +2113,13 @@
 	noise1(sound) : "Custom sound 1"
 	noise2(sound) : "Custom sound 2"
 	volume(string) : "Sound volume (1.0 is max)"
+	aisound(choices) : "AI Sound type" =
+	[
+		0 : "No sound"
+		1 : "Combat"
+		32 : "Danger"
+	]
+	aisound_duration(string) : "AI Sound duration"
 ]
 
 @PointClass base(Target, Targetname) size(-24 -24 -24,24 24 24) = env_xenmaker :"Xen Portal. This entity is present just for compatibility with Sven Co-op"
@@ -1948,7 +2151,7 @@
 	m_vEndSpriteColor(color255) : "Sprite2 Color" : "159 240 214"
 ]
 
-@SolidClass base(Breakable, MoveWith, RenderFields, ZHLT) = func_breakable : "Breakable Object"
+@SolidClass base(Breakable, MoveWith, BreakableSpawnFlags, RenderFields, ZHLT) = func_breakable : "Breakable Object"
 [
 	spawnflags(flags) =
 	[
@@ -1961,12 +2164,12 @@
 		256: "Instant Crowbar" : 0
 		512: "Explosives only": 0
 		1024: "Op4Mortar only" : 0
-		2048: "Not solid" : 0
+		4096: "Not solid" : 0
 	]
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname) = func_breakable_effect : "Effect similar to func_breakable destruction, but without visible object"
+@SolidClass base(Targetname, BreakableSpawnFlags) = func_breakable_effect : "Effect similar to func_breakable destruction, but without visible object"
 [
 	material(choices) :"Material type" : 0 =
 	[
@@ -1981,6 +2184,7 @@
 		8: "Rocks"
 	]
 	gibmodel(studio) : "Gib Model"
+	m_iGibs(integer) : "Custom number of gibs"
 	spawnflags(Flags) =
 	[
 		1 : "Repeatable" : 0
@@ -2049,6 +2253,7 @@
 		64: "Sparks" : 0
 		256:"Touch Activates": 0
 		512:"Player Can't Use": 0
+		1024:"Check master on return": 0
 	]
 	target_on_locked(target_destination) : "Target on locked" : : "Trigger if used when locked"
 	_minlight(string) : "Minimum light level"
@@ -2115,7 +2320,10 @@
 
 @SolidClass base(Targetname, MoveWith, RenderFields, ZHLT) = func_illusionary : "Fake Wall/Light"
 [
-
+	spawnflags(flags) =
+	[
+		2 : "Use Angles" : 0
+	]
 	skin(choices) : "Contents" : -1 =
 	[
 		-1: "Empty"
@@ -2124,7 +2332,21 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, MoveWith) = func_ladder : "Ladder" []
+@SolidClass base(func_illusionary) = func_illusionary_toggle : "Fake toggleable Wall/Light"
+[
+	spawnflags(flags) =
+	[
+		1 : "Starts Invisible" : 0
+	]
+]
+
+@SolidClass base(Targetname, MoveWith) = func_ladder : "Ladder"
+[
+	spawnflags(flags) =
+	[
+		1 : "Start Off" : 0
+	]
+]
 
 @SolidClass base(Targetname) = func_monsterclip : "Monster clip brush" []
 
@@ -2155,6 +2377,7 @@
 		16: "Auto-return" : 0
 		64: "X Axis" : 0
 		128: "Y Axis" : 0
+		256: "Rotate both ways" : 0
 	]
 	_minlight(string) : "Minimum light level"
 ]
@@ -2184,7 +2407,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Breakable, RenderFields, ZHLT) = func_pushable : "Pushable object"
+@SolidClass base(Breakable, BreakableSpawnFlags, RenderFields, ZHLT) = func_pushable : "Pushable object"
 [
 	size(choices) : "Hull Size" : 0 =
 	[
@@ -2221,6 +2444,7 @@
 	health(integer) : "Health (shootable if > 0)"
 	sounds(choices) : "Sounds" : 21 =
 	[
+		0: "None"
 		21: "Squeaky"
 		22: "Squeaky Pneumatic"
 		23: "Ratchet Groan"
@@ -2244,6 +2468,7 @@
 		128: "Y Axis" : 0
 		256:"Touch Activates": 0
 		512:"Player Can't Use": 0
+		1024:"Check master on return": 0
 	]
 	_minlight(string) : "Minimum light level"
 ]
@@ -2320,7 +2545,7 @@
 	_minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Global, RenderFields, ZHLT) = func_tracktrain : "Track Train"
+@SolidClass base(Targetname, Global, RenderFields, ZHLT, SoundRadius) = func_tracktrain : "Track Train"
 [
 	spawnflags(flags) =
 	[
@@ -2405,6 +2630,10 @@
 @SolidClass base(Targetname, MoveWith, Appearflags, RenderFields, Global, ZHLT) = func_wall : "Wall"
 [
 	_minlight(string) : "Minimum light level"
+	spawnflags(flags) =
+	[
+		2 : "Use Angles" : 0
+	]
 ]
 
 @SolidClass base(func_wall) = func_wall_toggle : "Toggleable geometry"
@@ -2446,6 +2675,7 @@
 	[
 		1: "Remove On fire" : 0
 		2: "Reset On fire" : 1
+		4: "Fire if over limit" : 0
 	]
 	master(string) : "Master"
 	frags(integer) : "Initial Value" : 0
@@ -2553,11 +2783,18 @@
 	_762(integer) : "762 bullets"
 	Spores(integer) : "Spores"
 	Penguins(integer) : "Penguins"
-	suitlogon(choices) : "Suit logon" : 0 =
+	suitlogon(choices) : "Suit logon" : 2 =
 	[
 		0: "Long logon"
 		1: "Short logon"
 		2: "No logon"
+	]
+	suitlight(choices) : "Suit light" =
+	[
+		-1: "No light"
+		0: "Default"
+		1: "Flashlight"
+		2: "NVG"
 	]
 	health(integer) : "Starting health"
 	armorvalue(integer) : "Starting armor"
@@ -2620,6 +2857,11 @@
 	master(string) : "Master"
 ]
 
+@PointClass base(Targetname) = game_number : "Holds a floating point variable. Use it with calc_eval_number and trigger_compare"
+[
+	frags(string) : "Initial Value" : 0
+]
+
 @SolidClass base(Targetname) = game_zone_player : "Player Zone brush"
 [
 	intarget(target_destination) : "Target for IN players"
@@ -2629,7 +2871,7 @@
 	// master(string) : "Master"
 ]
 
-@PointClass base(gibshooterbase) = gibshooter : "Gib Shooter" []
+@PointClass base(gibshooterbase) color(180 2 0) = gibshooter : "Gib Shooter" []
 
 //
 // info entities
@@ -2738,7 +2980,7 @@
 @PointClass base(PlayerClass) sequence(2) studio("models/player.mdl") = info_player_start : "Player 1 start" []
 
 @PointClass base(Targetname) size(-4 -4 -4, 4 4 4) color(200 100 50) = info_target : "Beam Target" []
-@PointClass size(-8 -8 0, 8 8 16) base(Targetname) offset(0 0 36) = info_teleport_destination : "Teleport destination" []
+@PointClass size(-16 -16 0, 16 16 72) base(Targetname) color(255 128 240) = info_teleport_destination : "Teleport destination" []
 
 //
 // items
@@ -2784,6 +3026,19 @@
 	noise(sound) : "Pickup sound" : "items/gunpickup4.wav"
 	hudname(string) : "Hud name" : : "Custom name from hud.txt to show on pickup. The default is item_security"
 ]
+@PointClass size(-8 -8 0, 8 8 8) color(0 0 200) base(Targetname) studio("models/can.mdl") = item_sodacan : "Soda can"
+[
+	skin(choices) : "Beverage Type" : 0 =
+	[
+		0 : "Coca-Cola"
+		1 : "Sprite"
+		2 : "Diet Coke"
+		3 : "Orange"
+		4 : "Surge"
+		5 : "Moxie"
+	]
+	model(studio) : "Custom Model"
+]
 @PointClass size(-16 -16 0, 16 16 36) base(Item) studio("models/w_suit.mdl") = item_suit : "HEV Suit"
 [
 	spawnflags(Flags) =
@@ -2799,7 +3054,7 @@
 	template(string) : "info_item_random entity"
 ]
 
-@PointClass base(Weapon, Targetx, RenderFields, Scalable) studio() = item_generic : "Generic scenery item"
+@PointClass base(Targetname, Appearflags, Angles, Global, RenderFields, Scalable) studio() = item_generic : "Generic scenery item"
 [
 	model(studio) : "Model" : "models/w_security.mdl"
 	sequencename(string) : "Sequence Name"
@@ -3234,6 +3489,7 @@
 @PointClass base(Monster, FollowingMonster, Sequence) size(-32 -32 0, 32 32 64) studio("models/babygarg.mdl") = monster_babygarg : "Baby Gargantua" []
 @PointClass base(RenderFields, Sequence) size(-16 -16 -36, 16 16 0) studio("models/barnacle.mdl") = monster_barnacle : "Barnacle Monster"
 [
+	model(studio) : "Custom Model"
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
 	[
 		0 : "idle1"
@@ -3625,6 +3881,7 @@
 		3 : "9mmAR + HG"
 		5 : "9mmAR + GL"
 		8 : "Sniper Rifle"
+		10 : "Sniper Rifle + HG"
 	]
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
 	[
@@ -4150,23 +4407,38 @@
 	]
 	sequence(Choices) : "Animation Sequence (editor)" : 0 =
 	[
-		0 : "fly_up"
-		1 : "idle1"
-		2 : "idle3"
-		3 : "idle2"
-		4 : "run"
-		5 : "walk"
-		6 : "shoot"
-		7 : "grenadethrow"
-		8 : "kick"
-		9 : "kickshort"
-		10 : "death_during_run"
-		11 : "die_backwards"
-		12 : "die_simple"
-		13 : "jump"
+		0 : "idle1"
+		1 : "idle3"
+		2 : "idle2"
+		3 : "run"
+		4 : "walk"
+		5 : "shoot"
+		6 : "grenadethrow"
+		7 : "kick"
+		8 : "kickshort"
+		9 : "death_during_run"
+		10 : "die_backwards"
+		11 : "die_simple"
+		12 : "jump"
+		13 : "fly_up"
 		14 : "fly_down"
 		15 : "fly_attack"
 		16 : "landfromjump"
+	]
+]
+@PointClass base(DeadMonster) size(-16 -16 0, 16 16 72) studio("models/hassassin.mdl") = monster_human_assassin_dead : "Dead Human Assassin"
+[
+	sequence(Choices) : "Animation Sequence (editor)" : 9 =
+	[
+		9 : "death_during_run"
+		10 : "die_backwards"
+		11 : "die_simple"
+	]
+	pose(Choices) : "Pose" : 0 =
+	[
+		0 : "On side"
+		1 : "On back"
+		2 : "On stomach"
 	]
 ]
 @PointClass base(Monster, FollowingMonster) size(-16 -16 0, 16 16 72) studio("models/hgrunt.mdl") = monster_human_grunt : "Human Grunt (camo)"
@@ -4607,7 +4879,9 @@
 	[
 		0 : "Default (Desert eagle)"
 		1 : "Desert Eagle"
+		9 : "Desert Eagle + HG"
 		2 : "9mm Handgun"
+		10 : "9mm Handgun + HG"
 		4 : "Hypodermic Needle"
 	]
 ]
@@ -4780,6 +5054,7 @@
 	weapons(Choices) : "Weapons" : 1 =
 	[
 		1 : "Desert Eagle"
+		5 : "Desert Eagle + HG"
 		2 : "Blow Torch"
 	]
 ]
@@ -5017,6 +5292,7 @@
 		3 : "9mmAR + HG"
 		5 : "9mmAR + GL"
 		8 : "Sniper Rifle"
+		10 : "Sniper Rifle + HG"
 	]
 	standgroundrange(string) : "Stand Ground Range" : "0.0"
 	sequence(Choices) : "Animation Sequence (editor)" : 7 =
@@ -6399,6 +6675,7 @@
 	delay(string) : "Frequency" : "5" : "How often (seconds) a new monster will be made"
 	m_imaxlivechildren(integer) : "Max live children" : 5 : "Maximum number of live children allowed at one time. (New ones will not be made until one dies, -1 = no limit)"
 
+    spawnorigin(string) : "Spawn position [LP]" : : "By default acts as a typical position variable. When it starts with '@' the monstermaker will choose a random spot among ones with the same name (the rest of the string after '@'). It also applies the chosen entity angles."
 	warpball(string) : "Warpball template" : : "env_warpball entity used as effect template for this monstermaker"
 	impulse(choices) : "Warp at monster's..." : : "If using warpball template, spawn warpball at this monster position" =
 	[
@@ -6410,8 +6687,6 @@
 		7 : "Attachment point 2"
 		8 : "Attachment point 3"
 	]
-
-	spawnorigin(string) : "Position to place monster at [LP]" : : "By default acts as a typical position variable. When it starts with '@' the monstermaker will choose a random spot among ones with the same name (the rest of the string after '@'). It also applies the chosen entity angles."
 	spawndelay(string) : "Delay before spawn" : : "If larger then zero, the monster spawn will be delayed by specified amount of time (in seconds). The hull is created in place of the future monster's spawn to make sure that monster will have enough place to spawn. Recommended to use with 'Auto size BBox' flag and 'Warpball template'. Does not work well with 'Warp at monster's...'"
 	target_activator(choices) : "Target's Activator" : : "Activator for 'Target On Release'" =
 	[
@@ -6463,7 +6738,7 @@
 	new_model(studio) : "Custom model"
 ]
 
-@BaseClass base(MonsterMakerBase, MonsterExtra, CustomSentences) flags(Angle) size(-16 -16 -16, 16 16 16) = MonsterMaker
+@BaseClass base(MonsterMakerBase, MonsterExtra, FollowingMonsterProps, CustomSentences) flags(Angle) size(-16 -16 0, 16 16 72) color(245 128 96) = MonsterMaker
 [
 	spawnflags(Flags) =
 	[
@@ -6477,9 +6752,9 @@
 		128 : "Reserved (don't use)" : 0 : "Reserved for Sven Co-op 'Wait for script' flag"
 		256 : "Pre-Disaster" : 0 : "The spawned talkmonster (e.g. scientist) will use pre-disaster sentences"
 		1024: "Don't Drop Gun" : 0 : "The spawned monster won't drop items upon death."
-		2048 : "No ground check" : 0 : "Don't check if something prevents a monster to fall on ground upon spawning. Useful for spawning flying monsters and those who are supposed to fall on whatever underneath them"
 		4096 : "Align to player" : 0 : "Spawned monsters will be aligned to the closest player increasing the chance of seeing the player right after the spawn."
 		8192 : "Monster Flag 64" : 0 : "Set spawnflag 64 for spawned monster. E.g. used by vortigaunts as 'wait until provoked'"
+		16384: "No ground check" : 0 : "Don't check if something prevents a monster to fall on ground upon spawning. Useful for spawning flying monsters and those who are supposed to fall on whatever underneath them"
 		32768 : "Monster special flag" : 0 : "Set spawnflag 32768 for spawned monster"
 		65536 : "Non-solid corpse" : 0 : "The spawned monster will become non-solid upon dying. Helps preventing dead corpses get into the way of moving entities like doors"
 		524288 : "Ignore player pushing" : 0 : "Don't move away when player tries to push me (for following monsters)"
@@ -6542,47 +6817,79 @@
 	]
 ]
 
-@PointClass base(Targetname, MultiManagerFlags) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager. Use type of targets can be configured by adding #0 (Off), #1 (On) or #2 (Kill) to their delay values." []
+@PointClass base(Targetname, MultiManagerFlags) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_manager : "MultiTarget Manager. Use type of targets can be configured by adding #0 or #off (Off), #1 or #on (On), #2 or #kill (Kill) to their delay values." []
 
-@BaseClass = MultiTarget
+@PointClass base(Targetname, MultiManagerFlags) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_trigger : "MultiTarget Trigger. Use this entity instead of multi_manager so JACK could draw connections to its targets."
 [
-	delay1(string) : "Delay 1" : "0"
 	target1(target_destination) : "Target 1"
-	delay2(string) : "Delay 2" : "0"
+	delay1(string) : "Delay 1" : "0"
 	target2(target_destination) : "Target 2"
-	delay3(string) : "Delay 3"
+	delay2(string) : "Delay 2" : "0"
 	target3(target_destination) : "Target 3"
-	delay4(string) : "Delay 4"
+	delay3(string) : "Delay 3"
 	target4(target_destination) : "Target 4"
-	delay5(string) : "Delay 5"
+	delay4(string) : "Delay 4"
 	target5(target_destination) : "Target 5"
-	delay6(string) : "Delay 6"
+	delay5(string) : "Delay 5"
 	target6(target_destination) : "Target 6"
-	delay7(string) : "Delay 7"
+	delay6(string) : "Delay 6"
 	target7(target_destination) : "Target 7"
-	delay8(string) : "Delay 8"
+	delay7(string) : "Delay 7"
 	target8(target_destination) : "Target 8"
-	delay9(string) : "Delay 9"
+	delay8(string) : "Delay 8"
 	target9(target_destination) : "Target 9"
-	delay10(string) : "Delay 10"
+	delay9(string) : "Delay 9"
 	target10(target_destination) : "Target 10"
-	delay11(string) : "Delay 11"
+	delay10(string) : "Delay 10"
 	target11(target_destination) : "Target 11"
-	delay12(string) : "Delay 12"
+	delay11(string) : "Delay 11"
 	target12(target_destination) : "Target 12"
-	delay13(string) : "Delay 13"
+	delay12(string) : "Delay 12"
 	target13(target_destination) : "Target 13"
-	delay14(string) : "Delay 14"
+	delay13(string) : "Delay 13"
 	target14(target_destination) : "Target 14"
-	delay15(string) : "Delay 15"
+	delay14(string) : "Delay 14"
 	target15(target_destination) : "Target 15"
-	delay16(string) : "Delay 16"
+	delay15(string) : "Delay 15"
 	target16(target_destination) : "Target 16"
+	delay16(string) : "Delay 16"
 ]
 
-@PointClass base(Targetname, MultiManagerFlags, MultiTarget) color(255 128 0) iconsprite("sprites/multi_manager.spr") = multi_trigger : "MultiTarget Trigger. Use this entity instead of multi_manager so JACK could draw connections to its targets." []
-
-@PointClass base(Targetname, MultiManagerFlags, MultiTarget) color(170 85 0) = multi_sequence : "Same as multi_trigger, but delays are relative between adjacent targets." []
+@PointClass base(Targetname, MultiManagerFlags) color(170 85 0) = multi_sequence : "Same as multi_trigger, but delays are relative between adjacent targets."
+[
+	delay1(string) : "Delay before 1" : "0"
+	target1(target_destination) : "Target 1"
+	delay2(string) : "Delay between 1 and 2" : "0"
+	target2(target_destination) : "Target 2"
+	delay3(string) : "Delay between 2 and 3"
+	target3(target_destination) : "Target 3"
+	delay4(string) : "Delay between 3 and 4"
+	target4(target_destination) : "Target 4"
+	delay5(string) : "Delay between 4 and 5"
+	target5(target_destination) : "Target 5"
+	delay6(string) : "Delay between 5 and 6"
+	target6(target_destination) : "Target 6"
+	delay7(string) : "Delay between 6 and 7"
+	target7(target_destination) : "Target 7"
+	delay8(string) : "Delay between 7 and 8"
+	target8(target_destination) : "Target 8"
+	delay9(string) : "Delay between 8 and 9"
+	target9(target_destination) : "Target 9"
+	delay10(string) : "Delay between 9 and 10"
+	target10(target_destination) : "Target 10"
+	delay11(string) : "Delay between 10 and 11"
+	target11(target_destination) : "Target 11"
+	delay12(string) : "Delay between 11 and 12"
+	target12(target_destination) : "Target 12"
+	delay13(string) : "Delay between 12 and 13"
+	target13(target_destination) : "Target 13"
+	delay14(string) : "Delay between 13 and 14"
+	target14(target_destination) : "Target 14"
+	delay15(string) : "Delay between 14 and 15"
+	target15(target_destination) : "Target 15"
+	delay16(string) : "Delay between 15 and 16"
+	target16(target_destination) : "Target 16"
+]
 
 @PointClass base(Targetname, Target) color(128 255 128) iconsprite("sprites/multisource.spr") = multisource : "Multisource"
 [
@@ -6627,12 +6934,12 @@
 @PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_loadsaved : "Load Auto-Saved game"
 [
 	duration(string) : "Fade Duration (seconds)" : "2"
-	holdtime(string) : "Hold Fade (seconds)" : "0"
+	holdtime(string) : "Hold Fade (seconds)" : "6"
 	renderamt(integer) : "Fade Alpha" : 255
 	rendercolor(color255) : "Fade Color (R G B)" : "0 0 0"
-	messagetime(string) : "Show Message delay" : "0"
+	messagetime(string) : "Show Message delay" : "0.5"
 	message(string) : "Message To Display" : ""
-	loadtime(string) : "Reload delay" : "0"
+	loadtime(string) : "Reload delay" : "7"
 	spawnflags(Flags) =
 	[
 		1 : "Freeze player" : 0
@@ -6645,10 +6952,10 @@
 [
 	spawnflags(Flags) =
 	[
-		1 : "Remove suit" : 0
-		2 : "Remove flashlight" : 0 : "Remove flashlight item if it's a separate item from the suit."
+		1 : "Remove suit" : 0 : "Remove player's suit. The flashlight or nvg will be removed only if suit comes with one of them by default. Otherwise the 'Remove suit light' flag should be checked too"
+		2 : "Remove suit light" : 0 : "Remove flashlight or nvg."
 		4 : "Remove longjump" : 0
-		8 : "Don't turn off flashlight" : 0 : "By default in Half-Life any call to player_weaponstrip turns off the flashlight. Tick this flag to prevent such behavior. Flashlight is still getting turned off if suit or flashlight is removed."
+		8 : "Don't turn off suit light" : 0 : "By default in Half-Life any call to player_weaponstrip turns off the flashlight. Tick this flag to prevent such behavior. Flashlight is still getting turned off if suit or flashlight is removed."
 	]
 	noise(sound) : "Sound on trigger" : : "This will be played on player's item sound channel"
 ]
@@ -6689,7 +6996,7 @@
 		1 : "Fire Once" 	: 1
 		2 : "Followers Only"	: 0
 		4 : "Interrupt Speech"	: 1
-		8 : "Concurrent"	: 0
+		8 : "Make Friends Shut Up"	: 0
 		16 : "Require listener"	: 0 : "Play sentence only if listener is present"
 		32 : "Listener looks at speaker"	: 0 : "Make listener look at speaker if possible"
 		256 : "Speaker turns to listener"	: 0
@@ -6870,6 +7177,7 @@
 		1: "Start At Player" : 1
 		2: "Follow Player" : 1
 		4: "Freeze Player" : 0
+		1024: "Alive player only" : 0
 	]
 	speed(string) : "Initial Speed" : "0"
 	acceleration(string) : "Acceleration units/sec^2" : "500"
@@ -6944,12 +7252,32 @@
 	message(target_destination) : "Trigger after operation" : : "Trigger entities after the value was set. This can call another trigger_changevalue without any delay so it's useful for chained operations."
 ]
 
+@PointClass base(Targetname) = trigger_check_state : "Check entity's state"
+[
+	entity(string) : "Entity to check"
+	target(target_destination) : "Target (on & off)"
+	fire_if_off(target_destination) : "Fire if off"
+	fire_if_on(target_destination) : "Fire if on"
+	fire_if_absent(target_destination) : "Fire if absent"
+]
+
 @PointClass base(Targetname) = trigger_command : "Console Command"
 [
 	netname(string) : "Command String"
 ]
 
-@PointClass base(Targetname, CustomSentences) = trigger_configure_monster : "Change some monster's parameters and flags"
+@PointClass base(Targetname) = trigger_compare : "Examine relationship between two numbers"
+[
+	initial_value(string) : "Base value [LR]" : 0
+	compare_value(string) : "Compare Value [LR]" : 0
+	target(target_destination) : "Trigger On Equal To"
+	trigger_on_not_equal(target_destination) : "Trigger On Not Equal To"
+	trigger_on_less(target_destination) : "Trigger On Less Than"
+	trigger_on_greater(target_destination) : "Trigger On Greater Than"
+	trigger_on_fail(target_destination) : "Trigger On Calc Fail"
+]
+
+@BaseClass = TriggerConfigureMonsterBase
 [
 	target(string) : "Entity to affect"
 	gag_flag(choices) : "'Gag' flag" =
@@ -6959,6 +7287,12 @@
 		1 : "Add flag"
 	]
 	monsterclip_flag(choices) : "'Monsterclip' flag" =
+	[
+		-1 : "Remove flag"
+		0 : "No change"
+		1 : "Add flag"
+	]
+	prisoner_flag(choices) : "'Prisoner' flag" =
 	[
 		-1 : "Remove flag"
 		0 : "No change"
@@ -6988,6 +7322,30 @@
 		-1 : "None"
 		0 : "No change"
 		1 : "Machine"
+		3 : "Human passive"
+		4 : "Human military"
+		5 : "Alien military"
+		6 : "Alien passive"
+		7 : "Alien monster"
+		8 : "Alien prey"
+		9 : "Alien predator"
+		10 : "Insect"
+		11 : "Player ally"
+		12 : "Player bioweapon"
+		13 : "Alien bioweapon"
+		14 : "Race X predator"
+		15 : "Race X shock"
+		16 : "Opfor ally"
+		17 : "Blackops"
+		18 : "Snark"
+		19 : "Gargantua"
+	]
+	prisonerto(choices) : "Act as Prisoner to" : : "Ignore and get ignored by this class" =
+	[
+		-1 : "Reset"
+		0 : "No change"
+		1 : "Machine"
+		2 : "Player"
 		3 : "Human passive"
 		4 : "Human military"
 		5 : "Alien military"
@@ -7070,6 +7428,8 @@
 		1 : "Add flag"
 	]
 ]
+
+@PointClass base(Targetname, TriggerConfigureMonsterBase, CustomSentences) = trigger_configure_monster : "Change some monster's parameters and flags" []
 
 @SolidClass base(Trigger) = trigger_counter : "Trigger counter"
 [
@@ -7161,6 +7521,8 @@
 		32:"TouchClientOnly" : 0
 		64:"Affect non-moving NPC's" : 0 : "Uses entity's bounding box to find and hurt non-moving monsters. Will produce wrong results on non-cuboid brush shapes."
 		128:"Full dmg every 0.5 seconds" : 0 : "Do full damage (or healing) instead of halving the value. Recommended to use with odd values."
+		256:"Ignore Armor" : 0
+		512:"No Camera Punch" : 0
 	]
 	master(string) : "Master"
 	dmg(integer) : "Damage" : 10 : "The damage is applied every 0.5 seconds. Negative value means healing. The value is getting halved, unless 'Full dmg every 0.5 seconds' spawnflag is set."
@@ -7176,6 +7538,8 @@
 		1 : "Instant Kill" : 0
 		2 : "Constant" : 0
 		4 : "Start On" : 0
+		256:"Ignore Armor" : 0
+		512:"No Camera Punch" : 0
 	]
 	target(string) : "Target [LE]"
 	targetclass(string) : "Target Class" : : "If specified, all entities with the given class will be affected. This is independent from Target, which means the entity might cause damage twice to the same entity if Target is class of Target Class."
@@ -7194,6 +7558,21 @@
 	target(target_destination) : "Monster's Name" : : "Kill all monsters with such targetname, given they also are of specific class and squad (if set)"
 	message(string) : "Monster's Classname" : : "Kill all monsters with such classname, given they also are of specific name and squad (if set)"
 	netname(string) : "Monster's Squad name" : : "Kill all monsters with such squad name, given they also are of specific name and class (if set)"
+]
+
+@SolidClass base(Targetname) = trigger_look : "Trigger something when the player looks at something"
+[
+	spawnflags(flags) =
+	[
+		1: "Remove On Fire" : 1
+	]
+	netname(target_destination) : "Look Target"
+	look_time(string) : "Look Time" : 1 : "The time, in seconds, that the player must look the target before firing the output. Resets if player leaves trigger, or looks outside the Field of View threshold."
+	field_of_view(string) : "Field Of View" : 0.7 : "How close the player has to be looking at the target. 1.0 = straight ahead\n 0.0 = +/- 90 degrees\n -1.0 = all directions)."
+	target(target_destination) : "Trigger on look"
+	killtarget(target_destination) : "Kill target"
+	delay(string) : "Delay before trigger"
+	master(string) : "Master"
 ]
 
 @SolidClass base(Angles) = trigger_monsterjump : "Trigger monster jump"
@@ -7245,6 +7624,7 @@
 	spawnflags(flags) =
 	[
 		1: "Remove on fire" : 0
+		2: "Looped" : 0
 	]
 ]
 
@@ -7374,6 +7754,8 @@
 	]
 	triggerstate(choices) : "Trigger State" : 2 =
 	[
+		-2: "Reverse Input"
+		-1: "Copy Input"
 		0: "Off"
 		1: "On"
 		2: "Toggle"
@@ -7416,7 +7798,22 @@
 	trigger_on_limit(target_destination) : "Trigger on limit" : : "Trigger when the trigger limit is reached"
 ]
 
-@BaseClass base(Targetname) = TriggerTeleport
+@BaseClass = TeleportRandomDest
+[
+	spawnflags(flags) = 
+	[
+		64 : "Random Destination" : 0 : "If multiple targets are set, one will be chosen as the destination randomly for every single player as he enters the trigger."
+	]
+]
+@BaseClass = TeleportKeepFlags
+[
+	spawnflags(flags) = 
+	[
+		256 : "Keep Angles" : 0 : "Keep player's angles"
+		512 : "Keep velocity" : 0 : "Keep player's velocity"
+	]
+]
+@BaseClass base(Targetname, TeleportKeepFlags) = TriggerTeleport
 [
 	master(string) : "Master"
 	teleport_start_inactive(choices) : "Start Inactive" =
@@ -7424,26 +7821,20 @@
 		0 : "No"
 		1 : "Yes"
 	]
-	spawnflags(flags) =
-	[
-		256 : "Keep Angles" : 0 : "Keep player's angles"
-		512 : "Keep velocity" : 0 : "Keep player's velocity"
-	]
 ]
 
-@SolidClass base(TriggerTeleport, TriggerCond) = trigger_teleport : "Trigger teleport"
+@SolidClass base(TriggerTeleport, TriggerCond, TeleportRandomDest) = trigger_teleport : "Trigger teleport"
 [
 	target(target_destination) : "Destination point" : : "Name of the entity which the player is teleported to. Ideally an info_teleport_destination entity."
-]
-
-@PointClass base(Targetname) = trigger_player_teleport : "Move player to the specified position."
-[
-	target(target_destination) : "Destination point" : : "Name of the entity which the player is teleported to. If omitted trigger_player_teleport acts as a teleport position itself."
 	spawnflags(flags) =
 	[
-		256 : "Keep Angles" : 0 : "Keep player's angles"
-		512 : "Keep velocity" : 0 : "Keep player's velocity"
+		128 : "Relative Teleport" : 0 : "The player's destination will be the location of the destination plus his offset from the trigger_teleport's origin in the moment of the player entering the trigger. trigger_teleport is expected to have an origin brush."
 	]
+]
+
+@PointClass base(Targetname, TeleportRandomDest, TeleportKeepFlags) = trigger_player_teleport : "Move player to the specified position."
+[
+	target(target_destination) : "Destination point" : : "Name of the entity which the player is teleported to. If omitted trigger_player_teleport acts as a teleport position itself."
 ]
 
 @SolidClass base(Targetname) = trigger_transition : "Trigger: Select Transition Area" []
@@ -7488,7 +7879,7 @@
 @PointClass base(Weapon) studio("models/w_pipe_wrench.mdl") = weapon_pipewrench : "Pipe Wrench" []
 @PointClass base(Weapon) studio("models/w_knife.mdl") = weapon_knife : "Knife" []
 @PointClass base(Weapon) studio("models/w_bgrap.mdl") = weapon_grapple : "Barnacle Grapple" []
-@PointClass base(Weapon) studio("models/w_shock.mdl") = weapon_shockrifle : "Shock Roach" []
+@PointClass base(Weapon) studio("models/w_shock_rifle.mdl") = weapon_shockrifle : "Shock Roach" []
 @PointClass base(Weapon) studio("models/w_saw.mdl") = weapon_m249 : "M249 SAW" []
 @PointClass base(Weapon) studio("models/w_m40a1.mdl") = weapon_sniperrifle : "Sniper Rifle" []
 @PointClass base(Weapon) studio("models/w_displacer.mdl") = weapon_displacer : "Displacer" []

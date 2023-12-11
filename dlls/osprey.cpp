@@ -23,6 +23,7 @@
 #include "effects.h"
 #include "customentity.h"
 #include "mod_features.h"
+#include "game.h"
 
 #define SF_OSPREY_DONT_DEPLOY SF_MONSTER_SPECIAL_FLAG
 
@@ -72,7 +73,7 @@ public:
 	void EXPORT CommandUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	void ShowDamage( void );
 	void Update();
 
@@ -870,7 +871,7 @@ void COsprey::ShowDamage( void )
 	}
 }
 
-void COsprey::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void COsprey::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	// ALERT( at_console, "%d %.0f\n", ptr->iHitgroup, flDamage );
 
@@ -897,7 +898,7 @@ void COsprey::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir
 	if( flDamage > 50 || ptr->iHitgroup == 1 || ptr->iHitgroup == 2 || ptr->iHitgroup == 3 )
 	{
 		// ALERT( at_console, "%.0f\n", flDamage );
-		AddMultiDamage( pevAttacker, this, flDamage, bitsDamageType );
+		AddMultiDamage( pevInflictor, pevAttacker, this, flDamage, bitsDamageType );
 	}
 	else
 	{
@@ -915,6 +916,7 @@ void COsprey::Update()
 
 	ShowDamage();
 	FCheckAITrigger();
+	GlowShellUpdate();
 }
 
 int COsprey::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
@@ -935,14 +937,13 @@ class CBlkopOsprey : public COsprey
 public:
 	void Spawn();
 	void Precache();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("blkop_osprey"); }
 	void PrepareGruntBeforeSpawn(CBaseEntity* pGrunt);
 	int	DefaultClassify ( void )
 	{
-#if FEATURE_BLACKOPS_CLASS
-		return CLASS_HUMAN_BLACKOPS;
-#else
+		if (g_modFeatures.blackops_classify)
+			return CLASS_HUMAN_BLACKOPS;
 		return COsprey::DefaultClassify();
-#endif
 	}
 protected:
 	const char* TrooperName();
@@ -962,12 +963,11 @@ void CBlkopOsprey::Precache()
 
 void CBlkopOsprey::PrepareGruntBeforeSpawn(CBaseEntity *pGrunt)
 {
-	KeyValueData kvd;
-	char buf[128] = {0};
-	sprintf(buf, "%d", -1);
-	kvd.szKeyName = "head";
-	kvd.szValue = buf;
-	pGrunt->KeyValue(&kvd);
+	CBaseMonster* pMonster = pGrunt->MyMonsterPointer();
+	if (pMonster)
+	{
+		pMonster->SetHead(-1);
+	}
 }
 
 const char* CBlkopOsprey::TrooperName()

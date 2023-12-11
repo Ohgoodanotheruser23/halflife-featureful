@@ -97,6 +97,7 @@ public:
 
 	void StopSound( void );
 	void UpdateSound( void );
+	float SoundAttenuation() const;
 
 	static CFuncTrackTrain *Instance( edict_t *pent );
 
@@ -122,6 +123,7 @@ public:
 	float m_flBank;
 	float m_oldSpeed;
 	BOOL m_customMoveSound;
+	short m_soundRadius;
 
 private:
 	unsigned short m_usAdjustPitch;

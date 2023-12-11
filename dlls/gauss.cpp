@@ -96,7 +96,7 @@ int CGauss::GetItemInfo( ItemInfo *p )
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 3;
 	p->iPosition = 1;
-	p->iId = m_iId = WEAPON_GAUSS;
+	p->iId = WEAPON_GAUSS;
 	p->iFlags = 0;
 	p->iWeight = GAUSS_WEIGHT;
 	p->pszAmmoEntity = "ammo_gaussclip";
@@ -404,7 +404,7 @@ void CGauss::Fire( Vector vecOrigSrc, Vector vecDir, float flDamage )
 		if( pEntity->pev->takedamage )
 		{
 			ClearMultiDamage();
-			pEntity->TraceAttack( m_pPlayer->pev, flDamage, vecDir, &tr, DMG_BULLET );
+			pEntity->TraceAttack( m_pPlayer->pev, m_pPlayer->pev, flDamage, vecDir, &tr, DMG_BULLET );
 			ApplyMultiDamage( m_pPlayer->pev, m_pPlayer->pev );
 		}
 

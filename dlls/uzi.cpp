@@ -18,10 +18,12 @@
 #include "cbase.h"
 #include "monsters.h"
 #include "weapons.h"
-#include "nodes.h"
 #include "player.h"
 #include "soundent.h"
 #include "gamerules.h"
+#ifndef CLIENT_DLL
+#include "game.h"
+#endif
 
 #if FEATURE_UZI
 
@@ -68,6 +70,15 @@ void CUzi::Precache( void )
 	m_usUzi = PRECACHE_EVENT( 1, "events/uzi.sc" );
 }
 
+bool CUzi::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_UZI);
+#else
+	return true;
+#endif
+}
+
 int CUzi::GetItemInfo( ItemInfo *p )
 {
 	p->pszName = STRING( pev->classname );
@@ -79,7 +90,7 @@ int CUzi::GetItemInfo( ItemInfo *p )
 	p->iSlot = 1;
 	p->iPosition = 3;
 	p->iFlags = 0;
-	p->iId = m_iId = WEAPON_UZI;
+	p->iId = WEAPON_UZI;
 	p->iWeight = UZI_WEIGHT;
 	p->pszAmmoEntity = "ammo_9mmclip";
 	p->iDropAmmo = AMMO_GLOCKCLIP_GIVE;

@@ -94,7 +94,7 @@ void ApplyMultiDamage( entvars_t *pevInflictor, entvars_t *pevAttacker )
 
 // GLOBALS USED:
 //		gMultiDamage
-void AddMultiDamage( entvars_t *pevInflictor, CBaseEntity *pEntity, float flDamage, int bitsDamageType )
+void AddMultiDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, CBaseEntity *pEntity, float flDamage, int bitsDamageType )
 {
 	if( !pEntity )
 		return;
@@ -103,7 +103,7 @@ void AddMultiDamage( entvars_t *pevInflictor, CBaseEntity *pEntity, float flDama
 
 	if( pEntity != gMultiDamage.pEntity )
 	{
-		ApplyMultiDamage( pevInflictor,pevInflictor ); // UNDONE: wrong attacker!
+		ApplyMultiDamage( pevInflictor, pevAttacker );
 		gMultiDamage.pEntity = pEntity;
 		gMultiDamage.amount = 0;
 	}
@@ -238,7 +238,7 @@ void AddAmmoNameToAmmoRegistry( const char *szAmmoname, int maxAmmo, bool isExha
 }
 
 // Precaches the weapon and queues the weapon info for sending to clients
-void UTIL_PrecacheOtherWeapon( const char *szClassname )
+bool UTIL_PrecacheOtherWeapon( const char *szClassname )
 {
 	edict_t	*pent;
 
@@ -246,40 +246,49 @@ void UTIL_PrecacheOtherWeapon( const char *szClassname )
 	if( FNullEnt( pent ) )
 	{
 		ALERT( at_console, "NULL Ent in UTIL_PrecacheOtherWeapon\n" );
-		return;
+		return false;
 	}
 	
 	CBaseEntity *pEntity = CBaseEntity::Instance( VARS( pent ) );
 
+	bool result = true;
 	if( pEntity )
 	{
 		ItemInfo II = {0};
-		pEntity->Precache();
 		CBasePlayerWeapon* pWeapon = pEntity->MyWeaponPointer();
-		if( pWeapon != NULL )
+		if( pWeapon != 0 )
 		{
-			if (pWeapon->GetItemInfo( &II ))
+			if (pWeapon->IsEnabledInMod())
 			{
-				CBasePlayerWeapon::ItemInfoArray[II.iId] = II;
+				pEntity->Precache();
 
-				if( II.pszAmmo1 && *II.pszAmmo1 )
+				if (pWeapon->GetItemInfo( &II ))
 				{
-					AddAmmoNameToAmmoRegistry( II.pszAmmo1, II.iMaxAmmo1, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
-				}
+					CBasePlayerWeapon::ItemInfoArray[II.iId] = II;
 
-				if( II.pszAmmo2 && *II.pszAmmo2 )
-				{
-					AddAmmoNameToAmmoRegistry( II.pszAmmo2, II.iMaxAmmo2, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+					if( II.pszAmmo1 && *II.pszAmmo1 )
+					{
+						AddAmmoNameToAmmoRegistry( II.pszAmmo1, II.iMaxAmmo1, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+					}
+
+					if( II.pszAmmo2 && *II.pszAmmo2 )
+					{
+						AddAmmoNameToAmmoRegistry( II.pszAmmo2, II.iMaxAmmo2, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+					}
 				}
 			}
 			else
-			{
-				ALERT(at_console, "UTIL_PrecacheOtherWeapon: %s is not a weapon\n", szClassname);
-			}
+				result = false;
+		}
+		else
+		{
+			ALERT(at_console, "UTIL_PrecacheOtherWeapon: %s is not a weapon\n", szClassname);
+			result = false;
 		}
 	}
 
 	REMOVE_ENTITY( pent );
+	return result;
 }
 
 // called by worldspawn
@@ -303,9 +312,9 @@ void W_Precache( void )
 	UTIL_PrecacheOther( "item_antidote" );
 	UTIL_PrecacheOther( "item_security" );
 	UTIL_PrecacheOther( "item_longjump" );
-#if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
+
 	UTIL_PrecacheOther( "item_flashlight" );
-#endif
+	UTIL_PrecacheOther( "item_nvgs" );
 
 	// shotgun
 	UTIL_PrecacheOtherWeapon( "weapon_shotgun" );
@@ -376,19 +385,19 @@ void W_Precache( void )
 	UTIL_PrecacheOtherWeapon( "weapon_knife" );
 #endif
 #if FEATURE_GRAPPLE
-	UTIL_PrecacheOtherWeapon( "weapon_grapple" );
-	UTIL_PrecacheOther( "grapple_tip" );
+	if (UTIL_PrecacheOtherWeapon( "weapon_grapple" ))
+		UTIL_PrecacheOther( "grapple_tip" );
 #endif
 #if FEATURE_PENGUIN
 	UTIL_PrecacheOtherWeapon( "weapon_penguin" );
 #endif
 #if FEATURE_M249
-	UTIL_PrecacheOtherWeapon( "weapon_m249" );
-	UTIL_PrecacheOther( "ammo_556" );
+	if (UTIL_PrecacheOtherWeapon( "weapon_m249" ))
+		UTIL_PrecacheOther( "ammo_556" );
 #endif
 #if FEATURE_SNIPERRIFLE
-	UTIL_PrecacheOtherWeapon( "weapon_sniperrifle" );
-	UTIL_PrecacheOther( "ammo_762" );
+	if (UTIL_PrecacheOtherWeapon( "weapon_sniperrifle" ))
+		UTIL_PrecacheOther( "ammo_762" );
 #endif
 #if FEATURE_DISPLACER
 	UTIL_PrecacheOtherWeapon( "weapon_displacer" );
@@ -467,7 +476,10 @@ void CBasePlayerWeapon::SetObjectCollisionBox( void )
 //=========================================================
 void CBasePlayerWeapon::FallInit( void )
 {
-	pev->movetype = MOVETYPE_TOSS;
+	if (pev->movetype < 0)
+		pev->movetype = MOVETYPE_NONE;
+	else if (pev->movetype == 0)
+		pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_BBOX;
 
 	UTIL_SetOrigin( pev, pev->origin );
@@ -490,7 +502,7 @@ void CBasePlayerWeapon::FallThink( void )
 {
 	pev->nextthink = gpGlobals->time + 0.1f;
 
-	if( pev->flags & FL_ONGROUND )
+	if( (pev->flags & FL_ONGROUND) || pev->movetype != MOVETYPE_TOSS )
 	{
 		// clatter if we have an owner (i.e., dropped by someone)
 		// don't clatter if the gun is waiting to respawn (if it's waiting, it is invisible!)
@@ -598,13 +610,13 @@ CBaseEntity* CBasePlayerWeapon::Respawn( void )
 static bool IsPickableByTouch(CBaseEntity* pEntity)
 {
 	return !FBitSet(pEntity->pev->spawnflags, SF_ITEM_USE_ONLY) &&
-			(FBitSet(pEntity->pev->spawnflags, SF_ITEM_TOUCH_ONLY) || !NeedUseToTake());
+			(FBitSet(pEntity->pev->spawnflags, SF_ITEM_TOUCH_ONLY) || ItemsPickableByTouch());
 }
 
 static bool IsPickableByUse(CBaseEntity* pEntity)
 {
 	return !FBitSet(pEntity->pev->spawnflags, SF_ITEM_TOUCH_ONLY) &&
-			(FBitSet(pEntity->pev->spawnflags, SF_ITEM_USE_ONLY) || NeedUseToTake());
+			(FBitSet(pEntity->pev->spawnflags, SF_ITEM_USE_ONLY) || ItemsPickableByUse());
 }
 
 void CBasePlayerWeapon::DefaultTouch( CBaseEntity *pOther )
@@ -653,7 +665,7 @@ void CBasePlayerWeapon::TouchOrUse(CBaseEntity *pOther )
 		EMIT_SOUND( ENT( pPlayer->pev ), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 	}
 
-	SUB_UseTargets( pOther, USE_TOGGLE, 0 ); // UNDONE: when should this happen?
+	SUB_UseTargets( pOther );
 }
 
 void CBasePlayerWeapon::DestroyItem( void )
@@ -1067,6 +1079,7 @@ float CBasePlayerWeapon::GetNextAttackDelay( float delay )
 	//OutputDebugString( szMsg );
 	return flNextAttack;
 }
+
 //*********************************************************
 // weaponbox code:
 //*********************************************************
@@ -1119,7 +1132,10 @@ void CWeaponBox::Spawn( void )
 {
 	Precache();
 
-	pev->movetype = MOVETYPE_TOSS;
+	if (pev->movetype < 0)
+		pev->movetype = MOVETYPE_NONE;
+	else if (pev->movetype == 0)
+		pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 
 	//UTIL_SetSize( pev, g_vecZero, g_vecZero );
@@ -1185,7 +1201,7 @@ void CWeaponBox::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 
 void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 {
-	if( !( pev->flags & FL_ONGROUND ) )
+	if( pev->movetype == MOVETYPE_TOSS && !( pev->flags & FL_ONGROUND ) )
 	{
 		return;
 	}
@@ -1248,7 +1264,7 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 	if (shouldRemove) {
 		EMIT_SOUND( pOther->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 		SetTouch( NULL );
-		SUB_UseTargets( pOther, USE_TOGGLE, 0 );
+		SUB_UseTargets( pOther );
 		UTIL_Remove(this);
 	}
 }

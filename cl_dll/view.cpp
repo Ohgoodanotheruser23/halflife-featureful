@@ -27,10 +27,6 @@
 #include "hltv.h"
 #include "view.h"
 
-extern cvar_t *cl_viewroll;
-extern cvar_t *cl_rollspeed;
-extern cvar_t *cl_rollangle;
-
 // Spectator Mode
 extern "C" 
 {
@@ -79,7 +75,6 @@ extern cvar_t	*cl_forwardspeed;
 extern cvar_t	*chase_active;
 extern cvar_t	*scr_ofsx, *scr_ofsy, *scr_ofsz;
 extern cvar_t	*cl_vsmoothing;
-extern cvar_t	*cl_viewbob;
 extern Vector   dead_viewangles;
 
 #define	CAM_MODE_RELAX		1
@@ -317,6 +312,15 @@ void V_AddIdle( struct ref_params_s *pparams )
 	pparams->viewangles[YAW] += v_idlescale * sin( pparams->time * v_iyaw_cycle.value ) * v_iyaw_level.value;
 }
 
+extern cvar_t *cl_rollspeed;
+
+static float GetRollAngle()
+{
+	extern cvar_t *cl_rollangle;
+	const float rollangle = cl_rollangle ? cl_rollangle->value : gHUD.clientFeatures.rollangle.defaultValue;
+	return rollangle;
+}
+
 /*
 ==============
 V_CalcViewRoll
@@ -326,22 +330,24 @@ Roll is induced by movement and damage
 */
 void V_CalcViewRoll( struct ref_params_s *pparams )
 {
+	float side;
 	cl_entity_t *viewentity;
 
 	viewentity = gEngfuncs.GetEntityByIndex( pparams->viewentity );
 	if( !viewentity )
 		return;
 
-	if (cl_viewroll && cl_viewroll->value > 0)
+	// TODO: Xash3D-FWGS supports setting rollangle and rollspeed via movevars. Do we need a way to support that?
+	if (true)
 	{
-		pparams->viewangles[ROLL] = V_CalcRoll (pparams->viewangles, pparams->simvel, cl_rollangle->value, cl_rollspeed->value ) * 4;
+		side = V_CalcRoll( viewentity->angles, pparams->simvel, GetRollAngle(), cl_rollspeed->value );
 	}
 	else
 	{
-		float side;
 		side = V_CalcRoll( viewentity->angles, pparams->simvel, pparams->movevars->rollangle, pparams->movevars->rollspeed );
-		pparams->viewangles[ROLL] += side;
 	}
+
+	pparams->viewangles[ROLL] += side;
 
 	if( pparams->health <= 0 && ( pparams->viewheight[2] != 0 ) )
 	{
@@ -607,7 +613,7 @@ void V_CalcNormalRefdef( struct ref_params_s *pparams )
 	view->angles[ROLL] -= bob * 1.0f;
 	view->angles[PITCH] -= bob * 0.3f;
 
-	if( cl_viewbob && cl_viewbob->value )
+	if( gHUD.ViewBobEnabled() )
 		VectorCopy( view->angles, view->curstate.angles );
 
 	// pushing the view origin down off of the same X/Z plane as the ent's origin will give the
@@ -1541,8 +1547,14 @@ void V_CalcSpectatorRefdef( struct ref_params_s * pparams )
 	VectorCopy( v_origin, pparams->vieworg );
 }
 
+extern void RenderFog();
+extern int g_iWaterLevel;
+
 void DLLEXPORT V_CalcRefdef( struct ref_params_s *pparams )
 {
+	RenderFog();
+	g_iWaterLevel = pparams->waterlevel;
+
 	// intermission / finale rendering
 	if( pparams->intermission )
 	{

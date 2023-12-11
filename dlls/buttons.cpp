@@ -25,6 +25,7 @@
 #include "cbase.h"
 #include "saverestore.h"
 #include "doors.h"
+#include "soundradius.h"
 
 #define SF_BUTTON_DONTMOVE		1
 #define SF_ROTBUTTON_NOTSOLID		1
@@ -33,8 +34,10 @@
 #define	SF_BUTTON_SPARK_IF_OFF		64	// button sparks in OFF state
 #define SF_BUTTON_TOUCH_ONLY		256	// button only fires as a result of USE key.
 #define SF_BUTTON_PLAYER_CANT_USE	512 // Player can't impulse use this button
+#define SF_BUTTON_CHECK_MASTER_ON_TOGGLE_RETURN 1024 // Check master and play locked and unlocked sounds on toggle return
 
 #define SF_GLOBAL_SET			1	// Set global state to initial state on spawn
+#define SF_GLOBAL_ACT_AS_MASTER 4
 
 class CEnvGlobal : public CPointEntity
 {
@@ -46,10 +49,35 @@ public:
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
-	
+
+	int	ObjectCaps() {
+		int caps = CPointEntity::ObjectCaps();
+		if (FBitSet(pev->spawnflags, SF_GLOBAL_ACT_AS_MASTER))
+			caps |= FCAP_MASTER;
+		return caps;
+	}
+
+	BOOL IsTriggered(CBaseEntity *pActivator) {
+		if (FBitSet(pev->spawnflags, SF_GLOBAL_ACT_AS_MASTER))
+		{
+			return gGlobalState.EntityGetState( m_globalstate ) == GLOBAL_ON;
+		}
+		return CPointEntity::IsTriggered(pActivator);
+	}
+	bool CalcRatio( CBaseEntity *pLocus, float* outResult ) {
+		const globalentity_t *pEnt = gGlobalState.EntityFromTable( m_globalstate );
+		if( pEnt )
+		{
+			*outResult = pEnt->value;
+			return true;
+		}
+		return false;
+	}
+
 	string_t m_globalstate;
 	int m_triggermode;
 	int m_initialstate;
+	int m_initialvalue;
 };
 
 TYPEDESCRIPTION CEnvGlobal::m_SaveData[] =
@@ -57,6 +85,7 @@ TYPEDESCRIPTION CEnvGlobal::m_SaveData[] =
 	DEFINE_FIELD( CEnvGlobal, m_globalstate, FIELD_STRING ),
 	DEFINE_FIELD( CEnvGlobal, m_triggermode, FIELD_INTEGER ),
 	DEFINE_FIELD( CEnvGlobal, m_initialstate, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvGlobal, m_initialvalue, FIELD_INTEGER ),
 };
 
 IMPLEMENT_SAVERESTORE( CEnvGlobal, CPointEntity )
@@ -73,6 +102,8 @@ void CEnvGlobal::KeyValue( KeyValueData *pkvd )
 		m_triggermode = atoi( pkvd->szValue );
 	else if( FStrEq( pkvd->szKeyName, "initialstate" ) )
 		m_initialstate = atoi( pkvd->szValue );
+	else if( FStrEq( pkvd->szKeyName, "initialvalue" ) )
+		m_initialvalue = atoi( pkvd->szValue );
 	else
 		CPointEntity::KeyValue( pkvd );
 }
@@ -87,40 +118,89 @@ void CEnvGlobal::Spawn( void )
 	if( FBitSet( pev->spawnflags, SF_GLOBAL_SET ) )
 	{
 		if( !gGlobalState.EntityInTable( m_globalstate ) )
-			gGlobalState.EntityAdd( m_globalstate, gpGlobals->mapname, (GLOBALESTATE)m_initialstate );
+			gGlobalState.EntityAdd( m_globalstate, gpGlobals->mapname, (GLOBALESTATE)m_initialstate, m_initialvalue );
 	}
 }
 
+typedef enum
+{
+	GLOBAL_TRIGGER_MODE_OFF,
+	GLOBAL_TRIGGER_MODE_ON,
+	GLOBAL_TRIGGER_MODE_DEAD,
+	GLOBAL_TRIGGER_MODE_TOGGLE,
+	GLOBAL_TRIGGER_MODE_MODIFY_VALUE,
+	GLOBAL_TRIGGER_MODE_OBEY_USE_TYPE,
+} GLOBAL_TRIGGER_MODE;
+
 void CEnvGlobal::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	GLOBALESTATE oldState = gGlobalState.EntityGetState( m_globalstate );
-	GLOBALESTATE newState;
-
-	switch( m_triggermode )
+	if (m_triggermode == GLOBAL_TRIGGER_MODE_MODIFY_VALUE)
 	{
-	case 0:
-		newState = GLOBAL_OFF;
-		break;
-	case 1:
-		newState = GLOBAL_ON;
-		break;
-	case 2:
-		newState = GLOBAL_DEAD;
-		break;
-	default:
-	case 3:
-		if( oldState == GLOBAL_ON )
-			newState = GLOBAL_OFF;
-		else if( oldState == GLOBAL_OFF )
-			newState = GLOBAL_ON;
-		else
-			newState = oldState;
+		if( !gGlobalState.EntityInTable( m_globalstate ) )
+		{
+			gGlobalState.EntityAdd( m_globalstate, gpGlobals->mapname, (GLOBALESTATE)m_initialstate, m_initialvalue );
+		}
+		if (useType == USE_ON || useType == USE_TOGGLE)
+		{
+			gGlobalState.IncrementValue( m_globalstate );
+		}
+		else if (useType == USE_OFF)
+		{
+			gGlobalState.DecrementValue( m_globalstate );
+		}
+		else if (useType == USE_SET)
+		{
+			gGlobalState.SetValue( m_globalstate, value );
+		}
 	}
-
-	if( gGlobalState.EntityInTable( m_globalstate ) )
-		gGlobalState.EntitySetState( m_globalstate, newState );
 	else
-		gGlobalState.EntityAdd( m_globalstate, gpGlobals->mapname, newState );
+	{
+		GLOBALESTATE oldState = gGlobalState.EntityGetState( m_globalstate );
+		GLOBALESTATE newState;
+
+		int triggerMode = m_triggermode;
+		if (triggerMode == GLOBAL_TRIGGER_MODE_OBEY_USE_TYPE)
+		{
+			if (useType == USE_OFF)
+			{
+				triggerMode = GLOBAL_TRIGGER_MODE_OFF;
+			}
+			else if (useType == USE_ON)
+			{
+				triggerMode = GLOBAL_TRIGGER_MODE_ON;
+			}
+			else
+			{
+				triggerMode = GLOBAL_TRIGGER_MODE_TOGGLE;
+			}
+		}
+
+		switch( triggerMode )
+		{
+		case GLOBAL_TRIGGER_MODE_OFF:
+			newState = GLOBAL_OFF;
+			break;
+		case GLOBAL_TRIGGER_MODE_ON:
+			newState = GLOBAL_ON;
+			break;
+		case GLOBAL_TRIGGER_MODE_DEAD:
+			newState = GLOBAL_DEAD;
+			break;
+		default:
+		case GLOBAL_TRIGGER_MODE_TOGGLE:
+			if( oldState == GLOBAL_ON )
+				newState = GLOBAL_OFF;
+			else if( oldState == GLOBAL_OFF )
+				newState = GLOBAL_ON;
+			else
+				newState = oldState;
+		}
+
+		if( gGlobalState.EntityInTable( m_globalstate ) )
+			gGlobalState.EntitySetState( m_globalstate, newState );
+		else
+			gGlobalState.EntityAdd( m_globalstate, gpGlobals->mapname, newState, m_initialvalue );
+	}
 }
 
 //==================================================
@@ -129,22 +209,6 @@ void CEnvGlobal::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 
 #define SF_ENVSTATE_START_ON		1
 #define SF_ENVSTATE_DEBUG			2
-
-static const char* GetStringForUseType(USE_TYPE useType)
-{
-	switch (useType) {
-	case USE_OFF:
-		return "USE_OFF";
-	case USE_ON:
-		return "USE_ON";
-	case USE_TOGGLE:
-		return "USE_TOGGLE";
-	case USE_SET:
-		return "USE_SET";
-	default:
-		return "USE_UNKNOWN";
-	}
-}
 
 class CEnvState : public CPointEntity
 {
@@ -227,13 +291,13 @@ void CEnvState::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 		{
 			ALERT(at_console,"DEBUG: env_state \"%s\" ",STRING(pev->targetname));
 			if (IsLockedByMaster())
-				ALERT(at_console,"ignored trigger %s; locked by master \"%s\".\n",GetStringForUseType(useType),STRING(m_sMaster));
+				ALERT(at_console,"ignored trigger %s; locked by master \"%s\".\n",UseTypeToString(useType),STRING(m_sMaster));
 			else if (useType == USE_ON)
 				ALERT(at_console,"ignored trigger USE_ON; already on\n");
 			else if (useType == USE_OFF)
 				ALERT(at_console,"ignored trigger USE_OFF; already off\n");
 			else
-				ALERT(at_console,"ignored trigger %s.\n",GetStringForUseType(useType));
+				ALERT(at_console,"ignored trigger %s.\n",UseTypeToString(useType));
 		}
 		return;
 	}
@@ -267,8 +331,8 @@ void CEnvState::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 					ALERT(at_console,": firing \"%s\"",STRING(m_fireWhenOff));
 				ALERT(at_console,".\n");
 			}
-			FireTargets(STRING(pev->target),pActivator,this,USE_OFF,0);
-			FireTargets(STRING(m_fireWhenOff),pActivator,this,USE_TOGGLE,0);
+			FireTargets(STRING(pev->target),pActivator,this,USE_OFF);
+			FireTargets(STRING(m_fireWhenOff),pActivator,this);
 			pev->nextthink = -1;
 		}
 		break;
@@ -299,8 +363,8 @@ void CEnvState::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 					ALERT(at_console,": firing \"%s\"", STRING(m_fireWhenOn));
 				ALERT(at_console,".\n");
 			}
-			FireTargets(STRING(pev->target),pActivator,this,USE_ON,0);
-			FireTargets(STRING(m_fireWhenOn),pActivator,this,USE_TOGGLE,0);
+			FireTargets(STRING(pev->target),pActivator,this,USE_ON);
+			FireTargets(STRING(m_fireWhenOn),pActivator,this);
 			pev->nextthink = -1;
 		}
 		break;
@@ -327,8 +391,8 @@ void CEnvState::Think( void )
 				ALERT(at_console,": firing %s",STRING(m_fireWhenOn));
 			ALERT(at_console,".\n");
 		}
-		FireTargets(STRING(pev->target),this,this,USE_ON,0);
-		FireTargets(STRING(m_fireWhenOn),this,this,USE_TOGGLE,0);
+		FireTargets(STRING(pev->target),this,this,USE_ON);
+		FireTargets(STRING(m_fireWhenOn),this,this);
 	}
 	else if (m_iState == STATE_TURN_OFF)
 	{
@@ -346,11 +410,234 @@ void CEnvState::Think( void )
 				ALERT(at_console,": firing %s",STRING(m_fireWhenOff));
 			ALERT(at_console,".\n");
 		}
-		FireTargets(STRING(pev->target),this,this,USE_OFF,0);
-		FireTargets(STRING(m_fireWhenOff),this,this,USE_TOGGLE,0);
+		FireTargets(STRING(pev->target),this,this,USE_OFF);
+		FireTargets(STRING(m_fireWhenOff),this,this);
 	}
 }
 
+class CCalcState : public CPointEntity
+{
+public:
+	enum {
+		STATE_LOGIC_AND = 0,
+		STATE_LOGIC_OR,
+		STATE_LOGIC_NAND,
+		STATE_LOGIC_NOR,
+		STATE_LOGIC_XOR,
+		STATE_LOGIC_NXOR
+	};
+
+	static const char* OperationDisplayName(int operationId)
+	{
+		switch (operationId) {
+		case STATE_LOGIC_AND:
+			return "AND";
+		case STATE_LOGIC_OR:
+			return "OR";
+		case STATE_LOGIC_NAND:
+			return "NAND";
+		case STATE_LOGIC_NOR:
+			return "NOR";
+		case STATE_LOGIC_XOR:
+			return "XOR";
+		case STATE_LOGIC_NXOR:
+			return "NXOR";
+		default:
+			return "Invalid";
+		}
+	}
+
+	enum {
+		STATE_FALLBACK_ERROR,
+		STATE_FALLBACK_OFF,
+		STATE_FALLBACK_ON
+	};
+
+	void KeyValue( KeyValueData *pkvd );
+	BOOL IsTriggered(CBaseEntity *pActivator) { return CalcState(pActivator, false); }
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	int	ObjectCaps() { return CPointEntity::ObjectCaps() | FCAP_MASTER; }
+
+	virtual int		Save( CSave &save );
+	virtual int		Restore( CRestore &restore );
+	static	TYPEDESCRIPTION m_SaveData[];
+
+protected:
+	bool CalcState(CBaseEntity *pActivator, bool isUse);
+	bool DoOperation(bool leftOp, bool rightOp, int operationId);
+
+	string_t m_left;
+	string_t m_right;
+	int m_operation;
+	byte m_leftFallback;
+	byte m_rightFallback;
+	string_t m_fireWhenFalse;
+	string_t m_fireWhenTrue;
+};
+
+TYPEDESCRIPTION CCalcState::m_SaveData[] =
+{
+	DEFINE_FIELD( CCalcState, m_left, FIELD_STRING ),
+	DEFINE_FIELD( CCalcState, m_right, FIELD_STRING ),
+	DEFINE_FIELD( CCalcState, m_operation, FIELD_INTEGER ),
+	DEFINE_FIELD( CCalcState, m_leftFallback, FIELD_CHARACTER ),
+	DEFINE_FIELD( CCalcState, m_rightFallback, FIELD_CHARACTER ),
+	DEFINE_FIELD( CCalcState, m_fireWhenFalse, FIELD_STRING ),
+	DEFINE_FIELD( CCalcState, m_fireWhenTrue, FIELD_STRING ),
+};
+
+IMPLEMENT_SAVERESTORE( CCalcState, CPointEntity )
+
+LINK_ENTITY_TO_CLASS( calc_state, CCalcState )
+
+void CCalcState::KeyValue(KeyValueData *pkvd)
+{
+	if(strcmp(pkvd->szKeyName, "operation") == 0)
+	{
+		m_operation = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "left_operand") == 0)
+	{
+		m_left = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "right_operand") == 0)
+	{
+		m_right = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "left_fallback") == 0)
+	{
+		m_leftFallback = (byte)atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "right_fallback") == 0)
+	{
+		m_rightFallback = (byte)atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "fire_when_false") == 0)
+	{
+		m_fireWhenFalse = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "fire_when_true") == 0)
+	{
+		m_fireWhenTrue = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CPointEntity::KeyValue(pkvd);
+}
+
+void CCalcState::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	CalcState(pActivator, true);
+}
+
+bool CCalcState::CalcState(CBaseEntity* pActivator, bool isUse)
+{
+	if (FStringNull(m_left) || FStringNull(m_right))
+	{
+		ALERT(at_error, "%s needs both left and right operands defined\n", STRING(pev->classname));
+		return false;
+	}
+
+	CBaseEntity *pLeft = UTIL_FindEntityByTargetname(NULL, STRING(m_left), pActivator);
+	CBaseEntity *pRight = UTIL_FindEntityByTargetname(NULL, STRING(m_right), pActivator);
+
+	bool leftOp, rightOp;
+
+	if (pLeft)
+	{
+		leftOp = pLeft->IsTriggered(pActivator);
+	}
+	else
+	{
+		if (m_leftFallback == STATE_FALLBACK_OFF)
+		{
+			leftOp = false;
+		}
+		else if (m_leftFallback == STATE_FALLBACK_ON)
+		{
+			leftOp = true;
+		}
+		else
+		{
+			ALERT(at_error, "%s: left operand '%s' doesn't exist!\n", STRING(pev->classname), STRING(m_left));
+			return false;
+		}
+	}
+	if (isUse && FBitSet(pev->spawnflags, SF_ENVSTATE_DEBUG))
+	{
+		ALERT(at_console, "%s '%s': left operand ('%s') evaluated to %s\n", STRING(pev->classname), STRING(pev->targetname), STRING(m_left), leftOp ? "true" : "false");
+	}
+
+	if (pRight)
+	{
+		rightOp = pRight->IsTriggered(pActivator);
+	}
+	else
+	{
+		if (m_rightFallback == STATE_FALLBACK_OFF)
+		{
+			rightOp = false;
+		}
+		else if (m_rightFallback == STATE_FALLBACK_ON)
+		{
+			rightOp = true;
+		}
+		else
+		{
+			ALERT(at_error, "%s: right operand '%s' doesn't exist!\n", STRING(pev->classname), STRING(m_right));
+			return false;
+		}
+	}
+	if (isUse && FBitSet(pev->spawnflags, SF_ENVSTATE_DEBUG))
+	{
+		ALERT(at_console, "%s '%s': right operand ('%s') evaluated to %s\n", STRING(pev->classname), STRING(pev->targetname), STRING(m_right), rightOp ? "true" : "false");
+	}
+
+	const bool result = DoOperation(leftOp, rightOp, m_operation);
+
+	if (isUse && FBitSet(pev->spawnflags, SF_ENVSTATE_DEBUG))
+	{
+		ALERT(at_console, "%s '%s': operation %s evaluated to %s\n", STRING(pev->classname), STRING(pev->targetname), OperationDisplayName(m_operation), result ? "true" : "false");
+	}
+
+	if (isUse)
+	{
+		if (pev->target)
+			FireTargets(STRING(pev->target), pActivator, this, result ? USE_ON : USE_OFF);
+		if (m_fireWhenFalse && !result)
+			FireTargets(STRING(m_fireWhenFalse), pActivator, this);
+		if (m_fireWhenTrue && result)
+			FireTargets(STRING(m_fireWhenTrue), pActivator, this);
+	}
+	return result;
+}
+
+bool CCalcState::DoOperation(bool leftOp, bool rightOp, int operationId)
+{
+	switch (operationId) {
+	case STATE_LOGIC_AND:
+		return leftOp && rightOp;
+	case STATE_LOGIC_OR:
+		return leftOp || rightOp;
+	case STATE_LOGIC_NAND:
+		return !(leftOp && rightOp);
+	case STATE_LOGIC_NOR:
+		return !(leftOp || rightOp);
+	case STATE_LOGIC_XOR:
+		return leftOp ^ rightOp;
+	case STATE_LOGIC_NXOR:
+		return !(leftOp ^ rightOp);
+	default:
+		ALERT(at_error, "%s: unknown operation id %d\n", STRING(pev->classname), operationId);
+		return false;
+	}
+}
 
 TYPEDESCRIPTION CMultiSource::m_SaveData[] =
 {
@@ -731,7 +1018,7 @@ void CBaseButton::KeyValue( KeyValueData *pkvd )
 		m_iDirectUse = atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
-	if( FStrEq( pkvd->szKeyName, "usetype" ) )
+	else if( FStrEq( pkvd->szKeyName, "usetype" ) )
 	{
 		pev->impulse = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
@@ -762,7 +1049,7 @@ int CBaseButton::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 
 		// Toggle buttons fire when they get back to their "home" position
 		if( !( pev->spawnflags & SF_BUTTON_TOGGLE ) )
-			SUB_UseTargets( m_hActivator, UseType(true), 0 );
+			SUB_UseTargets( m_hActivator, UseType(true) );
 		ButtonReturn();
 	}
 	else // code == BUTTON_ACTIVATE
@@ -963,13 +1250,13 @@ const char *ButtonSound( int sound )
 //
 // Makes flagged buttons spark when turned off
 //
-void DoSpark( entvars_t *pev, const Vector &location )
+void DoSpark( entvars_t *pev, const Vector &location, float attenuation = ATTN_NORM )
 {
 	Vector tmp = location + pev->size * 0.5f;
 	UTIL_Sparks( tmp );
 
 	const float flVolume = RANDOM_FLOAT( 0.25f, 0.75f ) * 0.4f;//random volume range
-	EMIT_SOUND( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( g_sparkSounds ), flVolume, ATTN_NORM );
+	EMIT_SOUND( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY( g_sparkSounds ), flVolume, attenuation );
 }
 
 void CBaseButton::ButtonSpark( void )
@@ -998,9 +1285,8 @@ void CBaseButton::ButtonUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	{
 		if( !m_fStayPushed && FBitSet( pev->spawnflags, SF_BUTTON_TOGGLE ) )
 		{
-			EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1.0f, ATTN_NORM );
-
-			ButtonReturn();
+			if (PrepareActivation(FBitSet(pev->spawnflags, SF_BUTTON_CHECK_MASTER_ON_TOGGLE_RETURN)))
+				ButtonReturn();
 		}
 	}
 	else
@@ -1064,7 +1350,7 @@ void CBaseButton::ButtonTouch( CBaseEntity *pOther )
 	if( code == BUTTON_RETURN )
 	{
 		EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );
-		SUB_UseTargets( m_hActivator, UseType(true), 0 );
+		SUB_UseTargets( m_hActivator, UseType(true) );
 		ButtonReturn();
 	}
 	else	// code == BUTTON_ACTIVATE
@@ -1076,27 +1362,15 @@ void CBaseButton::ButtonTouch( CBaseEntity *pOther )
 //
 void CBaseButton::ButtonActivate()
 {
-	EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );
-
-	if( !UTIL_IsMasterTriggered( m_sMaster, m_hActivator ) )
-	{
-		OnLocked();
-		// button is locked, play locked sound
-		PlayLockSounds( pev, &m_ls, TRUE, TRUE );
+	if (!PrepareActivation(true))
 		return;
-	}
-	else
-	{
-		// button is unlocked, play unlocked sound
-		PlayLockSounds( pev, &m_ls, FALSE, TRUE );
-	}
 
 	ASSERT( m_toggle_state == TS_AT_BOTTOM );
 	m_toggle_state = TS_GOING_UP;
 	
 	if (!FStringNull(m_triggerBeforeMove))
 	{
-		FireTargets(STRING(m_triggerBeforeMove), m_hActivator, this, USE_TOGGLE, 0.0f );
+		FireTargets(STRING(m_triggerBeforeMove), m_hActivator, this );
 	}
 
 	if (m_fNonMoving)
@@ -1119,10 +1393,32 @@ void CBaseButton::OnLocked()
 	{
 		if (m_targetOnLockedTime < gpGlobals->time)
 		{
-			FireTargets(STRING(m_targetOnLocked), m_hActivator, this, USE_TOGGLE, 0.0f);
+			FireTargets(STRING(m_targetOnLocked), m_hActivator, this);
 			m_targetOnLockedTime = gpGlobals->time + 2.0f;
 		}
 	}
+}
+
+bool CBaseButton::PrepareActivation(bool doActivationCheck)
+{
+	EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1.0f, ATTN_NORM );
+
+	if (doActivationCheck)
+	{
+		if( !UTIL_IsMasterTriggered( m_sMaster, m_hActivator ) )
+		{
+			OnLocked();
+			// button is locked, play locked sound
+			PlayLockSounds( pev, &m_ls, TRUE, TRUE );
+			return false;
+		}
+		else
+		{
+			// button is unlocked, play unlocked sound
+			PlayLockSounds( pev, &m_ls, FALSE, TRUE );
+		}
+	}
+	return true;
 }
 
 //
@@ -1164,7 +1460,7 @@ void CBaseButton::TriggerAndWait( void )
 
 	pev->frame = 1;			// use alternate textures
 
-	SUB_UseTargets( m_hActivator, UseType(false), 0 );
+	SUB_UseTargets( m_hActivator, UseType(false) );
 	if (FBitSet( pev->spawnflags, SF_BUTTON_TOGGLE ))
 		m_toggleAgainTime = gpGlobals->time + m_waitBeforeToggleAgain;
 }
@@ -1206,7 +1502,8 @@ void CBaseButton::ButtonBackHome( void )
 	{
 		//EMIT_SOUND( ENT( pev ), CHAN_VOICE, STRING( pev->noise ), 1, ATTN_NORM );
 		
-		SUB_UseTargets( m_hActivator, UseType(true), 0 );
+		SUB_UseTargets( m_hActivator, UseType(true) );
+		m_toggleAgainTime = gpGlobals->time + m_waitBeforeToggleAgain;
 	}
 
 	if( !FStringNull( pev->target ) )
@@ -1249,7 +1546,7 @@ void CBaseButton::ButtonBackHome( void )
 	}
 
 	if (!FStringNull(m_triggerOnReturn))
-		FireTargets(STRING(m_triggerOnReturn), m_hActivator, this, USE_TOGGLE, 0.0f);
+		FireTargets(STRING(m_triggerOnReturn), m_hActivator, this);
 }
 
 bool CBaseButton::IsSparkingButton()
@@ -1321,6 +1618,8 @@ void CRotButton::Spawn( void )
 			pev->noise = MAKE_STRING( pszSound );
 		}
 	}
+
+	Precache();
 
 	// set the axis of rotation
 	CBaseToggle::AxisDir( pev );
@@ -1651,11 +1950,13 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	float m_flDelay;
+	short m_soundRadius;
 };
 
 TYPEDESCRIPTION CEnvSpark::m_SaveData[] =
 {
 	DEFINE_FIELD( CEnvSpark, m_flDelay, FIELD_FLOAT),
+	DEFINE_FIELD( CEnvSpark, m_soundRadius, FIELD_SHORT),
 };
 
 IMPLEMENT_SAVERESTORE( CEnvSpark, CBaseEntity )
@@ -1708,6 +2009,11 @@ void CEnvSpark::KeyValue( KeyValueData *pkvd )
 		m_flDelay = atof( pkvd->szValue );
 		pkvd->fHandled = TRUE;	
 	}
+	else if( FStrEq( pkvd->szKeyName, "soundradius" ) )
+	{
+		m_soundRadius = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else if( FStrEq( pkvd->szKeyName, "style" ) ||
 				FStrEq( pkvd->szKeyName, "height" ) ||
 				FStrEq( pkvd->szKeyName, "killtarget" ) ||
@@ -1723,7 +2029,7 @@ void CEnvSpark::SparkCyclic(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_T
 {
 	if (m_pfnThink == NULL)
 	{
-		DoSpark( pev, pev->origin );
+		DoSpark( pev, pev->origin, ::SoundAttenuation(m_soundRadius) );
 		SetThink(&CEnvSpark::SparkWait );
 		pev->nextthink = gpGlobals->time + m_flDelay;
 	}
@@ -1740,7 +2046,7 @@ void CEnvSpark::SparkWait(void)
 
 void CEnvSpark::SparkThink( void )
 {
-	DoSpark( pev, pev->origin );
+	DoSpark( pev, pev->origin, ::SoundAttenuation(m_soundRadius) );
 	if (pev->spawnflags & SF_SPARK_CYCLIC)
 	{
 		SetThink( NULL );

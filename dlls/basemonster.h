@@ -42,7 +42,8 @@ public:
 
 	// these fields have been added in the process of reworking the state machine. (sjb)
 	EHANDLE m_hEnemy;		 // the entity that the monster is fighting.
-	EHANDLE m_hTargetEnt;	 // the entity that the monster is trying to reach
+	EHANDLE m_hTargetEnt;	 // the entity that the monster is trying to reach. In scripts the entity that the monster should turn to.
+	EHANDLE m_hMoveGoalEnt; // the entity the monster is going to (in scripts)
 	EHANDLE m_hOldEnemy[MAX_OLD_ENEMIES];
 	Vector m_vecOldEnemy[MAX_OLD_ENEMIES];
 
@@ -197,6 +198,7 @@ public:
 	virtual Schedule_t *ScheduleFromName( const char *pName );
 	static Schedule_t *m_scheduleList[];
 
+	bool ShouldGetIdealState();
 	void MaintainSchedule( void );
 	virtual void StartTask( Task_t *pTask );
 	virtual void RunTask( Task_t *pTask );
@@ -324,7 +326,7 @@ public:
 	BOOL GetEnemy( bool forcePopping );
 	void MakeDamageBloodDecal( int cCount, float flNoise, TraceResult *ptr, const Vector &vecDir );
 	virtual float HeadHitGroupDamageMultiplier();
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
 	// combat functions
 	float UpdateTarget( entvars_t *pevTarget );
@@ -371,9 +373,20 @@ public:
 
 	BOOL ExitScriptedSequence();
 	BOOL CineCleanup();
+	void SetScriptedMoveGoal(CBaseEntity* pEntity);
+	CBaseEntity* ScriptedMoveGoal();
 
 	Schedule_t* StartPatrol( CBaseEntity* path );
 	CBaseEntity* DropItem ( const char *pszItemName, const Vector &vecPos, const Vector &vecAng );// drop an item.
+
+	bool CalcRatio(CBaseEntity* pLocus, float* outResult)
+	{
+		if (IsFullyAlive())
+			*outResult = pev->health / pev->max_health;
+		else
+			*outResult = 0;
+		return true;
+	}
 	
 	void SetMyHealth( const float health );
 	void SetMyModel( const char* model );
@@ -409,6 +422,8 @@ public:
 	bool IsFreeToManipulate();
 
 	virtual bool CanRoamAfterCombat() { return true; }
+
+	bool HandleDoorBlockage(CBaseEntity* pDoor);
 
 	//
 	// Glowshell effects
@@ -450,6 +465,7 @@ public:
 	int m_suggestedScheduleFlags;
 
 	short m_gibPolicy;
+	BOOL m_bForceConditionsGather;
 
 	float m_flLastYawTime;
 

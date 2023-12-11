@@ -16,6 +16,7 @@
 #if !defined(WEAPONS_H)
 #define WEAPONS_H
 
+#include "weapon_ids.h"
 #include "effects.h"
 #include "mod_features.h"
 #include "bullet_types.h"
@@ -68,62 +69,6 @@ public:
 #define ITEM_ANTIDOTE		2
 #define ITEM_SECURITY		3
 #define ITEM_BATTERY		4
-
-#define SF_ITEM_NOFALL (1<<9)
-
-#define WEAPON_NONE				0
-#define WEAPON_CROWBAR			1
-#define	WEAPON_GLOCK			2
-#define WEAPON_PYTHON			3
-#define WEAPON_MP5				4
-#define WEAPON_CHAINGUN			5
-#define WEAPON_CROSSBOW			6
-#define WEAPON_SHOTGUN			7
-#define WEAPON_RPG				8
-#define WEAPON_GAUSS			9
-#define WEAPON_EGON				10
-#define WEAPON_HORNETGUN		11
-#define WEAPON_HANDGRENADE		12
-#define WEAPON_TRIPMINE			13
-#define	WEAPON_SATCHEL			14
-#define	WEAPON_SNARK			15
-
-#if FEATURE_GRAPPLE
-#define WEAPON_GRAPPLE			16
-#endif
-#if FEATURE_DESERT_EAGLE
-#define WEAPON_EAGLE			17
-#endif
-#if FEATURE_PIPEWRENCH
-#define WEAPON_PIPEWRENCH		18
-#endif
-#if FEATURE_M249
-#define	WEAPON_M249				19
-#endif
-#if FEATURE_DISPLACER
-#define WEAPON_DISPLACER		20
-#endif
-#if FEATURE_MEDKIT
-#define WEAPON_MEDKIT			21
-#endif
-#if FEATURE_SHOCKRIFLE
-#define WEAPON_SHOCKRIFLE		22
-#endif
-#if FEATURE_SPORELAUNCHER
-#define WEAPON_SPORELAUNCHER	23
-#endif
-#if FEATURE_SNIPERRIFLE
-#define WEAPON_SNIPERRIFLE		24
-#endif
-#if FEATURE_KNIFE
-#define WEAPON_KNIFE			25
-#endif
-#if FEATURE_PENGUIN
-#define	WEAPON_PENGUIN			26
-#endif
-#if FEATURE_UZI
-#define WEAPON_UZI				27
-#endif
 
 #define MAX_NORMAL_BATTERY	100
 
@@ -181,7 +126,6 @@ public:
 #define GLOCK_MAX_CLIP			17
 #define PYTHON_MAX_CLIP			6
 #define MP5_MAX_CLIP			50
-#define MP5_DEFAULT_AMMO		25
 #define SHOTGUN_MAX_CLIP		8
 #define CROSSBOW_MAX_CLIP		5
 #define RPG_MAX_CLIP			1
@@ -207,7 +151,6 @@ public:
 #else
 #define MP5_DEFAULT_GIVE			25
 #endif
-#define MP5_DEFAULT_AMMO			25
 #define MP5_M203_DEFAULT_GIVE		0
 #define SHOTGUN_DEFAULT_GIVE		12
 #define CROSSBOW_DEFAULT_GIVE		5
@@ -331,7 +274,7 @@ public:
 	const char	*pszAmmo2( void )	{ return ItemInfoArray[ m_iId ].pszAmmo2; }
 	int			iMaxAmmo2( void )	{ return ItemInfoArray[ m_iId ].iMaxAmmo2; }
 	const char	*pszName( void )	{ return ItemInfoArray[ m_iId ].pszName; }
-	int			iMaxClip( void )	{ return ItemInfoArray[ m_iId ].iMaxClip; }
+	int			iMaxClip( void );
 	int			iWeight( void )		{ return ItemInfoArray[ m_iId ].iWeight; }
 	int			iFlags( void )		{ return ItemInfoArray[ m_iId ].iFlags; }
 	const char* pszAmmoEntity( void ) { return ItemInfoArray[ m_iId ].pszAmmoEntity; }
@@ -392,7 +335,9 @@ public:
 	void PrintState( void );
 
 	virtual CBasePlayerWeapon *MyWeaponPointer( void ) { return this; }
+	virtual bool CanBeDropped() { return true; }
 	float GetNextAttackDelay( float delay );
+	bool InZoom();
 
 	int		m_fInSpecialReload;									// Are we in the middle of a reload for the shotguns
 	float	m_flNextPrimaryAttack;								// soonest time ItemPostFrame will call PrimaryAttack
@@ -428,7 +373,7 @@ extern DLL_GLOBAL	short	g_sModelIndexBloodSpray;// holds the sprite index for bl
 
 extern void ClearMultiDamage(void);
 extern void ApplyMultiDamage(entvars_t* pevInflictor, entvars_t* pevAttacker );
-extern void AddMultiDamage( entvars_t *pevInflictor, CBaseEntity *pEntity, float flDamage, int bitsDamageType);
+extern void AddMultiDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, CBaseEntity *pEntity, float flDamage, int bitsDamageType);
 
 extern void DecalGunshot( TraceResult *pTrace, int iBulletType );
 extern void SpawnBlood(Vector vecSpot, int bloodColor, float flDamage);
@@ -597,8 +542,6 @@ public:
 	void WeaponIdle( void );
 	float m_flSoundDelay;
 
-	BOOL m_fInZoom;// don't save this.
-
 	virtual BOOL UseDecrement( void )
 	{
 #if CLIENT_WEAPONS
@@ -609,7 +552,6 @@ public:
 	}
 
 	const char* MyWModel() { return "models/w_357.mdl"; }
-
 private:
 	unsigned short m_usFirePython;
 };
@@ -662,8 +604,6 @@ public:
 	void Holster();
 	void Reload( void );
 	void WeaponIdle( void );
-
-	int m_fInZoom; // don't save this
 
 	virtual BOOL UseDecrement( void )
 	{
@@ -996,11 +936,13 @@ public:
 	BOOL CanDeploy( void );
 	BOOL Deploy( void );
 	BOOL IsUseable( void );
+	bool CanBeDropped();
 
 	void Holster();
 	void WeaponIdle( void );
 	void Throw( void );
 	void DrawSatchel( void );
+	void DrawRadio();
 
 	virtual BOOL UseDecrement( void )
 	{
@@ -1096,6 +1038,7 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
+	bool IsEnabledInMod();
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -1139,6 +1082,7 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod();
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 
@@ -1185,6 +1129,7 @@ public:
 #endif
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod();
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 
@@ -1238,6 +1183,7 @@ public:
 
 	void Precache( void );
 	void Spawn( void );
+	bool IsEnabledInMod();
 	void EndAttack( void );
 
 	int GetItemInfo(ItemInfo *p);
@@ -1290,6 +1236,7 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod();
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
 
@@ -1301,6 +1248,8 @@ public:
 	void WeaponIdle(void);
 
 	int m_iShell;
+	int m_iLink;
+	bool m_bAlternatingEject;
 
 	virtual BOOL UseDecrement(void)
 	{
@@ -1338,6 +1287,7 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod();
 
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
@@ -1348,8 +1298,6 @@ public:
 	void Reload(void);
 	void WeaponIdle(void);
 	//void ItemPostFrame(void);
-
-	BOOL m_fInZoom;// don't save this.
 
 	virtual BOOL UseDecrement(void)
 	{
@@ -1378,6 +1326,7 @@ public:
 #endif
 	void Spawn( void );
 	void Precache( void );
+	bool IsEnabledInMod();
 
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );
@@ -1423,6 +1372,7 @@ class CShockrifle : public CHgun
 public:
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod();
 
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer(CBasePlayer *pPlayer);
@@ -1444,7 +1394,7 @@ public:
 #endif
 	}
 
-	const char* MyWModel() { return "models/w_shock.mdl"; }
+	const char* MyWModel() { return "models/w_shock_rifle.mdl"; }
 private:
 	unsigned short m_usShockFire;
 	CBeam* m_pBeam[4];
@@ -1463,6 +1413,7 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod();
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 
@@ -1501,6 +1452,7 @@ private:
 class CPenguin : public CSqueak
 {
 public:
+	bool IsEnabledInMod();
 	virtual const char* GrenadeName() const;
 	virtual int WeaponId() const;
 	virtual const char* NestModel() const;
@@ -1518,14 +1470,9 @@ public:
 class CSporelauncher : public CShotgun
 {
 public:
-//#ifndef CLIENT_DLL
-//	int		Save(CSave &save);
-//	int		Restore(CRestore &restore);
-//	static	TYPEDESCRIPTION m_SaveData[];
-//#endif
-
 	void Spawn( void );
 	void Precache( void );
+	bool IsEnabledInMod();
 
 	int GetItemInfo( ItemInfo *p );
 	int AddToPlayer( CBasePlayer *pPlayer );
@@ -1560,6 +1507,7 @@ class CUzi : public CBasePlayerWeapon
 public:
 	void Spawn( void );
 	void Precache( void );
+	bool IsEnabledInMod();
 	int GetItemInfo(ItemInfo *p);
 	int AddToPlayer( CBasePlayer *pPlayer );
 

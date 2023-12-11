@@ -44,8 +44,6 @@ extern DLL_GLOBAL	BOOL	g_fDrawLines;
 extern DLL_GLOBAL	short	g_sModelIndexLaser;// holds the index for the laser beam
 extern DLL_GLOBAL	short	g_sModelIndexLaserDot;// holds the index for the laser beam dot
 
-extern CGraph WorldGraph;// the world node graph
-
 // Global Savedata for monster
 // UNDONE: Save schedule data?  Can this be done?  We may
 // lose our enemy pointer or other data (goal ent, target, etc)
@@ -55,6 +53,7 @@ TYPEDESCRIPTION	CBaseMonster::m_SaveData[] =
 {
 	DEFINE_FIELD( CBaseMonster, m_hEnemy, FIELD_EHANDLE ),
 	DEFINE_FIELD( CBaseMonster, m_hTargetEnt, FIELD_EHANDLE ),
+	DEFINE_FIELD( CBaseMonster, m_hMoveGoalEnt, FIELD_EHANDLE ),
 	DEFINE_ARRAY( CBaseMonster, m_hOldEnemy, FIELD_EHANDLE, MAX_OLD_ENEMIES ),
 	DEFINE_ARRAY( CBaseMonster, m_vecOldEnemy, FIELD_POSITION_VECTOR, MAX_OLD_ENEMIES ),
 	DEFINE_FIELD( CBaseMonster, m_flFieldOfView, FIELD_FLOAT ),
@@ -138,6 +137,7 @@ TYPEDESCRIPTION	CBaseMonster::m_SaveData[] =
 	DEFINE_FIELD( CBaseMonster, m_suggestedScheduleFlags, FIELD_INTEGER ),
 
 	DEFINE_FIELD( CBaseMonster, m_gibPolicy, FIELD_SHORT ),
+	DEFINE_FIELD( CBaseMonster, m_bForceConditionsGather, FIELD_BOOLEAN ),
 };
 
 //IMPLEMENT_SAVERESTORE( CBaseMonster, CBaseToggle )
@@ -806,8 +806,32 @@ BOOL CBaseMonster::MoveToNode( Activity movementAct, float waitTime, const Vecto
 	return FRefreshRoute();
 }
 
-#if _DEBUG
-void DrawRoute( entvars_t *pev, WayPoint_t *m_Route, int m_iRouteIndex, int r, int g, int b )
+static void DrawRoutePart(const Vector& vecStart, const Vector& vecEnd, int r, int g, int b, int life, int width = 16)
+{
+	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
+		WRITE_BYTE( TE_BEAMPOINTS);
+		WRITE_COORD( vecStart.x );
+		WRITE_COORD( vecStart.y );
+		WRITE_COORD( vecStart.z );
+		WRITE_COORD( vecEnd.x );
+		WRITE_COORD( vecEnd.y );
+		WRITE_COORD( vecEnd.z );
+
+		WRITE_SHORT( g_sModelIndexLaser );
+		WRITE_BYTE( 0 ); // frame start
+		WRITE_BYTE( 10 ); // framerate
+		WRITE_BYTE( life ); // life
+		WRITE_BYTE( width );  // width
+		WRITE_BYTE( 0 );   // noise
+		WRITE_BYTE( r );   // r, g, b
+		WRITE_BYTE( g );   // r, g, b
+		WRITE_BYTE( b );   // r, g, b
+		WRITE_BYTE( 255 );	// brightness
+		WRITE_BYTE( 10 );		// speed
+	MESSAGE_END();
+}
+
+void DrawRoute( entvars_t *pev, WayPoint_t *m_Route, int m_iRouteIndex, int r, int g, int b, int life = 1 )
 {
 	int i;
 
@@ -818,59 +842,35 @@ void DrawRoute( entvars_t *pev, WayPoint_t *m_Route, int m_iRouteIndex, int r, i
 	}
 
 	//UTIL_ParticleEffect ( m_Route[m_iRouteIndex].vecLocation, g_vecZero, 255, 25 );
-
-	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
-		WRITE_BYTE( TE_BEAMPOINTS);
-		WRITE_COORD( pev->origin.x );
-		WRITE_COORD( pev->origin.y );
-		WRITE_COORD( pev->origin.z );
-		WRITE_COORD( m_Route[m_iRouteIndex].vecLocation.x );
-		WRITE_COORD( m_Route[m_iRouteIndex].vecLocation.y );
-		WRITE_COORD( m_Route[m_iRouteIndex].vecLocation.z );
-
-		WRITE_SHORT( g_sModelIndexLaser );
-		WRITE_BYTE( 0 ); // frame start
-		WRITE_BYTE( 10 ); // framerate
-		WRITE_BYTE( 1 ); // life
-		WRITE_BYTE( 16 );  // width
-		WRITE_BYTE( 0 );   // noise
-		WRITE_BYTE( r );   // r, g, b
-		WRITE_BYTE( g );   // r, g, b
-		WRITE_BYTE( b );   // r, g, b
-		WRITE_BYTE( 255 );	// brightness
-		WRITE_BYTE( 10 );		// speed
-	MESSAGE_END();
+	DrawRoutePart( pev->origin, m_Route[m_iRouteIndex].vecLocation, r, g, b, life, 16 );
 
 	for( i = m_iRouteIndex; i < ROUTE_SIZE - 1; i++ )
 	{
 		if( ( m_Route[i].iType & bits_MF_IS_GOAL ) || ( m_Route[i + 1].iType == 0 ) )
 			break;
 
-		MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
-			WRITE_BYTE( TE_BEAMPOINTS );
-			WRITE_COORD( m_Route[i].vecLocation.x );
-			WRITE_COORD( m_Route[i].vecLocation.y );
-			WRITE_COORD( m_Route[i].vecLocation.z );
-			WRITE_COORD( m_Route[i + 1].vecLocation.x );
-			WRITE_COORD( m_Route[i + 1].vecLocation.y );
-			WRITE_COORD( m_Route[i + 1].vecLocation.z );
-			WRITE_SHORT( g_sModelIndexLaser );
-			WRITE_BYTE( 0 ); // frame start
-			WRITE_BYTE( 10 ); // framerate
-			WRITE_BYTE( 1 ); // life
-			WRITE_BYTE( 8 );  // width
-			WRITE_BYTE( 0 );   // noise
-			WRITE_BYTE( r );   // r, g, b
-			WRITE_BYTE( g );   // r, g, b
-			WRITE_BYTE( b );   // r, g, b
-			WRITE_BYTE( 255 );	// brightness
-			WRITE_BYTE( 10 );		// speed
-		MESSAGE_END();
-
+		DrawRoutePart( m_Route[m_iRouteIndex].vecLocation, m_Route[i + 1].vecLocation, r, g, b, life, 8 );
 		//UTIL_ParticleEffect( m_Route[i].vecLocation, g_vecZero, 255, 25 );
 	}
 }
-#endif
+
+void DrawRoute(CBaseMonster* pMonster, int iMoveFlag)
+{
+	int r, g, b;
+	if (iMoveFlag & bits_MF_TO_ENEMY)
+	{
+		r = 255; g = 85; b = 0;
+	}
+	else if (iMoveFlag & bits_MF_TO_TARGETENT)
+	{
+		r = 0; g = 255; b = 127;
+	}
+	else
+	{
+		r = 255; g = 255; b = 255;
+	}
+	DrawRoute(pMonster->pev, pMonster->m_Route, pMonster->m_iRouteIndex, r, g, b, 25);
+}
 
 int ShouldSimplify( int routeType )
 {
@@ -996,6 +996,11 @@ void CBaseMonster::RouteSimplify( CBaseEntity *pTargetEnt )
 //=========================================================
 BOOL CBaseMonster::FBecomeProne( void )
 {
+	if (m_pCine && !m_pCine->CanInterruptByBarnacle())
+	{
+		return FALSE;
+	}
+
 	if( FBitSet( pev->flags, FL_ONGROUND ) )
 	{
 		pev->flags -= FL_ONGROUND;
@@ -1035,7 +1040,10 @@ BOOL CBaseMonster::CheckRangeAttack2( float flDot, float flDist )
 BOOL CBaseMonster::CheckMeleeAttack1( float flDot, float flDist )
 {
 	// Decent fix to keep folks from kicking/punching hornets and snarks is to check the onground flag(sjb)
-	if( flDist <= 64.0f && flDot >= 0.7f && m_hEnemy != 0 && FBitSet( m_hEnemy->pev->flags, FL_ONGROUND ) )
+	// Note: the check for FL_ONGROUND actually causes problems. E.g. zombies can't attack sentry turrets and flying enemies.
+	// Hornets are not seen as enemies by everything except the machines, so they're not a problem at all.
+	// Disabling this check for now.
+	if( flDist <= 64.0f && flDot >= 0.7f && m_hEnemy != 0 /*&& FBitSet( m_hEnemy->pev->flags, FL_ONGROUND )*/ )
 	{
 		return TRUE;
 	}
@@ -1137,7 +1145,7 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 	else
 		ClearConditions( bits_COND_ENEMY_OCCLUDED );
 
-	const bool enemyIsDead = FEATURE_STOP_ATTACKING_DYING_MONSTERS ? !pEnemy->IsFullyAlive() : !pEnemy->IsAlive();
+	const bool enemyIsDead = g_modFeatures.monsters_stop_attacking_dying_monsters ? !pEnemy->IsFullyAlive() : !pEnemy->IsAlive();
 
 	if( enemyIsDead )
 	{
@@ -1146,8 +1154,27 @@ int CBaseMonster::CheckEnemy( CBaseEntity *pEnemy )
 		return FALSE;
 	}
 
-	// The classify of enemy has been changed to an ally or neutral. Pretend to lose the enemy.
-	if (IRelationship(pEnemy) < R_DL)
+	// My enemy is not actually my enemy anymore or I became prisoner (e.g. via trigger_configure_monster)
+	bool shouldLoseEnemy = IRelationship(pEnemy) < R_DL || FBitSet(pev->spawnflags, SF_MONSTER_PRISONER) || (m_prisonerTo != 0 && m_prisonerTo == pEnemy->Classify());
+	if (!shouldLoseEnemy)
+	{
+		CBaseMonster* pMonster = pEnemy->MyMonsterPointer();
+		// Check if my enemy became prisoner
+		if (pMonster)
+		{
+			if (FBitSet(pMonster->pev->spawnflags, SF_MONSTER_PRISONER))
+			{
+				shouldLoseEnemy = true;
+			}
+			else if (pMonster->m_prisonerTo != 0 && pMonster->m_prisonerTo == Classify())
+			{
+				shouldLoseEnemy = true;
+			}
+		}
+	}
+
+	// Doesn't care about this enemy anymore. Pretend to lose the enemy.
+	if (shouldLoseEnemy)
 	{
 		SetConditions(bits_COND_ENEMY_LOST);
 		ClearConditions( bits_COND_SEE_ENEMY | bits_COND_ENEMY_OCCLUDED );
@@ -2563,9 +2590,10 @@ void CBaseMonster::StartMonster( void )
 	pev->nextthink += RANDOM_FLOAT( 0.1f, 0.4f ); // spread think times.
 
 	// Vit_amiN: fixed -- now it doesn't touch any scripted_sequence target
-	if( !FStringNull( pev->targetname ) && !m_pCine // wait until triggered
-			&& m_Activity != ACT_GLIDE /* Don't affect repel grunts */
-			&& pev->owner == 0 ) // Don't affect monsters coming from monstermaker
+	bool shouldWaitTrigger = !FStringNull( pev->targetname ) && !m_pCine // wait until triggered
+							&& m_Activity != ACT_GLIDE; /* Don't affect repel grunts */
+	shouldWaitTrigger = shouldWaitTrigger && (g_modFeatures.monsters_spawned_named_wait_trigger || pev->owner == 0); // Don't affect monsters coming from monstermaker
+	if( shouldWaitTrigger )
 	{
 		SetState( MONSTERSTATE_IDLE );
 		// UNDONE: Some scripted sequence monsters don't have an idle?
@@ -2626,25 +2654,11 @@ int CBaseMonster::IDefaultRelationship(int classify)
 	return IDefaultRelationship(Classify(), classify);
 }
 
-#if FEATURE_RACEX_AND_AMIL_ENEMIES
-#define R_XA R_HT
-#define R_PA R_HT
-#else
-#define R_XA R_NO
-#define R_PA R_NO
-#endif
-
-#if FEATURE_RACEX_AND_AMONSTERS_ENEMIES
-#define R_AX R_DL
-#else
-#define R_AX R_NO
-#endif
-
-#if FEATURE_OPFOR_ALLY_RELATIONSHIP
-#define R_OA R_DL
-#else
-#define R_OA R_AL
-#endif
+#define R_OA (R_AL-1)
+#define R_XA (R_AL-2)
+#define R_PA (R_AL-3)
+#define R_XG (R_AL-4)
+#define R_AX (R_AL-5)
 
 int CBaseMonster::IDefaultRelationship(int classify1, int classify2)
 {
@@ -2664,19 +2678,32 @@ int CBaseMonster::IDefaultRelationship(int classify1, int classify2)
 	/*PLAYERALLY*/	{ R_NO	,R_DL	,R_AL	,R_AL	,R_DL	,R_DL	,R_DL	,R_DL	,R_DL	,R_DL	,R_NO	,R_AL,	R_NO,	R_NO,	R_DL,	R_DL,	R_OA,	R_DL,	R_HT,	R_DL},
 	/*PBIOWEAPON*/	{ R_NO	,R_NO	,R_DL	,R_DL	,R_DL	,R_DL	,R_DL	,R_DL	,R_DL	,R_DL	,R_NO	,R_DL,	R_NO,	R_DL,	R_DL,	R_DL,	R_DL,	R_DL,	R_DL,	R_DL},
 	/*ABIOWEAPON*/	{ R_NO	,R_NO	,R_DL	,R_DL	,R_DL	,R_AL	,R_NO	,R_DL	,R_DL	,R_NO	,R_NO	,R_DL,	R_DL,	R_NO,	R_DL,	R_DL,	R_DL,	R_DL,	R_NO,	R_AL},
-	/*XPREDATOR*/	{ R_NO	,R_DL	,R_DL	,R_DL	,R_DL	,R_PA	,R_NO	,R_AX	,R_DL	,R_DL	,R_NO	,R_DL,	R_NO,	R_NO,	R_AL,	R_AL,	R_DL,	R_DL,	R_NO,	R_PA},
-	/*XSHOCK*/		{ R_NO	,R_DL	,R_DL	,R_DL	,R_HT	,R_XA	,R_NO	,R_AX	,R_AX	,R_AX	,R_NO	,R_DL,	R_NO,	R_NO,	R_AL,	R_AL,	R_HT,	R_HT,	R_NO,	R_XA},
+	/*XPREDATOR*/	{ R_NO	,R_DL	,R_DL	,R_DL	,R_DL	,R_PA	,R_NO	,R_AX	,R_DL	,R_DL	,R_NO	,R_DL,	R_NO,	R_NO,	R_AL,	R_AL,	R_DL,	R_DL,	R_NO,	R_XG},
+	/*XSHOCK*/		{ R_NO	,R_DL	,R_DL	,R_DL	,R_HT	,R_XA	,R_NO	,R_AX	,R_AX	,R_AX	,R_NO	,R_DL,	R_NO,	R_NO,	R_AL,	R_AL,	R_HT,	R_HT,	R_NO,	R_XG},
 	/*PLRALLYMIL*/	{ R_NO	,R_DL	,R_AL	,R_OA	,R_DL	,R_HT	,R_DL	,R_DL	,R_DL	,R_DL	,R_NO	,R_OA,	R_NO,	R_NO,	R_DL,	R_HT,	R_AL,	R_DL,	R_HT,	R_HT},
 	/*BLACKOPS*/	{ R_NO	,R_DL	,R_HT	,R_DL	,R_DL	,R_HT	,R_DL	,R_DL	,R_DL	,R_DL	,R_NO	,R_HT,	R_NO,	R_NO,	R_HT,	R_HT,	R_DL,	R_AL,	R_HT,	R_HT},
 	/*SNARK*/		{ R_NO	,R_NO	,R_HT	,R_DL	,R_HT	,R_NO	,R_NO	,R_DL	,R_DL	,R_NO	,R_NO	,R_DL,	R_NO,	R_NO,	R_DL,	R_DL,	R_HT,	R_HT,	R_NO,	R_DL},
-	/*GARGANTUA*/	{ R_NO	,R_DL	,R_DL	,R_DL	,R_DL	,R_AL	,R_NO	,R_NO	,R_NO	,R_NO	,R_NO	,R_DL,	R_NO,	R_NO,	R_PA,	R_XA,	R_DL,	R_DL,	R_NO,	R_AL},
+	/*GARGANTUA*/	{ R_NO	,R_DL	,R_DL	,R_DL	,R_DL	,R_AL	,R_NO	,R_NO	,R_NO	,R_NO	,R_NO	,R_DL,	R_NO,	R_NO,	R_XG,	R_XG,	R_DL,	R_DL,	R_NO,	R_AL},
 	};
 	if (classify1 >= CLASS_NUMBER_OF_CLASSES || classify1 < 0 || classify2 >= CLASS_NUMBER_OF_CLASSES || classify2 < 0 )
 	{
 		ALERT(at_aiconsole, "Unknown classify for monster relationship %d,%d\n", classify1, classify2);
 		return R_NO;
 	}
-	return iEnemy[classify1][classify2];
+	const int rel = iEnemy[classify1][classify2];
+	switch (rel) {
+	case R_OA:
+		return g_modFeatures.opfor_grunts_dislike_civilians ? R_DL : R_AL;
+	case R_XA:
+	case R_PA:
+		return g_modFeatures.racex_dislike_alien_military ? R_HT : R_NO;
+	case R_XG:
+		return g_modFeatures.racex_dislike_gargs ? R_HT : R_NO;
+	case R_AX:
+		return g_modFeatures.racex_dislike_alien_monsters ? R_DL : R_NO;
+	default:
+		return rel;
+	}
 }
 
 //=========================================================
@@ -2764,7 +2791,14 @@ BOOL CBaseMonster::FindSpotAway(Vector vecThreat, Vector vecViewOffset, float fl
 			if( traceOk )
 			{
 				// ..and is also closer to me than the threat, or the same distance from myself and the threat the node is good.
-				if( ( iMyNode == iThreatNode ) || WorldGraph.PathLength( iMyNode, nodeNumber, iMyHullIndex, m_afCapability ) <= WorldGraph.PathLength( iThreatNode, nodeNumber, iMyHullIndex, m_afCapability ) )
+				bool distanceOk = iMyNode == iThreatNode;
+				if (!distanceOk)
+				{
+					float myPathLength = WorldGraph.PathLength( iMyNode, nodeNumber, iMyHullIndex, m_afCapability );
+					float threatPathLength = WorldGraph.PathLength( iThreatNode, nodeNumber, iMyHullIndex, m_afCapability );
+					distanceOk = myPathLength <= threatPathLength || threatPathLength < 0;
+				}
+				if( distanceOk )
 				{
 					if( (!FBitSet(flags, FINDSPOTAWAY_CHECK_SPOT) || FValidateCover( node.m_vecOrigin )) && MoveToLocation( FBitSet(flags, FINDSPOTAWAY_RUN) ? ACT_RUN : ACT_WALK, 0, node.m_vecOrigin ) )
 					{
@@ -2846,6 +2880,7 @@ BOOL CBaseMonster::BuildNearestRoute( Vector vecThreat, Vector vecViewOffset, fl
 	}
 
 	iMyNode = WorldGraph.FindNearestNode( pev->origin, this );
+
 	iMyHullIndex = WorldGraph.HullIndex( this );
 
 	if( iMyNode == NO_NODE )
@@ -3139,7 +3174,7 @@ void CBaseMonster::HandleAnimEvent( MonsterEvent_t *pEvent )
 		SENTENCEG_PlayRndSz( edict(), pEvent->options, 1.0, ATTN_IDLE, 0, 100 );
 		break;
 	case SCRIPT_EVENT_FIREEVENT:		// Fire a trigger
-		FireTargets( pEvent->options, this, this, USE_TOGGLE, 0 );
+		FireTargets( pEvent->options, this, this );
 		break;
 	case SCRIPT_EVENT_NOINTERRUPT:		// Can't be interrupted from now on
 		if( m_pCine )
@@ -3432,6 +3467,12 @@ const char* CBaseMonster::MonsterStateDisplayString(MONSTERSTATE monsterState)
 
 void CBaseMonster::ReportAIState( ALERT_TYPE level )
 {
+	const bool shouldReportRoute = g_psv_developer && g_psv_developer->value >= 4;
+	if (shouldReportRoute && !FRouteClear())
+	{
+		DrawRoute(this, m_movementGoal);
+	}
+
 	static const char *pDeadNames[] = {"No", "Dying", "Dead", "Respawnable", "DiscardBody"};
 
 	if (FStringNull(pev->targetname)) {
@@ -3497,6 +3538,9 @@ void CBaseMonster::ReportAIState( ALERT_TYPE level )
 	if ( m_hTargetEnt != 0 )
 		ALERT( level, "Target ent: %s. ", STRING( m_hTargetEnt->pev->classname ) );
 
+	if ( m_pCine )
+		ALERT( level, "Scripted sequence entity: \"%s\". ", STRING(m_pCine->pev->targetname) );
+
 	if( IsMoving() )
 	{
 		ALERT( level, "Moving" );
@@ -3529,6 +3573,22 @@ void CBaseMonster::ReportAIState( ALERT_TYPE level )
 		ALERT( level, "Can range attack 2; " );
 	if (HasConditions(bits_COND_SEE_ENEMY))
 		ALERT(level, "Sees enemy; ");
+
+	if (shouldReportRoute)
+	{
+		int iMyNode = WorldGraph.FindNearestNode( pev->origin, this );
+		if (iMyNode != NO_NODE)
+		{
+			ALERT(level, "Nearest node: %d. ", iMyNode);
+
+			CNode &node = WorldGraph.Node( iMyNode );
+			DrawRoutePart(node.m_vecOrigin, node.m_vecOrigin + Vector(0,0,72), 0, 0, 200, 25, 16);
+		}
+		else
+		{
+			ALERT(level, "No nearest node. ");
+		}
+	}
 }
 
 //=========================================================
@@ -3737,7 +3797,7 @@ BOOL CBaseMonster::FCheckAITrigger( short condition )
 		// fire the target, then set the trigger conditions to NONE so we don't fire again
 		if (m_iszTriggerTarget)
 			ALERT( at_aiconsole, "%s: AI Trigger Fire Target %s\n", STRING(pev->classname), STRING(m_iszTriggerTarget) );
-		FireTargets( STRING( m_iszTriggerTarget ), this, this, USE_TOGGLE, 0 );
+		FireTargets( STRING( m_iszTriggerTarget ), this, this );
 		m_iTriggerCondition = AITRIGGER_NONE;
 		m_iTriggerAltCondition = AITRIGGER_NONE;
 		return TRUE;
@@ -4081,7 +4141,6 @@ void CBaseMonster::MonsterInitDead( void )
 	if (FBitSet(pev->spawnflags, SF_DEADMONSTER_DONT_DROP))
 	{
 		pev->movetype = MOVETYPE_FLY;
-		pev->effects |= EF_INVLIGHT;
 		SetThink(NULL);
 		SetSequenceBox();
 		UTIL_SetOrigin( pev, pev->origin );
@@ -4375,6 +4434,17 @@ bool CBaseMonster::IsFreeToManipulate()
 				  m_MonsterState == MONSTERSTATE_HUNT);
 }
 
+bool CBaseMonster::HandleDoorBlockage(CBaseEntity *pDoor)
+{
+#if FEATURE_DOOR_BLOCKED_FADE_CORPSES
+	if (pev->deadflag == DEAD_DEAD && pev->movetype == MOVETYPE_TOSS && pev->takedamage == DAMAGE_YES) {
+		SUB_StartFadeOut();
+		return true;
+	}
+#endif
+	return false;
+}
+
 void CBaseMonster::GlowShellOn( Vector color, float flDuration )
 {
 	if (!m_glowShellUpdate)
@@ -4438,7 +4508,7 @@ void CDeadMonster::SpawnHelper( const char* modelName, int bloodColor, int healt
 	PrecacheMyModel( modelName );
 	SetMyModel( modelName );
 
-	pev->effects		= 0;
+	pev->effects &= EF_INVLIGHT;
 	pev->yaw_speed		= 8;
 	pev->sequence		= 0;
 	SetMyBloodColor( bloodColor );

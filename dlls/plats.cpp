@@ -814,7 +814,7 @@ void CFuncTrain::Wait( void )
 	// Fire the pass target if there is one
 	if( m_pevCurrentTarget->message )
 	{
-		FireTargets( STRING( m_pevCurrentTarget->message ), this, this, USE_TOGGLE, 0 );
+		FireTargets( STRING( m_pevCurrentTarget->message ), this, this );
 		if( FBitSet( m_pevCurrentTarget->spawnflags, SF_CORNER_FIREONCE ) )
 			m_pevCurrentTarget->message = 0;
 	}
@@ -1083,29 +1083,6 @@ void CFuncTrain::Precache( void )
 //		ALERT(at_console, "preparing SoundSetup: stored %f, mfNT %f, pevNT %f, ltime %f", m_fStoredThink, m_fNextThink, pev->nextthink, pev->ltime);
 		SetThink(&CFuncTrain::SoundSetup );
 	}
-
-#if 0	// obsolete
-	// otherwise use preset sound
-	switch( m_sounds )
-	{
-	case 0:
-		pev->noise = 0;
-		pev->noise1 = 0;
-		break;
-	case 1:
-		PRECACHE_SOUND( "plats/train2.wav" );
-		PRECACHE_SOUND( "plats/train1.wav" );
-		pev->noise = MAKE_STRING( "plats/train2.wav" );
-		pev->noise1 = MAKE_STRING( "plats/train1.wav" );
-		break;
-	case 2:
-		PRECACHE_SOUND( "plats/platmove1.wav" );
-		PRECACHE_SOUND( "plats/platstop1.wav" );
-		pev->noise = MAKE_STRING( "plats/platstop1.wav" );
-		pev->noise1 = MAKE_STRING( "plats/platmove1.wav" );
-		break;
-	}
-#endif
 }
 
 void CFuncTrain::OverrideReset( void )
@@ -1153,6 +1130,7 @@ TYPEDESCRIPTION	CFuncTrackTrain::m_SaveData[] =
 	DEFINE_FIELD( CFuncTrackTrain, m_flBank, FIELD_FLOAT ),
 	DEFINE_FIELD( CFuncTrackTrain, m_oldSpeed, FIELD_FLOAT ),
 	DEFINE_FIELD( CFuncTrackTrain, m_customMoveSound, FIELD_BOOLEAN ),
+	DEFINE_FIELD( CFuncTrackTrain, m_soundRadius, FIELD_SHORT ),
 };
 
 IMPLEMENT_SAVERESTORE( CFuncTrackTrain, CBaseEntity )
@@ -1189,6 +1167,11 @@ void CFuncTrackTrain::KeyValue( KeyValueData *pkvd )
 	else if( FStrEq( pkvd->szKeyName, "bank" ) )
 	{
 		m_flBank = atof( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "soundradius" ) )
+	{
+		m_soundRadius = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -1308,7 +1291,7 @@ void CFuncTrackTrain::StopSound( void )
 		else
 			STOP_SOUND( ENT( pev ), CHAN_STATIC, STRING( pev->noise ) );
 
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, STRING(pev->noise1), m_flVolume, ATTN_NORM, 0, 100 );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, STRING(pev->noise1), m_flVolume, SoundAttenuation(), 0, 100 );
 	}
 
 	m_soundPlaying = 0;
@@ -1329,8 +1312,8 @@ void CFuncTrackTrain::UpdateSound( void )
 	if( !m_soundPlaying )
 	{
 		// play startup sound for train
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, STRING(pev->noise2), m_flVolume, ATTN_NORM, 0, 100 );
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, STRING( pev->noise ), m_flVolume, ATTN_NORM, 0, (int)flpitch );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_ITEM, STRING(pev->noise2), m_flVolume, SoundAttenuation(), 0, 100 );
+		EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, STRING( pev->noise ), m_flVolume, SoundAttenuation(), 0, (int)flpitch );
 		m_soundPlaying = 1;
 	} 
 	else
@@ -1338,7 +1321,7 @@ void CFuncTrackTrain::UpdateSound( void )
 		if (m_customMoveSound)
 		{
 			// update pitch
-			EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, STRING( pev->noise ), m_flVolume, ATTN_NORM, SND_CHANGE_PITCH, (int)flpitch );
+			EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, STRING( pev->noise ), m_flVolume, SoundAttenuation(), SND_CHANGE_PITCH, (int)flpitch );
 		}
 		else
 		{
@@ -1371,6 +1354,11 @@ void CFuncTrackTrain::PostponeNext( void )
 void CFuncTrackTrain::DesiredAction( void )
 {
 	Next();
+}
+
+float CFuncTrackTrain::SoundAttenuation() const
+{
+	return ::SoundAttenuation(m_soundRadius);
 }
 
 void CFuncTrackTrain::Next( void )
@@ -1462,7 +1450,7 @@ void CFuncTrackTrain::Next( void )
 			// Fire the pass target if there is one
 			if( pFire->pev->message )
 			{
-				FireTargets( STRING( pFire->pev->message ), this, this, USE_TOGGLE, 0 );
+				FireTargets( STRING( pFire->pev->message ), this, this );
 				if( FBitSet( pFire->pev->spawnflags, SF_PATH_FIREONCE ) )
 					pFire->pev->message = 0;
 			}
@@ -1553,7 +1541,7 @@ void CFuncTrackTrain::DeadEnd( void )
 	{
 		ALERT( at_aiconsole, "at %s\n", STRING( pTrack->pev->targetname ) );
 		if( pTrack->pev->netname )
-			FireTargets( STRING( pTrack->pev->netname ), this, this, USE_TOGGLE, 0 );
+			FireTargets( STRING( pTrack->pev->netname ), this, this );
 	}
 	else
 		ALERT( at_aiconsole, "\n" );
@@ -2446,7 +2434,7 @@ void CGunTarget::Wait( void )
 	// Fire the pass target if there is one
 	if( pTarget->pev->message )
 	{
-		FireTargets( STRING(pTarget->pev->message), this, this, USE_TOGGLE, 0 );
+		FireTargets( STRING(pTarget->pev->message), this, this );
 		if( FBitSet( pTarget->pev->spawnflags, SF_CORNER_FIREONCE ) )
 			pTarget->pev->message = 0;
 	}
@@ -2483,7 +2471,7 @@ int CGunTarget::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 			pev->health = 0;
 			Stop();
 			if( pev->message )
-				FireTargets( STRING( pev->message ), this, this, USE_TOGGLE, 0 );
+				FireTargets( STRING( pev->message ), this, this );
 		}
 	}
 	return 0;

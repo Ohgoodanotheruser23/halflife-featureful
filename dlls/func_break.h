@@ -40,6 +40,20 @@ typedef enum
 
 #define	NUM_SHARDS 6 // this many shards spawned when breakable objects break;
 
+#define SF_BREAK_TRIGGER_ONLY	1// may only be broken by trigger
+#define	SF_BREAK_TOUCH			2// can be 'crashed through' by running player (plate glass)
+#define SF_BREAK_PRESSURE		4// can be broken by a player standing on it
+#define SF_BREAK_CROWBAR		256// instant break if hit with crowbar
+#define SF_BREAK_EXPLOSIVES_ONLY		512// can be damaged only by DMG_BLAST
+#define SF_BREAK_OP4MORTAR_ONLY	1024 // can be damaged only by op4mortar rockets
+#define SF_BREAK_NOT_SOLID_OLD 2048 // TODO: outdated, remove
+#define SF_BREAK_NOT_SOLID 4096 // breakable is not solid
+#define SF_BREAK_SMOKE_TRAILS 8192
+#define SF_BREAK_TRANSPARENT_GIBS 16384
+
+// func_pushable (it's also func_breakable, so don't collide with those flags)
+#define SF_PUSH_BREAKABLE		128
+
 class CBreakable : public CBaseDelay
 {
 public:
@@ -52,10 +66,12 @@ public:
 	NODE_LINKENT HandleLinkEnt(int afCapMask, bool nodeQueryStatic);
 	void DamageSound( void );
 
+	static void BreakModel(const Vector& vecSpot, const Vector& size, const Vector &vecVelocity, int shardModelIndex, int iGibs, char cFlag);
+
 	// breakables use an overridden takedamage
 	virtual int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	// To spark when hit
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 
 	BOOL IsBreakable( void );
 	BOOL SparkWhenHit( void );
@@ -63,6 +79,7 @@ public:
 	int DamageDecal( int bitsDamageType );
 
 	void EXPORT Die( void );
+	void DieToActivator(CBaseEntity* pActivator);
 	virtual int ObjectCaps( void ) { return ( CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION ); }
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -90,5 +107,8 @@ public:
 	float m_angle;
 	string_t m_iszGibModel;
 	string_t m_iszSpawnObject;
+
+	short m_targetActivator;
+	int m_iGibs;
 };
 #endif	// FUNC_BREAK_H

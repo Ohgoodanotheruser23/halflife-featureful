@@ -47,7 +47,6 @@ static CBasePlayer player;
 static globalvars_t Globals; 
 
 static CBasePlayerWeapon *g_pWpns[MAX_WEAPONS];
-int g_iWaterLevel;
 float g_flApplyVel = 0.0;
 int g_irunninggausspred = 0;
 
@@ -156,13 +155,12 @@ void HUD_PrepEntity( CBaseEntity *pEntity, CBasePlayer *pWeaponOwner )
 
 	if( pWeaponOwner )
 	{
-		ItemInfo info;
+		CBasePlayerWeapon* pWeapon = (CBasePlayerWeapon *)pEntity;
+		pWeapon->m_pPlayer = pWeaponOwner;
 
-		( (CBasePlayerWeapon *)pEntity )->m_pPlayer = pWeaponOwner;
-
-		( (CBasePlayerWeapon *)pEntity )->GetItemInfo( &info );
-
-		g_pWpns[info.iId] = (CBasePlayerWeapon *)pEntity;
+		if (pWeapon->m_iId == WEAPON_NONE)
+			gEngfuncs.Con_Printf("Got 0 as weapon id!\n");
+		g_pWpns[pWeapon->m_iId] = (CBasePlayerWeapon *)pEntity;
 	}
 }
 
@@ -789,7 +787,7 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	player.pev->flags = from->client.flags;
 
 	player.pev->deadflag = from->client.deadflag;
-	g_iWaterLevel = player.pev->waterlevel = from->client.waterlevel;
+	player.pev->waterlevel = from->client.waterlevel;
 	player.pev->maxspeed = from->client.maxspeed;
 	player.pev->fov = from->client.fov;
 	player.pev->weaponanim = from->client.weaponanim;
@@ -809,12 +807,6 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		( (CRpg *)player.m_pActiveItem )->m_fSpotActive = (int)from->client.vuser2[1];
 		( (CRpg *)player.m_pActiveItem )->m_cActiveRockets = (int)from->client.vuser2[2];
 	}
-#if FEATURE_PICKABLE_SATCHELS
-	if( player.m_pActiveItem->m_iId == WEAPON_SATCHEL )
-	{
-		player.m_pActiveItem->m_chargeReady = (int)from->client.vuser2[1];
-	}
-#endif
 #if FEATURE_DESERT_EAGLE
 	if( player.m_pActiveItem->m_iId == WEAPON_EAGLE )
 	{

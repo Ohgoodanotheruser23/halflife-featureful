@@ -30,6 +30,13 @@
 
 extern DLL_GLOBAL Vector	g_vecAttackDir;
 
+typedef enum
+{
+	FB_TA_NO = 0,
+	FB_TA_BREAKABLE = 1,
+	FB_TA_ACTIVATOR_OR_ATTACKER = 2,
+} SCRIPT_TARGET_ACTIVATOR;
+
 // =================== FUNC_Breakable ==============================================
 
 // Just add more items to the bottom of this array and they will automagically be supported
@@ -141,6 +148,16 @@ void CBreakable::KeyValue( KeyValueData* pkvd )
 		ExplosionSetMagnitude( atoi( pkvd->szValue ) );
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq( pkvd->szKeyName, "target_activator" ) )
+	{
+		m_targetActivator = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if ( FStrEq( pkvd->szKeyName, "m_iGibs") )
+	{
+		m_iGibs = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else if( FStrEq( pkvd->szKeyName, "lip" ) )
 		pkvd->fHandled = TRUE;
 	else
@@ -163,6 +180,8 @@ TYPEDESCRIPTION CBreakable::m_SaveData[] =
 	DEFINE_FIELD( CBreakable, m_angle, FIELD_FLOAT ),
 	DEFINE_FIELD( CBreakable, m_iszGibModel, FIELD_STRING ),
 	DEFINE_FIELD( CBreakable, m_iszSpawnObject, FIELD_STRING ),
+	DEFINE_FIELD( CBreakable, m_targetActivator, FIELD_SHORT ),
+	DEFINE_FIELD( CBreakable, m_iGibs, FIELD_INTEGER ),
 
 	// Explosion magnitude is stored in pev->impulse
 };
@@ -173,12 +192,12 @@ void CBreakable::Spawn( void )
 {
 	Precache();
 
-	if( FBitSet( pev->spawnflags, SF_BREAK_TRIGGER_ONLY | SF_BREAK_NOT_SOLID ) )
+	if( FBitSet( pev->spawnflags, SF_BREAK_TRIGGER_ONLY | SF_BREAK_NOT_SOLID | SF_BREAK_NOT_SOLID_OLD ) )
 		pev->takedamage	= DAMAGE_NO;
 	else
 		pev->takedamage	= DAMAGE_YES;
   
-	pev->solid = FBitSet(pev->spawnflags, SF_BREAK_NOT_SOLID) ? SOLID_NOT : SOLID_BSP;
+	pev->solid = FBitSet(pev->spawnflags, SF_BREAK_NOT_SOLID|SF_BREAK_NOT_SOLID_OLD) ? SOLID_NOT : SOLID_BSP;
 	pev->movetype = MOVETYPE_PUSH;
 	m_angle = pev->angles.y;
 	pev->angles.y = 0;
@@ -526,7 +545,7 @@ void CBreakable::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 		UTIL_MakeVectors( pev->angles );
 		g_vecAttackDir = gpGlobals->v_forward;
 
-		Die();
+		DieToActivator(pActivator);
 	}
 }
 
@@ -535,13 +554,13 @@ NODE_LINKENT CBreakable::HandleLinkEnt(int afCapMask, bool nodeQueryStatic)
 	if (nodeQueryStatic) {
 		return NLE_ALLOW;
 	}
-	if (FBitSet(pev->spawnflags, SF_BREAK_NOT_SOLID)) {
+	if (FBitSet(pev->spawnflags, SF_BREAK_NOT_SOLID | SF_BREAK_NOT_SOLID_OLD)) {
 		return NLE_ALLOW;
 	}
 	return NLE_PROHIBIT;
 }
 
-void CBreakable::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CBreakable::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	// random spark if this is a 'computer' object
 	if( RANDOM_LONG( 0, 1 ) )
@@ -572,7 +591,7 @@ void CBreakable::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vec
 		}
 	}
 
-	CBaseDelay::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
+	CBaseDelay::TraceAttack( pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 }
 
 //=========================================================
@@ -625,7 +644,7 @@ int CBreakable::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, flo
 	if( pev->health <= 0 )
 	{
 		//Killed( pevInflictor, pevAttacker, GIB_NORMAL );
-		Die();
+		DieToActivator(CBaseEntity::Instance(pevAttacker));
 		return 0;
 	}
 
@@ -715,7 +734,59 @@ static char PlayBreakableBustSound( entvars_t* pev, Materials material, float fv
 	return 0;
 }
 
-void CBreakable::Die( void )
+static char ExtraBreakableFlags(int spawnflags)
+{
+	char cFlag = 0;
+	if (FBitSet(spawnflags, SF_BREAK_SMOKE_TRAILS))
+		cFlag |= BREAK_SMOKE;
+	if (FBitSet(spawnflags, SF_BREAK_TRANSPARENT_GIBS))
+		cFlag |= BREAK_TRANS;
+	return cFlag;
+}
+
+void CBreakable::BreakModel(const Vector& vecSpot, const Vector& size, const Vector& vecVelocity, int shardModelIndex, int iGibs, char cFlag)
+{
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpot );
+		WRITE_BYTE( TE_BREAKMODEL );
+
+		// position
+		WRITE_COORD( vecSpot.x );
+		WRITE_COORD( vecSpot.y );
+		WRITE_COORD( vecSpot.z );
+
+		// size
+		WRITE_COORD( size.x );
+		WRITE_COORD( size.y );
+		WRITE_COORD( size.z );
+
+		// velocity
+		WRITE_COORD( vecVelocity.x );
+		WRITE_COORD( vecVelocity.y );
+		WRITE_COORD( vecVelocity.z );
+
+		// randomization
+		WRITE_BYTE( 10 );
+
+		// Model
+		WRITE_SHORT( shardModelIndex );	//model id#
+
+		// # of shards
+		WRITE_BYTE( iGibs );	// if 0, let client decide
+
+		// duration
+		WRITE_BYTE( 25 );// 2.5 seconds
+
+		// flags
+		WRITE_BYTE( cFlag );
+	MESSAGE_END();
+}
+
+void CBreakable::Die()
+{
+	DieToActivator(NULL);
+}
+
+void CBreakable::DieToActivator( CBaseEntity* pActivator )
 {
 	Vector vecSpot;// shard origin
 	Vector vecVelocity;// shard velocity
@@ -737,6 +808,7 @@ void CBreakable::Die( void )
 		fvol = 1.0f;
 
 	cFlag = PlayBreakableBustSound(pev, m_Material, fvol, pitch);
+	cFlag |= ExtraBreakableFlags(pev->spawnflags);
 
 	if( m_Explosion == expDirected )
 		vecVelocity = -g_vecAttackDir * 100.0f;
@@ -748,39 +820,11 @@ void CBreakable::Die( void )
 	}
 
 	vecSpot = pev->origin + ( pev->mins + pev->maxs ) * 0.5f;
-	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpot );
-		WRITE_BYTE( TE_BREAKMODEL );
 
-		// position
-		WRITE_COORD( vecSpot.x );
-		WRITE_COORD( vecSpot.y );
-		WRITE_COORD( vecSpot.z );
-
-		// size
-		WRITE_COORD( pev->size.x );
-		WRITE_COORD( pev->size.y );
-		WRITE_COORD( pev->size.z );
-
-		// velocity
-		WRITE_COORD( vecVelocity.x ); 
-		WRITE_COORD( vecVelocity.y );
-		WRITE_COORD( vecVelocity.z );
-
-		// randomization
-		WRITE_BYTE( 10 );
-
-		// Model
-		WRITE_SHORT( m_idShard );	//model id#
-
-		// # of shards
-		WRITE_BYTE( 0 );	// let client decide
-
-		// duration
-		WRITE_BYTE( 25 );// 2.5 seconds
-
-		// flags
-		WRITE_BYTE( cFlag );
-	MESSAGE_END();
+	if (m_iGibs >= 0)
+	{
+		BreakModel(vecSpot, pev->size, vecVelocity, m_idShard, m_iGibs, cFlag);
+	}
 
 	/*float size = pev->size.x;
 	if( size < pev->size.y )
@@ -815,7 +859,16 @@ void CBreakable::Die( void )
 	pev->solid = SOLID_NOT;
 
 	// Fire targets on break
-	SUB_UseTargets( NULL, USE_TOGGLE, 0 );
+	CBaseEntity* pTargetActivator = 0;
+	if (m_targetActivator == FB_TA_BREAKABLE)
+	{
+		pTargetActivator = this;
+	}
+	else if (m_targetActivator == FB_TA_ACTIVATOR_OR_ATTACKER)
+	{
+		pTargetActivator = pActivator;
+	}
+	SUB_UseTargets( pTargetActivator );
 
 	SetThink( &CBaseEntity::SUB_Remove );
 	SetNextThink( 0.1f );
@@ -833,7 +886,29 @@ void CBreakable::Die( void )
 	}
 	else if( !FStringNull(m_iszSpawnObject) )
 	{
-		CBaseEntity::Create( STRING( m_iszSpawnObject ), VecBModelOrigin( pev ), pev->angles, edict() );
+		const char* spawnObject = STRING(m_iszSpawnObject);
+		const Vector bmodelOrigin = VecBModelOrigin( pev );
+		bool shouldApplyPhysicsFix = false;
+		if (ItemsPhysicsFix() > 0 && (strncmp(spawnObject, "item_", 5) == 0 || strncmp(spawnObject, "ammo_", 5) == 0))
+		{
+			TraceResult tr;
+			UTIL_TraceLine(bmodelOrigin, Vector(bmodelOrigin.x, bmodelOrigin.y, pev->absmin.z - 1), ignore_monsters, edict(), &tr);
+			if (tr.pHit)
+			{
+				const int contents = UTIL_PointContents( tr.vecEndPos );
+				shouldApplyPhysicsFix = contents == 0;
+			}
+		}
+		CBaseEntity* pEntity = CBaseEntity::CreateNoSpawn( spawnObject, bmodelOrigin, pev->angles, edict() );
+		if (pEntity)
+		{
+			if (shouldApplyPhysicsFix)
+				pEntity->pev->spawnflags |= SF_ITEM_FIX_PHYSICS;
+			if (DispatchSpawn( pEntity->edict() ) == -1 )
+			{
+				REMOVE_ENTITY(pEntity->edict());
+			}
+		}
 	}
 
 	if( Explodable() )
@@ -1114,7 +1189,7 @@ int CPushable::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, floa
 	return 1;
 }
 
-#define ENV_BREAKABLE_REPEATABLE 1
+#define FUNC_BREAKABLE_REPEATABLE 1
 
 class CFuncBreakableEffect : public CBaseEntity
 {
@@ -1132,8 +1207,9 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	Materials m_Material;
-	int m_idShard;
 	string_t m_iszGibModel;
+	int m_iGibs;
+	int m_idShard;
 };
 
 void CFuncBreakableEffect::KeyValue( KeyValueData* pkvd )
@@ -1156,6 +1232,11 @@ void CFuncBreakableEffect::KeyValue( KeyValueData* pkvd )
 		m_iszGibModel = ALLOC_STRING( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if ( FStrEq( pkvd->szKeyName, "m_iGibs") )
+	{
+		m_iGibs = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBaseEntity::KeyValue( pkvd );
 }
@@ -1166,6 +1247,7 @@ TYPEDESCRIPTION CFuncBreakableEffect::m_SaveData[] =
 {
 	DEFINE_FIELD( CFuncBreakableEffect, m_Material, FIELD_INTEGER ),
 	DEFINE_FIELD( CFuncBreakableEffect, m_iszGibModel, FIELD_STRING ),
+	DEFINE_FIELD( CFuncBreakableEffect, m_iGibs, FIELD_INTEGER ),
 };
 
 IMPLEMENT_SAVERESTORE( CFuncBreakableEffect, CBaseEntity )
@@ -1207,43 +1289,15 @@ void CFuncBreakableEffect::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, US
 		fvol = 1.0f;
 
 	char cFlag = PlayBreakableBustSound(pev, m_Material, fvol, pitch);
+	cFlag |= ExtraBreakableFlags(pev->spawnflags);
 
 	Vector vecSpot = pev->origin + ( pev->mins + pev->maxs ) * 0.5f;
 
-	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSpot );
-		WRITE_BYTE( TE_BREAKMODEL );
+	if (m_iGibs >= 0)
+	{
+		CBreakable::BreakModel(vecSpot, pev->size, g_vecZero, m_idShard, m_iGibs, cFlag);
+	}
 
-		// position
-		WRITE_COORD( vecSpot.x );
-		WRITE_COORD( vecSpot.y );
-		WRITE_COORD( vecSpot.z );
-
-		// size
-		WRITE_COORD( pev->size.x );
-		WRITE_COORD( pev->size.y );
-		WRITE_COORD( pev->size.z );
-
-		// velocity
-		WRITE_COORD( 0 );
-		WRITE_COORD( 0 );
-		WRITE_COORD( 0 );
-
-		// randomization
-		WRITE_BYTE( 10 );
-
-		// Model
-		WRITE_SHORT( m_idShard );	//model id#
-
-		// # of shards
-		WRITE_BYTE( 0 );	// let client decide
-
-		// duration
-		WRITE_BYTE( 25 );// 2.5 seconds
-
-		// flags
-		WRITE_BYTE( cFlag );
-	MESSAGE_END();
-
-	if (!FBitSet(pev->spawnflags, ENV_BREAKABLE_REPEATABLE))
+	if (!FBitSet(pev->spawnflags, FUNC_BREAKABLE_REPEATABLE))
 		UTIL_Remove(this);
 }

@@ -20,8 +20,9 @@
 #include "mod_features.h"
 #include "basemonster.h"
 #if FEATURE_ROPE
-#include "ropes.h"
+class CRope;
 #endif
+#include "com_model.h"
 
 #define PLAYER_FATAL_FALL_SPEED		1024// approx 60 feet
 #define PLAYER_MAX_SAFE_FALL_SPEED	580// approx 20 feet
@@ -31,10 +32,10 @@
 
 #define STRIP_WEAPONS_ONLY 0
 #define STRIP_SUIT 1
-#define STRIP_FLASHLIGHT 2
+#define STRIP_SUITLIGHT 2
 #define STRIP_LONGJUMP 4
 #define STRIP_DONT_TURNOFF_FLASHLIGHT 8
-#define STRIP_ALL_ITEMS (STRIP_SUIT | STRIP_FLASHLIGHT | STRIP_LONGJUMP)
+#define STRIP_ALL_ITEMS (STRIP_SUIT | STRIP_SUITLIGHT | STRIP_LONGJUMP)
 
 #define SF_DISPLACER_TARGET_DISABLED 1
 
@@ -75,11 +76,7 @@
 #define CSUITNOREPEAT		32
 
 #define	SOUND_FLASHLIGHT_ON		"items/flashlight1.wav"
-#if FEATURE_NIGHTVISION
-#define	SOUND_FLASHLIGHT_OFF	"items/flashlight2.wav"
-#else
 #define	SOUND_FLASHLIGHT_OFF	"items/flashlight1.wav"
-#endif
 
 #define TEAM_NAME_LENGTH	16
 
@@ -90,7 +87,8 @@ typedef enum
 	PLAYER_JUMP,
 	PLAYER_SUPERJUMP,
 	PLAYER_DIE,
-	PLAYER_ATTACK1
+	PLAYER_ATTACK1,
+	PLAYER_GRAPPLE,
 } PLAYER_ANIM;
 
 #define MAX_ID_RANGE 2048
@@ -235,7 +233,8 @@ public:
 	virtual void PostThink( void );
 	virtual Vector GetGunPosition( void );
 	virtual int TakeHealth(CBaseEntity *pHealer, float flHealth, int bitsDamageType );
-	virtual void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	virtual int TakeArmor(CBaseEntity *pCharger, float flArmor);
+	virtual void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	virtual int TakeDamage( entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType);
 	virtual void	Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	virtual Vector BodyTarget( const Vector &posSrc ) { return Center( ) + pev->view_ofs * RANDOM_FLOAT( 0.5, 1.1 ); };		// position to shoot at
@@ -266,6 +265,32 @@ public:
 	{
 		return (m_iItemsBits & PLAYER_ITEM_FLASHLIGHT) != 0;
 	}
+	bool HasNVG() const
+	{
+		return FEATURE_NIGHTVISION && (m_iItemsBits & PLAYER_ITEM_NIGHTVISION) != 0;
+	}
+	bool HasSuitLight() const {
+		return HasFlashlight() || HasNVG();
+	}
+	void RemoveSuitLight();
+
+	void SetJustSuit() {
+		m_iItemsBits |= PLAYER_ITEM_SUIT;
+	}
+	void SetFlashlight() {
+		m_iItemsBits |= PLAYER_ITEM_FLASHLIGHT;
+	}
+	void SetFlashlightOnly();
+	void RemoveFlashlight();
+	void SetNVG() {
+		m_iItemsBits |= PLAYER_ITEM_NIGHTVISION;
+	}
+	void SetNVGOnly();
+	void RemoveNVG();
+
+	void SetSuitAndDefaultLight();
+	void SetDefaultLight();
+	void SetLongjump(bool enabled);
 
 	// JOHN:  sends custom messages if player HUD data has changed  (eg health, ammo)
 	virtual void UpdateClientData( void );
@@ -276,9 +301,18 @@ public:
 	virtual int		ObjectCaps( void ) { return CBaseMonster :: ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 	virtual void	Precache( void );
 	BOOL			IsOnLadder( void );
-	BOOL			FlashlightIsOn( void );
-	void			FlashlightTurnOn( void );
-	void			FlashlightTurnOff( bool playOffSound = true );
+	bool FlashlightIsOn() { return FBitSet(pev->effects, EF_DIMLIGHT); }
+	bool NVGIsOn() { return m_fNVGisON; }
+	bool SuitLightIsOn( void ) { return FlashlightIsOn() || NVGIsOn(); }
+	void SuitLightTurnOn( void );
+	void SuitLightTurnOff( bool playOffSound = true );
+	void UpdateSuitLightBattery( bool on );
+	void FlashlightToggle();
+	void FlashlightTurnOn();
+	void FlashlightTurnOff( bool playOffSound = true );
+	void NVGToggle();
+	void NVGTurnOn();
+	void NVGTurnOff( bool playOffSound = true );
 
 	void UpdatePlayerSound ( void );
 	void DeathSound ( void );
@@ -383,9 +417,7 @@ public:
 #if FEATURE_DISPLACER
 	BOOL	m_fInXen;
 #endif
-#if FEATURE_NIGHTVISION
 	BOOL	m_fNVGisON;
-#endif
 	friend class CDisplacer;
 	friend class CTriggerXenReturn;
 
@@ -403,7 +435,8 @@ public:
 	short m_movementState; // no need to save
 #endif
 
-	bool m_bSentBhopcap; // If false, the player just joined and needs a bhopcap message.
+	bool m_bSentMessages;
+	bool m_bSentSpriteIndices;
 
 #if FEATURE_ROPE
 	bool m_bIsClimbing;
@@ -438,6 +471,10 @@ public:
 
 	BOOL m_settingsLoaded;
 	BOOL m_buddha;
+
+
+	void SetLoopedMp3(string_t loopedMp3);
+	string_t m_loopedMp3;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025
@@ -447,5 +484,7 @@ public:
 
 extern int gmsgHudText;
 extern BOOL gInitHUD;
+
+extern bool g_PlayerFullyInitialized[MAX_CLIENTS];
 
 #endif // PLAYER_H

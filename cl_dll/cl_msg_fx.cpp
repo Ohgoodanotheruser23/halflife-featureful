@@ -3,6 +3,7 @@
 #include "parsemsg.h"
 
 #include "r_efx.h"
+#include "customentity.h"
 #include "r_studioint.h"
 #include "event_api.h"
 #include "com_model.h"
@@ -174,8 +175,327 @@ int __MsgFunc_MuzzleLight( const char *pszName, int iSize, void *pbuf )
 	return 1;
 }
 
+int __MsgFunc_CustomBeam( const char* pszName, int iSize, void *pbuf )
+{
+	BEGIN_READ( pbuf, iSize );
+	int beamType = READ_BYTE();
+
+	vec3_t	start, end;
+	int	modelIndex, startFrame;
+	float	frameRate, life, width;
+	int	startEnt, endEnt;
+	float	noise, speed;
+	float	r, g, b, a;
+	BEAM* beam;
+	int flags;
+
+	switch (beamType) {
+	case TE_BEAMPOINTS:
+	case TE_BEAMENTPOINT:
+	case TE_BEAMENTS:
+	case TE_BEAMRING:
+	{
+		if( beamType == TE_BEAMENTS || beamType == TE_BEAMRING )
+		{
+			startEnt = READ_SHORT();
+			endEnt = READ_SHORT();
+		}
+		else
+		{
+			if( beamType == TE_BEAMENTPOINT )
+			{
+				startEnt = READ_SHORT();
+			}
+			else
+			{
+				start[0] = READ_COORD();
+				start[1] = READ_COORD();
+				start[2] = READ_COORD();
+			}
+			end[0] = READ_COORD();
+			end[1] = READ_COORD();
+			end[2] = READ_COORD();
+		}
+		modelIndex = READ_SHORT();
+		startFrame = READ_BYTE();
+		frameRate = (float)READ_BYTE() * 0.1f;
+		life = (float)READ_BYTE() * 0.1f;
+		width = (float)READ_BYTE() * 0.1f;
+		noise = (float)READ_BYTE() * 0.01f;
+		r = (float)READ_BYTE() / 255.0f;
+		g = (float)READ_BYTE() / 255.0f;
+		b = (float)READ_BYTE() / 255.0f;
+		a = (float)READ_BYTE() / 255.0f;
+		speed = (float)READ_BYTE() * 0.1f;
+		flags = READ_BYTE();
+		if ( beamType == TE_BEAMRING )
+			beam = gEngfuncs.pEfxAPI->R_BeamRing( startEnt, endEnt, modelIndex, life, width, noise, a, speed, startFrame, frameRate, r, g, b );
+		if( beamType == TE_BEAMENTS )
+			beam = gEngfuncs.pEfxAPI->R_BeamEnts( startEnt, endEnt, modelIndex, life, width, noise, a, speed, startFrame, frameRate, r, g, b );
+		else if( beamType == TE_BEAMENTPOINT )
+			beam = gEngfuncs.pEfxAPI->R_BeamEntPoint( startEnt, end, modelIndex, life, width, noise, a, speed, startFrame, frameRate, r, g, b );
+		else
+			beam = gEngfuncs.pEfxAPI->R_BeamPoints( start, end, modelIndex, life, width, noise, a, speed, startFrame, frameRate, r, g, b );
+		if (beam)
+		{
+			if (flags & BEAM_FSINE)
+				beam->flags |= FBEAM_SINENOISE;
+			if (flags & BEAM_FSOLID)
+				beam->flags |= FBEAM_SOLID;
+			if (flags & BEAM_FSHADEIN)
+				beam->flags |= FBEAM_SHADEIN;
+			if (flags & BEAM_FSHADEOUT)
+				beam->flags |= FBEAM_SHADEOUT;
+		}
+	}
+		break;
+	default:
+		gEngfuncs.Con_DPrintf("%s: got the unknown beam type %d\n", pszName, beamType);
+		break;
+	}
+
+	return 1;
+}
+
+void FX_Sprite_Trail( Vector start, Vector end, int modelIndex, int count, float life, float size, float amp, int renderamt, float speed, int r = 0, int g = 0, int b = 0, float extraLifeMax = 0.0f )
+{
+	Vector delta, dir;
+	model_t *pmodel;
+
+	if(( pmodel = gEngfuncs.pfnGetModelByIndex( modelIndex )) == NULL )
+		return;
+
+	delta = end - start;
+	dir = delta.Normalize();
+
+	amp /= 256.0f;
+
+	const float clientTime = gEngfuncs.GetClientTime();
+
+	for( int i = 0; i < count; i++ )
+	{
+		Vector pos, vel;
+
+		if( i == 0 )
+			pos = start;
+		else
+			VectorMA( start, ( i / ( count - 1.0f )), delta, pos );
+
+		TEMPENTITY *pTemp = gEngfuncs.pEfxAPI->CL_TempEntAlloc( pos, pmodel );
+		if( !pTemp ) return;
+
+		pTemp->flags = (FTENT_COLLIDEWORLD|FTENT_FADEOUT|FTENT_SLOWGRAVITY);
+		pTemp->frameMax = pmodel->numframes;
+		if (pmodel->numframes > 1)
+			pTemp->flags |= FTENT_SPRCYCLE;
+
+		VectorScale( dir, speed, vel );
+		vel[0] += Com_RandomFloat( -127.0f, 128.0f ) * amp;
+		vel[1] += Com_RandomFloat( -127.0f, 128.0f ) * amp;
+		vel[2] += Com_RandomFloat( -127.0f, 128.0f ) * amp;
+		VectorCopy( vel, pTemp->entity.baseline.origin );
+		VectorCopy( pos, pTemp->entity.origin );
+
+		pTemp->entity.curstate.scale = size;
+		pTemp->entity.curstate.rendermode = kRenderGlow;
+		pTemp->entity.curstate.renderfx = kRenderFxNoDissipation;
+		pTemp->entity.curstate.renderamt = pTemp->entity.baseline.renderamt = renderamt;
+		pTemp->entity.curstate.rendercolor.r = r;
+		pTemp->entity.curstate.rendercolor.g = g;
+		pTemp->entity.curstate.rendercolor.b = b;
+
+		if (pmodel->numframes > 1)
+			pTemp->entity.curstate.frame = Com_RandomLong( 0, pmodel->numframes-1 );
+		pTemp->die = clientTime + life;
+		if (extraLifeMax)
+			pTemp->die += Com_RandomFloat( 0.0f, extraLifeMax );
+	}
+}
+
+int __MsgFunc_SpriteTrail( const char* pszName, int iSize, void *pbuf )
+{
+	BEGIN_READ( pbuf, iSize );
+
+	Vector pos, pos2;
+
+	pos[0] = READ_COORD();
+	pos[1] = READ_COORD();
+	pos[2] = READ_COORD();
+	pos2[0] = READ_COORD();
+	pos2[1] = READ_COORD();
+	pos2[2] = READ_COORD();
+	int modelIndex = READ_SHORT();
+	int count = READ_BYTE();
+	float life = (float)READ_BYTE() * 0.1f;
+	float scale = (float)READ_BYTE();
+	if( !scale )
+		scale = 1.0f;
+	else
+		scale *= 0.1f;
+	float vel = (float)READ_BYTE() * 10;
+	float random = (float)READ_BYTE() * 10;
+	int r = READ_BYTE();
+	int g = READ_BYTE();
+	int b = READ_BYTE();
+	int a = READ_BYTE();
+	float extraLifeMax = READ_BYTE() * 0.1f;
+	FX_Sprite_Trail( pos, pos2, modelIndex, count, life, scale, random, a, vel, r, g, b, extraLifeMax );
+
+	return 1;
+}
+
+void FX_Streaks( Vector pos, Vector dir, int color, int count, float speed, int velocityMin, int velocityMax, float minLife = 0.1f, float maxLife = 0.5f, ptype_t particleType = pt_grav, float length = 1.0f )
+{
+	if (maxLife < minLife)
+		maxLife = minLife;
+
+	Vector vel;
+	VectorScale( dir, speed, vel );
+
+	for( int i = 0; i < count; i++ )
+	{
+		vel.x += Com_RandomFloat( velocityMin, velocityMax );
+		vel.y += Com_RandomFloat( velocityMin, velocityMax );
+		vel.z += Com_RandomFloat( velocityMin, velocityMax );
+
+		particle_t *p = gEngfuncs.pEfxAPI->R_TracerParticles( pos, vel, Com_RandomFloat( minLife, maxLife ));
+		if( !p ) return;
+
+		p->type = particleType;
+		p->color = color;
+		p->ramp = length;
+	}
+}
+
+int __MsgFunc_Streaks( const char* pszName, int iSize, void *pbuf )
+{
+	BEGIN_READ( pbuf, iSize );
+
+	Vector pos, dir;
+	int color, count;
+	ptype_t particleType;
+	float minLife, maxLife, speed, velRandomness, length;
+
+	pos[0] = READ_COORD();
+	pos[1] = READ_COORD();
+	pos[2] = READ_COORD();
+	dir[0] = READ_COORD();
+	dir[1] = READ_COORD();
+	dir[2] = READ_COORD();
+	color = READ_BYTE();
+	count = READ_SHORT();
+	speed = READ_SHORT();
+	velRandomness = READ_SHORT();
+	minLife = READ_BYTE() * 0.1f;
+	maxLife = READ_BYTE() * 0.1f;
+	particleType = (ptype_t)READ_BYTE();
+	length = READ_BYTE() * 0.1f;
+
+	FX_Streaks(pos, dir, color, count, speed, -velRandomness, velRandomness, minLife, maxLife, particleType, length);
+
+	return 1;
+}
+
+void ExpandCallback(TEMPENTITY *ent, float frametime, float currenttime)
+{
+	const float minScale = 0.0001;
+	const float timeCreated = ent->entity.curstate.fuser1;
+	const float originalScale = ent->entity.curstate.fuser2;
+	const float scaleSpeed = ent->entity.curstate.fuser3;
+	ent->entity.curstate.scale = scaleSpeed * originalScale * (currenttime - timeCreated) + originalScale;
+	if (ent->entity.curstate.scale < minScale)
+	{
+		ent->entity.curstate.scale = minScale;
+		ent->die = currenttime;
+	}
+}
+
+void FX_Smoke(TEMPENTITY* pTemp, float scale, float speed, float zOffset, int rendermode, int renderamt, int r, int g, int b )
+{
+	pTemp->entity.curstate.rendermode = rendermode;
+	pTemp->entity.curstate.renderfx = kRenderFxNone;
+	pTemp->entity.baseline.origin[2] = speed;
+	pTemp->entity.curstate.rendercolor.r = r;
+	pTemp->entity.curstate.rendercolor.g = g;
+	pTemp->entity.curstate.rendercolor.b = b;
+	pTemp->entity.curstate.renderamt = renderamt;
+	pTemp->entity.origin[2] += zOffset;
+	pTemp->entity.curstate.scale = scale;
+}
+
+int __MsgFunc_Smoke( const char* pszName, int iSize, void *pbuf )
+{
+	BEGIN_READ( pbuf, iSize );
+
+	Vector pos, dir;
+	int modelIndex;
+	float scale, frameRate, speed, zOffset, scaleSpeed;
+	int rendermode, renderamt, r, g, b;
+
+	const int directed = READ_BYTE();
+	pos[0] = READ_COORD();
+	pos[1] = READ_COORD();
+	pos[2] = READ_COORD();
+	modelIndex = READ_SHORT();
+	scale = (float)(READ_BYTE() * 0.1f);
+	frameRate = READ_BYTE();
+	speed = READ_SHORT();
+	zOffset = READ_SHORT();
+	rendermode = READ_BYTE();
+	renderamt = READ_BYTE();
+	r = READ_BYTE();
+	g = READ_BYTE();
+	b = READ_BYTE();
+	scaleSpeed = READ_SHORT() / 10.0f;
+
+	if (directed)
+	{
+		dir[0] = READ_COORD();
+		dir[1] = READ_COORD();
+		dir[2] = READ_COORD();
+	}
+
+	// Original hard-coded TE_SMOKE values
+	if (speed == 0.0f && zOffset == 0.0f)
+	{
+		speed = 30;
+		zOffset = 20;
+	}
+	if (renderamt == 0)
+		renderamt = 255;
+	if (rendermode == 0)
+		rendermode = kRenderTransAlpha;
+	if (r + g + b == 0)
+		r = g = b = Com_RandomLong( 20, 35 );
+
+	TEMPENTITY* pTemp = gEngfuncs.pEfxAPI->R_DefaultSprite( pos, modelIndex, frameRate );
+
+	if (pTemp)
+	{
+		FX_Smoke(pTemp, scale, speed, zOffset, rendermode, renderamt, r, g, b);
+		if (directed)
+		{
+			pTemp->entity.baseline.origin = dir * speed;
+		}
+		if (scaleSpeed != 0)
+		{
+			pTemp->entity.curstate.fuser1 = gEngfuncs.GetClientTime();
+			pTemp->entity.curstate.fuser2 = scale;
+			pTemp->entity.curstate.fuser3 = scaleSpeed;
+			pTemp->flags |= FTENT_CLIENTCUSTOM;
+			pTemp->callback = &ExpandCallback;
+		}
+	}
+
+	return 1;
+}
+
 void HookFXMessages()
 {
-	gEngfuncs.pfnHookUserMsg( "RandomGibs", __MsgFunc_RandomGibs );
-	gEngfuncs.pfnHookUserMsg( "MuzzleLight", __MsgFunc_MuzzleLight );
+	HOOK_MESSAGE( RandomGibs );
+	HOOK_MESSAGE( MuzzleLight );
+	HOOK_MESSAGE( CustomBeam );
+	HOOK_MESSAGE( SpriteTrail );
+	HOOK_MESSAGE( Streaks );
+	HOOK_MESSAGE( Smoke );
 }

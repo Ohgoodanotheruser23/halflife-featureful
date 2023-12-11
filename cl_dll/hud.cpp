@@ -20,9 +20,10 @@
 
 #include "hud.h"
 #include "cl_util.h"
-#include <string.h>
-#include <stdio.h>
+#include <cstring>
+#include <cstdio>
 #include "parsemsg.h"
+#include "parsetext.h"
 #if USE_VGUI
 #include "vgui_int.h"
 #include "vgui_TeamFortressViewport.h"
@@ -40,6 +41,137 @@ int g_iTeamNumber;
 int g_iUser1 = 0;
 int g_iUser2 = 0;
 int g_iUser3 = 0;
+
+ConfigurableBooleanValue::ConfigurableBooleanValue() : enabled_by_default(false), configurable(true) {}
+
+ConfigurableBoundedValue::ConfigurableBoundedValue() :
+	defaultValue(0),
+	minValue(0),
+	maxValue(0),
+	configurable(true)
+{}
+
+ConfigurableBoundedValue::ConfigurableBoundedValue(int defValue, int minimumValue, int maximumValue, bool config) :
+	defaultValue(defValue), minValue(minimumValue), maxValue(maximumValue), configurable(config)
+{}
+
+ConfigurableIntegerValue::ConfigurableIntegerValue() : defaultValue(0), configurable(true) {}
+
+ConfigurableFloatValue::ConfigurableFloatValue() : defaultValue(0.0f), configurable(true) {}
+
+FlashlightFeatures::FlashlightFeatures() : color(0xFFFFFF), distance(2048)
+{
+	fade_distance.defaultValue = 600;
+	fade_distance.minValue = 500;
+	fade_distance.maxValue = distance;
+	radius.defaultValue = 100;
+	radius.minValue = 80;
+	radius.maxValue = 200;
+}
+
+#define OF_NVG_DLIGHT_RADIUS 400
+#define CS_NVG_DLIGHT_RADIUS 775
+#define NVG_DLIGHT_MIN_RADIUS 400
+#define NVG_DLIGHT_MAX_RADIUS 1000
+
+ClientFeatures::ClientFeatures()
+{
+	hud_color = RGB_HUD_DEFAULT;
+	hud_color_critical = RGB_REDISH;
+	hud_min_alpha.defaultValue = MIN_ALPHA;
+	hud_min_alpha.minValue = 100;
+	hud_min_alpha.maxValue = 200;
+
+	hud_draw_nosuit = false;
+	hud_color_nosuit = RGB_HUD_NOSUIT;
+
+	hud_color_nvg = 0x00FFFFFF;
+	hud_min_alpha_nvg = 192;
+
+	opfor_title = FEATURE_OPFOR_SPECIFIC ? true : false;
+
+	movemode.configurable = false;
+
+	nvgstyle.configurable = false;
+	nvgstyle.defaultValue = 1;
+
+	nvg_cs.radius.configurable = false;
+	nvg_cs.radius.defaultValue = CS_NVG_DLIGHT_RADIUS;
+	nvg_cs.radius.minValue = NVG_DLIGHT_MIN_RADIUS;
+	nvg_cs.radius.maxValue = NVG_DLIGHT_MAX_RADIUS;
+	nvg_cs.layer_color = 0x32E132;
+	nvg_cs.layer_alpha = 110;
+	nvg_cs.light_color = 0x32FF32;
+
+	nvg_opfor.radius.configurable = false;
+	nvg_opfor.radius.defaultValue = OF_NVG_DLIGHT_RADIUS;
+	nvg_opfor.radius.minValue = NVG_DLIGHT_MIN_RADIUS;
+	nvg_opfor.radius.maxValue = NVG_DLIGHT_MAX_RADIUS;
+	nvg_opfor.layer_color = RGB_GREENISH;
+	nvg_opfor.layer_alpha = 255;
+	nvg_opfor.light_color = 0xFAFAFA;
+
+	memset(nvg_empty_sprite, 0, sizeof (nvg_empty_sprite));
+	memset(nvg_full_sprite, 0, sizeof (nvg_full_sprite));
+}
+
+static cvar_t* CVAR_CREATE_INTVALUE(const char* name, int value, int flags)
+{
+	char valueStr[12];
+	sprintf(valueStr, "%d", value);
+	return CVAR_CREATE(name, valueStr, flags);
+}
+
+static cvar_t* CVAR_CREATE_BOOLVALUE(const char* name, bool value, int flags)
+{
+	return CVAR_CREATE(name, value ? "1" : "0", flags);
+}
+
+static void CreateIntegerCvarConditionally(cvar_t*& cvarPtr, const char* name, const ConfigurableIntegerValue& integerValue)
+{
+	if (integerValue.configurable)
+		cvarPtr = CVAR_CREATE_INTVALUE( name, integerValue.defaultValue, FCVAR_ARCHIVE );
+	else
+		cvarPtr = 0;
+}
+
+static void CreateFloatCvarConditionally(cvar_t*& cvarPtr, const char* name, const ConfigurableFloatValue& floatValue)
+{
+	if (floatValue.configurable)
+	{
+		char valueStr[32];
+		sprintf(valueStr, "%g", floatValue.defaultValue);
+		cvarPtr = CVAR_CREATE(name, valueStr, FCVAR_ARCHIVE);
+	}
+	else
+		cvarPtr = 0;
+}
+
+static void CreateIntegerCvarConditionally(cvar_t*& cvarPtr, const char* name, const ConfigurableBoundedValue& boundedValue)
+{
+	if (boundedValue.configurable)
+		cvarPtr = CVAR_CREATE_INTVALUE( name, boundedValue.defaultValue, FCVAR_ARCHIVE );
+	else
+		cvarPtr = 0;
+}
+
+static void CreateBooleanCvarConditionally(cvar_t*& cvarPtr, const char* name, const ConfigurableBooleanValue& booleanValue)
+{
+	if (booleanValue.configurable)
+		cvarPtr = CVAR_CREATE_BOOLVALUE( name, booleanValue.enabled_by_default, FCVAR_ARCHIVE );
+	else
+		cvarPtr = 0;
+}
+
+template<typename T>
+static T boundValue(T min, T value, T max)
+{
+	if (value < min)
+		return min;
+	if (value > max)
+		return max;
+	return value;
+}
 
 #if USE_VGUI
 #include "vgui_ScorePanel.h"
@@ -89,15 +221,12 @@ public:
 static CHLVoiceStatusHelper g_VoiceStatusHelper;
 #endif
 
-cvar_t *hud_textmode;
-float g_hud_text_color[3];
-
 extern client_sprite_t *GetSpriteList( client_sprite_t *pList, const char *psz, int iRes, int iCount );
 
 extern cvar_t *sensitivity;
 cvar_t *cl_lw = NULL;
+cvar_t *r_decals = NULL;
 cvar_t *cl_viewbob = NULL;
-cvar_t *cl_viewroll = NULL;
 cvar_t *cl_rollspeed = NULL;
 cvar_t *cl_rollangle = NULL;
 
@@ -115,12 +244,8 @@ cvar_t *cl_nvgstyle = NULL;
 cvar_t *cl_nvgradius_cs = NULL;
 #endif
 
-#if FEATURE_OPFOR_NIGHTVISION_DLIGHT
+#if FEATURE_OPFOR_NIGHTVISION
 cvar_t *cl_nvgradius_of = NULL;
-#endif
-
-#if FEATURE_FILTER_NIGHTVISION
-cvar_t *cl_nvgfilterbrightness = NULL;
 #endif
 
 cvar_t* cl_flashlight_custom = NULL;
@@ -140,15 +265,21 @@ int __MsgFunc_Items(const char* pszName, int iSize, void* pbuf)
 	return gHUD.MsgFunc_Items(pszName, iSize, pbuf);
 }
 
-int __MsgFunc_HUDColor(const char *pszName, int iSize, void *pbuf)
-{
-	return gHUD.MsgFunc_HUDColor(pszName, iSize, pbuf );
-}
-
 //LRC
 int __MsgFunc_SetFog(const char *pszName, int iSize, void *pbuf)
 {
 	return gHUD.MsgFunc_SetFog( pszName, iSize, pbuf );
+}
+
+//LRC
+int __MsgFunc_KeyedDLight(const char *pszName, int iSize, void *pbuf)
+{
+	return gHUD.MsgFunc_KeyedDLight( pszName, iSize, pbuf );
+}
+
+int __MsgFunc_WallPuffs(const char *pszName, int iSize, void *pbuf)
+{
+	return gHUD.MsgFunc_WallPuffs( pszName, iSize, pbuf );
 }
 
 //DECLARE_MESSAGE( m_Logo, Logo )
@@ -184,31 +315,42 @@ int __MsgFunc_GameMode( const char *pszName, int iSize, void *pbuf )
 	return gHUD.MsgFunc_GameMode( pszName, iSize, pbuf );
 }
 
-int __MsgFunc_PlayMP3( const char *pszName, int iSize, void *pbuf )
+void PlayMP3( const char* pszMp3, bool loop = false )
 {
-	const char *pszSound;
-	char cmd[64];
-
-	BEGIN_READ( pbuf, iSize );
-	pszSound = READ_STRING();
-
 	if( !IsXashFWGS() && gEngfuncs.pfnGetCvarPointer( "gl_overbright" ) )
 	{
-		sprintf( cmd, "mp3 play \"%s\"\n", pszSound );
+		char cmd[256];
+
+		if (loop)
+			sprintf( cmd, "mp3 loop \"%s\"\n", pszMp3 );
+		else
+			sprintf( cmd, "mp3 play \"%s\"\n", pszMp3 );
 		gEngfuncs.pfnClientCmd( cmd );
 	}
 	else
-		gEngfuncs.pfnPrimeMusicStream( pszSound, 0 );
-
-	return 1;
+		gEngfuncs.pfnPrimeMusicStream( pszMp3, loop );
 }
 
-void __CmdFunc_StopMP3( void )
+void StopMp3()
 {
 	if( !IsXashFWGS() && gEngfuncs.pfnGetCvarPointer( "gl_overbright" ) )
 		gEngfuncs.pfnClientCmd( "mp3 stop\n" );
 	else
 		gEngfuncs.pfnPrimeMusicStream( 0, 0 );
+}
+
+int __MsgFunc_PlayMP3( const char *pszName, int iSize, void *pbuf )
+{
+	BEGIN_READ( pbuf, iSize );
+	const char *pszSound = READ_STRING();
+	const int loop = READ_BYTE();
+
+	if (*pszSound == '\0')
+		StopMp3();
+	else
+		PlayMP3(pszSound, loop != 0);
+
+	return 1;
 }
 
 // TFFree Command Menu
@@ -392,6 +534,11 @@ int __MsgFunc_AllowSpec( const char *pszName, int iSize, void *pbuf )
 #endif
 	return 0;
 }
+
+void __CmdFunc_HUDColor()
+{
+	gHUD.HUDColorCmd();
+}
  
 // This is called every time the DLL is loaded
 void CHud::Init( void )
@@ -404,8 +551,9 @@ void CHud::Init( void )
 	HOOK_MESSAGE( SetFOV );
 	HOOK_MESSAGE( Concuss );
 	HOOK_MESSAGE( Items );
-	HOOK_MESSAGE( HUDColor );
 	HOOK_MESSAGE( SetFog );
+	HOOK_MESSAGE( KeyedDLight );
+	HOOK_MESSAGE( WallPuffs );
 
 	// TFFree CommandMenu
 	HOOK_COMMAND( "+commandmenu", OpenCommandMenu );
@@ -443,53 +591,60 @@ void CHud::Init( void )
 	HOOK_MESSAGE( VGUIMenu );
 
 	HOOK_MESSAGE( PlayMP3 );
-	HOOK_COMMAND( "stopaudio", StopMP3 );
+
+	HOOK_COMMAND( "hud_color", HUDColor );
 
 	CVAR_CREATE( "hud_classautokill", "1", FCVAR_ARCHIVE | FCVAR_USERINFO );		// controls whether or not to suicide immediately on TF class switch
 	CVAR_CREATE( "hud_takesshots", "0", FCVAR_ARCHIVE );		// controls whether or not to automatically take screenshots at the end of a round
-	hud_textmode = CVAR_CREATE ( "hud_textmode", "0", FCVAR_ARCHIVE );
 
 	m_iLogo = 0;
 	m_iFOV = 0;
 
-	m_iHUDColor = RGB_HUD_DEFAULT;
+	ParseClientFeatures();
 
 	CVAR_CREATE( "zoom_sensitivity_ratio", "1.2", FCVAR_ARCHIVE );
 	CVAR_CREATE( "cl_autowepswitch", "1", FCVAR_ARCHIVE | FCVAR_USERINFO );
+	CVAR_CREATE( "cl_save_mapname", "0", FCVAR_ARCHIVE | FCVAR_USERINFO );
 	default_fov = CVAR_CREATE( "default_fov", "90", FCVAR_ARCHIVE );
 	m_pCvarStealMouse = CVAR_CREATE( "hud_capturemouse", "1", FCVAR_ARCHIVE );
 	m_pCvarDraw = CVAR_CREATE( "hud_draw", "1", FCVAR_ARCHIVE );
+	CreateBooleanCvarConditionally(m_pCvarDrawMoveMode, "hud_draw_movemode", clientFeatures.movemode);
 	cl_lw = gEngfuncs.pfnGetCvarPointer( "cl_lw" );
-	cl_viewbob = CVAR_CREATE( "cl_viewbob", "0", FCVAR_ARCHIVE );
-	cl_viewroll = CVAR_CREATE( "cl_viewroll", "0", FCVAR_ARCHIVE );
-	cl_rollangle = gEngfuncs.pfnRegisterVariable ( "cl_rollangle", "0.65", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
-	cl_rollspeed = gEngfuncs.pfnRegisterVariable ( "cl_rollspeed", "300", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
+	r_decals = gEngfuncs.pfnGetCvarPointer( "r_decals" );
+	m_pCvarCrosshair = gEngfuncs.pfnGetCvarPointer( "crosshair" );
 
-	cl_weapon_sparks = gEngfuncs.pfnRegisterVariable( "cl_weapon_sparks", "0", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
-	cl_weapon_wallpuff = gEngfuncs.pfnRegisterVariable( "cl_weapon_wallpuff", "0", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
+	CreateBooleanCvarConditionally(cl_viewbob, "cl_viewbob", clientFeatures.view_bob);
+	CreateFloatCvarConditionally(cl_rollangle, "cl_rollangle", clientFeatures.rollangle);
+	cl_rollspeed = gEngfuncs.pfnRegisterVariable ( "cl_rollspeed", "200", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
 
-	cl_muzzlelight = CVAR_CREATE( "cl_muzzlelight", "0", FCVAR_ARCHIVE );
+	CreateIntegerCvarConditionally(m_pCvarMinAlpha, "hud_min_alpha", clientFeatures.hud_min_alpha);
+	int hudR, hudG, hudB;
+	UnpackRGB(hudR, hudG, hudB, clientFeatures.hud_color);
+	m_pCvarHudRed = CVAR_CREATE_INTVALUE("hud_color_r", hudR, FCVAR_ARCHIVE);
+	m_pCvarHudGreen = CVAR_CREATE_INTVALUE("hud_color_g", hudG, FCVAR_ARCHIVE);
+	m_pCvarHudBlue = CVAR_CREATE_INTVALUE("hud_color_b", hudB, FCVAR_ARCHIVE);
+
+	CreateBooleanCvarConditionally(cl_weapon_sparks, "cl_weapon_sparks", clientFeatures.weapon_sparks);
+	CreateBooleanCvarConditionally(cl_weapon_wallpuff, "cl_weapon_wallpuff", clientFeatures.weapon_wallpuff);
+
+	CreateBooleanCvarConditionally(cl_muzzlelight, "cl_muzzlelight", clientFeatures.muzzlelight);
 	cl_muzzlelight_monsters = CVAR_CREATE( "cl_muzzlelight_monsters", "0", FCVAR_ARCHIVE );
 
 #if FEATURE_NIGHTVISION_STYLES
-	cl_nvgstyle = CVAR_CREATE( "cl_nvgstyle", "0", FCVAR_ARCHIVE );
+	CreateIntegerCvarConditionally(cl_nvgstyle, "cl_nvgstyle", clientFeatures.nvgstyle);
 #endif
 
 #if FEATURE_CS_NIGHTVISION
-	cl_nvgradius_cs = CVAR_CREATE( "cl_nvgradius_cs", "775", FCVAR_ARCHIVE );
+	CreateIntegerCvarConditionally(cl_nvgradius_cs, "cl_nvgradius_cs", clientFeatures.nvg_cs.radius );
 #endif
 
-#if FEATURE_OPFOR_NIGHTVISION_DLIGHT
-	cl_nvgradius_of = CVAR_CREATE( "cl_nvgradius_of", "400", FCVAR_ARCHIVE );
+#if FEATURE_OPFOR_NIGHTVISION
+	CreateIntegerCvarConditionally(cl_nvgradius_of, "cl_nvgradius_of", clientFeatures.nvg_opfor.radius );
 #endif
 
-#if FEATURE_FILTER_NIGHTVISION
-	cl_nvgfilterbrightness = CVAR_CREATE( "cl_nvgfilterbrightness", "0.6", FCVAR_ARCHIVE );
-#endif
-
-	cl_flashlight_custom = CVAR_CREATE( "cl_flashlight_custom", "0", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
-	cl_flashlight_radius = CVAR_CREATE( "cl_flashlight_radius", "100", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
-	cl_flashlight_fade_distance = CVAR_CREATE( "cl_flashlight_fade_distance", "600", FCVAR_CLIENTDLL|FCVAR_ARCHIVE );
+	CreateBooleanCvarConditionally(cl_flashlight_custom, "cl_flashlight_custom", clientFeatures.flashlight.custom);
+	CreateIntegerCvarConditionally(cl_flashlight_radius, "cl_flashlight_radius", clientFeatures.flashlight.radius);
+	CreateIntegerCvarConditionally(cl_flashlight_fade_distance, "cl_flashlight_fade_distance", clientFeatures.flashlight.fade_distance);
 
 	m_pSpriteList = NULL;
 
@@ -541,6 +696,281 @@ void CHud::Init( void )
 	m_Menu.Init();
 
 	MsgFunc_ResetHUD( 0, 0, NULL );
+}
+
+const char* strStartsWith(const char* str, const char* start)
+{
+	while (*start && *str == *start)
+	{
+		start++;
+		str++;
+	}
+	if (*start == '\0')
+		return str;
+	return 0;
+}
+
+bool UpdateBooleanValue(ConfigurableBooleanValue& value, const char* key, const char* valueStr)
+{
+	if (strcmp("enabled_by_default", key) == 0)
+	{
+		return ParseBoolean(valueStr, value.enabled_by_default);
+	}
+	else if (strcmp("configurable", key) == 0)
+	{
+		return ParseBoolean(valueStr, value.configurable);
+	}
+	return false;
+}
+
+bool UpdateBoundedValue(ConfigurableBoundedValue& value, const char* key, const char* valueStr)
+{
+	if (strcmp("default", key) == 0)
+	{
+		return ParseInteger(valueStr, value.defaultValue);
+	}
+	else if (strcmp("min", key) == 0)
+	{
+		return ParseInteger(valueStr, value.minValue);
+	}
+	else if (strcmp("max", key) == 0)
+	{
+		return ParseInteger(valueStr, value.maxValue);
+	}
+	else if (strcmp("configurable", key) == 0)
+	{
+		return ParseBoolean(valueStr, value.configurable);
+	}
+	return false;
+}
+
+bool UpdateIntegerValue(ConfigurableIntegerValue& value, const char* key, const char* valueStr)
+{
+	if (strcmp("default", key) == 0)
+	{
+		return ParseInteger(valueStr, value.defaultValue);
+	}
+	else if (strcmp("configurable", key) == 0)
+	{
+		return ParseBoolean(valueStr, value.configurable);
+	}
+	return false;
+}
+
+bool UpdateFloatValue(ConfigurableFloatValue& value, const char* key, const char* valueStr)
+{
+	if (strcmp("default", key) == 0)
+	{
+		return ParseFloat(valueStr, value.defaultValue);
+	}
+	else if (strcmp("configurable", key) == 0)
+	{
+		return ParseBoolean(valueStr, value.configurable);
+	}
+	return false;
+}
+
+bool UpdateNVGValue(NVGFeatures& nvg, const char* key, const char* valueStr)
+{
+	const char* subKey = 0;
+
+	if (strcmp("layer_color", key) == 0)
+	{
+		return ParseColor(valueStr, nvg.layer_color);
+	}
+	else if (strcmp("layer_alpha", key) == 0)
+	{
+		return ParseInteger(valueStr, nvg.layer_alpha);
+	}
+	else if (strcmp("light_color", key) == 0)
+	{
+		return ParseColor(valueStr, nvg.light_color);
+	}
+	else if ((subKey = strStartsWith(key, "radius.")))
+	{
+		UpdateBoundedValue(nvg.radius, subKey, valueStr);
+	}
+	return false;
+}
+
+template <typename T>
+struct KeyValueDefinition
+{
+	const char* name;
+	T& value;
+};
+
+void CHud::ParseClientFeatures()
+{
+	const char* fileName = "features/featureful_client.cfg";
+	int fileSize = 0;
+	char* pfile = (char *)gEngfuncs.COM_LoadFile( fileName, 5, &fileSize );
+	if ( !pfile )
+	{
+		fileName = "featureful_client.cfg";
+		pfile = (char *)gEngfuncs.COM_LoadFile( fileName, 5, &fileSize );
+	}
+
+	if( !pfile )
+		return;
+
+	gEngfuncs.Con_DPrintf("Parsing client features from %s\n", fileName);
+
+	KeyValueDefinition<int> colors[] = {
+		{ "hud_color", clientFeatures.hud_color},
+		{ "hud_color_critical", clientFeatures.hud_color_critical},
+		{ "hud_color_nosuit", clientFeatures.hud_color_nosuit},
+		{ "hud_color_nvg", clientFeatures.hud_color_nvg},
+		{ "flashlight.color", clientFeatures.flashlight.color},
+	};
+	KeyValueDefinition<int> integers[] = {
+		{ "hud_min_alpha_nvg", clientFeatures.hud_min_alpha_nvg },
+		{ "flashlight.distance", clientFeatures.flashlight.distance },
+	};
+	KeyValueDefinition<ConfigurableBooleanValue> configurableBooleans[] = {
+		{ "flashlight.custom.", clientFeatures.flashlight.custom},
+		{ "view_bob.", clientFeatures.view_bob},
+		{ "weapon_wallpuff.", clientFeatures.weapon_wallpuff},
+		{ "weapon_sparks.", clientFeatures.weapon_sparks},
+		{ "muzzlelight.", clientFeatures.muzzlelight},
+		{ "movemode.", clientFeatures.movemode},
+	};
+	KeyValueDefinition<ConfigurableBoundedValue> configurableBounds[] = {
+		{ "hud_min_alpha.", clientFeatures.hud_min_alpha },
+		{ "flashlight.radius.", clientFeatures.flashlight.radius },
+		{ "flashlight.fade_distance.", clientFeatures.flashlight.fade_distance },
+	};
+	KeyValueDefinition<ConfigurableFloatValue> configurableFloats[] = {
+		{ "rollangle.", clientFeatures.rollangle },
+	};
+	KeyValueDefinition<bool> booleans[] = {
+		{ "hud_draw_nosuit", clientFeatures.hud_draw_nosuit},
+		{ "opfor_title", clientFeatures.opfor_title},
+	};
+
+	char valueBuf[CLIENT_FEATURE_VALUE_LENGTH+1];
+	int i = 0;
+	while ( i<fileSize )
+	{
+		if (pfile[i] == ' ' || pfile[i] == '\r' || pfile[i] == '\n')
+		{
+			++i;
+		}
+		else if (pfile[i] == '/')
+		{
+			++i;
+			ConsumeLine(pfile, i, fileSize);
+		}
+		else
+		{
+			const int keyStart = i;
+			ConsumeNonSpaceCharacters(pfile, i, fileSize);
+
+			const int keyLength = i - keyStart;
+			SkipSpaces(pfile, i, fileSize);
+			const int valueStart = i;
+			ConsumeLineSignificantOnly(pfile, i, fileSize);
+			const int valueLength = i - valueStart;
+			if (valueLength == 0)
+			{
+				continue;
+			}
+			if (valueLength > CLIENT_FEATURE_VALUE_LENGTH)
+			{
+				continue;
+			}
+
+			strncpy(valueBuf, pfile + valueStart, valueLength);
+			valueBuf[valueLength] = '\0';
+
+			char* keyName = pfile + keyStart;
+			keyName[keyLength] = '\0';
+
+			const char* subKey = 0;
+
+			unsigned int i = 0;
+			bool shouldContinue = true;
+			for (i = 0; shouldContinue && i<sizeof(colors)/sizeof(colors[0]); ++i)
+			{
+				if (strcmp(keyName, colors[i].name) == 0)
+				{
+					ParseColor(valueBuf, colors[i].value);
+					shouldContinue = false;
+					break;
+				}
+			}
+			for (i = 0; shouldContinue && i<sizeof(integers)/sizeof(integers[0]); ++i)
+			{
+				if (strcmp(keyName, integers[i].name) == 0)
+				{
+					ParseInteger(valueBuf, integers[i].value);
+					shouldContinue = false;
+					break;
+				}
+			}
+			for (i = 0; shouldContinue && i<sizeof(configurableBooleans)/sizeof(configurableBooleans[0]); ++i)
+			{
+				if ((subKey = strStartsWith(keyName, configurableBooleans[i].name)))
+				{
+					UpdateBooleanValue(configurableBooleans[i].value, subKey, valueBuf);
+					shouldContinue = false;
+					break;
+				}
+			}
+			for (i = 0; shouldContinue && i<sizeof(configurableFloats)/sizeof(configurableFloats[0]); ++i)
+			{
+				if ((subKey = strStartsWith(keyName, configurableFloats[i].name)))
+				{
+					UpdateFloatValue(configurableFloats[i].value, subKey, valueBuf);
+					shouldContinue = false;
+					break;
+				}
+			}
+			for (i = 0; shouldContinue && i<sizeof(configurableBounds)/sizeof(configurableBounds[0]); ++i)
+			{
+				if ((subKey = strStartsWith(keyName, configurableBounds[i].name)))
+				{
+					UpdateBoundedValue(configurableBounds[i].value, subKey, valueBuf);
+					shouldContinue = false;
+					break;
+				}
+			}
+			for (i = 0; shouldContinue && i<sizeof(booleans)/sizeof(booleans[0]); ++i)
+			{
+				if (strcmp(keyName, booleans[i].name) == 0)
+				{
+					ParseBoolean(valueBuf, booleans[i].value);
+					shouldContinue = false;
+					break;
+				}
+			}
+			if (shouldContinue)
+			{
+				if ((subKey = strStartsWith(keyName, "nvgstyle.")))
+				{
+					UpdateIntegerValue(clientFeatures.nvgstyle, subKey, valueBuf);
+				}
+				else if ((subKey = strStartsWith(keyName, "nvg_cs.")))
+				{
+					UpdateNVGValue(clientFeatures.nvg_cs, subKey, valueBuf);
+				}
+				else if ((subKey = strStartsWith(keyName, "nvg_opfor.")))
+				{
+					UpdateNVGValue(clientFeatures.nvg_opfor, subKey, valueBuf);
+				}
+				else if (strcmp(keyName, "nvg_empty_sprite") == 0)
+				{
+					strncpyEnsureTermination(clientFeatures.nvg_empty_sprite, valueBuf, MAX_SPRITE_NAME_LENGTH);
+				}
+				else if (strcmp(keyName, "nvg_full_sprite") == 0)
+				{
+					strncpyEnsureTermination(clientFeatures.nvg_full_sprite, valueBuf, MAX_SPRITE_NAME_LENGTH);
+				}
+			}
+		}
+	}
+
+	gEngfuncs.COM_FreeFile(pfile);
 }
 
 // CHud destructor
@@ -750,15 +1180,6 @@ int CHud::MsgFunc_Items(const char *pszName,  int iSize, void *pbuf)
 	return 1;
 }
 
-int CHud::MsgFunc_HUDColor(const char *pszName,  int iSize, void *pbuf)
-{
-	BEGIN_READ( pbuf, iSize );
-
-	m_iHUDColor = READ_LONG();
-
-	return 1;
-}
-
 float g_lastFOV = 0.0;
 
 /*
@@ -942,6 +1363,177 @@ void CHud::GetAllPlayersInfo()
 	}
 }
 
+bool CHud::ClientFeatureEnabled(cvar_t* cVariable, bool defaultValue)
+{
+	if (cVariable)
+		return cVariable->value != 0;
+	return defaultValue;
+}
+
+bool CHud::ViewBobEnabled()
+{
+	return ClientFeatureEnabled(cl_viewbob, clientFeatures.view_bob.enabled_by_default);
+}
+
+int CHud::CalcMinHUDAlpha()
+{
+#if FEATURE_NIGHTVISION
+	if (m_Nightvision.IsOn()) {
+		return clientFeatures.hud_min_alpha_nvg;
+	}
+#endif
+
+	const ConfigurableBoundedValue& min_alpha = clientFeatures.hud_min_alpha;
+	const int value = m_pCvarMinAlpha ? m_pCvarMinAlpha->value : min_alpha.defaultValue;
+	return boundValue(min_alpha.minValue, value, min_alpha.maxValue);
+}
+
+bool CHud::WeaponWallpuffEnabled()
+{
+	return ClientFeatureEnabled(cl_weapon_wallpuff, clientFeatures.weapon_wallpuff.enabled_by_default);
+}
+
+bool CHud::WeaponSparksEnabled()
+{
+	return ClientFeatureEnabled(cl_weapon_sparks, clientFeatures.weapon_sparks.enabled_by_default);
+}
+
+bool CHud::MuzzleLightEnabled()
+{
+	return ClientFeatureEnabled(cl_muzzlelight, clientFeatures.muzzlelight.enabled_by_default);
+}
+
+bool CHud::CustomFlashlightEnabled()
+{
+	return ClientFeatureEnabled(cl_flashlight_custom, clientFeatures.flashlight.custom.enabled_by_default);
+}
+
+float CHud::FlashlightRadius()
+{
+	const FlashlightFeatures& flashlight = clientFeatures.flashlight;
+	const int radius = cl_flashlight_radius && cl_flashlight_radius->value > 0.0f ? cl_flashlight_radius->value : flashlight.radius.defaultValue;
+	return boundValue(flashlight.radius.minValue, radius, flashlight.radius.maxValue);
+}
+
+float CHud::FlashlightDistance()
+{
+	return clientFeatures.flashlight.distance;
+}
+
+float CHud::FlashlightFadeDistance()
+{
+	const FlashlightFeatures& flashlight = clientFeatures.flashlight;
+	const int distance = cl_flashlight_fade_distance && cl_flashlight_fade_distance->value > 0.0f ? cl_flashlight_fade_distance->value : flashlight.fade_distance.defaultValue;
+	return boundValue(flashlight.fade_distance.minValue, distance, flashlight.fade_distance.maxValue);
+}
+
+color24 CHud::FlashlightColor()
+{
+	int r, g, b;
+	UnpackRGB(r,g,b, clientFeatures.flashlight.color);
+
+	color24 color;
+	color.r = boundValue(0, r, 255);
+	color.g = boundValue(0, g, 255);
+	color.b = boundValue(0, b, 255);
+	return color;
+}
+
+int CHud::NVGStyle()
+{
+#if FEATURE_NIGHTVISION_STYLES
+	if (cl_nvgstyle)
+		return (int)cl_nvgstyle->value;
+#endif
+	return clientFeatures.nvgstyle.defaultValue;
+}
+
+bool CHud::MoveModeEnabled()
+{
+	return ClientFeatureEnabled(m_pCvarDrawMoveMode, clientFeatures.movemode.enabled_by_default);
+}
+
+void CHud::HUDColorCmd()
+{
+	int r, g, b;
+	bool shouldPrintHelp = false;
+
+	if ( gEngfuncs.Cmd_Argc() == 4 )
+	{
+		r = atoi(gEngfuncs.Cmd_Argv(1));
+		g = atoi(gEngfuncs.Cmd_Argv(2));
+		b = atoi(gEngfuncs.Cmd_Argv(3));
+	}
+	else if ( gEngfuncs.Cmd_Argc() == 2 )
+	{
+		const char* param = gEngfuncs.Cmd_Argv(1);
+		if (param && *param)
+		{
+			if (strcmp(param, "default") == 0)
+			{
+				UnpackRGB(r, g, b, clientFeatures.hud_color);
+			}
+			else if (strncmp(param, "0x", 2) == 0)
+			{
+				if (strlen(param) != 8)
+				{
+					gEngfuncs.Con_Printf("6 hex digits expected after 0x\n");
+					shouldPrintHelp = true;
+				}
+				else
+				{
+					char* endPtr;
+					long color = strtol(param+2, &endPtr, 16);
+					UnpackRGB(r, g, b, color);
+					if (*endPtr != '\0')
+					{
+						gEngfuncs.Con_Printf("Error parsing hex value\n");
+						shouldPrintHelp = true;
+					}
+				}
+			}
+			else
+			{
+				if (sscanf(param, "%d %d %d", &r, &g, &b) != 3)
+				{
+					gEngfuncs.Con_Printf("Expected three integer values\n");
+					shouldPrintHelp = true;
+				}
+			}
+		}
+		else
+		{
+			shouldPrintHelp = true;
+		}
+	}
+	else
+	{
+		shouldPrintHelp = true;
+	}
+
+	if (shouldPrintHelp)
+	{
+		const int hudR = m_pCvarHudRed->value;
+		const int hudG = m_pCvarHudGreen->value;
+		const int hudB = m_pCvarHudBlue->value;
+		const int currentHudColor = ((hudR & 0xFF) << 16) | ((hudG & 0xFF) << 8) | (hudB & 0xFF);
+		gEngfuncs.Con_Printf( "Current HUD color: %d %d %d (%06X)\n"
+							  "usage:\n"
+							  "hud_color RRR GGG BBB\n"
+							  "hud_color \"RRR GGG BBB\"\n"
+							  "hud_color 0xRRGGBB\n"
+							  "hud_color default\n",
+							  hudR, hudG, hudB, currentHudColor);
+	}
+	else
+	{
+		gEngfuncs.Cvar_SetValue("hud_color_r", r);
+		gEngfuncs.Cvar_SetValue("hud_color_g", g);
+		gEngfuncs.Cvar_SetValue("hud_color_b", b);
+		gEngfuncs.Con_Printf("Set hud color to (%d, %d, %d)\n", r, g, b);
+	}
+}
+
 #if FEATURE_MOVE_MODE
 DECLARE_MESSAGE( m_MoveMode, MoveMode )
 
@@ -981,6 +1573,9 @@ int CHudMoveMode::VidInit()
 
 int CHudMoveMode::Draw(float flTime)
 {
+	if (!gHUD.MoveModeEnabled())
+		return 1;
+
 	if ( gHUD.m_fPlayerDead || (gHUD.m_iHideHUDDisplay & HIDEHUD_ALL) || !gHUD.HasSuit() )
 	{
 		return 1;

@@ -1,11 +1,17 @@
-//========= Copyright © 2004-2008, Raven City Team, All rights reserved. ============//
-//																					 //
-// Purpose:																			 //
-//																					 //
-// $NoKeywords: $																	 //
-//===================================================================================//
-//Modifided by Lost_Gamer_
-// Various fixes by FreeSlave
+/***
+*
+*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+*
+*	This product contains software technology licensed from Id
+*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+*	All Rights Reserved.
+*
+*   Use, distribution, and modification of this source code and/or resulting
+*   object code is restricted to non-commercial enhancements to products from
+*   Valve LLC.  All other use, distribution, or modification is prohibited
+*   without written permission from Valve LLC.
+*
+****/
 
 #include "extdll.h"
 #include "util.h"
@@ -14,6 +20,9 @@
 #include "weapons.h"
 #include "nodes.h"
 #include "player.h"
+#ifndef CLIENT_DLL
+#include "game.h"
+#endif
 
 #if FEATURE_DESERT_EAGLE
 
@@ -53,6 +62,15 @@ void CEagle::Precache( void )
 	m_usEagle = PRECACHE_EVENT( 1, "events/eagle.sc" );
 }
 
+bool CEagle::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_EAGLE);
+#else
+	return true;
+#endif
+}
+
 int CEagle::AddToPlayer(CBasePlayer *pPlayer)
 {
 	return AddToPlayerDefault(pPlayer);
@@ -69,7 +87,7 @@ int CEagle::GetItemInfo(ItemInfo *p)
 	p->iSlot = 1;
 	p->iPosition = 2;
 	p->iFlags = 0;
-	p->iId = m_iId = WEAPON_EAGLE;
+	p->iId = WEAPON_EAGLE;
 	p->iWeight = EAGLE_WEIGHT;
 	p->pszAmmoEntity = "ammo_357";
 	p->iDropAmmo = AMMO_357BOX_GIVE;
@@ -176,7 +194,7 @@ void CEagle::PrimaryAttack()
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.22f;
 	}
 
-	PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usEagle, 0.0f, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, 0, 0, 0, 0 );
+	PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usEagle, 0.0f, g_vecZero, g_vecZero, vecDir.x, vecDir.y, 0, 0, ( m_iClip == 0 ) ? 1 : 0, 0 );
 
 	if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 	// HEV suit - indicate out of ammo condition
@@ -219,6 +237,9 @@ void CEagle::UpdateSpot( void )
 #ifndef CLIENT_DLL
 	if (m_fEagleLaserActive)
 	{
+		if (m_pPlayer->pev->viewmodel == 0)
+			return;
+
 		if (!m_pEagleLaser)
 		{
 			m_pEagleLaser = CLaserSpot::CreateSpot(m_pPlayer->edict());

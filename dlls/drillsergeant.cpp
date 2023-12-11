@@ -7,6 +7,7 @@
 #include	"scripted.h"
 #include	"soundent.h"
 #include	"mod_features.h"
+#include	"game.h"
 
 #if FEATURE_DRILLSERGEANT
 
@@ -15,6 +16,7 @@ class CDrillSergeant : public CTalkMonster
 public:
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("drillsergeant"); }
 	const char* DefaultDisplayName() { return "Drill Sergeant"; }
 	void SetYawSpeed(void);
 	int DefaultISoundMask(void);
@@ -28,7 +30,7 @@ public:
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
 
-	void TalkInit();
+	const char* DefaultSentenceGroup(int group);
 
 	float m_painTime;
 };
@@ -153,37 +155,32 @@ void CDrillSergeant::DeathSound( void )
 	}
 }
 
-void CDrillSergeant::TalkInit()
+const char* CDrillSergeant::DefaultSentenceGroup(int group)
 {
-	CTalkMonster::TalkInit();
-
-	m_szGrp[TLK_ANSWER] = "DR_ANSWER";
-	m_szGrp[TLK_QUESTION] = "DR_QUESTION";
-	m_szGrp[TLK_IDLE] = "DR_IDLE";
-	m_szGrp[TLK_STARE] = "DR_STARE";
-	m_szGrp[TLK_USE] = "DR_OK";
-	m_szGrp[TLK_UNUSE] = "DR_WAIT";
-	m_szGrp[TLK_DECLINE] = "DR_POK";
-	m_szGrp[TLK_STOP] = "DR_STOP";
-
-	m_szGrp[TLK_NOSHOOT] = "DR_SCARED";
-	m_szGrp[TLK_HELLO] = "DR_HELLO";
-
-	m_szGrp[TLK_PLHURT1] = "!DR_CUREA";
-	m_szGrp[TLK_PLHURT2] = "!DR_CUREB";
-	m_szGrp[TLK_PLHURT3] = "!DR_CUREC";
-
-	m_szGrp[TLK_PHELLO] = NULL;// UNDONE
-	m_szGrp[TLK_PIDLE] = NULL;// UNDONE
-	m_szGrp[TLK_PQUESTION] = "DR_PQUEST";		// UNDONE
-
-	m_szGrp[TLK_SMELL] = "DR_SMELL";
-
-	m_szGrp[TLK_WOUND] = "DR_WOUND";
-	m_szGrp[TLK_MORTAL] = "DR_MORTAL";
-
-	m_szGrp[TLK_SHOT] = "DR_SHOT";
-	m_szGrp[TLK_MAD] = "DR_MAD";
+	switch (group) {
+	case TLK_ANSWER: return "DR_ANSWER";
+	case TLK_QUESTION: return "DR_QUESTION";
+	case TLK_IDLE: return "DR_IDLE";
+	case TLK_STARE: return "DR_STARE";
+	case TLK_USE: return "DR_OK";
+	case TLK_UNUSE: return "DR_WAIT";
+	case TLK_DECLINE: return "DR_POK";
+	case TLK_STOP: return "DR_STOP";
+	case TLK_NOSHOOT: return "DR_SCARED";
+	case TLK_HELLO: return "DR_HELLO";
+	case TLK_PLHURT1: return "!DR_CUREA";
+	case TLK_PLHURT2: return "!DR_CUREB";
+	case TLK_PLHURT3: return "!DR_CUREC";
+	case TLK_PHELLO: return "DR_PHELLO";
+	case TLK_PIDLE: return "DR_PIDLE";
+	case TLK_PQUESTION: return "DR_PQUEST";
+	case TLK_SMELL: return "DR_SMELL";
+	case TLK_WOUND: return "DR_WOUND";
+	case TLK_MORTAL: return "DR_MORTAL";
+	case TLK_SHOT: return "DR_SHOT";
+	case TLK_MAD: return "DR_MAD";
+	default: return NULL;
+	}
 }
 
 Schedule_t* CDrillSergeant::GetSchedule()
@@ -221,6 +218,7 @@ class CDeadDrillSergeant : public CDeadMonster
 {
 public:
 	void Spawn( void );
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("drillsergeant"); }
 	int	DefaultClassify ( void ) { return	CLASS_PLAYER_ALLY_MILITARY; }
 
 	const char* getPos(int pos) const;

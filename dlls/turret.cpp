@@ -24,9 +24,7 @@
 #include "monsters.h"
 #include "weapons.h"
 #include "effects.h"
-
-// Set to 1 to fix 'eternal' search for enemy of sentry turret
-#define FEATURE_SENTRY_TURRET_RETRACTS 0
+#include "game.h"
 
 extern Vector VecBModelOrigin( entvars_t* pevBModel );
 
@@ -57,7 +55,7 @@ public:
 	void KeyValue( KeyValueData *pkvd );
 	void EXPORT TurretUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 
-	virtual void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
+	virtual void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	virtual int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	virtual int Classify( void );
 	virtual int DefaultClassify();
@@ -655,7 +653,7 @@ void CBaseTurret::Deploy( void )
 		m_iOn = 1;
 		SetTurretAnim( TURRET_ANIM_DEPLOY );
 		EMIT_SOUND( ENT( pev ), CHAN_BODY, "turret/tu_deploy.wav", TURRET_MACHINE_VOLUME, ATTN_NORM );
-		SUB_UseTargets( this, USE_ON, 0 );
+		SUB_UseTargets( this, USE_ON );
 	}
 
 	if( m_fSequenceFinished )
@@ -706,7 +704,7 @@ void CBaseTurret::Retire( void )
 		{
 			SetTurretAnim( TURRET_ANIM_RETIRE );
 			EMIT_SOUND_DYN( ENT( pev ), CHAN_BODY, "turret/tu_deploy.wav", TURRET_MACHINE_VOLUME, ATTN_NORM, 0, 120 );
-			SUB_UseTargets( this, USE_OFF, 0 );
+			SUB_UseTargets( this, USE_OFF );
 		}
 		else if( m_fSequenceFinished )
 		{
@@ -990,7 +988,7 @@ void CBaseTurret::TurretDeath( void )
 	}
 }
 
-void CBaseTurret::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CBaseTurret::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	if( ptr->iHitgroup == 10 )
 	{
@@ -1007,7 +1005,7 @@ void CBaseTurret::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector ve
 	if( !pev->takedamage )
 		return;
 
-	AddMultiDamage( pevAttacker, this, flDamage, bitsDamageType );
+	AddMultiDamage( pevInflictor, pevAttacker, this, flDamage, bitsDamageType );
 }
 
 // take damage. bitsDamageType indicates type of damage sustained, ie: DMG_BULLET
@@ -1038,7 +1036,7 @@ int CBaseTurret::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 
 		SetUse( NULL );
 		SetThink( &CBaseTurret::TurretDeath );
-		SUB_UseTargets( this, USE_ON, 0 ); // wake up others
+		SUB_UseTargets( this, USE_ON ); // wake up others
 		pev->nextthink = gpGlobals->time + 0.1f;
 
 		return 0;
@@ -1206,9 +1204,8 @@ void CSentry::Spawn()
 	SetMyHealth( gSkillData.sentryHealth );
 	m_HackedGunPos = Vector( 0, 0, 48 );
 	pev->view_ofs.z = 48;
-#if !FEATURE_SENTRY_TURRET_RETRACTS
-	m_flMaxWait = 1E6;
-#endif
+	if (!g_modFeatures.sentry_retract)
+		m_flMaxWait = 1E6;
 	m_flMaxSpin = 1E6;
 
 	CBaseTurret::Spawn();
@@ -1266,7 +1263,7 @@ int CSentry::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 
 		SetUse( NULL );
 		SetThink( &CSentry::SentryDeath );
-		SUB_UseTargets( this, USE_ON, 0 ); // wake up others
+		SUB_UseTargets( this, USE_ON ); // wake up others
 		pev->nextthink = gpGlobals->time + 0.1f;
 
 		return 0;

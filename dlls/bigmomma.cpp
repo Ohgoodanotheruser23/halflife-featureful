@@ -182,7 +182,7 @@ public:
 	void StartTask( Task_t *pTask );
 	Schedule_t *GetSchedule( void );
 	Schedule_t *GetScheduleOfType( int Type );
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 
 	void NodeStart(string_t iszNextNode );
 	void NodeReach( void );
@@ -535,7 +535,7 @@ void CBigMomma::HandleAnimEvent( MonsterEvent_t *pEvent )
 			{
 				CBaseEntity *pTarget = m_hTargetEnt;
 				if( pTarget && pTarget->pev->message )
-					FireTargets( STRING( pTarget->pev->message ), this, this, USE_TOGGLE, 0 );
+					FireTargets( STRING( pTarget->pev->message ), this, this );
 				Remember( bits_MEMORY_FIRED_NODE );
 			}
 			break;
@@ -545,7 +545,7 @@ void CBigMomma::HandleAnimEvent( MonsterEvent_t *pEvent )
 	}
 }
 
-void CBigMomma::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CBigMomma::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	if( ptr->iHitgroup != 1 )
 	{
@@ -564,7 +564,7 @@ void CBigMomma::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecD
 		EMIT_SOUND_ARRAY_DYN( CHAN_VOICE, pPainSounds );
 	}
 
-	CBaseMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
+	CBaseMonster::TraceAttack( pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 }
 
 int CBigMomma::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
@@ -769,7 +769,7 @@ void CBigMomma::NodeReach( void )
 	if( !HasMemory( bits_MEMORY_FIRED_NODE ) )
 	{
 		if( pTarget->pev->message )
-			FireTargets( STRING( pTarget->pev->message ), this, this, USE_TOGGLE, 0 );
+			FireTargets( STRING( pTarget->pev->message ), this, this );
 	}
 	Forget( bits_MEMORY_FIRED_NODE );
 
@@ -979,11 +979,21 @@ void CBigMomma::StartTask( Task_t *pTask )
 		TaskComplete();
 		break;
 	case TASK_WAIT_NODE:
-		m_flWaitFinished = gpGlobals->time + GetNodeDelay();
+	{
+		const float delay = GetNodeDelay();
+		if (g_modFeatures.bigmomma_wait_fix)
+		{
+			m_flWaitFinished = gpGlobals->time + delay;
+			if (delay > 0)
+				Stop();
+		}
+		else
+			m_flWait = gpGlobals->time + delay;
 		if( m_hTargetEnt->pev->spawnflags & SF_INFOBM_WAIT )
 			ALERT( at_aiconsole, "BM: Wait at node %s forever\n", STRING( pev->netname ) );
 		else
-			ALERT( at_aiconsole, "BM: Wait at node %s for %.2f\n", STRING( pev->netname ), (double)GetNodeDelay() );
+			ALERT( at_aiconsole, "BM: Wait at node %s for %.2f\n", STRING( pev->netname ), delay );
+	}
 		break;
 
 

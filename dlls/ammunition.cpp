@@ -11,12 +11,31 @@
 void CBasePlayerAmmo::Spawn( void )
 {
 	Precache();
-	SET_MODEL( ENT( pev ), MyModel() );
+	SET_MODEL( ENT( pev ), pev->model ? STRING(pev->model) : MyModel() );
 
-	pev->movetype = MOVETYPE_TOSS;
+	if (pev->movetype < 0)
+		pev->movetype = MOVETYPE_NONE;
+	else if (pev->movetype == 0)
+		pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 
-	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
+	const bool comesFromBreakable = pev->owner != NULL;
+	if (!comesFromBreakable && ItemsPhysicsFix() == 2)
+	{
+		pev->solid = SOLID_BBOX;
+		SetThink( &CPickup::FallThink );
+		pev->nextthink = gpGlobals->time + 0.1f;
+		SetBits(pev->spawnflags, SF_ITEM_FIX_PHYSICS);
+	}
+	if (ItemsPhysicsFix() == 3)
+	{
+		SetBits(pev->spawnflags, SF_ITEM_FIX_PHYSICS);
+	}
+
+	if (FBitSet(pev->spawnflags, SF_ITEM_FIX_PHYSICS))
+		UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
+	else
+		UTIL_SetSize( pev, Vector( -16, -16, 0 ), Vector( 16, 16, 16 ) );
 	UTIL_SetOrigin( pev, pev->origin );
 
 	SetTouch( &CBasePlayerAmmo::DefaultTouch );
@@ -24,7 +43,7 @@ void CBasePlayerAmmo::Spawn( void )
 
 void CBasePlayerAmmo::Precache()
 {
-	PRECACHE_MODEL( MyModel() );
+	PRECACHE_MODEL( pev->model ? STRING(pev->model) : MyModel() );
 	PRECACHE_SOUND( AMMO_PICKUP_SOUND );
 }
 
@@ -75,6 +94,8 @@ void CBasePlayerAmmo::TouchOrUse( CBaseEntity *pOther )
 
 	if( AddAmmo( pOther ) )
 	{
+		SUB_UseTargets( pOther );
+
 		if( g_pGameRules->AmmoShouldRespawn( this ) == GR_AMMO_RESPAWN_YES )
 		{
 			Respawn();
@@ -284,6 +305,9 @@ LINK_ENTITY_TO_CLASS( ammo_gaussclip, CGaussAmmo )
 #if FEATURE_SNIPERRIFLE
 class CSniperrifleAmmo : public CBasePlayerAmmo
 {
+	bool IsEnabledInMod() {
+		return g_modFeatures.IsWeaponEnabled(WEAPON_SNIPERRIFLE);
+	}
 	const char* MyModel() {
 		return "models/w_m40a1clip.mdl";
 	}
@@ -300,6 +324,9 @@ LINK_ENTITY_TO_CLASS( ammo_762, CSniperrifleAmmo )
 #if FEATURE_M249
 class CM249AmmoClip : public CBasePlayerAmmo
 {
+	bool IsEnabledInMod() {
+		return g_modFeatures.IsWeaponEnabled(WEAPON_M249);
+	}
 	const char* MyModel() {
 		return "models/w_saw_clip.mdl";
 	}

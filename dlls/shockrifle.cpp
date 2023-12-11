@@ -18,12 +18,12 @@
 #include "cbase.h"
 #include "monsters.h"
 #include "weapons.h"
-#include "nodes.h"
 #include "player.h"
 #include "gamerules.h"
 #include "mod_features.h"
 #ifndef CLIENT_DLL
 #include "shockbeam.h"
+#include "game.h"
 #endif
 
 #if FEATURE_SHOCKRIFLE
@@ -40,6 +40,10 @@ void CShockrifle::Spawn()
 	m_iFirePhase = 0;
 
 	FallInit();// get ready to fall down.
+
+	pev->sequence = 0;
+	pev->animtime = gpGlobals->time;
+	pev->framerate = 1.0f;
 }
 
 
@@ -61,6 +65,15 @@ void CShockrifle::Precache(void)
 	m_usShockFire = PRECACHE_EVENT(1, "events/shock.sc");
 
 	UTIL_PrecacheOther("shock_beam");
+}
+
+bool CShockrifle::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_SHOCKRIFLE);
+#else
+	return true;
+#endif
 }
 
 int CShockrifle::AddToPlayer(CBasePlayer *pPlayer)
@@ -99,7 +112,7 @@ int CShockrifle::GetItemInfo(ItemInfo *p)
 	p->iSlot = 3;
 	p->iPosition = 4;
 #endif
-	p->iId = m_iId = WEAPON_SHOCKRIFLE;
+	p->iId = WEAPON_SHOCKRIFLE;
 	p->iFlags = ITEM_FLAG_NOAUTOSWITCHEMPTY | ITEM_FLAG_NOAUTORELOAD;
 	p->iWeight = HORNETGUN_WEIGHT;
 	p->pszAmmoEntity = NULL;
@@ -216,7 +229,7 @@ void CShockrifle::Reload(void)
 
 	while (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] < SHOCK_MAX_CARRY && m_flRechargeTime < gpGlobals->time)
 	{
-		EMIT_SOUND(ENT(m_pPlayer->pev), CHAN_ITEM, "weapons/shock_recharge.wav", 1, ATTN_NORM);
+		EMIT_SOUND(ENT(m_pPlayer->pev), CHAN_WEAPON, "weapons/shock_recharge.wav", 1, ATTN_NORM);
 
 		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]++;
 #ifndef CLIENT_DLL

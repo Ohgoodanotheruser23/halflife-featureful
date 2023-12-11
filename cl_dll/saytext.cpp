@@ -100,10 +100,11 @@ int CHudSayText::Draw( float flTime )
 	int y = Y_START;
 
 #if USE_VGUI
-	if( ( gViewPort && gViewPort->AllowedToPrintText() == FALSE ) || !m_HUD_saytext->value )
+	if( ( gViewPort && gViewPort->AllowedToPrintText() == FALSE ) )
 		return 1;
 #endif
-
+	if ( !m_HUD_saytext->value )
+		return 1;
 
 	// make sure the scrolltime is within reasonable bounds,  to guard against the clock being reset
 	flScrollTime = Q_min( flScrollTime, flTime + m_HUD_saytext_time->value );
@@ -135,7 +136,7 @@ int CHudSayText::Draw( float flTime )
 				// draw the first x characters in the player color
 				strncpy( buf, g_szLineBuffer[i], Q_min(g_iNameLengths[i], MAX_PLAYER_NAME_LENGTH + 31 ) );
 				buf[Q_min( g_iNameLengths[i], MAX_PLAYER_NAME_LENGTH + 31 )] = 0;
-				DrawSetTextColor( g_pflNameColors[i][0], g_pflNameColors[i][1], g_pflNameColors[i][2] );
+				gEngfuncs.pfnDrawSetTextColor( g_pflNameColors[i][0], g_pflNameColors[i][1], g_pflNameColors[i][2] );
 				int x = DrawConsoleString( LINE_START, y, buf );
 
 				// color is reset after each string draw
@@ -173,8 +174,6 @@ void CHudSayText::SayTextPrint( const char *pszBuf, int iBufSize, int clientInde
 		ConsolePrint( pszBuf );
 		return;
 	}
-#else
-	ConsolePrint( pszBuf );
 #endif
 
 	int i;

@@ -23,8 +23,13 @@
 #include "soundent.h"
 #include "effects.h"
 #include "customentity.h"
+#ifndef CLIENT_DLL
+#include "game.h"
+#endif
 
 #if FEATURE_GRAPPLE
+
+void FindHullIntersection(const Vector &vecSrc, TraceResult &tr, float *mins, float *maxs, edict_t *pEntity);
 
 #ifndef CLIENT_DLL
 #include "grapple_tonguetip.h"
@@ -271,6 +276,15 @@ void CBarnacleGrapple::Spawn( void )
 	FallInit();
 }
 
+bool CBarnacleGrapple::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_GRAPPLE);
+#else
+	return true;
+#endif
+}
+
 int CBarnacleGrapple::GetItemInfo(ItemInfo *p)
 {
 	p->pszName = STRING(pev->classname);
@@ -281,7 +295,7 @@ int CBarnacleGrapple::GetItemInfo(ItemInfo *p)
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 0;
 	p->iPosition = 3;
-	p->iId = m_iId = WEAPON_GRAPPLE;
+	p->iId = WEAPON_GRAPPLE;
 	p->iWeight = GRAPPLE_WEIGHT;
 	p->pszAmmoEntity = NULL;
 	p->iDropAmmo = 0;
@@ -418,8 +432,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 				if( m_pTip->GetGrappleType() != GRAPPLE_FIXED )
 					UTIL_SetOrigin( m_pTip->pev, pTarget->Center() );
 
-				m_pPlayer->pev->velocity =
-					m_pPlayer->pev->velocity + ( m_pTip->pev->origin - m_pPlayer->pev->origin );
+				m_pPlayer->pev->velocity = m_pPlayer->pev->velocity + ( m_pTip->pev->origin - m_pPlayer->pev->origin );
 
 				if( m_pPlayer->pev->velocity.Length() > 450.0 )
 				{
@@ -438,6 +451,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 							EMIT_SOUND_DYN(  ENT( m_pPlayer->pev ), CHAN_WEAPON, "weapons/bgrapple_pull.wav", 0.98, ATTN_NORM, 0, 125 );
 						m_bGrappling = TRUE;
 						m_pPlayer->m_afPhysicsFlags |= PFLAG_LATCHING;
+						m_pPlayer->SetAnimation(PLAYER_GRAPPLE);
 					}
 				}
 				else
@@ -525,26 +539,17 @@ void CBarnacleGrapple::PrimaryAttack( void )
 			UTIL_TraceHull( vecSrc, vecEnd, dont_ignore_monsters, head_hull, m_pPlayer->edict(), &tr );
 			if( tr.flFraction < 1.0 )
 			{
-				CBaseEntity* pHit = Instance( tr.pHit );
-/*
-				if( !pHit )
-					pHit = CWorld::GetInstance();
-
-				if( !pHit )
+				if (!tr.pHit || FNullEnt(tr.pHit) || ((CBaseEntity*)GET_PRIVATE(tr.pHit))->IsBSPModel())
 				{
-					FindHullIntersection( vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer );
+					FindHullIntersection( vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer->edict() );
 				}
-*/
 			}
 		}
 
 		if( tr.flFraction < 1.0 )
 		{
 			CBaseEntity* pHit = Instance( tr.pHit );
-/*
-			if( !pHit )
-				pHit = CWorld::GetInstance();
-*/
+
 			m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
 
 			if( pHit )
@@ -577,7 +582,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 								flDamage *= 2;
 							}
 
-							pHit->TraceAttack( m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB );
+							pHit->TraceAttack( m_pPlayer->pev, m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB );
 
 							ApplyMultiDamage( m_pPlayer->pev, m_pPlayer->pev );
 #endif
@@ -611,7 +616,7 @@ void CBarnacleGrapple::PrimaryAttack( void )
 	else
 	*/
 	{
-		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.1;
+		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.01;
 	}
 }
 

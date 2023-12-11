@@ -37,9 +37,9 @@
 #define SF_MONSTERMAKER_WAIT_FOR_SCRIPT 128 // TODO: implement
 #define SF_MONSTERMAKER_PREDISASTER 256
 #define SF_MONSTERMAKER_DONT_DROP_GUN 1024 // Spawn monster won't drop gun upon death
-#define SF_MONSTERMAKER_NO_GROUND_CHECK 2048 // don't check if something on ground prevents a monster to fall on spawn
 #define SF_MONSTERMAKER_ALIGN_TO_PLAYER 4096 // Align to closest player on spawn
 #define SF_MONSTERMAKER_WAIT_UNTIL_PROVOKED 8192
+#define SF_MONSTERMAKER_NO_GROUND_CHECK		( 1 << 14 ) // don't check if something on ground prevents a monster to fall on spawn
 #define SF_MONSTERMAKER_SPECIAL_FLAG		( 1 << 15 )
 #define SF_MONSTERMAKER_NONSOLID_CORPSE		( 1 << 16 )
 #define SF_MONSTERMAKER_IGNORE_PLAYER_PUSHING ( 1 << 19 )
@@ -70,6 +70,7 @@ class CMonsterMaker : public CBaseMonster
 {
 public:
 	void Spawn( void );
+	bool CheckMonsterClassname();
 	void Precache( void );
 	void KeyValue( KeyValueData* pkvd);
 	void EXPORT ToggleUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
@@ -115,6 +116,7 @@ public:
 	Vector m_defaultMinHullSize;
 	Vector m_defaultMaxHullSize;
 
+	short m_followFailPolicy;
 	string_t m_iszUse;
 	string_t m_iszUnUse;
 	string_t m_iszDecline;
@@ -148,6 +150,7 @@ TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 	DEFINE_FIELD( CMonsterMaker, m_iMaxYawDeviation, FIELD_SHORT ),
 	DEFINE_FIELD( CMonsterMaker, m_defaultMinHullSize, FIELD_VECTOR ),
 	DEFINE_FIELD( CMonsterMaker, m_defaultMaxHullSize, FIELD_VECTOR ),
+	DEFINE_FIELD( CMonsterMaker, m_followFailPolicy, FIELD_SHORT ),
 	DEFINE_FIELD( CMonsterMaker, m_iszUse, FIELD_STRING ),
 	DEFINE_FIELD( CMonsterMaker, m_iszUnUse, FIELD_STRING ),
 	DEFINE_FIELD( CMonsterMaker, m_iszDecline, FIELD_STRING ),
@@ -239,6 +242,11 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 		m_iMaxYawDeviation = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq( pkvd->szKeyName, "followfailpolicy" ) )
+	{
+		m_followFailPolicy = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else if( FStrEq( pkvd->szKeyName, "UseSentence" ) )
 	{
 		m_iszUse = ALLOC_STRING( pkvd->szValue );
@@ -327,6 +335,16 @@ void CMonsterMaker::Spawn()
 	m_flGround = 0;
 }
 
+bool CMonsterMaker::CheckMonsterClassname()
+{
+	if (FStringNull(m_iszMonsterClassname))
+	{
+		ALERT(at_error, "%s at (%g, %g, %g) has an empty monster classname!\n", STRING(pev->classname), pev->origin.x, pev->origin.y, pev->origin.z);
+		return false;
+	}
+	return true;
+}
+
 void CMonsterMaker::Precache( void )
 {
 	CBaseMonster::Precache();
@@ -336,7 +354,8 @@ void CMonsterMaker::Precache( void )
 	if (!FStringNull(m_gibModel))
 		PRECACHE_MODEL(STRING(m_gibModel));
 
-	UTIL_PrecacheMonster( STRING(m_iszMonsterClassname), m_reverseRelationship, &m_defaultMinHullSize, &m_defaultMaxHullSize );
+	if (CheckMonsterClassname())
+		UTIL_PrecacheMonster( STRING(m_iszMonsterClassname), m_reverseRelationship, &m_defaultMinHullSize, &m_defaultMaxHullSize );
 
 	UTIL_PrecacheOther("monstermaker_hull");
 }
@@ -469,7 +488,7 @@ int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &te
 			if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_AUTOSIZEBBOX))
 				maxs.z = pCandidate->pev->origin.z;
 
-			if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
+			if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK ))
 			{
 				mins.z = MakerGroundLevel(pCandidate->pev->origin, pev);
 			}
@@ -520,7 +539,7 @@ int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &te
 			}
 		}
 
-		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
+		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK ))
 		{
 			if( !m_flGround
 					|| !FStringNull(m_iszPlacePosition) ) // The position could change, so we need to calculate the new ground level.
@@ -535,7 +554,7 @@ int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &te
 
 		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_AUTOSIZEBBOX))
 			maxs.z = placePosition.z;
-		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
+		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK ))
 			mins.z = m_flGround;
 
 		CBaseEntity *pBlocker = MakerBlocker(mins, maxs);
@@ -582,6 +601,9 @@ int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &te
 
 CBaseEntity* CMonsterMaker::SpawnMonster(const Vector &placePosition, const Vector &placeAngles)
 {
+	if (!CheckMonsterClassname())
+		return 0;
+
 	edict_t *pent = CREATE_NAMED_ENTITY( m_iszMonsterClassname );
 	if( FNullEnt( pent ) )
 	{
@@ -661,30 +683,39 @@ CBaseEntity* CMonsterMaker::SpawnMonster(const Vector &placePosition, const Vect
 			deadMonster->m_iPose = m_iPose;
 		}
 
+		CFollowingMonster* pFollowingMonster = createdMonster->MyFollowingMonsterPointer();
+		if (pFollowingMonster)
+		{
+			pFollowingMonster->m_followFailPolicy = m_followFailPolicy;
+		}
+
 		CTalkMonster* pTalkMonster = createdMonster->MyTalkMonsterPointer();
 		if (pTalkMonster)
 		{
 			if (!FStringNull(m_iszUse))
 			{
 				pTalkMonster->m_iszUse = m_iszUse;
-				pTalkMonster->m_szGrp[TLK_USE] = CTalkMonster::GetRedefinedSentence(m_iszUse);
 			}
 
 			if (!FStringNull(m_iszUnUse))
 			{
 				pTalkMonster->m_iszUnUse = m_iszUnUse;
-				pTalkMonster->m_szGrp[TLK_UNUSE] = CTalkMonster::GetRedefinedSentence(m_iszUnUse);
 			}
 
 			if (!FStringNull(m_iszDecline))
 			{
 				pTalkMonster->m_iszDecline = m_iszDecline;
-				pTalkMonster->m_szGrp[TLK_DECLINE] = CTalkMonster::GetRedefinedSentence(m_iszDecline);
 			}
 		}
 	}
 
-	DispatchSpawn( ENT( pevCreate ) );
+	if (DispatchSpawn( ENT( pevCreate ) ) == -1)
+	{
+		ALERT( at_console, "Game rejected to spawn '%s' (probably not enabled)\n", STRING(m_iszMonsterClassname) );
+		REMOVE_ENTITY(ENT(pevCreate));
+		return 0;
+	}
+
 	pevCreate->owner = edict();
 	// Disable until proper investigation
 #if 0
@@ -735,7 +766,7 @@ CBaseEntity* CMonsterMaker::SpawnMonster(const Vector &placePosition, const Vect
 			break;
 		}
 		// delay already overloaded for this entity, so can't call SUB_UseTargets()
-		FireTargets( STRING( pev->target ), pActivator, this, USE_TOGGLE, 0 );
+		FireTargets( STRING( pev->target ), pActivator, this );
 	}
 
 	return CBaseEntity::Instance(pevCreate);

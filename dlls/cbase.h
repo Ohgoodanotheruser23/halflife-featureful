@@ -94,7 +94,8 @@ typedef enum
 	USE_TOGGLE = 3
 } USE_TYPE;
 
-extern void FireTargets( const char *targetName, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+const char* UseTypeToString(USE_TYPE useType);
+extern void FireTargets( const char *targetName, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType = USE_TOGGLE, float value = 0.0f );
 extern void KillTargets( const char *targetName );
 
 typedef void(CBaseEntity::*BASEPTR)( void );
@@ -134,8 +135,10 @@ class CBasePlayerWeapon;
 class CSquadMonster;
 
 #define SF_ITEM_TOUCH_ONLY 128
-#define SF_ITEM_USE_ONLY 256
+#define SF_ITEM_USE_ONLY 256 //  ITEM_USE_ONLY = BUTTON_USE_ONLY = DOOR_USE_ONLY!!!
 
+#define SF_ITEM_NOFALL ( 1 << 28 )
+#define SF_ITEM_FIX_PHYSICS ( 1 << 29 )
 #define	SF_NORESPAWN	( 1 << 30 )// !!!set this bit on guns and stuff that should never respawn.
 
 enum
@@ -227,6 +230,7 @@ public:
 	// initialization functions
 	virtual void Spawn( void ) { return; }
 	virtual void Precache( void ) { return; }
+	virtual bool IsEnabledInMod() { return true; }
 	virtual void KeyValue( KeyValueData* pkvd );
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -247,10 +251,11 @@ public:
 
 	static TYPEDESCRIPTION m_SaveData[];
 
-	virtual void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	virtual void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	void ApplyTraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	virtual int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	virtual int TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamageType );
+	virtual int TakeArmor( CBaseEntity* pCharger, float flArmor ) { return 0; }
 	virtual void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	virtual int BloodColor( void ) { return DONT_BLEED; }
 	virtual void TraceBleed( float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
@@ -329,7 +334,7 @@ public:
 
 	virtual CBaseEntity *Respawn( void ) { return NULL; }
 
-	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, float value );
+	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType = USE_TOGGLE, float value = 0.0f );
 	// Do the bounding boxes of these two intersect?
 	int Intersects( CBaseEntity *pOther );
 	void MakeDormant( void );
@@ -432,6 +437,9 @@ public:
 	virtual bool IsMachine() { return DefaultClassify() == CLASS_MACHINE; }
 	virtual float InputByMonster(CBaseMonster* pMonster) { return 0.0f; }
 	virtual NODE_LINKENT HandleLinkEnt(int afCapMask, bool nodeQueryStatic) { return NLE_PROHIBIT; }
+
+	virtual void SendMessages(CBaseEntity* pClient) {}
+	virtual bool HandleDoorBlockage(CBaseEntity* pDoor) { return false; }
 };
 
 // Ugly technique to override base member functions
@@ -529,7 +537,7 @@ public:
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
 	// common member functions
-	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, float value );
+	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType = USE_TOGGLE, float value = 0.0f );
 	static void DelayedUse(float delay, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, string_t target, string_t killTarget = iStringNull, float value = 0.0f );
 	void EXPORT DelayThink( void );
 };
@@ -574,7 +582,6 @@ public:
 //
 // generic Toggle entity.
 //
-#define	SF_ITEM_USE_ONLY	256 //  ITEM_USE_ONLY = BUTTON_USE_ONLY = DOOR_USE_ONLY!!! 
 
 class CBaseToggle : public CBaseAnimating
 {
@@ -765,6 +772,7 @@ public:
 	enum BUTTON_CODE { BUTTON_NOTHING, BUTTON_ACTIVATE, BUTTON_RETURN };
 	BUTTON_CODE ButtonResponseToTouch( void );
 	void OnLocked();
+	bool PrepareActivation(bool doActivationCheck);
 	bool IsSparkingButton();
 	USE_TYPE UseType(bool returning);
 	
@@ -882,6 +890,8 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	void KeyValue( KeyValueData *pkvd );
+
+	static int wallPuffsIndices[4];
 };
 
 extern CWorld *g_pWorld;

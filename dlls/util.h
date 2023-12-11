@@ -456,6 +456,8 @@ extern DLL_GLOBAL int			g_Language;
 #define SND_CHANGE_VOL		(1<<6)		// duplicated in protocol.h change sound vol
 #define SND_CHANGE_PITCH	(1<<7)		// duplicated in protocol.h change sound pitch
 
+#define SND_DONT_REPORT_MISSING (1 << 16) // game library level flag, not part of a protocol
+
 #define	LFO_SQUARE			1
 #define LFO_TRIANGLE		2
 #define LFO_RANDOM			3
@@ -500,18 +502,6 @@ extern DLL_GLOBAL int			g_Language;
 #define	SF_TRIGGER_NOCLIENTS		2// players not allowed to fire this trigger
 #define SF_TRIGGER_PUSHABLES		4// only pushables can fire this trigger
 #define SF_TRIGGER_EVERYTHING		8// can be triggered by anything else
-
-// func breakable
-#define SF_BREAK_TRIGGER_ONLY	1// may only be broken by trigger
-#define	SF_BREAK_TOUCH			2// can be 'crashed through' by running player (plate glass)
-#define SF_BREAK_PRESSURE		4// can be broken by a player standing on it
-#define SF_BREAK_CROWBAR		256// instant break if hit with crowbar
-#define SF_BREAK_EXPLOSIVES_ONLY		512// can be damaged only by DMG_BLAST
-#define SF_BREAK_OP4MORTAR_ONLY	1024 // can be damaged only by op4mortar rockets
-#define SF_BREAK_NOT_SOLID 2048 // breakable is not solid
-
-// func_pushable (it's also func_breakable, so don't collide with those flags)
-#define SF_PUSH_BREAKABLE		128
 
 #define SF_LIGHT_START_OFF		1
 

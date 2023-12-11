@@ -38,6 +38,10 @@
 #include "hltv.h"
 #include "talkmonster.h"
 
+#if FEATURE_ROPE
+#include "ropes.h"
+#endif
+
 // #define DUCKFIX
 
 extern DLL_GLOBAL ULONG g_ulModelIndexPlayer;
@@ -46,17 +50,12 @@ extern DLL_GLOBAL BOOL g_fDrawLines;
 int gEvilImpulse101;
 extern DLL_GLOBAL int g_iSkillLevel, gDisplayTitle;
 
-extern "C" int g_bhopcap;
-
 BOOL gInitHUD = TRUE;
 
 extern void CopyToBodyQue( entvars_t *pev);
 extern void respawn( entvars_t *pev, BOOL fCopyCorpse );
 extern Vector VecBModelOrigin( entvars_t *pevBModel );
 extern edict_t *EntSelectSpawnPoint( CBaseEntity *pPlayer );
-
-// the world node graph
-extern CGraph WorldGraph;
 
 #define TRAIN_ACTIVE		0x80
 #define TRAIN_NEW		0xc0
@@ -131,6 +130,8 @@ TYPEDESCRIPTION	CBasePlayer::m_playerSaveData[] =
 	DEFINE_FIELD(CBasePlayer, m_settingsLoaded, FIELD_BOOLEAN),
 	DEFINE_FIELD(CBasePlayer, m_buddha, FIELD_BOOLEAN),
 
+	DEFINE_FIELD(CBasePlayer, m_loopedMp3, FIELD_STRING),
+
 	//DEFINE_FIELD( CBasePlayer, m_fDeadTime, FIELD_FLOAT ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_fGameHUDInitialized, FIELD_INTEGER ), // only used in multiplayer games
 	//DEFINE_FIELD( CBasePlayer, m_flStopExtraSoundTime, FIELD_TIME ),
@@ -168,6 +169,7 @@ int gmsgFlashBattery = 0;
 int gmsgResetHUD = 0;
 int gmsgInitHUD = 0;
 int gmsgSetFog = 0;
+int gmsgKeyedDLight = 0;
 int gmsgShowGameTitle = 0;
 int gmsgCurWeapon = 0;
 int gmsgHealth = 0;
@@ -196,16 +198,19 @@ int gmsgSetFOV = 0;
 int gmsgShowMenu = 0;
 int gmsgGeigerRange = 0;
 int gmsgTeamNames = 0;
-int gmsgBhopcap = 0;
 int gmsgPlayMP3 = 0;
 int gmsgItems = 0;
-int gmsgHUDColor = 0;
+int gmsgWallPuffs = 0;
 
 int gmsgStatusText = 0;
 int gmsgStatusValue = 0;
 
 int gmsgRandomGibs = 0;
 int gmsgMuzzleLight = 0;
+int gmsgCustomBeam = 0;
+int gmsgSpriteTrail = 0;
+int gmsgStreaks = 0;
+int gmsgSmoke = 0;
 
 #if FEATURE_NIGHTVISION
 int gmsgNightvision = 0;
@@ -242,7 +247,8 @@ void LinkUserMessages( void )
 	gmsgResetHUD = REG_USER_MSG( "ResetHUD", 1 );		// called every respawn
 	gmsgInitHUD = REG_USER_MSG( "InitHUD", 0 );		// called every time a new player joins the server
 
-	gmsgSetFog = REG_USER_MSG("SetFog", 9 );
+	gmsgSetFog = REG_USER_MSG("SetFog", 15 );
+	gmsgKeyedDLight = REG_USER_MSG("KeyedDLight", -1 );
 
 	gmsgShowGameTitle = REG_USER_MSG( "GameTitle", 1 );
 	gmsgDeathMsg = REG_USER_MSG( "DeathMsg", -1 );
@@ -262,16 +268,19 @@ void LinkUserMessages( void )
 	gmsgFade = REG_USER_MSG( "ScreenFade", sizeof(ScreenFade) );
 	gmsgAmmoX = REG_USER_MSG( "AmmoX", 2 );
 	gmsgTeamNames = REG_USER_MSG( "TeamNames", -1 );
-	gmsgBhopcap = REG_USER_MSG( "Bhopcap", 1 );
 	gmsgPlayMP3 = REG_USER_MSG( "PlayMP3", -1 );
 	gmsgItems = REG_USER_MSG( "Items", 4 );
-	gmsgHUDColor = REG_USER_MSG( "HUDColor", 4 );
+	gmsgWallPuffs = REG_USER_MSG( "WallPuffs", 8 );
 
 	gmsgStatusText = REG_USER_MSG( "StatusText", -1 );
 	gmsgStatusValue = REG_USER_MSG( "StatusValue", 3 );
 
 	gmsgRandomGibs = REG_USER_MSG( "RandomGibs", 27 );
 	gmsgMuzzleLight = REG_USER_MSG( "MuzzleLight", 6 );
+	gmsgCustomBeam = REG_USER_MSG( "CustomBeam", -1 );
+	gmsgSpriteTrail = REG_USER_MSG( "SpriteTrail", 24 );
+	gmsgStreaks = REG_USER_MSG( "Streaks", 23 );
+	gmsgSmoke = REG_USER_MSG( "Smoke", -1 );
 
 #if FEATURE_NIGHTVISION
 	gmsgNightvision = REG_USER_MSG( "Nightvision", 1 );
@@ -441,6 +450,17 @@ int CBasePlayer::TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamag
 	return healed;
 }
 
+int CBasePlayer::TakeArmor(CBaseEntity *pCharger, float flArmor)
+{
+	if (pev->armorvalue >= MAX_NORMAL_BATTERY)
+		return false;
+	pev->armorvalue += flArmor;
+	pev->armorvalue = Q_min( pev->armorvalue, MAX_NORMAL_BATTERY );
+	if (pev->armorvalue < 0)
+		pev->armorvalue = 0;
+	return true;
+}
+
 Vector CBasePlayer::GetGunPosition()
 {
 	//UTIL_MakeVectors( pev->v_angle );
@@ -455,7 +475,7 @@ Vector CBasePlayer::GetGunPosition()
 //=========================================================
 // TraceAttack
 //=========================================================
-void CBasePlayer::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CBasePlayer::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	if( pev->takedamage )
 	{
@@ -488,7 +508,7 @@ void CBasePlayer::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector ve
 
 		SpawnBlood( ptr->vecEndPos, BloodColor(), flDamage );// a little surface blood.
 		TraceBleed( flDamage, vecDir, ptr, bitsDamageType );
-		AddMultiDamage( pevAttacker, this, flDamage, bitsDamageType );
+		AddMultiDamage( pevInflictor, pevAttacker, this, flDamage, bitsDamageType );
 	}
 }
 
@@ -718,7 +738,8 @@ int CBasePlayer::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 		}
 	}
 
-	pev->punchangle.x = -2;
+	if (!FBitSet(bitsDamageType, DMG_NO_PUNCH))
+		pev->punchangle.x = -2;
 
 	if( fTookDamage && !ftrivial && fmajor && flHealthPrev >= 75 )
 	{
@@ -955,21 +976,18 @@ void CBasePlayer::RemoveAllItems( int stripFlags )
 	pev->viewmodel = 0;
 	pev->weaponmodel = 0;
 
-	if (FBitSet(stripFlags, STRIP_FLASHLIGHT) || !FBitSet(stripFlags, STRIP_DONT_TURNOFF_FLASHLIGHT)) {
-		FlashlightTurnOff(false);
+	if (FBitSet(stripFlags, STRIP_SUITLIGHT) || !FBitSet(stripFlags, STRIP_DONT_TURNOFF_FLASHLIGHT)) {
+		SuitLightTurnOff(false);
 	}
 
 	pev->weapons = 0;
 	if( FBitSet(stripFlags, STRIP_SUIT) )
 		m_iItemsBits &= ~PLAYER_ITEM_SUIT;
-#if FEATURE_FLASHLIGHT_ITEM
-	if ( FBitSet(stripFlags, STRIP_FLASHLIGHT) )
-		m_iItemsBits &= ~PLAYER_ITEM_FLASHLIGHT;
-#endif
+	if ( FBitSet(stripFlags, STRIP_SUITLIGHT) )
+		RemoveSuitLight();
 
 	if (FBitSet(stripFlags, STRIP_LONGJUMP)) {
-		m_fLongJump = FALSE;
-		g_engfuncs.pfnSetPhysicsKeyValue( edict(), "slj", "0" );
+		SetLongjump(false);
 	}
 
 	for( i = 0; i < MAX_AMMO_SLOTS; i++ )
@@ -1120,13 +1138,7 @@ void CBasePlayer::SetAnimation( PLAYER_ANIM playerAnim )
 		break;
 	case PLAYER_IDLE:
 	case PLAYER_WALK:
-		if( ( m_afPhysicsFlags & PFLAG_LATCHING ) && ( pev->velocity.Length() > 100 ) )
-		{
-			ASSERT( ( m_pActiveItem && FClassnameIs( m_pActiveItem->pev, "weapon_grapple" ) ) == TRUE );
-
-			m_IdealActivity = ACT_SWIM;
-		}
-		else if( !FBitSet( pev->flags, FL_ONGROUND ) && ( m_Activity == ACT_HOP || m_Activity == ACT_LEAP ) )	// Still jumping
+		if( !FBitSet( pev->flags, FL_ONGROUND ) && ( m_Activity == ACT_HOP || m_Activity == ACT_LEAP ) )	// Still jumping
 		{
 			m_IdealActivity = m_Activity;
 		}
@@ -1140,6 +1152,32 @@ void CBasePlayer::SetAnimation( PLAYER_ANIM playerAnim )
 		else
 		{
 			m_IdealActivity = ACT_WALK;
+		}
+		break;
+	case PLAYER_GRAPPLE:
+		{
+			if (FBitSet(pev->flags, FL_ONGROUND))
+			{
+				if (pev->waterlevel > 1)
+				{
+					if (speed == 0)
+						m_IdealActivity = ACT_HOVER;
+					else
+						m_IdealActivity = ACT_SWIM;
+				}
+				else
+				{
+					m_IdealActivity = ACT_WALK;
+				}
+			}
+			else if (speed == 0)
+			{
+				m_IdealActivity = ACT_HOVER;
+			}
+			else
+			{
+				m_IdealActivity = ACT_SWIM;
+			}
 		}
 		break;
 	}
@@ -1999,7 +2037,7 @@ void CBasePlayer::UpdateStatusBar()
 		CBaseMonster* pMonster = pEntity->MyMonsterPointer();
 		if (pMonster && pMonster->IsAlive() && pMonster->m_IdealMonsterState != MONSTERSTATE_DEAD && g_pGameRules->IsMultiplayer()) {
 			const int entityIndex = ENTINDEX( pEntity->edict() );
-			int health = (int)pEntity->pev->health;
+			int health = (int)ceil(pEntity->pev->health);
 			if (health < 0) {
 				health = 0;
 			}
@@ -2054,7 +2092,7 @@ void CBasePlayer::UpdateStatusBar()
 							displayName = className;
 					}
 
-					sprintf(buf, "%s\nHealth: %d/%d", displayName, health, (int)pEntity->pev->max_health);
+					sprintf(buf, "%s\nHealth: %d/%d", displayName, health, (int)ceil(pEntity->pev->max_health));
 					if (displayName == className + 8) {
 						buf[0] = toupper(buf[0]); //Capitalize monster name
 						char* str = buf;
@@ -2507,28 +2545,6 @@ void CBasePlayer::LetGoRope(float delay)
 		m_pRope = NULL;
 	}
 	m_bIsClimbing = false;
-
-//	TraceResult trace;
-//	UTIL_TraceHull( pev->origin, pev->origin, ignore_monsters, human_hull, edict(), &trace );
-//	if( trace.fStartSolid )
-//	{
-//		ALERT(at_aiconsole, "Player stuck. Trying to unstuck downwards\n");
-//		const float originZ = pev->origin.z;
-
-//		int i;
-//		for( i = 0; i < 8; i++ )
-//		{
-//			pev->origin.z -= 4;
-//			UTIL_TraceHull( pev->origin, pev->origin, ignore_monsters, human_hull, edict(), &trace );
-//			if( !trace.fStartSolid )
-//				break;
-//		}
-
-//		if (trace.fStartSolid)
-//		{
-//			pev->origin.z = originZ;
-//		}
-//	}
 }
 
 bool CBasePlayer::SetClosestOriginOnRope(const Vector &vecPos)
@@ -2868,9 +2884,8 @@ void CBasePlayer::CheckSuitUpdate()
 	// if in range of radiation source, ping geiger counter
 	UpdateGeigerCounter();
 
-#if FEATURE_SUIT_NO_SOUNDS
-	return;
-#endif
+	if (!g_modFeatures.suit_sentences)
+		return;
 
 	if( g_pGameRules->IsMultiplayer() )
 	{
@@ -2930,9 +2945,8 @@ void CBasePlayer::SetSuitUpdate( const char *name, int fgroup, int iNoRepeatTime
 	if( !HasSuit() )
 		return;
 
-#if FEATURE_SUIT_NO_SOUNDS
-	return;
-#endif
+	if (!g_modFeatures.suit_sentences)
+		return;
 
 	if( g_pGameRules->IsMultiplayer() )
 	{
@@ -3460,6 +3474,8 @@ void CBasePlayer::Spawn( void )
 
 	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "slj", "0" );
 	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "hl", "1" );
+	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "fr", "1" );
+	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "bj", bhopcap.value ? "0" : "1" );
 
 	pev->fov = m_iFOV = 0;// init field of view.
 	m_iClientFOV = -1; // make sure fov reset is sent
@@ -3857,9 +3873,14 @@ void CBasePlayer::GiveNamedItem(const char *pszName , int spawnFlags)
 	pent->v.spawnflags |= SF_NORESPAWN;
 	pent->v.spawnflags |= spawnFlags;
 
-	DispatchSpawn( pent );
+	if ( DispatchSpawn( pent ) == -1 )
+	{
+		ALERT( at_console, "Game rejected to spawn '%s' (probably not enabled)\n", pszName );
+		REMOVE_ENTITY(pent);
+		return;
+	}
 
-	if (NeedUseToTake()) {
+	if (ItemsPickableByUse()) {
 		CBaseEntity* entity = (CBaseEntity *)GET_PRIVATE( pent );
 		if (entity) {
 			entity->Use(this, this, USE_TOGGLE, 0.0f);
@@ -3883,81 +3904,126 @@ CBaseEntity *FindEntityForward( CBaseEntity *pMe )
 	return NULL;
 }
 
-BOOL CBasePlayer::FlashlightIsOn( void )
+void CBasePlayer::SuitLightTurnOn( void )
 {
-#if FEATURE_NIGHTVISION
-	return m_fNVGisON;
-#else
-	return FBitSet( pev->effects, EF_DIMLIGHT );
-#endif
+	if (HasFlashlight())
+	{
+		FlashlightTurnOn();
+	}
+	else if (HasNVG())
+	{
+		NVGTurnOn();
+	}
 }
 
-void CBasePlayer::FlashlightTurnOn( void )
+void CBasePlayer::SuitLightTurnOff( bool playOffSound )
 {
-	if( !g_pGameRules->FAllowFlashlight() )
+	NVGTurnOff( playOffSound );
+	FlashlightTurnOff( playOffSound );
+}
+
+void CBasePlayer::UpdateSuitLightBattery(bool on)
+{
+	MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
+		WRITE_BYTE( on ? 1 : 0 );
+		WRITE_BYTE( m_iFlashBattery );
+	MESSAGE_END();
+
+	m_flFlashLightTime = gSkillData.flashlightDrainTime/100 + gpGlobals->time;
+}
+
+void CBasePlayer::FlashlightToggle()
+{
+	if (FlashlightIsOn())
+	{
+		FlashlightTurnOff();
+	}
+	else
+	{
+		FlashlightTurnOn();
+	}
+}
+
+void CBasePlayer::FlashlightTurnOn()
+{
+	if( !HasFlashlight() || !g_pGameRules->FAllowFlashlight() )
 	{
 		return;
 	}
 
-	bool hasFlashlight = false;
-#if FEATURE_FLASHLIGHT_ITEM
-	hasFlashlight = hasFlashlight || HasFlashlight();
-#endif
-#if FEATURE_SUIT_FLASHLIGHT
-	hasFlashlight = hasFlashlight || HasSuit();
-#endif
-	if( hasFlashlight )
+	if (!FlashlightIsOn())
 	{
 		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_ON, 1.0, ATTN_NORM, 0, PITCH_NORM );
-#if FEATURE_NIGHTVISION
-		m_fNVGisON = TRUE;
-#if FEATURE_OPFOR_NIGHTVISION_BRIGHTLIGHT
-		SetBits( pev->effects, EF_BRIGHTLIGHT );
-#endif
-#else
 		SetBits( pev->effects, EF_DIMLIGHT );
-#endif
-		MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
-			WRITE_BYTE( 1 );
-			WRITE_BYTE( m_iFlashBattery );
-		MESSAGE_END();
 
-#if FEATURE_NIGHTVISION
-		// Send Nightvision On message.
-		MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
-			WRITE_BYTE( 1 );
-		MESSAGE_END();
-#endif
-
-		m_flFlashLightTime = gSkillData.flashlightDrainTime/100 + gpGlobals->time;
+		NVGTurnOff(false);
+		UpdateSuitLightBattery(true);
 	}
 }
 
 void CBasePlayer::FlashlightTurnOff( bool playOffSound )
 {
-	if (playOffSound)
-		EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_OFF, 1.0, ATTN_NORM, 0, PITCH_NORM );
-#if FEATURE_NIGHTVISION
-	m_fNVGisON = FALSE;
-#if FEATURE_OPFOR_NIGHTVISION_BRIGHTLIGHT
-	ClearBits( pev->effects, EF_BRIGHTLIGHT );
-#endif
-#else
-	ClearBits( pev->effects, EF_DIMLIGHT );
-#endif
-	MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
-		WRITE_BYTE( 0 );
-		WRITE_BYTE( m_iFlashBattery );
-	MESSAGE_END();
+	if (FlashlightIsOn())
+	{
+		if (playOffSound)
+			EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, SOUND_FLASHLIGHT_OFF, 1.0, ATTN_NORM, 0, PITCH_NORM );
 
-#if FEATURE_NIGHTVISION
-	// Send Nightvision Off message.
-	MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
-		WRITE_BYTE( 0 );
-	MESSAGE_END();
-#endif
+		ClearBits( pev->effects, EF_DIMLIGHT );
+		UpdateSuitLightBattery(false);
+	}
+}
 
-	m_flFlashLightTime = gSkillData.flashlightChargeTime/100 + gpGlobals->time;
+void CBasePlayer::NVGToggle()
+{
+	if (NVGIsOn())
+	{
+		NVGTurnOff();
+	}
+	else
+	{
+		NVGTurnOn();
+	}
+}
+
+void CBasePlayer::NVGTurnOn()
+{
+	if( !HasNVG() || !g_pGameRules->FAllowFlashlight() )
+	{
+		return;
+	}
+
+	if (!m_fNVGisON)
+	{
+		if (*g_modFeatures.nvg_sound_on)
+			EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, g_modFeatures.nvg_sound_on, 1.0, ATTN_NORM, 0, PITCH_NORM );
+
+		m_fNVGisON = TRUE;
+		MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
+			WRITE_BYTE( 1 );
+		MESSAGE_END();
+
+		FlashlightTurnOff(false);
+		UpdateSuitLightBattery(true);
+	}
+}
+
+void CBasePlayer::NVGTurnOff(bool playOffSound)
+{
+	if (m_fNVGisON)
+	{
+		if (playOffSound)
+		{
+			if (*g_modFeatures.nvg_sound_off)
+				EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, g_modFeatures.nvg_sound_off, 1.0, ATTN_NORM, 0, PITCH_NORM );
+		}
+
+		m_fNVGisON = FALSE;
+		MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
+			WRITE_BYTE( 0 );
+		MESSAGE_END();
+
+		UpdateSuitLightBattery(false);
+	}
 }
 
 /*
@@ -3980,7 +4046,6 @@ void CBasePlayer::ForceClientDllUpdate( void )
 	m_fWeapon = FALSE;          // Force weapon send
 	m_fKnownItem = FALSE;    // Force weaponinit messages.
 	m_fInitHUD = TRUE;		// Force HUD gmsgResetHUD message
-	m_bSentBhopcap = true; // a1ba: Update bhopcap state
 	memset( m_rgAmmoLast, 0, sizeof( m_rgAmmoLast )); // a1ba: Force update AmmoX
 
 
@@ -4030,14 +4095,20 @@ void CBasePlayer::ImpulseCommands()
 			gmsgLogo = 0;
 		break;
 	case 100:
-        // temporary flashlight for level designers
-		if( FlashlightIsOn() )
+		// temporary flashlight for level designers
+		if (HasNVG() && HasFlashlight()) // if player has both, this command effects flashlight
 		{
-			FlashlightTurnOff();
+			if( FlashlightIsOn() )
+				FlashlightTurnOff();
+			else
+				FlashlightTurnOn();
 		}
-		else 
+		else
 		{
-			FlashlightTurnOn();
+			if( SuitLightIsOn() )
+				SuitLightTurnOff();
+			else
+				SuitLightTurnOn();
 		}
 		break;
 	case 201:
@@ -4098,9 +4169,7 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 	case 101:
 		gEvilImpulse101 = TRUE;
 		GiveNamedItem( "item_suit", SF_ITEM_NOFALL );
-#if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
-		m_iItemsBits |= PLAYER_ITEM_FLASHLIGHT;
-#endif
+		SetDefaultLight();
 		GiveNamedItem( "item_battery", SF_ITEM_NOFALL );
 		GiveNamedItem( "weapon_crowbar" );
 		GiveNamedItem( "weapon_9mmhandgun" );
@@ -4125,43 +4194,61 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		GiveNamedItem( "weapon_snark" );
 		GiveNamedItem( "weapon_hornetgun" );
 #if FEATURE_MEDKIT
-		GiveNamedItem( "weapon_medkit" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_MEDKIT))
+			GiveNamedItem( "weapon_medkit" );
 #endif
 #if FEATURE_DESERT_EAGLE
-		GiveNamedItem( "weapon_eagle" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_EAGLE))
+			GiveNamedItem( "weapon_eagle" );
 #endif
 #if FEATURE_PIPEWRENCH
-		GiveNamedItem( "weapon_pipewrench" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_PIPEWRENCH))
+			GiveNamedItem( "weapon_pipewrench" );
 #endif
 #if FEATURE_GRAPPLE
-		GiveNamedItem( "weapon_grapple" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_GRAPPLE))
+			GiveNamedItem( "weapon_grapple" );
 #endif
 #if FEATURE_M249
-		GiveNamedItem( "weapon_m249" );
-		GiveAmmo(AMMO_556CLIP_GIVE, "556");
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_M249))
+		{
+			GiveNamedItem( "weapon_m249" );
+			GiveAmmo(AMMO_556CLIP_GIVE, "556");
+		}
 #endif
 #if FEATURE_SNIPERRIFLE
-		GiveNamedItem( "weapon_sniperrifle" );
-		GiveAmmo( AMMO_762BOX_GIVE, "762");
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_SNIPERRIFLE))
+		{
+			GiveNamedItem( "weapon_sniperrifle" );
+			GiveAmmo( AMMO_762BOX_GIVE, "762");
+		}
 #endif
 #if FEATURE_DISPLACER
-		GiveNamedItem( "weapon_displacer" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_DISPLACER))
+			GiveNamedItem( "weapon_displacer" );
 #endif
 #if FEATURE_SHOCKRIFLE
-		GiveNamedItem( "weapon_shockrifle" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_SHOCKRIFLE))
+			GiveNamedItem( "weapon_shockrifle" );
 #endif
 #if FEATURE_SPORELAUNCHER
-		GiveNamedItem( "weapon_sporelauncher" );
-		GiveAmmo(5, "spores");
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_SPORELAUNCHER))
+		{
+			GiveNamedItem( "weapon_sporelauncher" );
+			GiveAmmo(5, "spores");
+		}
 #endif
 #if FEATURE_KNIFE
-		GiveNamedItem( "weapon_knife" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_KNIFE))
+			GiveNamedItem( "weapon_knife" );
 #endif
 #if FEATURE_PENGUIN
-		GiveNamedItem( "weapon_penguin" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_PENGUIN))
+			GiveNamedItem( "weapon_penguin" );
 #endif
 #if FEATURE_UZI
-		GiveNamedItem( "weapon_uzi" );
+		if (g_modFeatures.IsWeaponEnabled(WEAPON_UZI))
+			GiveNamedItem( "weapon_uzi" );
 #endif
 		gEvilImpulse101 = FALSE;
 		break;
@@ -4490,6 +4577,8 @@ void CBasePlayer::ItemPostFrame()
 	if( m_pTank != 0 )
 		return;
 
+	ImpulseCommands();
+
 #if CLIENT_WEAPONS
 	if( m_flNextAttack > 0 )
 #else
@@ -4498,8 +4587,6 @@ void CBasePlayer::ItemPostFrame()
 	{
 		return;
 	}
-
-	ImpulseCommands();
 
 	if( !m_pActiveItem )
 		return;
@@ -4592,24 +4679,26 @@ void CBasePlayer::UpdateClientData( void )
 
 			if( g_pGameRules->IsMultiplayer() )
 			{
-				FireTargets( "game_playerjoin", this, this, USE_TOGGLE, 0 );
+				FireTargets( "game_playerjoin", this, this );
 			}
 		}
 
-		FireTargets( "game_playerspawn", this, this, USE_TOGGLE, 0 );
+		if( g_pGameRules->IsMultiplayer() )
+			FireTargets( "game_playerspawn", this, this );
 
 		// Send flashlight status
 		MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
-			WRITE_BYTE( FlashlightIsOn() ? 1 : 0 );
+			WRITE_BYTE( SuitLightIsOn() ? 1 : 0 );
 			WRITE_BYTE( m_iFlashBattery );
 		MESSAGE_END();
 
-#if FEATURE_NIGHTVISION
-		// Send Nightvision Off message.
-		MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
-			WRITE_BYTE( FlashlightIsOn() ? 1 : 0 );
-		MESSAGE_END();
-#endif
+		if (HasNVG())
+		{
+			// Send Nightvision Off message.
+			MESSAGE_BEGIN( MSG_ONE, gmsgNightvision, NULL, pev );
+				WRITE_BYTE( NVGIsOn() ? 1 : 0 );
+			MESSAGE_END();
+		}
 
 		// Vit_amiN: the geiger state could run out of sync, too
 		MESSAGE_BEGIN( MSG_ONE, gmsgGeigerRange, NULL, pev );
@@ -4718,7 +4807,7 @@ void CBasePlayer::UpdateClientData( void )
 	// Update Flashlight
 	if( ( m_flFlashLightTime ) && ( m_flFlashLightTime <= gpGlobals->time ) )
 	{
-		if( FlashlightIsOn() )
+		if( SuitLightIsOn() )
 		{
 			if( m_iFlashBattery )
 			{
@@ -4726,7 +4815,7 @@ void CBasePlayer::UpdateClientData( void )
 				m_iFlashBattery--;
 
 				if( !m_iFlashBattery )
-					FlashlightTurnOff();
+					SuitLightTurnOff();
 			}
 		}
 		else
@@ -4837,13 +4926,44 @@ void CBasePlayer::UpdateClientData( void )
 		MESSAGE_END();
 	}
 
-	// Send the current bhopcap state.
-	if( !m_bSentBhopcap )
+	if (!m_bSentSpriteIndices)
 	{
-		m_bSentBhopcap = true;
-		MESSAGE_BEGIN( MSG_ONE, gmsgBhopcap, NULL, pev );
-			WRITE_BYTE( g_bhopcap );
+		MESSAGE_BEGIN( MSG_ONE, gmsgWallPuffs, NULL, pev );
+			WRITE_SHORT(CWorld::wallPuffsIndices[0]);
+			WRITE_SHORT(CWorld::wallPuffsIndices[1]);
+			WRITE_SHORT(CWorld::wallPuffsIndices[2]);
+			WRITE_SHORT(CWorld::wallPuffsIndices[3]);
 		MESSAGE_END();
+		m_bSentSpriteIndices = true;
+	}
+
+	if ( !m_bSentMessages && g_PlayerFullyInitialized[ENTINDEX(edict())-1] )
+	{
+		if (!FStringNull(m_loopedMp3) && gmsgPlayMP3)
+		{
+			MESSAGE_BEGIN( MSG_ONE, gmsgPlayMP3, NULL, pev );
+				WRITE_STRING( STRING( m_loopedMp3 ) );
+				WRITE_BYTE( 1 );
+			MESSAGE_END();
+		}
+
+		m_bSentMessages = true;
+
+		const int startingIndex = 1;
+		edict_t *pEdict = g_engfuncs.pfnPEntityOfEntOffset( 0 ) + startingIndex;
+		if (pEdict)
+		{
+			for( int i = startingIndex; i < gpGlobals->maxEntities; i++, pEdict++ )
+			{
+				if (FNullEnt(pEdict) || pEdict->free || FBitSet(pEdict->v.flags, FL_CLIENT | FL_KILLME) || FStringNull(pEdict->v.classname))
+					continue;
+				CBaseEntity* pEntity = CBaseEntity::Instance(pEdict);
+				if (pEntity)
+				{
+					pEntity->SendMessages(this);
+				}
+			}
+		}
 	}
 }
 
@@ -5227,6 +5347,9 @@ void CBasePlayer::DropPlayerItemById(int iId)
 
 void CBasePlayer::DropPlayerItemImpl(CBasePlayerWeapon *pWeapon, int dropType, float speed)
 {
+	if (!pWeapon->CanBeDropped())
+		return;
+
 	if (!g_pGameRules->GetNextBestWeapon( this, pWeapon ))
 		return;
 
@@ -5466,6 +5589,69 @@ CBasePlayerWeapon* CBasePlayer::WeaponById(int id)
 	return NULL;
 }
 
+void CBasePlayer::SetFlashlightOnly()
+{
+	RemoveNVG();
+	SetFlashlight();
+}
+
+void CBasePlayer::RemoveFlashlight()
+{
+	FlashlightTurnOff(false);
+	m_iItemsBits &= ~(PLAYER_ITEM_FLASHLIGHT);
+}
+
+void CBasePlayer::SetNVGOnly()
+{
+	RemoveFlashlight();
+	SetNVG();
+}
+
+void CBasePlayer::RemoveNVG()
+{
+	NVGTurnOff(false);
+	m_iItemsBits &= ~(PLAYER_ITEM_NIGHTVISION);
+}
+
+void CBasePlayer::RemoveSuitLight() {
+	RemoveFlashlight();
+	RemoveNVG();
+}
+
+void CBasePlayer::SetSuitAndDefaultLight()
+{
+	SetJustSuit();
+	SetDefaultLight();
+}
+
+void CBasePlayer::SetDefaultLight()
+{
+	switch (g_modFeatures.suit_light) {
+	case ModFeatures::SUIT_LIGHT_FLASHLIGHT:
+		SetFlashlight();
+		break;
+	case ModFeatures::SUIT_LIGHT_NVG:
+		SetNVG();
+		break;
+	default:
+		break;
+	}
+}
+
+void CBasePlayer::SetLongjump(bool enabled)
+{
+	m_fLongJump = enabled;
+	if (enabled)
+		g_engfuncs.pfnSetPhysicsKeyValue( edict(), "slj", "1" );
+	else
+		g_engfuncs.pfnSetPhysicsKeyValue( edict(), "slj", "0" );
+}
+
+void CBasePlayer::SetLoopedMp3(string_t loopedMp3)
+{
+	m_loopedMp3 = loopedMp3;
+}
+
 //=========================================================
 // Dead HEV suit prop
 //=========================================================
@@ -5493,7 +5679,7 @@ LINK_ENTITY_TO_CLASS( monster_hevsuit_dead, CDeadHEV )
 //=========================================================
 void CDeadHEV :: Spawn( void )
 {
-	SpawnHelper(DEADHAZMODEL);
+	SpawnHelper(g_modFeatures.DeadHazModel());
 	pev->body			= 1;
 	MonsterInitDead();
 }
@@ -5520,9 +5706,8 @@ void CStripWeapons::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 
 	if( pPlayer ) {
 		int stripFlags = pev->spawnflags;
-#if FEATURE_SUIT_FLASHLIGHT
-		stripFlags |= STRIP_FLASHLIGHT;
-#endif
+		if (FBitSet(pev->spawnflags, STRIP_SUIT) && g_modFeatures.suit_light != ModFeatures::SUIT_LIGHT_NOTHING)
+			stripFlags |= STRIP_SUITLIGHT;
 		pPlayer->RemoveAllItems( stripFlags );
 		if (!FStringNull(pev->noise))
 			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, STRING(pev->noise), 1, ATTN_NORM );

@@ -18,18 +18,14 @@
 #include "cbase.h"
 #include "monsters.h"
 #include "weapons.h"
-#include "nodes.h"
 #include "player.h"
 #include "gamerules.h"
 #ifndef CLIENT_DLL
 #include "spore.h"
+#include "game.h"
 #endif
 
 #if FEATURE_SPORELAUNCHER
-
-// special deathmatch shotgun spreads
-#define VECTOR_CONE_DM_SHOTGUN	Vector( 0.08716, 0.04362, 0.00  )// 10 degrees by 5 degrees
-#define VECTOR_CONE_DM_DOUBLESHOTGUN Vector( 0.17365, 0.04362, 0.00 ) // 20 degrees by 5 degrees
 
 LINK_ENTITY_TO_CLASS(weapon_sporelauncher, CSporelauncher)
 
@@ -70,6 +66,15 @@ void CSporelauncher::Precache(void)
 	m_usSporeFire = PRECACHE_EVENT(1, "events/spore.sc");
 }
 
+bool CSporelauncher::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_SPORELAUNCHER);
+#else
+	return true;
+#endif
+}
+
 int CSporelauncher::AddToPlayer(CBasePlayer *pPlayer)
 {
 	return AddToPlayerDefault(pPlayer);
@@ -92,7 +97,7 @@ int CSporelauncher::GetItemInfo(ItemInfo *p)
 	p->iPosition = 5;
 #endif
 	p->iFlags = 0;
-	p->iId = m_iId = WEAPON_SPORELAUNCHER;
+	p->iId = WEAPON_SPORELAUNCHER;
 	p->iWeight = SPORELAUNCHER_WEIGHT;
 	p->pszAmmoEntity = NULL;
 	p->iDropAmmo = 0;
@@ -140,11 +145,11 @@ void CSporelauncher::PrimaryAttack()
 		m_pPlayer->edict(),
 		m_usSporeFire,
 		0.0,
-		(float *)&g_vecZero,
-		(float *)&g_vecZero,
+		g_vecZero,
+		g_vecZero,
 		vecSrc.x,
 		vecSrc.y,
-		*(int*)&vecSrc.z,
+		(int)vecSrc.z,
 		m_iSquidSpitSprite,
 		0,
 		TRUE);
@@ -204,11 +209,11 @@ void CSporelauncher::SecondaryAttack(void)
 		m_pPlayer->edict(),
 		m_usSporeFire,
 		0.0,
-		(float *)&g_vecZero,
-		(float *)&g_vecZero,
+		g_vecZero,
+		g_vecZero,
 		vecSrc.x,
 		vecSrc.y,
-		*(int*)&vecSrc.z,
+		(int)vecSrc.z,
 		m_iSquidSpitSprite,
 		0,
 		0);
@@ -262,7 +267,7 @@ void CSporelauncher::Reload(void)
 		m_fInSpecialReload = 2;
 
 		// Play reload sound.
-		EMIT_SOUND_DYN(ENT(m_pPlayer->pev), CHAN_ITEM, "weapons/splauncher_reload.wav", 1, ATTN_NORM, 0, 100);
+		EMIT_SOUND(m_pPlayer->edict(), CHAN_ITEM, "weapons/splauncher_reload.wav", 0.7f, ATTN_NORM);
 
 		SendWeaponAnim(SPLAUNCHER_RELOAD_LOAD);
 
@@ -310,18 +315,19 @@ void CSporelauncher::WeaponIdle(void)
 		{
 			int iAnim;
 			float flRand = UTIL_SharedRandomFloat(m_pPlayer->random_seed, 0, 1);
-			if (flRand <= 0.4)
+			if (flRand <= 0.75f)
 			{
 				iAnim = SPLAUNCHER_IDLE;
 				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 2.0f;
 			}
-			else if (flRand <= 0.8)
+			else if (flRand <= 0.95f)
 			{
 				iAnim = SPLAUNCHER_IDLE2;
 				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 4.0f;
 			} else {
 				iAnim = SPLAUNCHER_FIDGET;
 				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 4.0f;
+				EMIT_SOUND(m_pPlayer->edict(), CHAN_ITEM, "weapons/splauncher_pet.wav", 0.7f, ATTN_NORM);
 			}
 
 			SendWeaponAnim(iAnim);

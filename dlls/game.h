@@ -20,6 +20,106 @@
 
 extern void GameDLLInit( void );
 
+struct ModFeatures
+{
+	enum {
+		SUIT_LIGHT_NOTHING,
+		SUIT_LIGHT_FLASHLIGHT,
+		SUIT_LIGHT_NVG,
+	};
+
+	typedef char StringBuf[64];
+
+	ModFeatures();
+	bool SetValue(const char* key, const char* value);
+	bool EnableWeapon(const char* name);
+	void EnableAllWeapons();
+
+	bool IsWeaponEnabled(int weaponId) const;
+
+	const char* DesertEagleDropName() const;
+	const char* M249DropName() const;
+	const char* DeadHazModel() const;
+
+	bool DisplacerBallEnabled() const;
+	bool ShockBeamEnabled() const;
+	bool SporesEnabled() const;
+
+	void EnableMonster(const char* name);
+	bool IsMonsterEnabled(const char* name) const;
+
+	int suit_light;
+	bool suit_light_allow_both;
+	bool suit_sentences;
+	bool nosuit_allow_healthcharger;
+	bool items_instant_drop;
+	bool tripmines_solid;
+	bool satchels_pickable;
+	bool alien_teleport_sound;
+
+	bool monsters_stop_attacking_dying_monsters;
+	bool monsters_delegate_squad_leadership;
+	bool monsters_eat_for_health;
+	bool monsters_spawned_named_wait_trigger;
+
+	bool blackops_classify;
+	bool opfor_grunts_dislike_civilians;
+
+	bool racex_dislike_alien_military;
+	bool racex_dislike_gargs;
+	bool racex_dislike_alien_monsters;
+	bool shockroach_racex_classify;
+
+	int scientist_random_heads;
+
+	bool vortigaunt_coil_attack;
+	bool vortigaunt_idle_effects;
+	bool vortigaunt_arm_boost;
+	bool vortigaunt_selfheal;
+	bool vortigaunt_heal;
+	bool vortigaunt_revive;
+	bool vortigaunt_squad;
+
+	bool sentry_retract;
+
+	bool bigmomma_wait_fix;
+
+	bool gonome_lock_player;
+	bool voltigore_lesser_size;
+
+	bool doors_open_in_move_direction;
+	bool doors_blocked_recheck;
+
+	bool skill_opfor;
+	bool opfor_decals;
+	bool opfor_deadhaz;
+	bool tentacle_opfor_height;
+
+	// Strings for nvg sounds
+	StringBuf nvg_sound_on;
+	StringBuf nvg_sound_off;
+
+	StringBuf wall_puff1;
+	StringBuf wall_puff2;
+	StringBuf wall_puff3;
+	StringBuf wall_puff4;
+private:
+	bool UpdateBoolean(const char* value, bool& result, const char* key);
+	bool UpdateInteger(const char* value, int& result, const char* key);
+	bool UpdateColor(const char* value, int& result, const char* key);
+	bool UpdateFloat(const char* value, float& result, const char* key);
+
+	bool weapons[64];
+	char monsters[64][64];
+	unsigned int monstersCount;
+};
+
+extern ModFeatures g_modFeatures;
+
+bool ItemsPickableByTouch();
+bool ItemsPickableByUse();
+int ItemsPhysicsFix();
+
 extern cvar_t displaysoundlist;
 
 // multiplayer server rules
@@ -59,6 +159,8 @@ extern cvar_t dmgperscore;
 extern cvar_t allydmgpenalty;
 extern cvar_t npckill;
 
+extern cvar_t bhopcap;
+
 extern cvar_t keepinventory;
 
 // Engine Cvars
@@ -69,5 +171,8 @@ extern cvar_t *g_footsteps;
 extern cvar_t *g_enable_cheats;
 
 extern cvar_t *g_psv_developer;
+
+extern cvar_t* violence_hgibs;
+extern cvar_t* violence_agibs;
 
 #endif // GAME_H

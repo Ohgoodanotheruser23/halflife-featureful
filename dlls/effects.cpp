@@ -30,12 +30,14 @@
 #include "player.h"
 #include "locus.h"
 #include "mod_features.h"
+#include "game.h"
+#include "particledef.h"
+#include "soundent.h"
 
 #define FEATURE_ENV_WARPBALL 1
 #define FEATURE_ENV_XENMAKER 1
 
-// use a single sound (debris/alien_teleport.wav) for teleportation effect instead of two
-#define FEATURE_ALIEN_TELEPORT_SOUND 0
+#define ALIEN_TELEPORT_SOUND "debris/alien_teleport.wav"
 
 #define	SF_GIBSHOOTER_REPEATABLE		1 // allows a gibshooter to be refired
 
@@ -364,6 +366,8 @@ void CBeam::DoSparks( const Vector &start, const Vector &end )
 	}
 }
 
+extern int gmsgCustomBeam;
+
 class CLightning : public CBeam
 {
 public:
@@ -392,6 +396,10 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	void BeamUpdateVars( void );
+	void BeamUpdateFlags();
+
+	void SendRingBeam(CBaseEntity* pClient);
+	void SendMessages(CBaseEntity* pClient);
 
 	int	m_active;
 	string_t	m_iszStartEntity;
@@ -485,6 +493,7 @@ void CLightning::Spawn( void )
 	}
 	else
 	{
+		BeamUpdateFlags();
 		m_active = 0;
 		if( !FStringNull( pev->targetname ) )
 		{
@@ -666,7 +675,7 @@ void CLightning::StrikeThink( void )
 			}
 		}
 
-		MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
+		MESSAGE_BEGIN( MSG_BROADCAST, gmsgCustomBeam ? gmsgCustomBeam : SVC_TEMPENTITY );
 			if( IsPointEntity( pStart ) || IsPointEntity( pEnd ) )
 			{
 				if( !IsPointEntity( pEnd ) )	// One point entity must be in pEnd
@@ -717,6 +726,10 @@ void CLightning::StrikeThink( void )
 			WRITE_BYTE( (int)pev->rendercolor.z );   // r, g, b
 			WRITE_BYTE( (int)pev->renderamt );	// brightness
 			WRITE_BYTE( m_speed );		// speed
+		if (gmsgCustomBeam)
+		{
+			WRITE_BYTE( GetFlags() );
+		}
 		MESSAGE_END();
 		DoSparks( pStart->pev->origin, pEnd->pev->origin );
 		if( pev->dmg > 0 )
@@ -758,7 +771,7 @@ void CLightning::DamageThink( void )
 void CLightning::Zap( const Vector &vecSrc, const Vector &vecDest )
 {
 #if 1
-	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
+	MESSAGE_BEGIN( MSG_BROADCAST, gmsgCustomBeam ? gmsgCustomBeam : SVC_TEMPENTITY );
 		WRITE_BYTE( TE_BEAMPOINTS );
 		WRITE_COORD( vecSrc.x );
 		WRITE_COORD( vecSrc.y );
@@ -777,6 +790,10 @@ void CLightning::Zap( const Vector &vecSrc, const Vector &vecDest )
 		WRITE_BYTE( (int)pev->rendercolor.z );   // r, g, b
 		WRITE_BYTE( (int)pev->renderamt );	// brightness
 		WRITE_BYTE( m_speed );		// speed
+	if (gmsgCustomBeam)
+	{
+		WRITE_BYTE( GetFlags() );
+	}
 	MESSAGE_END();
 #else
 	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
@@ -918,10 +935,69 @@ void CLightning::BeamUpdateVars( void )
 	SetNoise( m_noiseAmplitude );
 	SetFrame( m_frameStart );
 	SetScrollRate( m_speed );
+	BeamUpdateFlags();
+}
+
+void CLightning::BeamUpdateFlags()
+{
+	int flags = 0;
 	if( pev->spawnflags & SF_BEAM_SHADEIN )
-		SetFlags( BEAM_FSHADEIN );
-	else if( pev->spawnflags & SF_BEAM_SHADEOUT )
-		SetFlags( BEAM_FSHADEOUT );
+		flags |= BEAM_FSHADEIN;
+	if( pev->spawnflags & SF_BEAM_SHADEOUT )
+		flags |= BEAM_FSHADEOUT;
+	if ( pev->spawnflags & SF_BEAM_SOLID )
+		flags |= BEAM_FSOLID;
+	if ( pev->spawnflags & SF_BEAM_SINE )
+		flags |= BEAM_FSINE;
+	SetFlags(flags);
+}
+
+void CLightning::SendRingBeam(CBaseEntity *pClient)
+{
+	CBaseEntity *pStart = RandomTargetname( STRING( m_iszStartEntity ) );
+	CBaseEntity *pEnd = RandomTargetname( STRING( m_iszEndEntity ) );
+
+	const int msgType = pClient ? MSG_ONE : MSG_BROADCAST;
+	edict_t* pClientEdict = pClient ? pClient->edict() : NULL;
+
+	if( pStart != NULL && pEnd != NULL )
+	{
+		if( IsPointEntity( pStart ) || IsPointEntity( pEnd ) )
+		{
+			// don't work
+			return;
+		}
+
+		MESSAGE_BEGIN( msgType, gmsgCustomBeam ? gmsgCustomBeam : SVC_TEMPENTITY, NULL, pClientEdict );
+			WRITE_BYTE( TE_BEAMRING );
+			WRITE_SHORT( pStart->entindex() );
+			WRITE_SHORT( pEnd->entindex() );
+
+			WRITE_SHORT( m_spriteTexture );
+			WRITE_BYTE( m_frameStart ); // framestart
+			WRITE_BYTE( (int)pev->framerate ); // framerate
+			WRITE_BYTE( (int)( m_life * 10.0f ) ); // life
+			WRITE_BYTE( m_boltWidth );  // width
+			WRITE_BYTE( m_noiseAmplitude );   // noise
+			WRITE_BYTE( (int)pev->rendercolor.x );   // r, g, b
+			WRITE_BYTE( (int)pev->rendercolor.y );   // r, g, b
+			WRITE_BYTE( (int)pev->rendercolor.z );   // r, g, b
+			WRITE_BYTE( (int)pev->renderamt );	// brightness
+			WRITE_BYTE( m_speed );		// speed
+		if (gmsgCustomBeam)
+		{
+			WRITE_BYTE( GetFlags() );
+		}
+		MESSAGE_END();
+	}
+}
+
+void CLightning::SendMessages(CBaseEntity *pClient)
+{
+	if ( m_active && m_life == 0 && pev->spawnflags & SF_BEAM_RING )
+	{
+		SendRingBeam(pClient);
+	}
 }
 
 LINK_ENTITY_TO_CLASS( env_laser, CLaser )
@@ -1163,7 +1239,7 @@ void CSprite::Spawn( void )
 		TurnOn();
 
 	// Worldcraft only sets y rotation, copy to Z
-	if( pev->angles.y != 0 && pev->angles.z == 0 )
+	if( !FBitSet(pev->spawnflags, SF_SPRITE_DONT_MESS_YAW) && pev->angles.y != 0 && pev->angles.z == 0 )
 	{
 		pev->angles.z = pev->angles.y;
 		pev->angles.y = 0;
@@ -1198,9 +1274,10 @@ void CSprite::SpriteInit( const char *pSpriteName, const Vector &origin )
 	Spawn();
 }
 
-CSprite *CSprite::SpriteCreate( const char *pSpriteName, const Vector &origin, BOOL animate )
+CSprite *CSprite::SpriteCreate( const char *pSpriteName, const Vector &origin, BOOL animate, int spawnflags )
 {
 	CSprite *pSprite = GetClassPtr( (CSprite *)NULL );
+	pSprite->pev->spawnflags = spawnflags;
 	pSprite->SpriteInit( pSpriteName, origin );
 	pSprite->pev->classname = MAKE_STRING( "env_sprite" );
 	pSprite->pev->solid = SOLID_NOT;
@@ -1515,7 +1592,7 @@ void CEnvModel :: SetSequence( void )
 		if (pev->targetname)
 			ALERT( at_error, "env_model %s: unknown sequence \"%s\"\n", STRING( pev->targetname ), STRING( iszSeq ));
 		else
-			ALERT( at_error, "env_model: unknown sequence \"%s\"\n", STRING( pev->targetname ), STRING( iszSeq ));
+			ALERT( at_error, "env_model: unknown sequence \"%s\"\n", STRING( iszSeq ));
 		pev->sequence = 0;
 	}
 
@@ -1679,7 +1756,7 @@ void CGibShooter::Spawn( void )
 
 CGib *CGibShooter::CreateGib( float lifeTime )
 {
-	if( CVAR_GET_FLOAT( "violence_hgibs" ) == 0 )
+	if( violence_hgibs->value == 0 )
 		return NULL;
 
 	CGib *pGib = GetClassPtr( (CGib *)NULL );
@@ -1773,7 +1850,7 @@ void CGibShooter::ShootThink( void )
 			}
 
 			if (m_iszSpawnTarget)
-				FireTargets( STRING(m_iszSpawnTarget), pGib, this, USE_TOGGLE, 0 );
+				FireTargets( STRING(m_iszSpawnTarget), pGib, this );
 		}
 
 		i--;
@@ -2363,7 +2440,7 @@ void CFade::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType
 			UTIL_ScreenFadeAll( pev->rendercolor, Duration(), HoldTime(), (int)pev->renderamt, fadeFlags );
 		}
 	}
-	SUB_UseTargets( this, USE_TOGGLE, 0 );
+	SUB_UseTargets( this );
 }
 
 class CMessage : public CPointEntity
@@ -2455,7 +2532,7 @@ void CMessage::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useT
 	if( pev->spawnflags & SF_MESSAGE_ONCE )
 		UTIL_Remove( this );
 
-	SUB_UseTargets( this, USE_TOGGLE, 0 );
+	SUB_UseTargets( this );
 }
 
 //=========================================================
@@ -2817,11 +2894,7 @@ static void DrawChaoticBeams(Vector vecOrigin, edict_t* pentIgnore, int radius, 
 
 #define WARPBALL_SPRITE "sprites/fexplo1.spr"
 #define WARPBALL_BEAM "sprites/lgtning.spr"
-#if FEATURE_ALIEN_TELEPORT_SOUND
-#define WARPBALL_SOUND1 "debris/alien_teleport.wav"
-#else
 #define WARPBALL_SOUND1 "debris/beamstart2.wav"
-#endif
 #define WARPBALL_SOUND2 "debris/beamstart7.wav"
 
 class CEnvWarpBall : public CBaseEntity
@@ -2834,7 +2907,7 @@ public:
 	virtual int ObjectCaps( void ) { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
 	inline float Radius() { 
-		return pev->button ? pev->button : 192;
+		return m_baseRadius > 0 ? m_baseRadius : 192;
 	}
 	inline float Amplitude() {
 		return pev->friction ? pev->friction : 6;
@@ -2852,10 +2925,10 @@ public:
 		return pev->scale > 0 ? pev->scale : 1;
 	}
 	inline int MaxBeamCount() {
-		return pev->team > 0 ? pev->team : 20;
+		return m_maxBeamCount > 0 ? m_maxBeamCount : 20;
 	}
 	inline float SoundVolume() {
-		return (pev->armortype > 0.0f && pev->armortype <= 1.0f) ? pev->armortype : 1.0f;
+		return (m_soundVolume > 0.0f && m_soundVolume <= 1.0f) ? m_soundVolume : 1.0f;
 	}
 	inline string_t WarpTarget() {
 		return pev->message;
@@ -2875,7 +2948,7 @@ public:
 	}
 
 	inline void SetRadius( int radius ) {
-		pev->button = radius;
+		m_baseRadius = radius;
 	}
 	inline void SetAmplitude( float amplitude ) {
 		pev->friction = amplitude;
@@ -2890,10 +2963,10 @@ public:
 		pev->frags = delay;
 	}
 	inline void SetMaxBeamCount( int beamCount ) {
-		pev->team = beamCount;
+		m_maxBeamCount = beamCount;
 	}
 	inline void SetSoundVolume( float volume ) {
-		pev->armortype = volume;
+		m_soundVolume = volume;
 	}
 	inline void SetWarpTarget( string_t warpTarget ) {
 		pev->message = warpTarget;
@@ -2901,31 +2974,53 @@ public:
 
 
 	inline const char* WarpballSound1() {
-		return pev->noise1 ? STRING(pev->noise1) : WARPBALL_SOUND1;
+		if (pev->noise1)
+			return STRING(pev->noise1);
+		return g_modFeatures.alien_teleport_sound ? ALIEN_TELEPORT_SOUND : WARPBALL_SOUND1;
 	}
 	inline const char* WarpballSound2() {
 		if (FStringNull(pev->noise2))
 		{
-#if FEATURE_ALIEN_TELEPORT_SOUND
-			return NULL;
-#else
+			if (g_modFeatures.alien_teleport_sound)
+				return NULL;
 			return FStringNull(pev->noise1) ? WARPBALL_SOUND2 : NULL;
-#endif
 		}
 		else
 			return STRING(pev->noise2);
 	}
 	inline float SoundAttenuation() {
-		return ::SoundAttenuation((short)pev->impulse);
+		return ::SoundAttenuation(m_soundRadius);
 	}
 	inline int SpriteFramerate() {
 		return pev->framerate ? pev->framerate : 12;
 	}
 
+	virtual int Save( CSave &save );
+	virtual int Restore( CRestore &restore );
+	static TYPEDESCRIPTION m_SaveData[];
+
+	int m_maxBeamCount;
+	int m_baseRadius;
+	int m_aiSound;
+	float m_aiSoundDuration;
+	float m_soundVolume;
+	short m_soundRadius;
+
 	int m_beamTexture;
 };
 
 LINK_ENTITY_TO_CLASS( env_warpball, CEnvWarpBall )
+
+TYPEDESCRIPTION	CEnvWarpBall::m_SaveData[] =
+{
+	DEFINE_FIELD(CEnvWarpBall, m_maxBeamCount, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvWarpBall, m_baseRadius, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvWarpBall, m_aiSound, FIELD_INTEGER),
+	DEFINE_FIELD(CEnvWarpBall, m_aiSoundDuration, FIELD_FLOAT),
+	DEFINE_FIELD(CEnvWarpBall, m_soundVolume, FIELD_FLOAT),
+	DEFINE_FIELD(CEnvWarpBall, m_soundRadius, FIELD_SHORT),
+};
+IMPLEMENT_SAVERESTORE( CEnvWarpBall, CBaseEntity )
 
 void CEnvWarpBall::KeyValue( KeyValueData *pkvd )
 {
@@ -2974,12 +3069,22 @@ void CEnvWarpBall::KeyValue( KeyValueData *pkvd )
 	}
 	else if( FStrEq( pkvd->szKeyName, "soundradius" ) )
 	{
-		pev->impulse = atoi( pkvd->szValue );
+		m_soundRadius = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else if( FStrEq( pkvd->szKeyName, "volume" ) )
 	{
 		SetSoundVolume( atof( pkvd->szValue ) );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "aisound" ) )
+	{
+		m_aiSound = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "aisound_duration" ) )
+	{
+		m_aiSoundDuration = atof( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -2994,16 +3099,11 @@ void CEnvWarpBall::Precache( void )
 	else
 		PRECACHE_MODEL( WARPBALL_SPRITE );
 
-	if (pev->noise1)
-		PRECACHE_SOUND(STRING(pev->noise1));
-	else
-		PRECACHE_SOUND( WARPBALL_SOUND1 );
-	if (pev->noise2)
-		PRECACHE_SOUND(STRING(pev->noise2));
-#if !FEATURE_ALIEN_TELEPORT_SOUND
-	else
-		PRECACHE_SOUND( WARPBALL_SOUND2 );
-#endif
+	PRECACHE_SOUND(WarpballSound1());
+
+	const char* sound2 = WarpballSound2();
+	if (sound2)
+		PRECACHE_SOUND(sound2);
 
 	UTIL_PrecacheOther("warpball_hurt");
 }
@@ -3142,7 +3242,13 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	beamParams.alpha = 220;
 	DrawChaoticBeams(vecOrigin, ENT(pev), Radius(), beamParams, iBeams);
 
-	SUB_UseTargets( this, USE_TOGGLE, 0 );
+	if (m_aiSound)
+	{
+		const float soundDuration = m_aiSoundDuration > 0.0f ? m_aiSoundDuration : 0.3f;
+		CSoundEnt::InsertSound( m_aiSound, pev->origin, Radius(), soundDuration );
+	}
+
+	SUB_UseTargets( this );
 
 	if( pev->spawnflags & SF_KILL_CENTER )
 	{
@@ -3173,11 +3279,7 @@ void CEnvWarpBall::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 #define XENMAKER_SPRITE1 "sprites/fexplo1.spr"
 #define XENMAKER_SPRITE2 "sprites/xflare1.spr"
 #define XENMAKER_BEAM "sprites/lgtning.spr"
-#if FEATURE_ALIEN_TELEPORT_SOUND
-#define XENMAKER_SOUND1 "debris/alien_teleport.wav"
-#else
 #define XENMAKER_SOUND1 "debris/beamstart7.wav"
-#endif
 #define XENMAKER_SOUND2 "debris/beamstart2.wav"
 
 class CEnvXenMaker : public CBaseEntity
@@ -3259,10 +3361,15 @@ void CEnvXenMaker::Precache()
 	{
 		UTIL_PrecacheMonster(STRING(m_iszMonsterClassname), FALSE, &m_defaultMinHullSize, &m_defaultMaxHullSize);
 	}
-	PRECACHE_SOUND(XENMAKER_SOUND1);
-#if !FEATURE_ALIEN_TELEPORT_SOUND
-	PRECACHE_SOUND(XENMAKER_SOUND2);
-#endif
+	if (g_modFeatures.alien_teleport_sound)
+	{
+		PRECACHE_SOUND(ALIEN_TELEPORT_SOUND);
+	}
+	else
+	{
+		PRECACHE_SOUND(XENMAKER_SOUND1);
+		PRECACHE_SOUND(XENMAKER_SOUND2);
+	}
 	PRECACHE_MODEL(XENMAKER_SPRITE1);
 	PRECACHE_MODEL(XENMAKER_SPRITE2);
 }
@@ -3368,7 +3475,7 @@ void CEnvXenMaker::TrySpawn()
 		vecOrigin = pev->vuser1;
 	}
 
-	if (!FBitSet(pev->spawnflags, SF_XENMAKER_NOSPAWN)
+	if (!FBitSet(pev->spawnflags, SF_XENMAKER_NOSPAWN) && !FStringNull(m_iszMonsterClassname)
 			&& !asTemplate) // never spawn if xenmaker is used as a template for monstermaker
 	{
 		if( !m_flGround )
@@ -3423,7 +3530,10 @@ void CEnvXenMaker::TrySpawn()
 		pevCreate->angles = pev->angles;
 		SetBits( pevCreate->spawnflags, SF_MONSTER_FALL_TO_GROUND );
 
-		DispatchSpawn( ENT( pevCreate ) );
+		if (DispatchSpawn( ENT( pevCreate ) ) == -1)
+		{
+			REMOVE_ENTITY(ENT(pevCreate));
+		}
 	}
 
 	CSprite *pSpr = CSprite::SpriteCreate( XENMAKER_SPRITE1, vecOrigin, TRUE );
@@ -3467,19 +3577,21 @@ void CEnvXenMaker::TrySpawn()
 		WRITE_BYTE( lifeTime/2 );		// decay * 0.1
 	MESSAGE_END();
 
-	EMIT_SOUND( posEnt, CHAN_ITEM, XENMAKER_SOUND1, 1, ATTN_NORM );
+	const char* teleportSound = g_modFeatures.alien_teleport_sound ? ALIEN_TELEPORT_SOUND : XENMAKER_SOUND1;
+	EMIT_SOUND( posEnt, CHAN_ITEM, teleportSound, 1, ATTN_NORM );
 
-#if !FEATURE_ALIEN_TELEPORT_SOUND
-	if (asTemplate)
+	if (!g_modFeatures.alien_teleport_sound)
 	{
-		PlaySecondSound(posEnt);
+		if (asTemplate)
+		{
+			PlaySecondSound(posEnt);
+		}
+		else
+		{
+			SetThink(&CEnvXenMaker::PlaySecondSoundThink);
+			pev->nextthink = gpGlobals->time + 0.8;
+		}
 	}
-	else
-	{
-		SetThink(&CEnvXenMaker::PlaySecondSoundThink);
-		pev->nextthink = gpGlobals->time + 0.8;
-	}
-#endif
 }
 
 void CEnvXenMaker::PlaySecondSoundThink()
@@ -3505,6 +3617,7 @@ enum
 	BLOWERCANNON_SPOREGRENADE,
 	BLOWERCANNON_SHOCKBEAM,
 	BLOWERCANNON_DISPLACERBALL,
+	BLOWERCANNON_SQUIDTOXICSPIT,
 };
 
 enum
@@ -3611,6 +3724,9 @@ void CBlowerCannon::Precache( void )
 #if FEATURE_SPOREGRENADE
 		UTIL_PrecacheOther( "spore" );
 #endif
+		break;
+	case BLOWERCANNON_SQUIDTOXICSPIT:
+		UTIL_PrecacheOther( "squidtoxicspit" );
 		break;
 	default:
 		break;
@@ -3719,6 +3835,9 @@ void CBlowerCannon::BlowerCannonThink( void )
 				CDisplacerBall::Shoot(owner->pev, position, direction * CDisplacerBall::BallSpeed(), angles);
 				break;
 #endif
+			case BLOWERCANNON_SQUIDTOXICSPIT:
+				CSquidToxicSpit::Shoot(owner->pev, position, direction * CSquidToxicSpit::SpitSpeed());
+				break;
 			default:
 				ALERT(at_console, "Unknown projectile type in blowercannon: %d\n", m_iWeapType);
 				break;
@@ -3750,8 +3869,6 @@ public:
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
 	static	TYPEDESCRIPTION m_SaveData[];
-
-	void DoEffect( Vector vecPos );
 
 	int m_iTime;
 	int m_iRadius;
@@ -3867,7 +3984,7 @@ void CEnvShockwave::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	}
 
 	// blast circle
-	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, pev->origin );
+	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecPos );
 		WRITE_BYTE( type );
 		WRITE_COORD( vecPos.x );// coord coord coord (center position)
 		WRITE_COORD( vecPos.y );
@@ -3895,6 +4012,253 @@ void CEnvShockwave::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 	}
 }
 
+//==================================================================
+//LRC- env_dlight; Dynamic Entity Light creator
+//==================================================================
+#define SF_DLIGHT_ONLYONCE 1
+#define SF_DLIGHT_STARTON  2
+#define SF_DLIGHT_POS_VALID ( 1 << 24 )
+class CEnvDLight : public CPointEntity
+{
+public:
+	void	Activate( void );
+	void SendMessages(CBaseEntity* pClient);
+	virtual void	Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void	Think( void );
+	void CalcMyPosition(CBaseEntity *pActivator);
+	void TurnOn(CBaseEntity* pClient = 0);
+	void TurnOff();
+	virtual int		Save( CSave &save );
+	virtual int		Restore( CRestore &restore );
+	static	TYPEDESCRIPTION m_SaveData[];
+	bool IsActive() {
+		return pev->spawnflags & SF_DLIGHT_STARTON;
+	}
+
+	Vector m_vecPos;
+	int m_iKey;
+	BOOL m_activated;
+	static int	ms_iNextFreeKey;
+};
+
+LINK_ENTITY_TO_CLASS( env_dlight, CEnvDLight );
+
+TYPEDESCRIPTION	CEnvDLight::m_SaveData[] =
+{
+	DEFINE_FIELD( CEnvDLight, m_vecPos, FIELD_VECTOR ),
+	DEFINE_FIELD( CEnvDLight, m_iKey, FIELD_INTEGER ),
+	DEFINE_FIELD( CEnvDLight, m_activated, FIELD_BOOLEAN ),
+};
+
+IMPLEMENT_SAVERESTORE( CEnvDLight, CPointEntity );
+
+int CEnvDLight::ms_iNextFreeKey = 1;
+
+void CEnvDLight::Activate( void )
+{
+	if (!m_activated)
+	{
+		// each env_dlight uses its own key to reference the light on the client
+		m_iKey = ms_iNextFreeKey;
+		ms_iNextFreeKey++;
+
+		m_activated = TRUE;
+
+		if (FStringNull(pev->targetname) || IsActive())
+		{
+			CalcMyPosition(this);
+		}
+	}
+}
+
+void CEnvDLight::SendMessages(CBaseEntity *pClient)
+{
+	if (FStringNull(pev->targetname) || IsActive())
+	{
+		TurnOn(pClient);
+	}
+}
+
+void CEnvDLight::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	if (!ShouldToggle(useType, IsActive()))
+	{
+		return;
+	}
+	if (IsActive())
+	{
+		TurnOff();
+		pev->nextthink = -1.0f;
+		return;
+	}
+
+	CalcMyPosition(pActivator);
+	TurnOn();
+
+	if (pev->health > 0)
+	{
+		pev->nextthink = gpGlobals->time + pev->health;
+	}
+}
+
+void CEnvDLight::CalcMyPosition(CBaseEntity* pActivator)
+{
+	if (pev->message)
+	{
+		if (!TryCalcLocus_Position( this, pActivator, STRING(pev->message), m_vecPos ))
+			return;
+	}
+	else
+	{
+		m_vecPos = pev->origin;
+	}
+	pev->spawnflags |= SF_DLIGHT_POS_VALID;
+}
+
+extern int gmsgKeyedDLight;
+
+void CEnvDLight::TurnOn(CBaseEntity *pClient)
+{
+	if (!FBitSet(pev->spawnflags, SF_DLIGHT_POS_VALID))
+		return;
+
+	const int msgType = pClient ? MSG_ONE : MSG_ALL;
+	edict_t* pClientEdict = pClient ? pClient->edict() : NULL;
+
+	SetBits(pev->spawnflags, SF_DLIGHT_STARTON);
+	MESSAGE_BEGIN( msgType, gmsgKeyedDLight, NULL, pClientEdict );
+		WRITE_BYTE( m_iKey );
+		WRITE_BYTE( 1 );
+		WRITE_COORD( m_vecPos.x );		// X
+		WRITE_COORD( m_vecPos.y );		// Y
+		WRITE_COORD( m_vecPos.z );		// Z
+		WRITE_SHORT( pev->renderamt );		// radius
+		WRITE_BYTE( pev->rendercolor.x );	// r
+		WRITE_BYTE( pev->rendercolor.y );	// g
+		WRITE_BYTE( pev->rendercolor.z );	// b
+	MESSAGE_END();
+}
+
+void CEnvDLight::TurnOff()
+{
+	if (!FBitSet(pev->spawnflags, SF_DLIGHT_POS_VALID))
+		return;
+
+	ClearBits(pev->spawnflags, SF_DLIGHT_STARTON);
+	MESSAGE_BEGIN( MSG_ALL, gmsgKeyedDLight, NULL );
+		WRITE_BYTE( m_iKey );
+		WRITE_BYTE( 0 );
+	MESSAGE_END();
+}
+
+void CEnvDLight::Think( void )
+{
+	TurnOff();
+
+	if (pev->spawnflags & SF_DLIGHT_ONLYONCE)
+	{
+		SetThink( &CEnvDLight::SUB_Remove );
+		pev->nextthink = gpGlobals->time;
+	}
+}
+
+#define SF_ENVSTREAK_REMOVE_ON_FIRE 1
+
+class CEnvStreak : public CPointEntity
+{
+	void KeyValue( KeyValueData *pkvd );
+	void Spawn();
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+};
+
+LINK_ENTITY_TO_CLASS( env_streak, CEnvStreak )
+
+void CEnvStreak::KeyValue( KeyValueData *pkvd )
+{
+	if (FStrEq(pkvd->szKeyName, "minlife"))
+	{
+		pev->health = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "maxlife"))
+	{
+		pev->max_health = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "tracer_color"))
+	{
+		pev->skin = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "count"))
+	{
+		pev->body = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "randomness"))
+	{
+		pev->dmg = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "pt_type"))
+	{
+		pev->impulse = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CPointEntity::KeyValue( pkvd );
+}
+
+void CEnvStreak::Spawn()
+{
+	CPointEntity::Spawn();
+	SetMovedir( pev );
+	if (pev->health == 0.0f)
+	{
+		pev->health = 0.1f;
+		if (pev->max_health == 0.0f)
+			pev->max_health = 0.5f;
+	}
+}
+
+void CEnvStreak::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	extern int gmsgStreaks;
+
+	Vector origin;
+	if (pev->message)
+	{
+		if (!TryCalcLocus_Position( this, pActivator, STRING(pev->message), origin )) {
+			return;
+		}
+	}
+	else
+		origin = pev->origin;
+
+	const Vector direction = pev->movedir;
+
+	MESSAGE_BEGIN( MSG_PVS, gmsgStreaks, origin );
+		WRITE_COORD( origin.x );		// origin
+		WRITE_COORD( origin.y );
+		WRITE_COORD( origin.z );
+		WRITE_COORD( direction.x );	// direction
+		WRITE_COORD( direction.y );
+		WRITE_COORD( direction.z );
+		WRITE_BYTE( pev->skin ); // color
+		WRITE_SHORT( pev->body );	// count
+		WRITE_SHORT( pev->speed );
+		WRITE_SHORT( pev->dmg );	// Random velocity modifier
+		WRITE_BYTE( pev->health * 10 );
+		WRITE_BYTE( pev->max_health * 10 );
+		WRITE_BYTE( pev->impulse > 0 ? pev->impulse : pt_grav );
+		WRITE_BYTE( pev->scale > 0 ? pev->scale * 10 : 10 );
+	MESSAGE_END();
+
+	if (FBitSet(pev->spawnflags, SF_ENVSTREAK_REMOVE_ON_FIRE))
+		UTIL_Remove(this);
+}
+
+
 //=========================================================
 // LRC - Decal effect
 //=========================================================
@@ -3921,15 +4285,30 @@ void CEnvDecal::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 		case 6: iTexture = DECAL_SCORCH1	+	RANDOM_LONG(0,1); break;
 		case 7: iTexture = DECAL_SPIT1		+	RANDOM_LONG(0,1); break;
 		case 8: iTexture = DECAL_SMALLSCORCH1 +	RANDOM_LONG(0,2); break;
-#if FEATURE_OPFOR_DECALS
-		case 9: iTexture = DECAL_SPR_SPLT1 +	RANDOM_LONG(0,2); break;
-		case 10: iTexture = DECAL_OPFOR_SCORCH1 +	RANDOM_LONG(0,2); break;
-		case 11: iTexture = DECAL_OPFOR_SMALLSCORCH1 +	RANDOM_LONG(0,2); break;
-#else
-		case 9: iTexture = DECAL_YBLOOD5 +	RANDOM_LONG(0,1); break;
-		case 10: iTexture = DECAL_SCORCH1 +	RANDOM_LONG(0,1); break;
-		case 11: iTexture = DECAL_SMALLSCORCH1 +	RANDOM_LONG(0,2); break;
-#endif
+		case 9:
+		{
+			if (g_modFeatures.opfor_decals)
+				iTexture = DECAL_SPR_SPLT1 + RANDOM_LONG(0,2);
+			else
+				iTexture = DECAL_YBLOOD5 + RANDOM_LONG(0,1);
+		}
+		break;
+		case 10:
+		{
+			if (g_modFeatures.opfor_decals)
+				iTexture = DECAL_OPFOR_SCORCH1 + RANDOM_LONG(0,2);
+			else
+				iTexture = DECAL_SCORCH1 + RANDOM_LONG(0,1);
+		}
+		break;
+		case 11:
+		{
+			if (g_modFeatures.opfor_decals)
+				iTexture = DECAL_OPFOR_SMALLSCORCH1 + RANDOM_LONG(0,2);
+			else
+				iTexture = DECAL_SMALLSCORCH1 + RANDOM_LONG(0,2);
+		}
+		break;
 	}
 
 	if (pev->impulse)
@@ -3996,24 +4375,27 @@ void CEnvDecal::Spawn( void )
 	}
 }
 
-#if FEATURE_FOG
 //=========================================================
 // LRC - env_fog, extended a bit from the DMC version
 //=========================================================
 #define SF_FOG_ACTIVE 1
+#define SF_FOG_AFFECT_SKYBOX 2
 #define SF_FOG_FADING 0x8000
 
-class CEnvFog : public CBaseEntity
+class CEnvFog : public CPointEntity
 {
 public:
 	void Spawn( void );
-	void Precache( void );
 	void EXPORT ResumeThink( void );
 	void EXPORT TurnOn( void );
 	void EXPORT TurnOff( void );
 	void EXPORT FadeInDone( void );
 	void EXPORT FadeOutDone( void );
-	void SendData( Vector col, int fFadeTime, int StartDist, int iEndDist);
+	void SendMessages(CBaseEntity *pClient);
+	void SendData() { SendData(pev->rendercolor, 0, m_iStartDist, m_iEndDist, m_density); }
+	void SendDataDeactivate() { SendData(g_vecZero, 0, 0, 0, 0); }
+	void SendData(Vector col, int iFadeTime, int iStartDist, int iEndDist, float density);
+	void SendDataToOne(CBaseEntity *pClient, Vector col, int iFadeTime, int iStartDist, int iEndDist, float density);
 	void KeyValue( KeyValueData *pkvd );
 	virtual int		Save( CSave &save );
 	virtual int		Restore( CRestore &restore );
@@ -4026,6 +4408,9 @@ public:
 	float m_iFadeOut;
 	float m_fHoldTime;
 	float m_fFadeStart; // if we're fading in/out, then when did the fade start?
+
+	float m_density;
+	short m_fogType;
 };
 
 TYPEDESCRIPTION	CEnvFog::m_SaveData[] =
@@ -4036,6 +4421,8 @@ TYPEDESCRIPTION	CEnvFog::m_SaveData[] =
 	DEFINE_FIELD( CEnvFog, m_iFadeOut, FIELD_INTEGER ),
 	DEFINE_FIELD( CEnvFog, m_fHoldTime, FIELD_FLOAT ),
 	DEFINE_FIELD( CEnvFog, m_fFadeStart, FIELD_TIME ),
+	DEFINE_FIELD( CEnvFog, m_density, FIELD_FLOAT ),
+	DEFINE_FIELD( CEnvFog, m_fogType, FIELD_SHORT ),
 };
 
 IMPLEMENT_SAVERESTORE( CEnvFog, CBaseEntity )
@@ -4067,6 +4454,16 @@ void CEnvFog :: KeyValue( KeyValueData *pkvd )
 		m_fHoldTime = atof(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
+	else if (FStrEq(pkvd->szKeyName, "density"))
+	{
+		m_density = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "fogtype"))
+	{
+		m_fogType = (short)atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBaseEntity::KeyValue( pkvd );
 }
@@ -4083,22 +4480,10 @@ void CEnvFog :: Spawn ( void )
 		SetThink(&CEnvFog :: TurnOn );
 	}
 
-// Precache is now used only to continue after a game has loaded.
-//	Precache();
-
 	// things get messed up if we try to draw fog with a startdist
 	// or an enddist of 0, so we don't allow it.
 	if (m_iStartDist == 0) m_iStartDist = 1;
 	if (m_iEndDist == 0) m_iEndDist = 1;
-}
-
-void CEnvFog :: Precache ( void )
-{
-	if (pev->spawnflags & SF_FOG_ACTIVE)
-	{
-		SetThink(&CEnvFog :: ResumeThink );
-		pev->nextthink = gpGlobals->time + 0.1;
-	}
 }
 
 extern int gmsgSetFog;
@@ -4112,14 +4497,14 @@ void CEnvFog :: TurnOn ( void )
 	if( m_iFadeIn )
 	{
 		pev->spawnflags |= SF_FOG_FADING;
-		SendData( pev->rendercolor, m_iFadeIn, m_iStartDist, m_iEndDist);
+		SendData( pev->rendercolor, m_iFadeIn, m_iStartDist, m_iEndDist, m_density);
 		pev->nextthink = gpGlobals->time + m_iFadeIn;
 		SetThink(&CEnvFog :: FadeInDone );
 	}
 	else
 	{
 		pev->spawnflags &= ~SF_FOG_FADING;
-		SendData( pev->rendercolor, 0, m_iStartDist, m_iEndDist);
+		SendData();
 		if (m_fHoldTime)
 		{
 			pev->nextthink = gpGlobals->time + m_fHoldTime;
@@ -4137,14 +4522,14 @@ void CEnvFog :: TurnOff ( void )
 	if( m_iFadeOut )
 	{
 		pev->spawnflags |= SF_FOG_FADING;
-		SendData( pev->rendercolor, -m_iFadeOut, m_iStartDist, m_iEndDist);
+		SendData( pev->rendercolor, -m_iFadeOut, m_iStartDist, m_iEndDist, m_density);
 		pev->nextthink = gpGlobals->time  + m_iFadeOut;
 		SetThink(&CEnvFog :: FadeOutDone );
 	}
 	else
 	{
 		pev->spawnflags &= ~SF_FOG_FADING;
-		SendData( g_vecZero, 0, 0, 0 );
+		SendDataDeactivate();
 		//DontThink();
 	}
 }
@@ -4163,7 +4548,7 @@ void CEnvFog :: ResumeThink ( void )
 void CEnvFog :: FadeInDone ( void )
 {
 	pev->spawnflags &= ~SF_FOG_FADING;
-	SendData( pev->rendercolor, 0, m_iStartDist, m_iEndDist);
+	SendData();
 
 	if (m_fHoldTime)
 	{
@@ -4175,7 +4560,7 @@ void CEnvFog :: FadeInDone ( void )
 void CEnvFog :: FadeOutDone ( void )
 {
 	pev->spawnflags &= ~SF_FOG_FADING;
-	SendData( g_vecZero, 0, 0, 0);
+	SendDataDeactivate();
 }
 
 void CEnvFog :: Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -4189,27 +4574,42 @@ void CEnvFog :: Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE use
 	}
 }
 
-void CEnvFog :: SendData ( Vector col, int iFadeTime, int iStartDist, int iEndDist )
+void CEnvFog::SendMessages(CBaseEntity *pClient)
+{
+	if (FBitSet(pev->spawnflags, SF_FOG_ACTIVE) && pClient)
+	{
+		SendDataToOne(pClient, pev->rendercolor, 0, m_iStartDist, m_iEndDist, m_density);
+	}
+}
+
+void CEnvFog::SendData ( Vector col, int iFadeTime, int iStartDist, int iEndDist, float density )
 {
 	for ( int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
 		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
 		if ( pPlayer )
 		{
-			MESSAGE_BEGIN( MSG_ONE, gmsgSetFog, NULL, pPlayer->pev );
-				WRITE_BYTE ( col.x );
-				WRITE_BYTE ( col.y );
-				WRITE_BYTE ( col.z );
-				WRITE_SHORT ( iFadeTime );
-				WRITE_SHORT ( iStartDist );
-				WRITE_SHORT ( iEndDist );
-			MESSAGE_END();
+			SendDataToOne(pPlayer, col, iFadeTime, iStartDist, iEndDist, density);
 		}
 	}
 }
 
+void CEnvFog::SendDataToOne(CBaseEntity *pClient, Vector col, int iFadeTime, int iStartDist, int iEndDist, float density)
+{
+	MESSAGE_BEGIN( MSG_ONE, gmsgSetFog, NULL, pClient->pev );
+		WRITE_BYTE ( col.x );
+		WRITE_BYTE ( col.y );
+		WRITE_BYTE ( col.z );
+		WRITE_SHORT ( iFadeTime );
+		WRITE_SHORT ( iStartDist );
+		WRITE_SHORT ( iEndDist );
+		WRITE_LONG ( density * 10000 );
+		WRITE_BYTE ( m_fogType );
+		WRITE_BYTE ( FBitSet(pev->spawnflags, SF_FOG_AFFECT_SKYBOX) );
+	MESSAGE_END();
+}
+
 LINK_ENTITY_TO_CLASS( env_fog, CEnvFog )
-#endif
 
 #define SF_BEAMTRAIL_OFF 1
 class CEnvBeamTrail : public CPointEntity

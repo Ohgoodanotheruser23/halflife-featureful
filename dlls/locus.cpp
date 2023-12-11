@@ -13,10 +13,14 @@
 #include "effects.h"
 #include "decals.h"
 
+bool IsLikelyNumber(const char* szText)
+{
+	return (*szText >= '0' && *szText <= '9') || *szText == '-';
+}
 
 bool TryCalcLocus_Position( CBaseEntity *pEntity, CBaseEntity *pLocus, const char *szText, Vector& result )
 {
-	if ((*szText >= '0' && *szText <= '9') || *szText == '-')
+	if (IsLikelyNumber(szText))
 	{ // it's a vector
 		Vector tmp;
 		UTIL_StringToRandomVector( (float *)tmp, szText );
@@ -37,7 +41,7 @@ bool TryCalcLocus_Position( CBaseEntity *pEntity, CBaseEntity *pLocus, const cha
 
 bool TryCalcLocus_Velocity(CBaseEntity *pEntity, CBaseEntity *pLocus, const char *szText , Vector& result)
 {
-	if ((*szText >= '0' && *szText <= '9') || *szText == '-')
+	if (IsLikelyNumber(szText))
 	{ // it's a vector
 		Vector tmp;
 		UTIL_StringToRandomVector( (float *)tmp, szText );
@@ -58,7 +62,7 @@ bool TryCalcLocus_Velocity(CBaseEntity *pEntity, CBaseEntity *pLocus, const char
 
 bool TryCalcLocus_Ratio(CBaseEntity *pLocus, const char *szText , float& result)
 {
-	if ((*szText >= '0' && *szText <= '9') || *szText == '-')
+	if (IsLikelyNumber(szText))
 	{ // assume it's a float
 		result = atof( szText );
 		return true;
@@ -345,7 +349,7 @@ void CLocusBeam::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE us
 
 	if (pev->target)
 	{
-		FireTargets( STRING(pev->target), pBeam, this, USE_TOGGLE, 0 );
+		FireTargets( STRING(pev->target), pBeam, this );
 	}
 }
 
@@ -968,7 +972,7 @@ void CLocusVariable::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 		pMark->pev->targetname = m_iszTargetName;
 		pMark->pev->nextthink = gpGlobals->time + m_fDuration;
 
-		FireTargets(STRING(m_iszFireOnSpawn), pMark, this, USE_TOGGLE, 0);
+		FireTargets(STRING(m_iszFireOnSpawn), pMark, this);
 	}
 	else
 	{
@@ -976,6 +980,140 @@ void CLocusVariable::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYP
 		pev->movedir = vecDir;
 		pev->frags = fRatio;
 
-		FireTargets(STRING(m_iszFireOnSpawn), this, this, USE_TOGGLE, 0);
+		FireTargets(STRING(m_iszFireOnSpawn), this, this);
+	}
+}
+
+class CCalcEvalNumber : public CPointEntity
+{
+public:
+	enum {
+		EVAL_ADD = 0,
+		EVAL_SUBSTRUCT,
+		EVAL_MULTIPLY,
+		EVAL_DIVIDE,
+	};
+
+	void KeyValue( KeyValueData *pkvd );
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	bool CalcRatio(CBaseEntity *pLocus, float *outResult)
+	{
+		bool success;
+		*outResult = CalcEvalNumber(pLocus, false, success);
+		return success;
+	}
+
+	virtual int		Save( CSave &save );
+	virtual int		Restore( CRestore &restore );
+	static	TYPEDESCRIPTION m_SaveData[];
+
+protected:
+	float CalcEvalNumber(CBaseEntity* pActivator, bool isUse, bool& success);
+	float DoOperation(float leftValue, float rightValue, int operationId, bool& success);
+
+	string_t m_left;
+	string_t m_right;
+	int m_operation;
+	string_t m_storeIn;
+};
+
+TYPEDESCRIPTION CCalcEvalNumber::m_SaveData[] =
+{
+	DEFINE_FIELD( CCalcEvalNumber, m_left, FIELD_STRING ),
+	DEFINE_FIELD( CCalcEvalNumber, m_right, FIELD_STRING ),
+	DEFINE_FIELD( CCalcEvalNumber, m_operation, FIELD_INTEGER ),
+	DEFINE_FIELD( CCalcEvalNumber, m_storeIn, FIELD_STRING ),
+};
+
+IMPLEMENT_SAVERESTORE( CCalcEvalNumber, CPointEntity )
+
+LINK_ENTITY_TO_CLASS( calc_eval_number, CCalcEvalNumber )
+
+void CCalcEvalNumber::KeyValue(KeyValueData *pkvd)
+{
+	if(strcmp(pkvd->szKeyName, "operation") == 0)
+	{
+		m_operation = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "left_operand") == 0)
+	{
+		m_left = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "right_operand") == 0)
+	{
+		m_right = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if(strcmp(pkvd->szKeyName, "store_result") == 0)
+	{
+		m_storeIn = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CPointEntity::KeyValue(pkvd);
+}
+
+void CCalcEvalNumber::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	bool success;
+	CalcEvalNumber(pActivator, true, success);
+}
+
+float CCalcEvalNumber::CalcEvalNumber(CBaseEntity *pActivator, bool isUse, bool &success)
+{
+	if (FStringNull(m_left) || FStringNull(m_right))
+	{
+		ALERT(at_error, "%s needs both left and right operands defined\n", STRING(pev->classname));
+		success = false;
+		return 0.0f;
+	}
+
+	float leftValue = 0;
+	float rightValue = 0;
+
+	const bool leftSuccess = TryCalcLocus_Ratio(pActivator, STRING(m_left), leftValue);
+	const bool rightSuccess = TryCalcLocus_Ratio(pActivator, STRING(m_right), rightValue);
+
+	if (!leftSuccess || !rightSuccess) {
+		success = false;
+		return 0.0f;
+	}
+
+	const float result = DoOperation(leftValue, rightValue, m_operation, success);
+
+	if (isUse)
+	{
+		if (m_storeIn)
+			FireTargets(STRING(m_storeIn), pActivator, this, USE_SET, result);
+		if (pev->target)
+			FireTargets(STRING(pev->target), pActivator, this);
+	}
+
+	return result;
+}
+
+float CCalcEvalNumber::DoOperation(float leftValue, float rightValue, int operationId, bool &success)
+{
+	success = true;
+	switch (operationId) {
+	case EVAL_ADD:
+		return leftValue + rightValue;
+	case EVAL_SUBSTRUCT:
+		return leftValue - rightValue;
+	case EVAL_MULTIPLY:
+		return leftValue * rightValue;
+	case EVAL_DIVIDE:
+		if (rightValue == 0)
+		{
+			success = false;
+			return 0.0f;
+		}
+		return leftValue / rightValue;
+	default:
+		ALERT(at_error, "%s: unknown operation id %d\n", STRING(pev->classname), operationId);
+		success = false;
+		return 0.0f;
 	}
 }

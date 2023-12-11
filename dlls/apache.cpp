@@ -21,6 +21,7 @@
 #include "nodes.h"
 #include "effects.h"
 #include "mod_features.h"
+#include "game.h"
 
 extern DLL_GLOBAL int		g_iSkillLevel;
 
@@ -64,7 +65,7 @@ public:
 	BOOL FireGun( void );
 
 	int  TakeDamage( entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType );
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
+	void TraceAttack( entvars_t *pevInflictor,  entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 
 	int m_iRockets;
 	float m_flForce;
@@ -219,6 +220,7 @@ void CApache::NullThink( void )
 	StudioFrameAdvance();
 	FCheckAITrigger();
 	pev->nextthink = gpGlobals->time + 0.5f;
+	GlowShellUpdate();
 }
 
 void CApache::StartupUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -258,6 +260,7 @@ void CApache::DyingThink( void )
 {
 	StudioFrameAdvance();
 	pev->nextthink = gpGlobals->time + 0.1f;
+	GlowShellUpdate();
 
 	pev->avelocity = pev->avelocity * 1.02f;
 
@@ -477,6 +480,7 @@ void CApache::HuntThink( void )
 {
 	StudioFrameAdvance();
 	pev->nextthink = gpGlobals->time + 0.1f;
+	GlowShellUpdate();
 
 	ShowDamage();
 
@@ -980,7 +984,7 @@ int CApache::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 	return result;
 }
 
-void CApache::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CApache::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	// ALERT( at_console, "%d %.0f\n", ptr->iHitgroup, flDamage );
 
@@ -992,7 +996,7 @@ void CApache::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir
 	if( flDamage > 50 || ptr->iHitgroup == 1 || ptr->iHitgroup == 2 )
 	{
 		// ALERT( at_console, "%.0f\n", flDamage );
-		AddMultiDamage( pevAttacker, this, flDamage, bitsDamageType );
+		AddMultiDamage( pevAttacker, pevAttacker, this, flDamage, bitsDamageType );
 		m_iDoSmokePuff = 3.0f + ( flDamage / 5.0f );
 	}
 	else
@@ -1114,13 +1118,12 @@ class CBlkopApache : public CApache
 public:
 	void Spawn();
 	void Precache();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("blkop_apache"); }
 	int	DefaultClassify ( void )
 	{
-#if FEATURE_BLACKOPS_CLASS
-		return CLASS_HUMAN_BLACKOPS;
-#else
+		if (g_modFeatures.blackops_classify)
+			return CLASS_HUMAN_BLACKOPS;
 		return CApache::DefaultClassify();
-#endif
 	}
 };
 

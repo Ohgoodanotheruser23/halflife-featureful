@@ -18,10 +18,11 @@
 #include "cbase.h"
 #include "monsters.h"
 #include "weapons.h"
-#include "nodes.h"
 #include "player.h"
 #include "gamerules.h"
-#include "mod_features.h"
+#ifndef CLIENT_DLL
+#include "game.h"
+#endif
 
 #if FEATURE_KNIFE
 
@@ -58,6 +59,15 @@ void CKnife::Precache(void)
 	PRECACHE_SOUND("weapons/knife3.wav");
 
 	m_usKnife = PRECACHE_EVENT(1, "events/knife.sc");
+}
+
+bool CKnife::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_KNIFE);
+#else
+	return true;
+#endif
 }
 
 int CKnife::GetItemInfo(ItemInfo *p)
@@ -219,12 +229,12 @@ int CKnife::Swing(int fFirst)
 #endif
 			{
 				// first swing does full damage
-				pEntity->TraceAttack( m_pPlayer->pev, gSkillData.plrDmgKnife, gpGlobals->v_forward, &tr, DMG_CLUB );
+				pEntity->TraceAttack( m_pPlayer->pev, m_pPlayer->pev, gSkillData.plrDmgKnife, gpGlobals->v_forward, &tr, DMG_CLUB );
 			}
 			else
 			{
 				// subsequent swings do half
-				pEntity->TraceAttack( m_pPlayer->pev, gSkillData.plrDmgKnife * 0.5f, gpGlobals->v_forward, &tr, DMG_CLUB );
+				pEntity->TraceAttack( m_pPlayer->pev, m_pPlayer->pev, gSkillData.plrDmgKnife * 0.5f, gpGlobals->v_forward, &tr, DMG_CLUB );
 			}
 			ApplyMultiDamage( m_pPlayer->pev, m_pPlayer->pev );
 
@@ -352,7 +362,7 @@ void CKnife::Stab()
 			if (flDamage > 100.0f) {
 				flDamage = 100.0f;
 			}
-			pEntity->TraceAttack(m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB|DMG_NEVERGIB);
+			pEntity->TraceAttack(m_pPlayer->pev, m_pPlayer->pev, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB|DMG_NEVERGIB);
 
 			ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
 		}

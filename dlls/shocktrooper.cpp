@@ -27,6 +27,7 @@
 #include	"scripted.h"
 #include	"decals.h"
 #include	"gamerules.h"
+#include	"game.h"
 #include	"hgrunt.h"
 #include	"mod_features.h"
 
@@ -79,6 +80,7 @@ public:
 	void Spawn(void);
 	void MonsterThink();
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("shocktrooper"); }
 	int  DefaultClassify(void);
 	const char* ReverseRelationshipModel() { return NULL; }
 	const char* DefaultDisplayName() { return "Shock Trooper"; }
@@ -92,7 +94,7 @@ public:
 	void PlayUseSentence();
 	void PlayUnUseSentence();
 
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
 	int	Save(CSave &save);
 	int Restore(CRestore &restore);
@@ -129,6 +131,9 @@ protected:
 	float SentenceAttn();
 	const char* SentenceByNumber(int sentence);
 	virtual int* GruntQuestionVar();
+	bool AlertSentenceIsForPlayerOnly() {
+		return false;
+	}
 };
 
 LINK_ENTITY_TO_CLASS(monster_shocktrooper, CShockTrooper)
@@ -159,6 +164,7 @@ const char *CShockTrooper::pTrooperSentences[] =
 	"ST_IDLE",
 	"ST_CLEAR",
 	"ST_ANSWER",
+	"ST_HOSTILE",
 };
 
 const char* CShockTrooper::SentenceByNumber(int sentence)
@@ -279,7 +285,7 @@ BOOL CShockTrooper::CheckRangeAttack2( float flDot, float flDist )
 	{
 		return FALSE;
 	}
-	return CheckRangeAttack2Impl(gSkillData.strooperGrenadeSpeed, flDot, flDist);
+	return CheckRangeAttack2Impl(gSkillData.strooperGrenadeSpeed, flDot, flDist, false);
 }
 
 //=========================================================
@@ -385,11 +391,10 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t *pEvent)
 	{
 		if (FOkToSpeak())
 		{
-			SENTENCEG_PlayRndSz(ENT(pev), SentenceByNumber(HGRUNT_SENT_ALERT), STROOPER_SENTENCE_VOLUME, STROOPER_ATTN, 0, m_voicePitch);
-			JustSpoke();
+			SpeakCaughtEnemy();
 		}
-
 	}
+	break;
 
 	default:
 		CHGrunt::HandleAnimEvent(pEvent);
@@ -548,9 +553,9 @@ void CShockTrooper::DeathSound(void)
 //=========================================================
 // TraceAttack - reimplemented in shock trooper because they never have helmets
 //=========================================================
-void CShockTrooper::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
+void CShockTrooper::TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
-	CFollowingMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CFollowingMonster::TraceAttack(pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 bool CShockTrooper::CanDropGrenade() const
@@ -560,7 +565,7 @@ bool CShockTrooper::CanDropGrenade() const
 
 void CShockTrooper::DropShockRoach(bool gibbed)
 {
-	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GUN))
+	if (!FBitSet(pev->spawnflags, SF_MONSTER_DONT_DROP_GUN) && g_modFeatures.IsMonsterEnabled("shockroach"))
 	{
 		Vector	vecGunPos;
 		Vector	vecGunAngles = g_vecZero;
@@ -600,14 +605,12 @@ void CShockTrooper::DropShockRoach(bool gibbed)
 
 void CShockTrooper::PlayUseSentence()
 {
-	SENTENCEG_PlayRndSz( ENT( pev ), "ST_IDLE", SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-	JustSpoke();
+	PlaySentenceGroup("ST_IDLE");
 }
 
 void CShockTrooper::PlayUnUseSentence()
 {
-	SENTENCEG_PlayRndSz( ENT( pev ), "ST_ALERT", SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-	JustSpoke();
+	PlaySentenceGroup("ST_ALERT");
 }
 
 class CDeadStrooper : public CDeadMonster
@@ -615,6 +618,7 @@ class CDeadStrooper : public CDeadMonster
 public:
 	void Spawn( void );
 	void Precache();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("shocktrooper"); }
 	int	DefaultClassify ( void ) { return	CLASS_RACEX_SHOCK; }
 	const char* DefaultGibModel() {
 		return "models/strooper_gibs.mdl";

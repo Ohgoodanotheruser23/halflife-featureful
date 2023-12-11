@@ -923,7 +923,7 @@ void CBaseDoor::DoorGoUp( void )
 			if( !FBitSet( pev->spawnflags, SF_DOOR_ONEWAY ) && pev->movedir.y ) 		// Y axis rotation, move away from the player
 			{
 				Vector vec = pevActivator->origin - pev->origin;
-				const bool allowOpenInMoveDirection = FEATURE_OPEN_ROTATING_DOOR_IN_MOVE_DIRECTION;
+				const bool allowOpenInMoveDirection = g_modFeatures.doors_open_in_move_direction;
 
 				Vector vnext;
 				if (!allowOpenInMoveDirection || FBitSet(pev->spawnflags, SF_DOOR_USE_ONLY))
@@ -946,12 +946,12 @@ void CBaseDoor::DoorGoUp( void )
 	if ( pev->spawnflags & SF_DOOR_START_OPEN )
 	{
 		if (m_fireOnClosing)
-			FireTargets(STRING(m_fireOnClosing), m_hActivator, this, (USE_TYPE)m_fireOnClosingState, 0.0f);
+			FireTargets(STRING(m_fireOnClosing), m_hActivator, this, (USE_TYPE)m_fireOnClosingState);
 	}
 	else
 	{
 		if (m_fireOnOpening)
-			FireTargets(STRING(m_fireOnOpening), m_hActivator, this, (USE_TYPE)m_fireOnOpeningState, 0.0f);
+			FireTargets(STRING(m_fireOnOpening), m_hActivator, this, (USE_TYPE)m_fireOnOpeningState);
 	}
 }
 
@@ -991,20 +991,20 @@ void CBaseDoor::DoorHitTop( void )
 
 	// Fire the close target (if startopen is set, then "top" is closed) - netname is the close target
 	if( pev->netname && ( pev->spawnflags & SF_DOOR_START_OPEN ) )
-		FireTargets( STRING( pev->netname ), m_hActivator, this, USE_TOGGLE, 0 );
+		FireTargets( STRING( pev->netname ), m_hActivator, this, USE_TOGGLE );
 
 	if ( pev->spawnflags & SF_DOOR_START_OPEN )
 	{
 		if (m_fireOnClosed)
-			FireTargets(STRING(m_fireOnClosed), m_hActivator, this, (USE_TYPE)m_fireOnClosedState, 0.0f);
+			FireTargets(STRING(m_fireOnClosed), m_hActivator, this, (USE_TYPE)m_fireOnClosedState);
 	}
 	else
 	{
 		if (m_fireOnOpened)
-			FireTargets(STRING(m_fireOnOpened), m_hActivator, this, (USE_TYPE)m_fireOnOpenedState, 0.0f);
+			FireTargets(STRING(m_fireOnOpened), m_hActivator, this, (USE_TYPE)m_fireOnOpenedState);
 	}
 
-	SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 ); // this isn't finished
+	SUB_UseTargets( m_hActivator );
 }
 
 //
@@ -1062,21 +1062,21 @@ void CBaseDoor::DoorHitBottom( void )
 	else // touchable door
 		SetTouch( &CBaseDoor::DoorTouch );
 
-	SUB_UseTargets( m_hActivator, USE_TOGGLE, 0 ); // this isn't finished
+	SUB_UseTargets( m_hActivator );
 
 	// Fire the close target (if startopen is set, then "top" is closed) - netname is the close target
 	if( pev->netname && !( pev->spawnflags & SF_DOOR_START_OPEN ) )
-		FireTargets( STRING( pev->netname ), m_hActivator, this, USE_TOGGLE, 0 );
+		FireTargets( STRING( pev->netname ), m_hActivator, this, USE_TOGGLE );
 
 	if ( pev->spawnflags & SF_DOOR_START_OPEN )
 	{
 		if (m_fireOnOpened)
-			FireTargets(STRING(m_fireOnOpened), m_hActivator, this, (USE_TYPE)m_fireOnOpenedState, 0.0f);
+			FireTargets(STRING(m_fireOnOpened), m_hActivator, this, (USE_TYPE)m_fireOnOpenedState);
 	}
 	else
 	{
 		if (m_fireOnClosed)
-			FireTargets(STRING(m_fireOnClosed), m_hActivator, this, (USE_TYPE)m_fireOnClosedState, 0.0f);
+			FireTargets(STRING(m_fireOnClosed), m_hActivator, this, (USE_TYPE)m_fireOnClosedState);
 	}
 }
 
@@ -1086,15 +1086,22 @@ void CBaseDoor::Blocked( CBaseEntity *pOther )
 	CBaseDoor *pDoor = NULL;
 
 	// Hurt the blocker a little.
-	if( pev->dmg )
+	bool shouldProceed = false;
+	if( pev->dmg ) {
 		pOther->TakeDamage( pev, pev, pev->dmg, DMG_CRUSH );
-
-	if( satchelfix.value )
-	{
-		// Detonate satchels
-		if( !strcmp( "monster_satchel", STRING( pOther->pev->classname ) ) )
-			( (CSatchel*)pOther )->Use( this, this, USE_ON, 0 );
+		if (g_modFeatures.doors_blocked_recheck)
+		{
+			// Entity became unsolid or killed
+			if (pOther->pev->solid == SOLID_NOT || FBitSet(pev->flags, FL_KILLME))
+				shouldProceed = true;
+		}
 	}
+
+	if (!shouldProceed)
+		shouldProceed = pOther->HandleDoorBlockage(this);
+
+	if (shouldProceed)
+		return;
 
 	// if a door has a negative wait, it would never come back if blocked,
 	// so let it just squash the object to death real fast

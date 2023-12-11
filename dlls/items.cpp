@@ -327,30 +327,37 @@ int CPickup::ObjectCaps()
 
 void CPickup::SetObjectCollisionBox()
 {
-	pev->absmin = pev->origin + Vector( -16, -16, 0 );
-	pev->absmax = pev->origin + Vector( 16, 16, 16 );
+	if (FBitSet(pev->spawnflags, SF_ITEM_FIX_PHYSICS))
+	{
+		pev->absmin = pev->origin + Vector( -16, -16, 0 );
+		pev->absmax = pev->origin + Vector( 16, 16, 16 );
+	}
+	else
+	{
+		CBaseDelay::SetObjectCollisionBox();
+	}
 }
 
 bool CPickup::IsPickableByTouch()
 {
 	return !FBitSet(pev->spawnflags, SF_ITEM_USE_ONLY) &&
-			(FBitSet(pev->spawnflags, SF_ITEM_TOUCH_ONLY) || !NeedUseToTake());
+			(FBitSet(pev->spawnflags, SF_ITEM_TOUCH_ONLY) || ItemsPickableByTouch());
 }
 
 bool CPickup::IsPickableByUse()
 {
 	return !FBitSet(pev->spawnflags, SF_ITEM_TOUCH_ONLY) &&
-			(FBitSet(pev->spawnflags, SF_ITEM_USE_ONLY) || NeedUseToTake());
+			(FBitSet(pev->spawnflags, SF_ITEM_USE_ONLY) || ItemsPickableByUse());
 }
 
 void CPickup::FallThink()
 {
 	pev->nextthink = gpGlobals->time + 0.1;
-	if( pev->flags & FL_ONGROUND )
+	if( (pev->flags & FL_ONGROUND) || pev->groundentity != NULL )
 	{
 		pev->solid = SOLID_TRIGGER;
 		UTIL_SetOrigin( pev, pev->origin );
-		ResetThink();
+		SetThink( NULL );
 	}
 }
 
@@ -386,22 +393,48 @@ void CItem::Spawn( void )
 	if (FBitSet(pev->spawnflags, SF_ITEM_NOFALL))
 		pev->movetype = MOVETYPE_NONE;
 	else
-		pev->movetype = MOVETYPE_TOSS;
+	{
+		if (pev->movetype < 0)
+			pev->movetype = MOVETYPE_NONE;
+		else if (pev->movetype == 0)
+			pev->movetype = MOVETYPE_TOSS;
+	}
 	pev->solid = SOLID_TRIGGER;
+
+	bool instantDrop = g_modFeatures.items_instant_drop;
+	const bool comesFromBreakable = pev->owner != NULL;
+	if (!comesFromBreakable && ItemsPhysicsFix() == 2)
+	{
+		pev->solid = SOLID_BBOX;
+		SetThink( &CPickup::FallThink );
+		pev->nextthink = gpGlobals->time + 0.1f;
+		SetBits(pev->spawnflags, SF_ITEM_FIX_PHYSICS);
+
+		instantDrop = false;
+	}
+	if (ItemsPhysicsFix() == 3)
+	{
+		SetBits(pev->spawnflags, SF_ITEM_FIX_PHYSICS);
+	}
+
 	UTIL_SetOrigin( pev, pev->origin );
-	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
+	if (FBitSet(pev->spawnflags, SF_ITEM_FIX_PHYSICS))
+		UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
+	else
+		UTIL_SetSize( pev, Vector( -16, -16, 0 ), Vector( 16, 16, 16 ) );
 	SetTouch( &CItem::ItemTouch );
 
-	if (pev->movetype != MOVETYPE_NONE)
+	if (pev->movetype == MOVETYPE_TOSS)
 	{
-#if FEATURE_ITEM_INSTANT_DROP
-		if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
+		if (instantDrop)
 		{
-			ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), (double)pev->origin.x, (double)pev->origin.y, (double)pev->origin.z);
-			UTIL_Remove( this );
-			return;
+			if( DROP_TO_FLOOR(ENT( pev ) ) == 0 )
+			{
+				ALERT(at_error, "Item %s fell out of level at %f,%f,%f\n", STRING( pev->classname ), (double)pev->origin.x, (double)pev->origin.y, (double)pev->origin.z);
+				UTIL_Remove( this );
+				return;
+			}
 		}
-#endif
 	}
 }
 
@@ -438,7 +471,7 @@ void CItem::TouchOrUse(CBaseEntity *pOther)
 
 	if( MyTouch( pPlayer ) )
 	{
-		SUB_UseTargets( pOther, USE_TOGGLE, 0 );
+		SUB_UseTargets( pOther );
 		SetTouch( NULL );
 
 		// player grabbed the item.
@@ -492,12 +525,6 @@ void CItem::PrecacheMyModel(const char *model)
 	}
 }
 
-#define SF_SUIT_SHORTLOGON		0x0001
-#define SF_SUIT_NOLOGON		0x0002
-#if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
-#define SF_SUIT_FLASHLIGHT 0x0004
-#endif
-
 class CItemSuit : public CItem
 {
 public:
@@ -529,13 +556,10 @@ public:
 			EMIT_SOUND_SUIT( pPlayer->edict(), "!HEV_AAx" );	// long version of suit logon
 		}
 
-		pPlayer->m_iItemsBits |= PLAYER_ITEM_SUIT;
-#if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
+		pPlayer->SetSuitAndDefaultLight();
 		if (FBitSet(pev->spawnflags, SF_SUIT_FLASHLIGHT))
-		{
-			pPlayer->m_iItemsBits |= PLAYER_ITEM_FLASHLIGHT;
-		}
-#endif
+			pPlayer->SetFlashlight();
+
 		return TRUE;
 	}
 };
@@ -565,8 +589,7 @@ public:
 
 		if( ( pPlayer->pev->armorvalue < MAX_NORMAL_BATTERY ) && pPlayer->HasSuit() )
 		{
-			pPlayer->pev->armorvalue += pev->health > 0 ? pev->health : DefaultCapacity();
-			pPlayer->pev->armorvalue = Q_min( pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY );
+			pPlayer->TakeArmor(this, pev->health > 0 ? pev->health : DefaultCapacity());
 
 			EMIT_SOUND( pPlayer->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 
@@ -727,9 +750,7 @@ class CItemLongJump : public CItem
 
 		if( pPlayer->HasSuit() )
 		{
-			pPlayer->m_fLongJump = TRUE;// player now has longjump module
-
-			g_engfuncs.pfnSetPhysicsKeyValue( pPlayer->edict(), "slj", "1" );
+			pPlayer->SetLongjump(true);
 
 			MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
 				WRITE_STRING( STRING( pev->classname ) );
@@ -744,25 +765,53 @@ class CItemLongJump : public CItem
 
 LINK_ENTITY_TO_CLASS( item_longjump, CItemLongJump )
 
-#if FEATURE_FLASHLIGHT_ITEM
+#define FLASHLIGHT_MODEL "models/w_flashlight.mdl"
+
 class CItemFlashlight : public CItem
 {
+	static bool g_hasFlashlightModel;
+	static bool g_checkedFlashligthModel;
+public:
 	void Spawn( void )
 	{
-		Precache( );
-		SetMyModel("models/w_flashlight.mdl");
-		CItem::Spawn( );
+		Precache();
+		SetMyModel(DefaultModel());
+		CItem::Spawn();
 	}
 	void Precache( void )
 	{
-		PrecacheMyModel ("models/w_flashlight.mdl");
+		if (!g_checkedFlashligthModel)
+		{
+			int fileSize;
+			byte* pMemFile = g_engfuncs.pfnLoadFileForMe( FLASHLIGHT_MODEL, &fileSize );
+			if (pMemFile)
+			{
+				g_hasFlashlightModel = true;
+				g_engfuncs.pfnFreeFile( pMemFile );
+			}
+			g_checkedFlashligthModel = true;
+		}
+
+		PrecacheMyModel (DefaultModel());
 		PRECACHE_SOUND( "items/gunpickup2.wav" );
+	}
+	const char* DefaultModel()
+	{
+		if (g_hasFlashlightModel)
+			return FLASHLIGHT_MODEL;
+		else
+			return "sprites/iunknown.spr";
 	}
 	BOOL MyTouch( CBasePlayer *pPlayer )
 	{
-		if ( pPlayer->HasFlashlight() )
+		if (g_modFeatures.suit_light_allow_both)
+		{
+			if (pPlayer->HasFlashlight())
+				return FALSE;
+		}
+		else if ( pPlayer->HasSuitLight() )
 			return FALSE;
-		pPlayer->m_iItemsBits |= PLAYER_ITEM_FLASHLIGHT;
+		pPlayer->SetFlashlight();
 		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
 			WRITE_STRING( STRING(pev->classname) );
 		MESSAGE_END();
@@ -771,7 +820,40 @@ class CItemFlashlight : public CItem
 	}
 };
 LINK_ENTITY_TO_CLASS(item_flashlight, CItemFlashlight)
-#endif
+
+bool CItemFlashlight::g_hasFlashlightModel = false;
+bool CItemFlashlight::g_checkedFlashligthModel = false;
+
+class CItemNVG : public CItem
+{
+public:
+	void Spawn()
+	{
+		Precache();
+		SetMyModel("sprites/iunknown.spr");
+		CItem::Spawn();
+	}
+	void Precache()
+	{
+		PrecacheMyModel("sprites/iunknown.spr");
+	}
+	BOOL MyTouch( CBasePlayer *pPlayer )
+	{
+		if (g_modFeatures.suit_light_allow_both)
+		{
+			if (pPlayer->HasNVG())
+				return FALSE;
+		}
+		else if ( pPlayer->HasSuitLight() )
+			return FALSE;
+		pPlayer->SetNVG();
+		MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
+			WRITE_STRING( STRING(pev->classname) );
+		MESSAGE_END();
+		return TRUE;
+	}
+};
+LINK_ENTITY_TO_CLASS(item_nvgs, CItemNVG)
 
 //=========================================================
 // Generic item

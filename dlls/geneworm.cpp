@@ -24,6 +24,7 @@
 #include	"player.h"
 #include	"weapons.h"
 #include	"mod_features.h"
+#include	"game.h"
 
 #if FEATURE_GENEWORM
 
@@ -408,9 +409,10 @@ public:
 
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("geneworm"); }
 	int  DefaultClassify(void) { return CLASS_RACEX_SHOCK; }
 	void Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib);
-	void TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	void FireHurtTargets(const char *targetName, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 
 	void SetObjectCollisionBox(void)
@@ -722,7 +724,7 @@ void CGeneWorm::DyingThink(void)
 
 		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "geneworm/geneworm_death.wav", 1, 0.1, 0, 100);
 
-		FireTargets("GeneWormDead", this, this, USE_TOGGLE, 0);
+		FireTargets("GeneWormDead", this, this);
 
 		m_flDeathStart = gpGlobals->time;
 		pev->deadflag = DEAD_DYING;
@@ -914,9 +916,9 @@ BOOL CGeneWorm::ClawAttack()
 	return FALSE;
 }
 
-void CGeneWorm::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
+void CGeneWorm::TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
-	if(FClassnameIs(pevAttacker, "monster_penguin"))
+	if(!FNullEnt(pevInflictor) && FClassnameIs(pevInflictor, "monster_penguin"))
 	{
 		pev->health = 0;
 		SetThink(&CGeneWorm::DyingThink);
@@ -930,7 +932,7 @@ void CGeneWorm::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDi
 	{
 		if(pev->dmgtime != gpGlobals->time|| RANDOM_LONG(0, 10) <= 0)
 		{
-			if(FClassnameIs(pevAttacker, "env_laser"))
+			if(!FNullEnt(pevInflictor) && FClassnameIs(pevInflictor, "env_laser"))
 			{
 				UTIL_Sparks(ptr->vecEndPos);
 			}
@@ -943,12 +945,12 @@ void CGeneWorm::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDi
 		return;
 	}
 
-	if(FClassnameIs(pevAttacker, "env_laser"))
+	if(!FNullEnt(pevInflictor) && FClassnameIs(pevInflictor, "env_laser"))
 	{
 		if(!m_fHasEntered)
 			return;
 
-		if(ptr->iHitgroup == 4 && !m_fLeftEyeHit && FStrEq("left_eye_laser", STRING(pevAttacker->targetname)))
+		if(ptr->iHitgroup == 4 && !m_fLeftEyeHit && FStrEq("left_eye_laser", STRING(pevInflictor->targetname)))
 		{
 			m_fLeftEyeHit = TRUE;
 			m_iWasHit = 1;
@@ -970,7 +972,7 @@ void CGeneWorm::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDi
 			UTIL_BloodDrips(ptr->vecEndPos, ptr->vecEndPos, m_bloodColor, 256);
 		}
 
-		if(ptr->iHitgroup == 5 && !m_fRightEyeHit && FStrEq("right_eye_laser", STRING(pevAttacker->targetname)))
+		if(ptr->iHitgroup == 5 && !m_fRightEyeHit && FStrEq("right_eye_laser", STRING(pevInflictor->targetname)))
 		{
 			m_fRightEyeHit = TRUE;
 			m_iWasHit = 1;

@@ -29,14 +29,9 @@
 #include	"animation.h"
 #include	"studio.h"
 #include	"mod_features.h"
+#include	"game.h"
 
 #if FEATURE_GONOME
-
-/* Whether gonome locks the player during the bite attack.
- * This may have undesired side-effects, e.g. in combination with trigger_playerfreeze or trigger_camera,
- * since both gonome and the trigger use the same technique to lock the player.
- */
-#define FEATURE_GONOME_LOCK_PLAYER 0
 
 /* Gonome's model references step sounds but there're none in files.
  * If your mod has suitable sounds for gonome's foot steps, enable this feature to precache step sounds.
@@ -123,6 +118,7 @@ class CGonome : public CBaseMonster
 public:
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("gonome"); }
 
 	int  DefaultClassify(void);
 	const char* DefaultDisplayName() { return "Gonome"; }
@@ -171,10 +167,8 @@ protected:
 	float m_flNextFlinch;
 	float m_flNextThrowTime;// last time the gonome used the guts attack.
 	CGonomeGuts* m_pGonomeGuts;
-#if FEATURE_GONOME_LOCK_PLAYER
 	BOOL m_fPlayerLocked;
 	EHANDLE m_lockedPlayer;
-#endif
 	bool m_meleeAttack2;
 	bool m_playedAttackSound;
 };
@@ -217,9 +211,7 @@ TYPEDESCRIPTION	CGonome::m_SaveData[] =
 {
 	DEFINE_FIELD( CGonome, m_flNextFlinch, FIELD_TIME ),
 	DEFINE_FIELD( CGonome, m_flNextThrowTime, FIELD_TIME ),
-#if FEATURE_GONOME_LOCK_PLAYER
 	DEFINE_FIELD( CGonome, m_fPlayerLocked, FIELD_BOOLEAN ),
-#endif
 };
 
 IMPLEMENT_SAVERESTORE( CGonome, CBaseMonster )
@@ -240,22 +232,23 @@ void CGonome::UpdateOnRemove()
 
 void CGonome::UnlockPlayer()
 {
-#if FEATURE_GONOME_LOCK_PLAYER
-	if (m_fPlayerLocked)
+	if (g_modFeatures.gonome_lock_player)
 	{
-		CBasePlayer* player = 0;
-		if (m_lockedPlayer != 0 && m_lockedPlayer->IsPlayer())
-			player = (CBasePlayer*)((CBaseEntity*)m_lockedPlayer);
-		else // if ehandle is empty for some reason just unlock the first player
-			player = (CBasePlayer*)UTIL_FindEntityByClassname(0, "player");
+		if (m_fPlayerLocked)
+		{
+			CBasePlayer* player = 0;
+			if (m_lockedPlayer != 0 && m_lockedPlayer->IsPlayer())
+				player = (CBasePlayer*)((CBaseEntity*)m_lockedPlayer);
+			else // if ehandle is empty for some reason just unlock the first player
+				player = (CBasePlayer*)UTIL_FindEntityByClassname(0, "player");
 
-		if (player)
-			player->EnableControl(TRUE);
+			if (player)
+				player->EnableControl(TRUE);
 
-		m_lockedPlayer = 0;
-		m_fPlayerLocked = FALSE;
+			m_lockedPlayer = 0;
+			m_fPlayerLocked = FALSE;
+		}
 	}
-#endif
 }
 
 CGonomeGuts* CGonome::GetGonomeGuts(const Vector &pos)
@@ -345,14 +338,16 @@ int	CGonome::DefaultClassify(void)
 //=========================================================
 int CGonome::TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType)
 {
-	// Take 15% damage from bullets
 	if( bitsDamageType == DMG_BULLET )
 	{
 		Vector vecDir = pev->origin - (pevInflictor->absmin + pevInflictor->absmax) * 0.5;
 		vecDir = vecDir.Normalize();
 		float flForce = DamageForce( flDamage );
 		pev->velocity = pev->velocity + vecDir * flForce;
+#if 0
+		// Take 15% damage from bullets
 		flDamage *= 0.15;
+#endif
 	}
 
 	// HACK HACK -- until we fix this.
@@ -578,22 +573,23 @@ void CGonome::HandleAnimEvent(MonsterEvent_t *pEvent)
 						pHurt->pev->velocity = pHurt->pev->velocity - gpGlobals->v_forward * 25;
 					}
 				}
-#if FEATURE_GONOME_LOCK_PLAYER
-				if (pEvent->event == GONOME_AE_BITE4)
+				if (g_modFeatures.gonome_lock_player)
 				{
-					UnlockPlayer();
-				}
-				else if (pHurt->IsPlayer() && pHurt->IsAlive())
-				{
-					if (!m_fPlayerLocked)
+					if (pEvent->event == GONOME_AE_BITE4)
 					{
-						CBasePlayer* player = (CBasePlayer*)pHurt;
-						player->EnableControl(FALSE);
-						m_lockedPlayer = player;
-						m_fPlayerLocked = TRUE;
+						UnlockPlayer();
+					}
+					else if (pHurt->IsPlayer() && pHurt->IsAlive())
+					{
+						if (!m_fPlayerLocked)
+						{
+							CBasePlayer* player = (CBasePlayer*)pHurt;
+							player->EnableControl(FALSE);
+							m_lockedPlayer = player;
+							m_fPlayerLocked = TRUE;
+						}
 					}
 				}
-#endif
 			}
 		}
 		break;
@@ -885,6 +881,7 @@ class CDeadGonome : public CDeadMonster
 {
 public:
 	void Spawn(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("gonome"); }
 	int	DefaultClassify(void) { return	CLASS_ALIEN_MONSTER; }
 	const char* getPos(int pos) const;
 	static const char *m_szPoses[3];

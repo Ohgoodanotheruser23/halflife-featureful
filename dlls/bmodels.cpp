@@ -51,6 +51,9 @@ Vector VecBModelOrigin( entvars_t* pevBModel )
 /*QUAKED func_wall (0 .5 .8) ?
 This is just a solid wall if not inhibited
 */
+
+#define SF_FUNCWALL_USE_ANGLES 2
+
 class CFuncWall : public CBaseEntity
 {
 public:
@@ -65,7 +68,8 @@ LINK_ENTITY_TO_CLASS( func_wall, CFuncWall )
 
 void CFuncWall::Spawn( void )
 {
-	pev->angles = g_vecZero;
+	if (!FBitSet(pev->spawnflags, SF_FUNCWALL_USE_ANGLES))
+		pev->angles = g_vecZero;
 	pev->movetype = MOVETYPE_PUSH;  // so it doesn't get pushed by anything
 	pev->solid = SOLID_BSP;
 	SET_MODEL( ENT( pev ), STRING( pev->model ) );
@@ -233,7 +237,8 @@ void CFuncIllusionary::KeyValue( KeyValueData *pkvd )
 
 void CFuncIllusionary::Spawn( void )
 {
-	pev->angles = g_vecZero;
+	if (!FBitSet(pev->spawnflags, SF_FUNCWALL_USE_ANGLES))
+		pev->angles = g_vecZero;
 	pev->movetype = MOVETYPE_NONE;  
 	pev->solid = SOLID_NOT;// always solid_not 
 	SET_MODEL( ENT( pev ), STRING( pev->model ) );
@@ -243,6 +248,33 @@ void CFuncIllusionary::Spawn( void )
 	// Perhaps we can do this in deathmatch only.
 	//	MAKE_STATIC(ENT(pev));
 }
+
+class CFuncIllusionaryToggle : public CFuncIllusionary
+{
+public:
+	void Spawn()
+	{
+		CFuncIllusionary::Spawn();
+		if( pev->spawnflags & SF_WALL_START_OFF )
+			TurnOff();
+	}
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+	{
+		bool status = IsOn();
+		if( ShouldToggle( useType, status ) )
+		{
+			if( status )
+				TurnOff();
+			else
+				TurnOn();
+		}
+	}
+	void TurnOff( void ) {  pev->effects |= EF_NODRAW; }
+	void TurnOn( void ) { pev->effects &= ~EF_NODRAW; }
+	BOOL IsOn( void ) { return !(pev->effects & EF_NODRAW); }
+};
+
+LINK_ENTITY_TO_CLASS( func_illusionary_toggle, CFuncIllusionaryToggle )
 
 // -------------------------------------------------------------------------------
 //
@@ -691,6 +723,9 @@ void CFuncRotating::Blocked( CBaseEntity *pOther )
 	pOther->TakeDamage( pev, pev, pev->dmg, DMG_CRUSH );
 }
 //#endif
+
+#define	SF_PENDULUM_BOTHWAYS 256
+
 class CPendulum : public CBaseEntity
 {
 public:
@@ -769,10 +804,14 @@ void CPendulum::Spawn( void )
 	if( pev->speed == 0.0f )
 		pev->speed = 100.0f;
 
-	m_accel = ( pev->speed * pev->speed ) / ( 2.0f * fabs( m_distance ) );	// Calculate constant acceleration from speed and distance
+	const float multiplier = (FBitSet(pev->spawnflags, SF_PENDULUM_BOTHWAYS)) ? 1.0f : 2.0f;
+	m_accel = ( pev->speed * pev->speed ) / ( multiplier * fabs( m_distance ) );	// Calculate constant acceleration from speed and distance
 	m_maxSpeed = pev->speed;
 	m_start = pev->angles;
-	m_center = pev->angles + ( m_distance * 0.5f ) * pev->movedir;
+	if (FBitSet(pev->spawnflags, SF_PENDULUM_BOTHWAYS))
+		m_center = m_start;
+	else
+		m_center = pev->angles + ( m_distance * 0.5f ) * pev->movedir;
 
 	if( FBitSet( pev->spawnflags, SF_BRUSH_ROTATE_INSTANT ) )
 	{	

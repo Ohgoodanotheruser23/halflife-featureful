@@ -26,10 +26,8 @@
 #include "nodes.h"
 #include "defaultai.h"
 #include "soundent.h"
-#include "mod_features.h"
 #include "gamerules.h"
-
-extern CGraph WorldGraph;
+#include "game.h"
 
 //=========================================================
 // FHaveSchedule - Returns TRUE if monster's m_pSchedule
@@ -224,6 +222,43 @@ BOOL CBaseMonster::FScheduleValid( void )
 	return TRUE;
 }
 
+bool CBaseMonster::ShouldGetIdealState()
+{
+	// Don't get ideal state if you are supposed to be dead.
+	if ( m_IdealMonsterState == MONSTERSTATE_DEAD )
+		return false;
+
+	// If I'm supposed to be in scripted state, but i'm not yet, do not allow
+	// GetIdealState() to be called, because it doesn't know how to determine
+	// that a NPC should be in SCRIPT state and will stomp it with some other state.
+	if ( m_IdealMonsterState == MONSTERSTATE_SCRIPT && m_MonsterState != MONSTERSTATE_SCRIPT )
+		return false;
+
+	// conditions bits (excluding SCHEDULE_DONE) indicate interruption
+	if ( m_afConditions && !HasConditions( bits_COND_SCHEDULE_DONE ) )
+		return true;
+
+	// schedule is done but schedule indicates it wants GetIdealState called
+	// after successful completion (by setting bits_COND_SCHEDULE_DONE in iInterruptMask)
+	if ( m_pSchedule && (m_pSchedule->iInterruptMask & bits_COND_SCHEDULE_DONE ) )
+		return true;
+
+	// in COMBAT state with no enemy (it died?)
+	if ( ( m_MonsterState == MONSTERSTATE_COMBAT ) && ( m_hEnemy == 0 ) )
+		return true;
+
+	// Always get ideal state in Hunt state, to check if monster wants to stop hunting
+	if ( m_MonsterState == MONSTERSTATE_HUNT )
+		return true;
+
+	// Got an enemy from somewhere else (e.g. from squad member) while in non-combat state
+	if ( (m_MonsterState == MONSTERSTATE_IDLE || m_MonsterState == MONSTERSTATE_ALERT ||
+		  m_MonsterState == MONSTERSTATE_HUNT) && m_hEnemy != 0 )
+		return true;
+
+	return false;
+}
+
 //=========================================================
 // MaintainSchedule - does all the per-think schedule maintenance.
 // ensures that the monster leaves this function with a valid
@@ -252,22 +287,9 @@ void CBaseMonster::MaintainSchedule( void )
 			// Notify the monster that his schedule is changing
 			ScheduleChange();
 
-			// Call GetIdealState if we're not dead and one or more of the following...
-			// - in COMBAT state with no enemy (it died?)
-			// - conditions bits (excluding SCHEDULE_DONE) indicate interruption,
-			// - schedule is done but schedule indicates it wants GetIdealState called
-			//   after successful completion (by setting bits_COND_SCHEDULE_DONE in iInterruptMask)
-			// DEAD & SCRIPT are not suggestions, they are commands!
-			if( m_IdealMonsterState != MONSTERSTATE_DEAD && 
-				 ( m_IdealMonsterState != MONSTERSTATE_SCRIPT || m_IdealMonsterState == m_MonsterState ) )
+			if( ShouldGetIdealState() )
 			{
-				if( (m_afConditions && !HasConditions( bits_COND_SCHEDULE_DONE ) ) ||
-						( m_pSchedule && (m_pSchedule->iInterruptMask & bits_COND_SCHEDULE_DONE ) ) ||
-						( ( m_MonsterState == MONSTERSTATE_COMBAT ) && ( m_hEnemy == 0 ) ) ||
-						m_MonsterState == MONSTERSTATE_HUNT )
-				{
-					GetIdealState();
-				}
+				GetIdealState();
 			}
 			if( HasConditions( bits_COND_TASK_FAILED ) && m_MonsterState == m_IdealMonsterState )
 			{
@@ -653,7 +675,8 @@ void CBaseMonster::RunTask( Task_t *pTask )
 	case TASK_RUN_TO_SCRIPT_RADIUS:
 	case TASK_WALK_TO_SCRIPT_RADIUS:
 		{
-			if( m_pGoalEnt == 0 )
+			CBaseEntity* pGoalEnt = ScriptedMoveGoal();
+			if( pGoalEnt == 0 )
 				TaskFail("no target ent");
 			else
 			{
@@ -663,7 +686,7 @@ void CBaseMonster::RunTask( Task_t *pTask )
 					checkDistance = m_pCine->m_flMoveToRadius;
 				}
 
-				float distance = ( m_pGoalEnt->pev->origin - pev->origin ).Length2D();
+				float distance = ( pGoalEnt->pev->origin - pev->origin ).Length2D();
 
 				if( distance <= checkDistance )
 				{
@@ -1114,10 +1137,11 @@ void CBaseMonster::StartTask( Task_t *pTask )
 	case TASK_WALK_TO_SCRIPT:
 		{
 			Activity newActivity;
+			CBaseEntity* pGoalEnt = ScriptedMoveGoal();
 
-			if ( m_pGoalEnt == 0 )
+			if ( pGoalEnt == 0 )
 				TaskFail("no move target ent");
-			else if( ( m_pGoalEnt->pev->origin - pev->origin ).Length() < 1 )
+			else if( ( pGoalEnt->pev->origin - pev->origin ).Length() < 1 )
 				TaskComplete();
 			else
 			{
@@ -1131,9 +1155,9 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					TaskComplete();
 				else 
 				{
-					if (m_pGoalEnt != 0)
+					if (pGoalEnt != 0)
 					{
-						const Vector vecDest = m_pGoalEnt->pev->origin;
+						const Vector vecDest = pGoalEnt->pev->origin;
 						if( !MoveToLocation( newActivity, 2, vecDest ) )
 						{
 							if (m_pCine) {
@@ -1165,24 +1189,25 @@ void CBaseMonster::StartTask( Task_t *pTask )
 				radius = 1.0f;
 
 			Activity newActivity;
+			CBaseEntity* pGoalEnt = ScriptedMoveGoal();
 
-			if ( m_pGoalEnt == 0 )
+			if ( pGoalEnt == 0 )
 				TaskFail("no move target ent");
-			else if( ( m_pGoalEnt->pev->origin - pev->origin ).Length2D() <= radius )
+			else if( ( pGoalEnt->pev->origin - pev->origin ).Length2D() <= radius )
 				TaskComplete();
 			else
 			{
 				if( pTask->iTask == TASK_RUN_TO_SCRIPT_RADIUS )
-					newActivity = ACT_WALK;
-				else
 					newActivity = ACT_RUN;
+				else
+					newActivity = ACT_WALK;
 
 				// This monster can't do this!
 				if( LookupActivity( newActivity ) == ACTIVITY_NOT_AVAILABLE )
 					TaskComplete();
 				else
 				{
-					if( m_pGoalEnt == 0 || !MoveToLocationClosest( newActivity, 2, m_pGoalEnt->pev->origin ) )
+					if( pGoalEnt == 0 || !MoveToLocationClosest( newActivity, 2, pGoalEnt->pev->origin ) )
 					{
 						TaskFail("failed to reach move target ent");
 						RouteClear();
@@ -1600,9 +1625,10 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					}
 				}
 			}
-			if( m_pGoalEnt != 0 )
+			CBaseEntity* pGoalEnt = ScriptedMoveGoal();
+			if( pGoalEnt != 0 )
 			{
-				pev->origin = m_pGoalEnt->pev->origin;
+				pev->origin = pGoalEnt->pev->origin;
 			}
 
 			TaskComplete();
@@ -1624,10 +1650,11 @@ void CBaseMonster::StartTask( Task_t *pTask )
 					pev->velocity = Vector( 0, 0, 0 );
 					pev->effects |= EF_NOINTERP;
 				}
-				if( m_pGoalEnt != 0 )
+				CBaseEntity* pGoalEnt = ScriptedMoveGoal();
+				if( pGoalEnt != 0 )
 				{
 					ALERT(at_aiconsole, "Forcibly teleporting the monster to script after %d attempts\n", m_pCine->m_moveFailCount );
-					UTIL_SetOrigin( pev, m_pGoalEnt->pev->origin );
+					UTIL_SetOrigin( pev, pGoalEnt->pev->origin );
 				}
 				m_pCine->m_moveFailCount = 0;
 			}
@@ -1672,11 +1699,12 @@ void CBaseMonster::StartTask( Task_t *pTask )
 		TaskComplete();
 		break;
 	case TASK_GET_HEALTH_FROM_FOOD:
-#if FEATURE_EAT_FOR_HEALTH
-		ALERT(at_aiconsole, "%s eating. Current health: %d/%d\n", STRING(pev->classname), (int)pev->health, (int)pev->max_health);
-		TakeHealth(this, pev->max_health * pTask->flData, DMG_GENERIC);
-		ALERT(at_aiconsole, "%s health after eating: %d/%d\n", STRING(pev->classname), (int)pev->health, (int)pev->max_health);
-#endif
+		if (g_modFeatures.monsters_eat_for_health)
+		{
+			ALERT(at_aiconsole, "%s eating. Current health: %d/%d\n", STRING(pev->classname), (int)pev->health, (int)pev->max_health);
+			TakeHealth(this, pev->max_health * pTask->flData, DMG_GENERIC);
+			ALERT(at_aiconsole, "%s health after eating: %d/%d\n", STRING(pev->classname), (int)pev->health, (int)pev->max_health);
+		}
 		TaskComplete();
 		break;
 	case TASK_GET_PATH_TO_FREEROAM_NODE:
@@ -2077,7 +2105,7 @@ Schedule_t *CBaseMonster::GetSchedule( void )
 
 			if ( HasConditions( bits_COND_ENEMY_LOST ) )
 			{
-				ALERT(at_aiconsole, "%s did not see an enemy for a while. Just forget about it\n", STRING(pev->classname));
+				ALERT(at_aiconsole, "%s did not see an enemy %s for a while. Just forget about it\n", STRING(pev->classname), m_hEnemy != 0 ? STRING(m_hEnemy->pev->classname) : "");
 				m_hEnemy = NULL;
 
 				if( GetEnemy(true) )

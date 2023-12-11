@@ -18,11 +18,12 @@
 #include "cbase.h"
 #include "monsters.h"
 #include "weapons.h"
-#include "nodes.h"
 #include "player.h"
 #include "soundent.h"
 #include "gamerules.h"
+#ifndef CLIENT_DLL
 #include "game.h"
+#endif
 
 #if FEATURE_M249
 
@@ -40,6 +41,7 @@ void CM249::Spawn()
 	m_iDefaultAmmo = M249_DEFAULT_GIVE;
 
 	m_fInSpecialReload = FALSE;
+	m_bAlternatingEject = false;
 
 	FallInit();// get ready to fall down.
 }
@@ -52,13 +54,12 @@ void CM249::Precache(void)
 	PRECACHE_MODEL("models/p_saw.mdl");
 
 	m_iShell = PRECACHE_MODEL("models/saw_shell.mdl");// brass shellTE_MODEL
+	m_iLink = PRECACHE_MODEL("models/saw_link.mdl");
 
 	PRECACHE_MODEL("models/w_saw_clip.mdl");
 	PRECACHE_SOUND("items/9mmclip1.wav");
 
 	PRECACHE_SOUND("weapons/saw_fire1.wav");
-	PRECACHE_SOUND("weapons/saw_fire2.wav");
-	PRECACHE_SOUND("weapons/saw_fire3.wav");
 
 	PRECACHE_SOUND("weapons/saw_reload.wav");
 	PRECACHE_SOUND("weapons/saw_reload2.wav");
@@ -66,6 +67,15 @@ void CM249::Precache(void)
 	PRECACHE_SOUND("weapons/357_cock1.wav");
 
 	m_usM249 = PRECACHE_EVENT(1, "events/m249.sc");
+}
+
+bool CM249::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_M249);
+#else
+	return true;
+#endif
 }
 
 int CM249::GetItemInfo(ItemInfo *p)
@@ -84,7 +94,7 @@ int CM249::GetItemInfo(ItemInfo *p)
 	p->iPosition = 3;
 #endif
 	p->iFlags = 0;
-	p->iId = m_iId = WEAPON_M249;
+	p->iId = WEAPON_M249;
 	p->iWeight = M249_WEIGHT;
 	p->pszAmmoEntity = "ammo_556";
 	p->iDropAmmo = AMMO_762BOX_GIVE;
@@ -135,6 +145,7 @@ void CM249::PrimaryAttack()
 
 	m_iClip--;
 	UpdateTape();
+	m_bAlternatingEject = !m_bAlternatingEject;
 	m_pPlayer->pev->effects = (int)(m_pPlayer->pev->effects) | EF_MUZZLEFLASH;
 
 	// player "shoot" animation
@@ -166,7 +177,7 @@ void CM249::PrimaryAttack()
 	flags = 0;
 #endif
 
-	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usM249, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, 0, pev->body, 0, 0);
+	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usM249, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, 0, pev->body, m_bAlternatingEject ? 1 : 0, 0);
 
 
 #ifndef CLIENT_DLL
@@ -241,14 +252,7 @@ void CM249::ItemPostFrame()
 	{
 		if (m_pPlayer->m_flNextAttack <= UTIL_WeaponTimeBase())
 		{
-			int maxClip;
-	#ifndef CLIENT_DLL
-			maxClip = iMaxClip();
-	#else
-			ItemInfo itemInfo;
-			GetItemInfo( &itemInfo );
-			maxClip = itemInfo.iMaxClip;
-	#endif
+			int maxClip = iMaxClip();
 			m_iVisibleClip = m_iClip + Q_min( maxClip - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
 
 			UpdateTape(m_iVisibleClip);
@@ -305,7 +309,7 @@ int CM249::BodyFromClip(int clip)
 {
 	if (clip == 0) {
 		return 8;
-	} else if (clip > 0 && clip < 8) {
+	} else if (clip > 0 && clip <= 8) {
 		return 9 - clip;
 	} else {
 		return 0;

@@ -215,6 +215,7 @@ class CPitdrone : public CFollowingMonster
 public:
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("pitdrone"); }
 	void HandleAnimEvent(MonsterEvent_t *pEvent);
 	void SetYawSpeed(void);
 	int DefaultISoundMask();
@@ -433,21 +434,7 @@ BOOL CPitdrone::CheckRangeAttack1(float flDot, float flDist)
 //=========================================================
 void CPitdrone::SetYawSpeed(void)
 {
-	int ys;
-
-	ys = 0;
-
-	switch (m_Activity)
-	{
-	case	ACT_WALK:			ys = 120;	break;
-	case	ACT_RUN:			ys = 120;	break;
-	case	ACT_IDLE:			ys = 120;	break;
-	case	ACT_RANGE_ATTACK1:	ys = 120;	break;
-	default:
-		ys = 120;
-		break;
-	}
-
+	int ys = 90;
 	pev->yaw_speed = ys;
 }
 
@@ -602,31 +589,24 @@ void CPitdrone::BodyChange(int horns)
 {
 	if (horns <= 0)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS0);
-	//		pev->body = PITDRONE_HORNS0;
 
 	if (horns == 1)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS6);
-	//		pev->body = PITDRONE_HORNS6;
 
 	if (horns == 2)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS5);
-	//		pev->body = PITDRONE_HORNS5;
 
 	if (horns == 3)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS4);
-	//		pev->body = PITDRONE_HORNS4;
 
 	if (horns == 4)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS3);
-	//		pev->body = PITDRONE_HORNS3;
 
 	if (horns == 5)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS2);
-	//		pev->body = PITDRONE_HORNS2;
 
 	if (horns >= 6)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS1);
-	//		pev->body = PITDRONE_HORNS1;
 
 	return;
 }
@@ -1128,42 +1108,18 @@ Schedule_t* CPitdrone::GetScheduleOfType(int Type)
 //=========================================================
 void CPitdrone::StartTask(Task_t *pTask)
 {
-	m_iTaskStatus = TASKSTATUS_RUNNING;
-
 	switch (pTask->iTask)
 	{
 	case TASK_PDRONE_HOPTURN:
-	{
-		m_flNextHopTime = gpGlobals->time + 5.0f;
-		SetActivity( ACT_HOP );
-		MakeIdealYaw( m_vecEnemyLKP );
-		break;
-	}
-	case TASK_GET_PATH_TO_ENEMY:
-	{
-		CBaseEntity *pEnemy = m_hEnemy;
-
-		if( pEnemy == NULL )
 		{
-			TaskFail("no enemy");
-			return;
+			m_flNextHopTime = gpGlobals->time + 5.0f;
+			SetActivity( ACT_HOP );
+			MakeIdealYaw( m_vecEnemyLKP );
+			break;
 		}
-
-		if( BuildRoute( pEnemy->pev->origin, bits_MF_TO_ENEMY, pEnemy ) )
-		{
-			TaskComplete();
-		}
-		else
-		{
-			TaskFail("can't build path to enemy");
-		}
-		break;
-	}
 	default:
-	{
 		CFollowingMonster::StartTask(pTask);
 		break;
-	}
 	}
 }
 
@@ -1181,7 +1137,7 @@ void CPitdrone::RunTask(Task_t *pTask)
 
 			if( m_fSequenceFinished )
 			{
-				m_iTaskStatus = TASKSTATUS_COMPLETE;
+				TaskComplete();
 			}
 			break;
 		}
@@ -1208,6 +1164,7 @@ class CDeadPitdrone : public CDeadMonster
 public:
 	void Spawn( void );
 	void Precache();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("pitdrone"); }
 	int	DefaultClassify ( void ) { return	CLASS_RACEX_PREDATOR; }
 	const char* DefaultGibModel() {
 		return "models/pit_drone_gibs.mdl";

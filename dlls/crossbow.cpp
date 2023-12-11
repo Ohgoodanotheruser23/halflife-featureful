@@ -111,11 +111,11 @@ void CCrossbowBolt::BoltTouch( CBaseEntity *pOther )
 
 		if( pOther->IsPlayer() )
 		{
-			pOther->TraceAttack( pevOwner, gSkillData.plrDmgCrossbowClient, pev->velocity.Normalize(), &tr, DMG_NEVERGIB ); 
+			pOther->TraceAttack( pev, pevOwner, gSkillData.plrDmgCrossbowClient, pev->velocity.Normalize(), &tr, DMG_NEVERGIB );
 		}
 		else
 		{
-			pOther->TraceAttack( pevOwner, gSkillData.plrDmgCrossbowMonster, pev->velocity.Normalize(), &tr, DMG_BULLET | DMG_NEVERGIB ); 
+			pOther->TraceAttack( pev, pevOwner, gSkillData.plrDmgCrossbowMonster, pev->velocity.Normalize(), &tr, DMG_BULLET | DMG_NEVERGIB );
 		}
 
 		ApplyMultiDamage( pev, pevOwner );
@@ -302,7 +302,7 @@ void CCrossbow::Holster()
 {
 	m_fInReload = FALSE;// cancel any reload in progress.
 
-	if( m_fInZoom )
+	if( InZoom() )
 	{
 		SecondaryAttack();
 	}
@@ -317,9 +317,9 @@ void CCrossbow::Holster()
 void CCrossbow::PrimaryAttack( void )
 {
 #if CLIENT_DLL
-	if( m_fInZoom && bIsMultiplayer() )
+	if( InZoom() && bIsMultiplayer() )
 #else
-	if( m_fInZoom && g_pGameRules->IsMultiplayer() )
+	if( InZoom() && g_pGameRules->IsMultiplayer() )
 #endif
 	{
 		FireSniperBolt();
@@ -368,7 +368,7 @@ void CCrossbow::FireSniperBolt()
 	if( tr.pHit->v.takedamage )
 	{
 		ClearMultiDamage();
-		CBaseEntity::Instance( tr.pHit )->TraceAttack( m_pPlayer->pev, 120, vecDir, &tr, DMG_BULLET | DMG_NEVERGIB ); 
+		CBaseEntity::Instance( tr.pHit )->TraceAttack( m_pPlayer->pev, m_pPlayer->pev, 120, vecDir, &tr, DMG_BULLET | DMG_NEVERGIB );
 		ApplyMultiDamage( pev, m_pPlayer->pev );
 	}
 #endif
@@ -446,12 +446,10 @@ void CCrossbow::SecondaryAttack()
 	if( m_pPlayer->pev->fov != 0 )
 	{
 		m_pPlayer->pev->fov = m_pPlayer->m_iFOV = 0; // 0 means reset to default fov
-		m_fInZoom = 0;
 	}
 	else if( m_pPlayer->pev->fov != 20 )
 	{
 		m_pPlayer->pev->fov = m_pPlayer->m_iFOV = 20;
-		m_fInZoom = 1;
 	}
 
 	pev->nextthink = UTIL_WeaponTimeBase() + 0.1f;
@@ -463,7 +461,7 @@ void CCrossbow::Reload( void )
 	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iClip == CROSSBOW_MAX_CLIP )
 		return;
 
-	if( m_pPlayer->pev->fov != 0 )
+	if( InZoom() )
 	{
 		SecondaryAttack();
 	}
