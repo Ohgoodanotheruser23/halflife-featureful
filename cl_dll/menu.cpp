@@ -62,6 +62,8 @@ void CHudMenu::Reset( void )
 
 int CHudMenu::VidInit( void )
 {
+	m_fMenuDisplayed = 0;
+	m_iFlags &= ~HUD_ACTIVE;
 	return 1;
 }
 
