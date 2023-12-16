@@ -32,6 +32,7 @@
 #include	"scripted.h"
 #include	"followingmonster.h"
 #include	"gamerules.h"
+#include	"game.h"
 #include	"mod_features.h"
 
 //=========================================================
@@ -316,7 +317,7 @@ public:
 	const char* DefaultGibModel() { return GARG_GIB_MODEL; }
 	const char* DefaultDisplayName() { return "Gargantua"; }
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 
 	BOOL CheckMeleeAttack1( float flDot, float flDist );		// Swipe
@@ -458,18 +459,10 @@ const char *CGargantua::pAttackMissSounds[] =
 
 const char *CGargantua::pRicSounds[] =
 {
-#if 0
-	"weapons/ric1.wav",
-	"weapons/ric2.wav",
-	"weapons/ric3.wav",
-	"weapons/ric4.wav",
-	"weapons/ric5.wav",
-#else
 	"debris/metal4.wav",
 	"debris/metal6.wav",
 	"weapons/ric4.wav",
 	"weapons/ric5.wav",
-#endif
 };
 
 const char *CGargantua::pFootSounds[] =
@@ -522,12 +515,6 @@ const char *CGargantua::pBreatheSounds[] =
 //=========================================================
 // AI Schedules Specific to this monster
 //=========================================================
-#if 0
-enum
-{
-	SCHED_ = LAST_COMMON_SCHEDULE + 1
-};
-#endif
 
 enum
 {
@@ -815,9 +802,7 @@ void CGargantua::FlameDamage( Vector vecStart, Vector vecEnd, entvars_t *pevInfl
 				// ALERT( at_console, "hit %s\n", STRING( pEntity->pev->classname ) );
 				if( tr.flFraction != 1.0f )
 				{
-					ClearMultiDamage();
-					pEntity->TraceAttack( pevInflictor, flAdjustedDamage, ( tr.vecEndPos - vecSrc ).Normalize(), &tr, bitsDamageType );
-					ApplyMultiDamage( pevInflictor, pevAttacker );
+					pEntity->ApplyTraceAttack( pevInflictor, pevAttacker, flAdjustedDamage, ( tr.vecEndPos - vecSrc ).Normalize(), &tr, bitsDamageType );
 				}
 				else
 				{
@@ -961,11 +946,11 @@ void CGargantua::UpdateOnRemove()
 	CFollowingMonster::UpdateOnRemove();
 }
 
-void CGargantua::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CGargantua::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	if( !IsAlive() )
 	{
-		CFollowingMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
+		CFollowingMonster::TraceAttack( pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 		return;
 	}
 
@@ -993,7 +978,7 @@ void CGargantua::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vec
 		flDamage = 0;
 	}
 
-	CFollowingMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
+	CFollowingMonster::TraceAttack( pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 }
 
 int CGargantua::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
@@ -1395,7 +1380,7 @@ void CGargantua::RunTask( Task_t *pTask )
 
 			if (m_pCine) // LRC- are we obeying a scripted_action?
 			{
-				if (m_hTargetEnt != 0 && m_hTargetEnt != m_pGoalEnt)
+				if (m_hTargetEnt != 0 && m_hTargetEnt.Get() != m_hMoveGoalEnt.Get())
 				{
 					dir = m_hTargetEnt->BodyTarget( org ) - org;
 				}
@@ -1559,43 +1544,182 @@ void CGargantua::PlayUnUseSentence()
 	EMIT_SOUND( ENT( pev ), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAlertSounds), 1.0, ATTN_NORM );
 }
 
+#define SF_SMOKER_ACTIVE 1
+#define SF_SMOKER_REPEATABLE 4
+#define SF_SMOKER_DIRECTIONAL 8
+#define SF_SMOKER_MAXHEALTH_SET (1 << 24)
+
 class CSmoker : public CBaseEntity
 {
 public:
+	void Precache();
 	void Spawn( void );
+	void KeyValue(KeyValueData* pkvd);
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
 	void Think( void );
+
+	bool IsActive() {
+		return FBitSet(pev->spawnflags, SF_SMOKER_ACTIVE);
+	}
+	void SetActive(bool active)
+	{
+		if (active)
+			SetBits(pev->spawnflags, SF_SMOKER_ACTIVE);
+		else
+			ClearBits(pev->spawnflags, SF_SMOKER_ACTIVE);
+	}
+
+	int smokeIndex;
 };
 
 LINK_ENTITY_TO_CLASS( env_smoker, CSmoker )
 
+void CSmoker::Precache()
+{
+	if (!FStringNull(pev->model))
+		smokeIndex = PRECACHE_MODEL(STRING(pev->model));
+}
+
 void CSmoker::Spawn( void )
 {
+	Precache();
+
 	pev->movetype = MOVETYPE_NONE;
 	pev->nextthink = gpGlobals->time;
 	pev->solid = SOLID_NOT;
 	UTIL_SetSize(pev, g_vecZero, g_vecZero );
 	pev->effects |= EF_NODRAW;
-	pev->angles = g_vecZero;
+	SetMovedir(pev);
+
+	if (pev->scale <= 0.0f)
+		pev->scale = 10;
+	if (pev->framerate <= 0.0f)
+		pev->framerate = 11.0f;
+
+	if (pev->dmg_take <= 0.0f)
+		pev->dmg_take = 0.1f;
+	if (pev->dmg_save <= 0.0f)
+		pev->dmg_save = 0.2f;
+
+	pev->max_health = pev->health;
+
+	if (FStringNull(pev->targetname))
+		SetActive(true);
+
+	if (IsActive())
+		pev->nextthink = gpGlobals->time + 0.1f;
+}
+
+void CSmoker::KeyValue(KeyValueData *pkvd)
+{
+	if (FStrEq(pkvd->szKeyName, "scale_speed"))
+	{
+		pev->armorvalue = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CBaseEntity::KeyValue( pkvd );
+}
+
+void CSmoker::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	const bool active = IsActive();
+	if (ShouldToggle(useType, active))
+	{
+		if (active)
+		{
+			pev->nextthink = -1;
+			SetActive(false);
+		}
+		else
+		{
+			pev->nextthink = gpGlobals->time;
+			SetActive(true);
+		}
+	}
 }
 
 void CSmoker::Think( void )
 {
-	// lots of smoke
-	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, pev->origin );
-		WRITE_BYTE( TE_SMOKE );
-		WRITE_COORD( pev->origin.x + RANDOM_FLOAT( -pev->dmg, pev->dmg ) );
-		WRITE_COORD( pev->origin.y + RANDOM_FLOAT( -pev->dmg, pev->dmg ) );
-		WRITE_COORD( pev->origin.z);
-		WRITE_SHORT( g_sModelIndexSmoke );
-		WRITE_BYTE( RANDOM_LONG(pev->scale, pev->scale * 1.1f ) );
-		WRITE_BYTE( RANDOM_LONG( 8, 14 ) ); // framerate
-	MESSAGE_END();
+	extern int gmsgSmoke;
 
-	pev->health--;
-	if( pev->health > 0 )
-		pev->nextthink = gpGlobals->time + RANDOM_FLOAT( 0.1f, 0.2f );
+	// Support for CBaseEntity::Create followed by pev->health setting
+	if (!FBitSet(pev->spawnflags, SF_SMOKER_MAXHEALTH_SET))
+	{
+		pev->max_health = pev->health;
+		FBitSet(pev->spawnflags, SF_SMOKER_MAXHEALTH_SET);
+	}
+
+	if (!IsActive())
+		return;
+
+	const int minFramerate = Q_max(pev->framerate - 1, 1);
+	const int maxFramerate = pev->framerate + 1;
+
+	bool isDirValid = true;
+	bool directed = FBitSet(pev->spawnflags, SF_SMOKER_DIRECTIONAL);
+	Vector direction;
+
+	if (!FStringNull(pev->target))
+	{
+		directed = true;
+		CBaseEntity *pTarget = GetNextTarget();
+		if (pTarget)
+			direction = (pTarget->pev->origin - pev->origin).Normalize();
+		else
+			isDirValid = false;
+	}
+	else if (directed)
+	{
+		direction = pev->movedir;
+	}
+
+	if (isDirValid)
+	{
+		MESSAGE_BEGIN( MSG_PVS, gmsgSmoke, pev->origin );
+			WRITE_BYTE( directed );
+			WRITE_COORD( pev->origin.x + RANDOM_FLOAT( -pev->dmg, pev->dmg ) );
+			WRITE_COORD( pev->origin.y + RANDOM_FLOAT( -pev->dmg, pev->dmg ) );
+			WRITE_COORD( pev->origin.z);
+			WRITE_SHORT( smokeIndex ? smokeIndex : g_sModelIndexSmoke );
+			WRITE_BYTE( RANDOM_LONG(pev->scale, pev->scale * 1.1f ) );
+			WRITE_BYTE( RANDOM_LONG( minFramerate, maxFramerate ) ); // framerate
+			WRITE_SHORT( pev->speed );
+			WRITE_SHORT( pev->frags );
+			WRITE_BYTE( pev->rendermode );
+			WRITE_BYTE( pev->renderamt );
+			WRITE_BYTE( pev->rendercolor.x );
+			WRITE_BYTE( pev->rendercolor.y );
+			WRITE_BYTE( pev->rendercolor.z );
+			WRITE_SHORT( pev->armorvalue * 10 );
+		if (directed)
+		{
+			WRITE_COORD( direction.x );
+			WRITE_COORD( direction.y );
+			WRITE_COORD( direction.z );
+		}
+		MESSAGE_END();
+	}
+
+	if (pev->max_health > 0)
+		pev->health--;
+	if( pev->max_health <= 0 || pev->health > 0 )
+	{
+		const float minDelay = pev->dmg_take;
+		const float maxDelay = Q_max(pev->dmg_take, pev->dmg_save);
+
+		pev->nextthink = gpGlobals->time + RANDOM_FLOAT( minDelay, maxDelay );
+	}
 	else
-		UTIL_Remove( this );
+	{
+		if (FBitSet(pev->spawnflags, SF_SMOKER_REPEATABLE))
+		{
+			pev->health = pev->max_health;
+			SetActive(false);
+		}
+		else
+			UTIL_Remove( this );
+	}
 }
 
 void CSpiral::Spawn( void )
@@ -1686,7 +1810,11 @@ void SpawnExplosion( Vector center, float randomRange, float time, int magnitude
 class CBabyGargantua : public CGargantua
 {
 public:
-	void Precache() { PrecacheImpl(); }
+	void Precache()
+	{
+		PrecacheImpl();
+	}
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("babygarg"); }
 	void SetYawSpeed( void );
 	const char* ReverseRelationshipModel() { return "models/babygargf.mdl"; }
 	const char* DefaultDisplayName() { return "Baby Gargantua"; }
@@ -1698,7 +1826,7 @@ public:
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	void DeathSound();
 	int TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
-	void TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	void SetObjectCollisionBox( void )
 	{
 		pev->absmin = pev->origin + Vector( -32, -32, 0 );
@@ -1922,11 +2050,11 @@ int CBabyGargantua::TakeDamage(entvars_t *pevInflictor, entvars_t *pevAttacker, 
 	return CFollowingMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
 }
 
-void CBabyGargantua::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
+void CBabyGargantua::TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
 	if( !IsFullyAlive() )
 	{
-		CFollowingMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
+		CFollowingMonster::TraceAttack( pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 		return;
 	}
 
@@ -1936,7 +2064,7 @@ void CBabyGargantua::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector 
 		m_painSoundTime = gpGlobals->time + RANDOM_FLOAT( 2.5, 4 );
 	}
 
-	CFollowingMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
+	CFollowingMonster::TraceAttack( pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 }
 
 void CBabyGargantua::FootEffect()

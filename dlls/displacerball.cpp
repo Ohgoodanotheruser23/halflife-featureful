@@ -205,7 +205,7 @@ void CDisplacerBall::BallTouch(CBaseEntity *pOther)
 			CBaseEntity* pAttacker = CBaseEntity::Instance( pev->owner );
 
 			if (pMonster && pMonster->m_pCine)
-				pMonster->m_pCine->CancelScript();
+				pMonster->m_pCine->CancelScript(SCRIPT_CANCELLATION_REASON_INTERRUPTED);
 
 			pOther->pev->health = 0;
 			pOther->Killed(pev, pAttacker ? pAttacker->pev : pev, GIB_NEVER);
@@ -247,7 +247,7 @@ void CDisplacerBall::Circle( void )
 		WRITE_BYTE(255); // brightness
 		WRITE_BYTE(0);		// speed
 	MESSAGE_END();
-	UTIL_MuzzleLight( pev->origin, 160.0f, 255, 180, 96, 1.0f, 100.0f );
+	UTIL_DynamicLight( pev->origin, 160.0f, 255, 180, 96, 1.0f, 100.0f );
 }
 
 void CDisplacerBall::KillThink( void )

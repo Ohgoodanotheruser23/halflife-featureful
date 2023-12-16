@@ -175,7 +175,6 @@ void CPitdroneSpike::Shoot(entvars_t *pevOwner, Vector vecStart, Vector vecVeloc
 #define PITDRONE_HORNS5		5
 #define PITDRONE_HORNS6		6
 #define	PITDRONE_SPRINT_DIST			255
-#define PITDRONE_FLINCH_DELAY			2		// at most one flinch every n secs
 #define PITDRONE_MAX_HORNS	6
 #define PITDRONE_GIB_COUNT	5
 
@@ -216,6 +215,7 @@ class CPitdrone : public CFollowingMonster
 public:
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("pitdrone"); }
 	void HandleAnimEvent(MonsterEvent_t *pEvent);
 	void SetYawSpeed(void);
 	int DefaultISoundMask();
@@ -257,7 +257,7 @@ public:
 
 	float	m_flLastHurtTime;
 	float	m_flNextSpitTime;// last time the PitDrone used the spit attack.
-	float	m_flNextFlinch;
+	float	m_flNextHopTime;
 	int m_iInitialAmmo;
 	bool shouldAttackWithLeftClaw;
 
@@ -279,6 +279,7 @@ TYPEDESCRIPTION	CPitdrone::m_SaveData[] =
 	DEFINE_FIELD(CPitdrone, m_iInitialAmmo, FIELD_INTEGER),
 	DEFINE_FIELD(CPitdrone, m_flLastHurtTime, FIELD_TIME),
 	DEFINE_FIELD(CPitdrone, m_flNextSpitTime, FIELD_TIME),
+	DEFINE_FIELD(CPitdrone, m_flNextHopTime, FIELD_TIME),
 };
 
 IMPLEMENT_SAVERESTORE(CPitdrone, CFollowingMonster)
@@ -306,18 +307,6 @@ int CPitdrone::IgnoreConditions(void)
 	{
 		// haven't been hurt in 20 seconds, so let the pitdrone care about stink.
 		iIgnore |= bits_COND_SMELL | bits_COND_SMELL_FOOD;
-	}
-
-	if ((m_Activity == ACT_MELEE_ATTACK1) || (m_Activity == ACT_MELEE_ATTACK2))
-	{
-			if (m_flNextFlinch >= gpGlobals->time)
-				iIgnore |= (bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE);
-	}
-
-	if ((m_Activity == ACT_SMALL_FLINCH) || (m_Activity == ACT_BIG_FLINCH))
-	{
-		if (m_flNextFlinch < gpGlobals->time)
-			m_flNextFlinch = gpGlobals->time + PITDRONE_FLINCH_DELAY;
 	}
 
 	return iIgnore;
@@ -445,21 +434,7 @@ BOOL CPitdrone::CheckRangeAttack1(float flDot, float flDist)
 //=========================================================
 void CPitdrone::SetYawSpeed(void)
 {
-	int ys;
-
-	ys = 0;
-
-	switch (m_Activity)
-	{
-	case	ACT_WALK:			ys = 120;	break;
-	case	ACT_RUN:			ys = 120;	break;
-	case	ACT_IDLE:			ys = 120;	break;
-	case	ACT_RANGE_ATTACK1:	ys = 120;	break;
-	default:
-		ys = 120;
-		break;
-	}
-
+	int ys = 90;
 	pev->yaw_speed = ys;
 }
 
@@ -552,7 +527,7 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t *pEvent)
 	{
 		float flGravity = g_psv_gravity->value;
 
-		// throw the squid up into the air on this frame.
+		// throw the pitdrone up into the air on this frame.
 		if( FBitSet( pev->flags, FL_ONGROUND ) )
 		{
 			pev->flags -= FL_ONGROUND;
@@ -614,31 +589,24 @@ void CPitdrone::BodyChange(int horns)
 {
 	if (horns <= 0)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS0);
-	//		pev->body = PITDRONE_HORNS0;
 
 	if (horns == 1)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS6);
-	//		pev->body = PITDRONE_HORNS6;
 
 	if (horns == 2)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS5);
-	//		pev->body = PITDRONE_HORNS5;
 
 	if (horns == 3)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS4);
-	//		pev->body = PITDRONE_HORNS4;
 
 	if (horns == 4)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS3);
-	//		pev->body = PITDRONE_HORNS3;
 
 	if (horns == 5)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS2);
-	//		pev->body = PITDRONE_HORNS2;
 
 	if (horns >= 6)
 		SetBodygroup(HORNGROUP, PITDRONE_HORNS1);
-	//		pev->body = PITDRONE_HORNS1;
 
 	return;
 }
@@ -659,7 +627,7 @@ void CPitdrone::Spawn()
 	SetMyHealth( gSkillData.pitdroneHealth );
 	SetMyFieldOfView(0.2f);// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
-	m_afCapability		= bits_CAP_SQUAD | bits_CAP_DOORS_GROUP;
+	m_afCapability		= bits_CAP_SQUAD;
 
 	m_flNextSpitTime = gpGlobals->time;
 
@@ -1021,7 +989,7 @@ Schedule_t *CPitdrone::GetSchedule(void)
 	case MONSTERSTATE_ALERT:
 	case MONSTERSTATE_HUNT:
 	{
-		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) )
+		if( HasConditions( bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE ) && gpGlobals->time >= m_flNextHopTime )
 		{
 			return GetScheduleOfType( SCHED_PDRONE_HURTHOP );
 		}
@@ -1140,41 +1108,18 @@ Schedule_t* CPitdrone::GetScheduleOfType(int Type)
 //=========================================================
 void CPitdrone::StartTask(Task_t *pTask)
 {
-	m_iTaskStatus = TASKSTATUS_RUNNING;
-
 	switch (pTask->iTask)
 	{
 	case TASK_PDRONE_HOPTURN:
-	{
-		SetActivity( ACT_HOP );
-		MakeIdealYaw( m_vecEnemyLKP );
-		break;
-	}
-	case TASK_GET_PATH_TO_ENEMY:
-	{
-		CBaseEntity *pEnemy = m_hEnemy;
-
-		if( pEnemy == NULL )
 		{
-			TaskFail("no enemy");
-			return;
+			m_flNextHopTime = gpGlobals->time + 5.0f;
+			SetActivity( ACT_HOP );
+			MakeIdealYaw( m_vecEnemyLKP );
+			break;
 		}
-
-		if( BuildRoute( pEnemy->pev->origin, bits_MF_TO_ENEMY, pEnemy ) )
-		{
-			TaskComplete();
-		}
-		else
-		{
-			TaskFail("can't build path to enemy");
-		}
-		break;
-	}
 	default:
-	{
 		CFollowingMonster::StartTask(pTask);
 		break;
-	}
 	}
 }
 
@@ -1192,7 +1137,7 @@ void CPitdrone::RunTask(Task_t *pTask)
 
 			if( m_fSequenceFinished )
 			{
-				m_iTaskStatus = TASKSTATUS_COMPLETE;
+				TaskComplete();
 			}
 			break;
 		}
@@ -1219,6 +1164,7 @@ class CDeadPitdrone : public CDeadMonster
 public:
 	void Spawn( void );
 	void Precache();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("pitdrone"); }
 	int	DefaultClassify ( void ) { return	CLASS_RACEX_PREDATOR; }
 	const char* DefaultGibModel() {
 		return "models/pit_drone_gibs.mdl";

@@ -36,7 +36,8 @@
 #define bit_saidHeard			(1<<6)
 #define bit_saidSmelled			(1<<7)
 
-#define TLK_CFRIENDS		11
+#define TLK_CFRIENDS		20
+#define NUM_MEDICS 5
 
 enum
 {
@@ -68,6 +69,8 @@ typedef enum
 	TLK_MORTAL,
 	TLK_SHOT,
 	TLK_MAD,
+	TLK_KILL,
+	TLK_ATTACK,
 
 	TLK_CGROUPS					// MUST be last entry
 } TALKGROUPNAMES;
@@ -118,7 +121,6 @@ public:
 	void			StopTalking( void ) { SentenceStop(); }
 	
 	// Base Monster functions
-	void			Precache( void );
 	int 			TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType);
 	int 			TakeHealth(CBaseEntity* pHealer, float flHealth, int bitsDamageType);
 	bool			CanBePushed(CBaseEntity *pPusher);
@@ -144,11 +146,14 @@ public:
 
 	// Conversations / communication
 	int				GetVoicePitch( void );
+	virtual int GetDefaultVoicePitch() { return 100; }
+	void PrepareVoicePitch();
 	virtual void	IdleRespond( void );
 	virtual bool	AskQuestion( float duration );
 	virtual bool	SetAnswerQuestion( CTalkMonster *pSpeaker );
 	virtual void	MakeIdleStatement( void );
 	float			RandomSentenceDuraion( void );
+	bool			GotIdleSpeakChance();
 	int				FIdleSpeak( void );
 	int				FIdleStare( void );
 	int				FIdleHello( void );
@@ -159,7 +164,9 @@ public:
 	void			AlertFriends( void );
 	void			ShutUpFriends( void );
 	BOOL			IsTalking( void );
-	void			Talk( float flDuration );	
+	void			Talk( float flDuration );
+	virtual const char* DefaultSentenceGroup(int group) { return NULL; }
+	virtual const char* SentenceGroup(int group);
 
 	// Following related
 	virtual void	StartFollowing( CBaseEntity *pLeader, bool saySentence = true );
@@ -201,24 +208,28 @@ public:
 
 	struct TalkFriend
 	{
-		const char* name;
+		char name[64];
 		bool canFollow;
-		bool canHeal;
 		short category;
 	};
 
 	static TalkFriend m_szFriends[TLK_CFRIENDS];		// array of friend names
+	static char m_szMedics[NUM_MEDICS][64];
 	static float g_talkWaitTime;
 	static bool SomeoneIsTalking();
-	
+	static void RegisterTalkMonster(const char* className, bool canFollow, short followerCategory);
+	void RegisterTalkMonster(bool canFollow = true);
+	static void RegisterMedic(const char* className);
+	void RegisterMedic();
+
 	int			m_bitsSaid;						// set bits for sentences we don't want repeated
 	int			m_nSpeak;						// number of times initiated talking
 	int			m_voicePitch;					// pitch of voice for this head
-	const char	*m_szGrp[TLK_CGROUPS];			// sentence group names
 	float		m_useTime;						// Don't allow +USE until this time
 	string_t			m_iszUse;						// Custom +USE sentence group (follow)
 	string_t			m_iszUnUse;						// Custom +USE sentence group (stop following)
 	string_t			m_iszDecline;					// Custom +USE sentence group (decline following)
+	string_t			m_iszSpeakAs;
 
 	float		m_flLastSaidSmelled;// last time we talked about something that stinks
 	float		m_flStopTalkTime;// when in the future that I'll be done saying this sentence.

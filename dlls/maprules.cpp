@@ -30,6 +30,7 @@
 #include "cbase.h"
 #include "player.h"
 #include "weapons.h"
+#include "game.h"
 
 class CRuleEntity : public CBaseEntity
 {
@@ -711,6 +712,7 @@ void CGamePlayerHurt::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 
 #define SF_GAMECOUNT_FIREONCE			0x0001
 #define SF_GAMECOUNT_RESET				0x0002
+#define SF_GAMECOUNT_FIREOVERLIMIT		0x0004
 
 class CGameCounter : public CRulePointEntity
 {
@@ -726,7 +728,14 @@ public:
 	inline int CountValue( void ) { return (int)pev->frags; }
 	inline int LimitValue( void ) { return (int)pev->health; }
 
-	inline BOOL HitLimit( void ) { return CountValue() == LimitValue(); }
+	inline BOOL HitLimit( void ) {
+		const int countValue = CountValue();
+		const int limitValue = LimitValue();
+		if (FBitSet(pev->spawnflags, SF_GAMECOUNT_FIREOVERLIMIT))
+			return countValue >= limitValue;
+		else
+			return countValue == limitValue;
+	}
 
 	bool CalcRatio( CBaseEntity *pLocus, float* outResult );
 
@@ -766,7 +775,7 @@ void CGameCounter::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 
 	if( HitLimit() )
 	{
-		SUB_UseTargets( pActivator, USE_TOGGLE, 0 );
+		SUB_UseTargets( pActivator );
 		if( RemoveOnFire() )
 		{
 			UTIL_Remove( this );
@@ -998,12 +1007,18 @@ void CGamePlayerTeam::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 #define SF_PLAYER_SETTINGS_DISPACER (1 << 18)
 #define SF_PLAYER_SETTINGS_SHOCKRIFLE (1 << 19)
 #define SF_PLAYER_SETTINGS_SPORELAUNCHER (1 << 20)
-#define SF_PLAYER_SETTINGS_FLASHLIGHT (1 << 22)
 #define SF_PLAYER_SETTINGS_LONGJUMP (1 << 23)
 
 class CGamePlayerSettings : public CRulePointEntity
 {
 public:
+	enum {
+		SUIT_LIGHT_NOTHING = -1,
+		SUIT_LIGHT_DEFAULT = 0,
+		SUIT_LIGHT_FLASHLIGHT = 1,
+		SUIT_LIGHT_NVG = 2,
+	};
+
 	void KeyValue( KeyValueData *pkvd );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 	{
@@ -1027,7 +1042,8 @@ private:
 		SuitNoLogon
 	};
 	int m_ammoCounts[MAX_AMMO_SLOTS];
-	int m_suitLogon;
+	short m_suitLogon;
+	short m_suitLight;
 };
 
 LINK_ENTITY_TO_CLASS( game_player_settings, CGamePlayerSettings )
@@ -1035,7 +1051,8 @@ LINK_ENTITY_TO_CLASS( game_player_settings, CGamePlayerSettings )
 TYPEDESCRIPTION	CGamePlayerSettings::m_SaveData[] =
 {
 	DEFINE_ARRAY( CGamePlayerSettings, m_ammoCounts, FIELD_INTEGER, MAX_AMMO_SLOTS ),
-	DEFINE_FIELD( CGamePlayerSettings, m_suitLogon, FIELD_INTEGER ),
+	DEFINE_FIELD( CGamePlayerSettings, m_suitLogon, FIELD_SHORT ),
+	DEFINE_FIELD( CGamePlayerSettings, m_suitLight, FIELD_SHORT ),
 };
 
 IMPLEMENT_SAVERESTORE( CGamePlayerSettings, CRulePointEntity )
@@ -1043,15 +1060,10 @@ IMPLEMENT_SAVERESTORE( CGamePlayerSettings, CRulePointEntity )
 void CGamePlayerSettings::KeyValue(KeyValueData *pkvd)
 {
 	const char* ammoName = pkvd->szKeyName;
-	// some ammo names with spaces
-	if (FStrEq(ammoName, "Hand_Grenade"))
-		ammoName = "Hand Grenade";
-	else if (FStrEq(ammoName, "Satchel_Charge"))
-		ammoName = "Satchel Charge";
-	else if (FStrEq(ammoName, "Trip_Mine"))
-		ammoName = "Trip Mine";
-	else if (*ammoName == '_')
+	if (*ammoName == '_')
 		ammoName++;
+	else
+		ammoName = FixedAmmoName(ammoName);
 
 	const AmmoInfo& ammoInfo = CBasePlayerWeapon::GetAmmoInfo(ammoName);
 	if (ammoInfo.pszName)
@@ -1062,6 +1074,11 @@ void CGamePlayerSettings::KeyValue(KeyValueData *pkvd)
 	else if (FStrEq(pkvd->szKeyName, "suitlogon"))
 	{
 		m_suitLogon = atoi(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "suitlight"))
+	{
+		m_suitLight = atoi(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -1086,17 +1103,39 @@ void CGamePlayerSettings::EquipPlayer(CBaseEntity *pPlayer)
 
 	if (pev->spawnflags & SF_PLAYER_SETTINGS_SUIT)
 	{
-		player->GiveNamedItem("item_suit", (m_suitLogon ? (1 << (m_suitLogon-1)) : m_suitLogon) | SF_ITEM_NOFALL);
-		if (pev->spawnflags & SF_PLAYER_SETTINGS_LONGJUMP)
+		if (!player->HasSuit())
 		{
-			player->GiveNamedItem("item_longjump", SF_ITEM_NOFALL);
+			int suitSpawnFlags = SF_ITEM_NOFALL;
+			switch (m_suitLogon) {
+			case 1:
+				suitSpawnFlags |= SF_SUIT_SHORTLOGON;
+				break;
+			case 2:
+				suitSpawnFlags |= SF_SUIT_NOLOGON;
+				break;
+			default:
+				break;
+			}
+			player->GiveNamedItem("item_suit", suitSpawnFlags);
 		}
 	}
 
-#if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
-	if (pev->spawnflags & SF_PLAYER_SETTINGS_FLASHLIGHT)
-		player->GiveNamedItem("item_flashlight", SF_ITEM_NOFALL);
-#endif
+	if ((pev->spawnflags & SF_PLAYER_SETTINGS_LONGJUMP) && player->HasSuit() && !player->m_fLongJump)
+	{
+		player->GiveNamedItem("item_longjump", SF_ITEM_NOFALL);
+	}
+
+	switch (m_suitLight) {
+	case SUIT_LIGHT_NOTHING:
+		player->RemoveSuitLight();
+		break;
+	case SUIT_LIGHT_FLASHLIGHT:
+		player->SetFlashlightOnly();
+		break;
+	case SUIT_LIGHT_NVG:
+		player->SetNVGOnly();
+		break;
+	}
 
 	const int weaponFlags[] = {
 		SF_PLAYER_SETTINGS_CROWBAR,
@@ -1211,7 +1250,7 @@ void CGamePlayerSettings::EquipPlayer(CBaseEntity *pPlayer)
 	if (!hadWeapons)
 		player->SwitchToBestWeapon();
 
-	SUB_UseTargets(pPlayer, USE_TOGGLE, 0.0f);
+	SUB_UseTargets(pPlayer);
 }
 
 
@@ -1244,3 +1283,33 @@ void CGameAutosave::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 }
 
 LINK_ENTITY_TO_CLASS( game_autosave, CGameAutosave )
+
+class CGameNumber : public CPointEntity
+{
+public:
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	bool CalcRatio( CBaseEntity *pLocus, float* outResult )
+	{
+		*outResult = pev->frags;
+		return true;
+	}
+};
+
+void CGameNumber::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	switch( useType )
+	{
+	case USE_ON:
+	case USE_TOGGLE:
+		pev->frags++;
+		break;
+	case USE_OFF:
+		pev->frags--;
+		break;
+	case USE_SET:
+		pev->frags = value;
+		break;
+	}
+}
+
+LINK_ENTITY_TO_CLASS( game_number, CGameNumber )

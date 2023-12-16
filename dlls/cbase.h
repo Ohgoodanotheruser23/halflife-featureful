@@ -94,7 +94,8 @@ typedef enum
 	USE_TOGGLE = 3
 } USE_TYPE;
 
-extern void FireTargets( const char *targetName, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+const char* UseTypeToString(USE_TYPE useType);
+extern void FireTargets( const char *targetName, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType = USE_TOGGLE, float value = 0.0f );
 extern void KillTargets( const char *targetName );
 
 typedef void(CBaseEntity::*BASEPTR)( void );
@@ -133,6 +134,11 @@ class CBaseMonster;
 class CBasePlayerWeapon;
 class CSquadMonster;
 
+#define SF_ITEM_TOUCH_ONLY 128
+#define SF_ITEM_USE_ONLY 256 //  ITEM_USE_ONLY = BUTTON_USE_ONLY = DOOR_USE_ONLY!!!
+
+#define SF_ITEM_NOFALL ( 1 << 28 )
+#define SF_ITEM_FIX_PHYSICS ( 1 << 29 )
 #define	SF_NORESPAWN	( 1 << 30 )// !!!set this bit on guns and stuff that should never respawn.
 
 enum
@@ -194,6 +200,8 @@ public:
 	CBaseEntity *m_pGoalEnt;// path corner we are heading towards
 	CBaseEntity *m_pLink;// used for temporary link-list operations. 
 
+	byte m_EFlags;
+
 	virtual bool	CalcPosition( CBaseEntity *pLocus, Vector* outResult )	{ *outResult = pev->origin; return true; }
 	virtual bool	CalcVelocity( CBaseEntity *pLocus, Vector* outResult )	{ *outResult = pev->velocity; return true; }
 	virtual bool	CalcRatio( CBaseEntity *pLocus, float* outResult )	{ *outResult = 0; return true; }
@@ -201,6 +209,7 @@ public:
 	// initialization functions
 	virtual void Spawn( void ) { return; }
 	virtual void Precache( void ) { return; }
+	virtual bool IsEnabledInMod() { return true; }
 	virtual void KeyValue( KeyValueData* pkvd ) { pkvd->fHandled = FALSE; }
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
@@ -218,9 +227,11 @@ public:
 
 	static TYPEDESCRIPTION m_SaveData[];
 
-	virtual void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	virtual void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void ApplyTraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 	virtual int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 	virtual int TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamageType );
+	virtual int TakeArmor( CBaseEntity* pCharger, float flArmor ) { return 0; }
 	virtual void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 	virtual int BloodColor( void ) { return DONT_BLEED; }
 	virtual void TraceBleed( float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
@@ -299,7 +310,7 @@ public:
 
 	virtual CBaseEntity *Respawn( void ) { return NULL; }
 
-	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, float value );
+	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType = USE_TOGGLE, float value = 0.0f );
 	// Do the bounding boxes of these two intersect?
 	int Intersects( CBaseEntity *pOther );
 	void MakeDormant( void );
@@ -314,7 +325,11 @@ public:
 		return pEnt; 
 	}
 
-	static CBaseEntity *Instance( entvars_t *pev ) { return Instance( ENT( pev ) ); }
+	static CBaseEntity *Instance( entvars_t *pev ) {
+		if ( !pev )
+			return Instance(ENT( 0 ));
+		return Instance( ENT( pev ) );
+	}
 	static CBaseEntity *Instance( int eoffset) { return Instance( ENT( eoffset) ); }
 
 	CBaseMonster *GetMonsterPointer( entvars_t *pevMonster ) 
@@ -395,8 +410,12 @@ public:
 	virtual CBasePlayerWeapon* MyWeaponPointer() {return NULL;}
 
 	virtual bool IsAlienMonster() { return false; }
+	virtual bool IsMachine() { return DefaultClassify() == CLASS_MACHINE; }
 	virtual float InputByMonster(CBaseMonster* pMonster) { return 0.0f; }
 	virtual NODE_LINKENT HandleLinkEnt(int afCapMask, bool nodeQueryStatic) { return NLE_PROHIBIT; }
+
+	virtual void SendMessages(CBaseEntity* pClient) {}
+	virtual bool HandleDoorBlockage(CBaseEntity* pDoor) { return false; }
 
 	virtual int ItemCategory() { return ITEM_CATEGORY_NULL; }
 };
@@ -497,7 +516,7 @@ public:
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
 	// common member functions
-	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType, float value );
+	void SUB_UseTargets( CBaseEntity *pActivator, USE_TYPE useType = USE_TOGGLE, float value = 0.0f );
 	static void DelayedUse(float delay, CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, string_t target, string_t killTarget = iStringNull, float value = 0.0f );
 	void EXPORT DelayThink( void );
 	float GetTriggerDelay();
@@ -543,7 +562,6 @@ public:
 //
 // generic Toggle entity.
 //
-#define	SF_ITEM_USE_ONLY	256 //  ITEM_USE_ONLY = BUTTON_USE_ONLY = DOOR_USE_ONLY!!! 
 
 class CBaseToggle : public CBaseAnimating
 {
@@ -633,7 +651,7 @@ public:
 // used by suit voice to indicate damage sustained and repaired type to player
 
 #include "dmg_types.h"
-#define DMG_TIMEBASED		(DMG_PARALYZE|DMG_NERVEGAS|DMG_POISON|DMG_RADIATION|DMG_DROWNRECOVER|DMG_ACID|DMG_SLOWBURN|DMG_SLOWFREEZE|DMG_TIMEDNONLETHAL)	// mask for time-based damage
+#define DMG_TIMEBASED		(DMG_PARALYZE|DMG_NERVEGAS|DMG_POISON|DMG_RADIATION|DMG_DROWNRECOVER|DMG_ACID|DMG_SLOWBURN|DMG_SLOWFREEZE)	// mask for time-based damage
 
 // these are the damage types that are allowed to gib corpses
 #define DMG_GIB_CORPSE		( DMG_CRUSH | DMG_FALL | DMG_BLAST | DMG_SONIC | DMG_CLUB )
@@ -727,6 +745,7 @@ public:
 	enum BUTTON_CODE { BUTTON_NOTHING, BUTTON_ACTIVATE, BUTTON_RETURN };
 	BUTTON_CODE ButtonResponseToTouch( void );
 	void OnLocked();
+	bool PrepareActivation(bool doActivationCheck);
 	bool IsSparkingButton();
 	USE_TYPE UseType(bool returning);
 	
@@ -754,6 +773,12 @@ public:
 	string_t m_unlockedSoundOverride;
 	string_t m_lockedSentenceOverride;
 	string_t m_unlockedSentenceOverride;
+
+	string_t m_triggerOnReturn;
+	string_t m_triggerBeforeMove;
+
+	float m_waitBeforeToggleAgain;
+	float m_toggleAgainTime;
 
 	short m_iDirectUse;
 	BOOL m_fNonMoving;
@@ -838,5 +863,7 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	void KeyValue( KeyValueData *pkvd );
+
+	static int wallPuffsIndices[4];
 };
 #endif

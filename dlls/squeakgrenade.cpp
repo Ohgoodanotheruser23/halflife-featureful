@@ -18,10 +18,12 @@
 #include "cbase.h"
 #include "monsters.h"
 #include "weapons.h"
-#include "nodes.h"
 #include "player.h"
 #include "soundent.h"
 #include "gamerules.h"
+#ifndef CLIENT_DLL
+#include "game.h"
+#endif
 
 enum w_squeak_e
 {
@@ -356,7 +358,7 @@ void CSqueakGrenade::SuperBounceTouch( CBaseEntity *pOther )
 			{
 				// ALERT( at_console, "hit enemy\n" );
 				ClearMultiDamage();
-				pOther->TraceAttack( pev, gSkillData.snarkDmgBite, gpGlobals->v_forward, &tr, DMG_SLASH ); 
+				pOther->TraceAttack( pev, pev, gSkillData.snarkDmgBite, gpGlobals->v_forward, &tr, DMG_SLASH );
 				if( m_hOwner != 0 )
 					ApplyMultiDamage( pev, m_hOwner->pev );
 				else
@@ -503,7 +505,7 @@ int CSqueak::GetItemInfo( ItemInfo *p )
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 4;
 	p->iPosition = PositionInSlot();
-	p->iId = m_iId = WeaponId();
+	p->iId = WeaponId();
 	p->iWeight = SNARK_WEIGHT;
 	p->iFlags = ITEM_FLAG_LIMITINWORLD | ITEM_FLAG_EXHAUSTIBLE;
 	p->pszAmmoEntity = STRING(pev->classname);
@@ -699,6 +701,15 @@ const char* CSqueak::EventsFile() const
 
 #if FEATURE_PENGUIN
 LINK_ENTITY_TO_CLASS( weapon_penguin, CPenguin )
+
+bool CPenguin::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WeaponId());
+#else
+	return true;
+#endif
+}
 
 const char* CPenguin::GrenadeName() const
 {

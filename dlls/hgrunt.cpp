@@ -121,6 +121,7 @@ const char *CHGrunt::pGruntSentences[] =
 	"HG_IDLE",
 	"HG_CLEAR",
 	"HG_ANSWER",
+	"HG_HOSTILE",
 };
 
 //=========================================================
@@ -145,9 +146,30 @@ void CHGrunt::SpeakSentence( void )
 
 	if( FOkToSpeak() )
 	{
-		SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(m_iSentence), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-		JustSpoke();
+		PlayGruntSentence( m_iSentence );
+		m_iSentence = HGRUNT_SENT_NONE;
 	}
+}
+
+bool CHGrunt::PlayGruntSentence(int sentence, int flags)
+{
+	return PlaySentenceGroup(SentenceByNumber(sentence), flags);
+}
+
+bool CHGrunt::PlaySentenceGroup(const char *group, int flags)
+{
+	if (SENTENCEG_PlayRndSz( ENT(pev), group, SentenceVolume(), SentenceAttn(), flags, m_voicePitch) >= 0)
+	{
+		JustSpoke();
+		return true;
+	}
+	return false;
+}
+
+void CHGrunt::PlaySentenceSound(const char *sound)
+{
+	EMIT_SOUND_DYN( edict(), CHAN_VOICE, sound, SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+	JustSpoke();
 }
 
 void CHGrunt::PlayUseSentence()
@@ -155,17 +177,15 @@ void CHGrunt::PlayUseSentence()
 	switch(RANDOM_LONG(0,2))
 	{
 	case 0:
-		EMIT_SOUND_DYN( edict(), CHAN_VOICE, "!HG_ANSWER0", SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+		PlaySentenceSound("!HG_ANSWER0");
 		break;
 	case 1:
-		EMIT_SOUND_DYN( edict(), CHAN_VOICE, "!HG_ANSWER1", SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+		PlaySentenceSound("!HG_ANSWER1");
 		break;
 	case 2:
-		EMIT_SOUND_DYN( edict(), CHAN_VOICE, "!HG_ANSWER2", SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+		PlaySentenceSound("!HG_ANSWER2");
 		break;
 	}
-
-	JustSpoke();
 }
 
 void CHGrunt::PlayUnUseSentence()
@@ -173,14 +193,12 @@ void CHGrunt::PlayUnUseSentence()
 	switch(RANDOM_LONG(0,1))
 	{
 	case 0:
-		EMIT_SOUND_DYN( edict(), CHAN_VOICE, "!HG_ANSWER5", SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+		PlaySentenceSound("!HG_ANSWER5");
 		break;
 	case 1:
-		EMIT_SOUND_DYN( edict(), CHAN_VOICE, "!HG_QUEST4", SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
+		PlaySentenceSound("!HG_QUEST4");
 		break;
 	}
-
-	JustSpoke();
 }
 
 //=========================================================
@@ -353,25 +371,10 @@ BOOL CHGrunt::FCanCheckAttacks( void )
 //=========================================================
 BOOL CHGrunt::CheckMeleeAttack1( float flDot, float flDist )
 {
-	CBaseMonster *pEnemy = 0;
-
-	if( m_hEnemy != 0 )
-	{
-		pEnemy = m_hEnemy->MyMonsterPointer();
-	}
-
-	if( !pEnemy )
-	{
-		return FALSE;
-	}
-
-	if( flDist <= 64.0f && flDot >= 0.7f &&
-		 pEnemy->DefaultClassify() != CLASS_ALIEN_BIOWEAPON &&
-		 pEnemy->DefaultClassify() != CLASS_PLAYER_BIOWEAPON )
-	{
-		return TRUE;
-	}
-	return FALSE;
+	// Note: this code used to have a check for CLASS_ALIEN_BIOWEAPON and CLASS_PLAYER_BIOWEAPON enemy classes.
+	// This code was probably outdated as human grunts don't see hornets as enemies anyway.
+	// TODO: remove this override altogether?
+	return CSquadMonster::CheckMeleeAttack1(flDot, flDist);
 }
 
 //=========================================================
@@ -418,10 +421,10 @@ BOOL CHGrunt::CheckRangeAttack2( float flDot, float flDist )
 	{
 		return FALSE;
 	}
-	return CheckRangeAttack2Impl(gSkillData.hgruntGrenadeSpeed, flDot, flDist);
+	return CheckRangeAttack2Impl(gSkillData.hgruntGrenadeSpeed, flDot, flDist, FBitSet(pev->weapons, HGRUNT_GRENADELAUNCHER));
 }
 
-BOOL CHGrunt::CheckRangeAttack2Impl( float grenadeSpeed, float flDot, float flDist )
+BOOL CHGrunt::CheckRangeAttack2Impl( float grenadeSpeed, float flDot, float flDist, bool contact )
 {
 	// if the grunt isn't moving, it's ok to check.
 	if( m_flGroundSpeed != 0 )
@@ -447,7 +450,7 @@ BOOL CHGrunt::CheckRangeAttack2Impl( float grenadeSpeed, float flDot, float flDi
 
 	Vector vecTarget;
 
-	if( FBitSet( pev->weapons, HGRUNT_HANDGRENADE ) )
+	if( !contact )
 	{
 		// find feet
 		if( RANDOM_LONG( 0, 1 ) )
@@ -491,7 +494,7 @@ BOOL CHGrunt::CheckRangeAttack2Impl( float grenadeSpeed, float flDot, float flDi
 		return m_fThrowGrenade;
 	}
 
-	if( FBitSet( pev->weapons, HGRUNT_HANDGRENADE ) )
+	if( !contact )
 	{
 		Vector vecToss = VecCheckToss( pev, GetGunPosition(), vecTarget, 0.5 );
 
@@ -572,28 +575,28 @@ int CHGrunt::GetRangeAttack2Sequence()
 {
 	// grunt is going to a secondary long range attack. This may be a thrown
 	// grenade or fired grenade, we must determine which and pick proper sequence
-	if( pev->weapons & HGRUNT_HANDGRENADE )
-	{
-		// get toss anim
-		return LookupSequence( "throwgrenade" );
-	}
-	else
+	if( pev->weapons & HGRUNT_GRENADELAUNCHER )
 	{
 		// get launch anim
 		return LookupSequence( "launchgrenade" );
+	}
+	else
+	{
+		// get toss anim
+		return LookupSequence( "throwgrenade" );
 	}
 }
 
 //=========================================================
 // TraceAttack - make sure we're not taking it in the helmet
 //=========================================================
-void CHGrunt::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CHGrunt::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	// check for helmet shot
 	if( ptr->iHitgroup == 11 )
 	{
 		// make sure we're wearing one
-		if( GetBodygroup( 1 ) == HEAD_GRUNT && ( bitsDamageType & (DMG_BULLET | DMG_SLASH | DMG_BLAST | DMG_CLUB ) ) )
+		if( GetBodygroup( HEAD_GROUP ) == HEAD_GRUNT && ( bitsDamageType & (DMG_BULLET | DMG_SLASH | DMG_BLAST | DMG_CLUB ) ) )
 		{
 			// absorb damage
 			flDamage -= 20;
@@ -606,7 +609,7 @@ void CHGrunt::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir
 		// it's head shot anyways
 		ptr->iHitgroup = HITGROUP_HEAD;
 	}
-	CFollowingMonster::TraceAttack( pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
+	CFollowingMonster::TraceAttack( pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType );
 }
 
 //=========================================================
@@ -679,17 +682,17 @@ void CHGrunt::IdleSound( void )
 			{
 			case 0:
 				// check in
-				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_CHECK), SentenceVolume(), ATTN_NORM, 0, m_voicePitch );
-				*GruntQuestionVar() = 1;
+				if (PlayGruntSentence(HGRUNT_SENT_CHECK))
+					*GruntQuestionVar() = 1;
 				break;
 			case 1:
 				// question
-				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_QUEST), SentenceVolume(), ATTN_NORM, 0, m_voicePitch );
-				*GruntQuestionVar() = 2;
+				if (PlayGruntSentence(HGRUNT_SENT_QUEST))
+					*GruntQuestionVar() = 2;
 				break;
 			case 2:
 				// statement
-				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_IDLE), SentenceVolume(), ATTN_NORM, 0, m_voicePitch );
+				PlayGruntSentence(HGRUNT_SENT_IDLE);
 				break;
 			}
 		}
@@ -699,16 +702,15 @@ void CHGrunt::IdleSound( void )
 			{
 			case 1:
 				// check in
-				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_CLEAR), SentenceVolume(), ATTN_NORM, 0, m_voicePitch );
+				PlayGruntSentence(HGRUNT_SENT_CLEAR);
 				break;
 			case 2:
 				// question 
-				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_ANSWER), SentenceVolume(), ATTN_NORM, 0, m_voicePitch );
+				PlayGruntSentence(HGRUNT_SENT_ANSWER);
 				break;
 			}
 			*GruntQuestionVar() = 0;
 		}
-		JustSpoke();
 	}
 }
 
@@ -855,14 +857,12 @@ void CHGrunt::PlayFirstBurstSounds()
 
 void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 {
-	Vector vecShootDir;
-	Vector vecShootOrigin;
-
 	switch( pEvent->event )
 	{
 		case HGRUNT_AE_DROP_GUN:
 		{
-			DropMyItems(FALSE);
+			if( GetBodygroup( GUN_GROUP ) != GUN_NONE )
+				DropMyItems(FALSE);
 		}
 			break;
 		case HGRUNT_AE_RELOAD:
@@ -957,10 +957,8 @@ void CHGrunt::HandleAnimEvent( MonsterEvent_t *pEvent )
 		{
 			if( FOkToSpeak() )
 			{
-				SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_ALERT), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-				JustSpoke();
+				SpeakCaughtEnemy();
 			}
-
 		}
 			break;
 		default:
@@ -1087,8 +1085,6 @@ void CHGrunt::Precache()
 //=========================================================
 void CHGrunt::StartTask( Task_t *pTask )
 {
-	m_iTaskStatus = TASKSTATUS_RUNNING;
-
 	switch( pTask->iTask )
 	{
 	case TASK_GRUNT_SPEAK_SENTENCE:
@@ -1135,7 +1131,7 @@ void CHGrunt::RunTask( Task_t *pTask )
 
 			if( FacingIdeal() )
 			{
-				m_iTaskStatus = TASKSTATUS_COMPLETE;
+				TaskComplete();
 			}
 			break;
 		}
@@ -1227,6 +1223,32 @@ int* CHGrunt::GruntQuestionVar()
 {
 	static int g_fGruntQuestion = 0; // true if an idle grunt asked a question. Cleared when someone answers.
 	return &g_fGruntQuestion;
+}
+
+void CHGrunt::SpeakCaughtEnemy()
+{
+	if ( m_hEnemy != 0 )
+	{
+		if ( m_hEnemy->IsPlayer() )
+			PlayGruntSentence(HGRUNT_SENT_ALERT);
+		else if( m_hEnemy->IsAlienMonster() )
+			PlayGruntSentence(HGRUNT_SENT_MONSTER);
+		else
+		{
+			// Try HOSTILE sentense on non-player non-alien enemy
+			// Fallback to ALERT if allowed
+			const bool result = PlayGruntSentence(HGRUNT_SENT_HOSTILE, SND_DONT_REPORT_MISSING);
+			if (!result && !AlertSentenceIsForPlayerOnly())
+			{
+				PlayGruntSentence(HGRUNT_SENT_ALERT);
+			}
+		}
+	}
+}
+
+bool CHGrunt::AlertSentenceIsForPlayerOnly()
+{
+	return true;
 }
 
 Schedule_t* CHGrunt::ScheduleOnRangeAttack1()
@@ -1339,10 +1361,11 @@ Schedule_t slGruntVictoryDance[] =
 		tlGruntVictoryDance,
 		ARRAYSIZE( tlGruntVictoryDance ),
 		bits_COND_NEW_ENEMY		|
+		bits_COND_HEAR_SOUND |
 		bits_COND_SCHEDULE_SUGGESTED |
 		bits_COND_LIGHT_DAMAGE	|
 		bits_COND_HEAVY_DAMAGE,
-		0,
+		bits_SOUND_DANGER,
 		"GruntVictoryDance"
 	},
 };
@@ -1988,8 +2011,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 				// this may only affect a single individual in a squad.
 				if( FOkToSpeak() )
 				{
-					SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_GREN), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-					JustSpoke();
+					PlayGruntSentence(HGRUNT_SENT_GREN);
 				}
 				return GetScheduleOfType( SCHED_TAKE_COVER_FROM_BEST_SOUND );
 			}
@@ -2035,15 +2057,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 						// before he starts pluggin away.
 						if( FOkToSpeak() )// && RANDOM_LONG( 0, 1 ) )
 						{
-							if ( m_hEnemy != 0 )
-							{
-								if( m_hEnemy->IsAlienMonster() )
-									SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_MONSTER), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-								else
-									SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_ALERT), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-							}
-
-							JustSpoke();
+							SpeakCaughtEnemy();
 						}
 
 						if( HasConditions( bits_COND_CAN_RANGE_ATTACK1 ) )
@@ -2080,9 +2094,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 					//!!!KELLY - this grunt was hit and is going to run to cover.
 					if( FOkToSpeak() ) // && RANDOM_LONG( 0, 1 ) )
 					{
-						//SENTENCEG_PlayRndSz( ENT( pev ), "HG_COVER", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch );
 						m_iSentence = HGRUNT_SENT_COVER;
-						//JustSpoke();
 					}
 					return GetScheduleOfType( SCHED_TAKE_COVER_FROM_ENEMY );
 				}
@@ -2115,8 +2127,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 					//!!!KELLY - this grunt is about to throw or fire a grenade at the player. Great place for "fire in the hole"  "frag out" etc
 					if( FOkToSpeak() )
 					{
-						SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_THROW), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-						JustSpoke();
+						PlayGruntSentence(HGRUNT_SENT_THROW);
 					}
 					return GetScheduleOfType( SCHED_RANGE_ATTACK2 );
 				}
@@ -2126,9 +2137,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 					// charge the enemy's position. 
 					if( FOkToSpeak() )// && RANDOM_LONG( 0, 1 ) )
 					{
-						//SENTENCEG_PlayRndSz( ENT( pev ), "HG_CHARGE", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch );
 						m_iSentence = HGRUNT_SENT_CHARGE;
-						//JustSpoke();
 					}
 
 					return GetScheduleOfType( SCHED_GRUNT_ESTABLISH_LINE_OF_FIRE );
@@ -2140,8 +2149,7 @@ Schedule_t *CHGrunt::GetSchedule( void )
 					// grunt's covered position. Good place for a taunt, I guess?
 					if( FOkToSpeak() && RANDOM_LONG( 0, 1 ) )
 					{
-						SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_TAUNT), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-						JustSpoke();
+						PlayGruntSentence(HGRUNT_SENT_TAUNT);
 					}
 					return GetScheduleOfType( SCHED_STANDOFF );
 				}
@@ -2189,8 +2197,7 @@ Schedule_t *CHGrunt::GetScheduleOfType( int Type )
 				{
 					if( FOkToSpeak() )
 					{
-						SENTENCEG_PlayRndSz( ENT( pev ), SentenceByNumber(HGRUNT_SENT_THROW), SentenceVolume(), SentenceAttn(), 0, m_voicePitch );
-						JustSpoke();
+						PlayGruntSentence(HGRUNT_SENT_THROW);
 					}
 					return slGruntTossGrenadeCover;
 				}
@@ -2375,7 +2382,7 @@ void CHGruntRepel::KeyValue(KeyValueData *pkvd)
 		pkvd->fHandled = TRUE;
 	}
 	else
-		CBaseMonster::KeyValue( pkvd );
+		CFollowingMonster::KeyValue( pkvd );
 }
 
 void CHGruntRepel::PrepareBeforeSpawn(CBaseEntity *pEntity)
@@ -2406,7 +2413,8 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	const int knownFlags =
 			SF_MONSTER_GAG | SF_MONSTER_HITMONSTERCLIP | SF_MONSTER_PRISONER |
 			SF_MONSTER_DONT_DROP_GUN | SF_SQUADMONSTER_LEADER | SF_MONSTER_PREDISASTER |
-			SF_MONSTER_FADECORPSE | SF_MONSTER_NONSOLID_CORPSE | SF_MONSTER_ACT_OUT_OF_PVS;
+			SF_MONSTER_FADECORPSE | SF_MONSTER_NONSOLID_CORPSE | SF_MONSTER_ACT_OUT_OF_PVS |
+			SF_MONSTER_IGNORE_PLAYER_PUSH;
 	const int flagsToSet = knownFlags & pev->spawnflags;
 	SetBits(pEntity->pev->spawnflags, flagsToSet);
 
@@ -2430,6 +2438,11 @@ void CHGruntRepel::RepelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 	pGrunt->m_activeAfterCombat = m_activeAfterCombat;
 	pGrunt->m_sizeForGrapple = m_sizeForGrapple;
 	pGrunt->m_gibPolicy = m_gibPolicy;
+	CFollowingMonster* pFollowingMonster = pGrunt->MyFollowingMonsterPointer();
+	if (pFollowingMonster)
+	{
+		pFollowingMonster->m_followFailPolicy = m_followFailPolicy;
+	}
 	PrepareBeforeSpawn(pEntity);
 	DispatchSpawn(pEntity->edict());
 	pGrunt->pev->movetype = MOVETYPE_FLY;

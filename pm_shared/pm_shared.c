@@ -34,8 +34,6 @@
 #include "tex_materials.h"
 #include "mod_features.h"
 
-int g_bhopcap = 1;
-
 #if CLIENT_DLL
 // Spectator Mode
 int iJumpSpectator;
@@ -77,6 +75,7 @@ playermove_t *pmove = NULL;
 #define STEP_SLOSH		6		// shallow liquid puddle
 #define STEP_WADE		7		// wading in liquid
 #define STEP_LADDER		8		// climbing ladder
+#define STEP_SNOW		9
 
 #define PLAYER_FATAL_FALL_SPEED		1024// approx 60 feet
 #define PLAYER_MAX_SAFE_FALL_SPEED	580// approx 20 feet
@@ -150,6 +149,17 @@ void PM_SwapTextures( int i, int j )
 
 	strcpy( grgszTextureName[j], szTemp );
 	grgchTextureType[j] = chTemp;
+}
+
+int PM_IsThereSnowTexture()
+{
+	int i;
+	for (i = 0; i < gcTextures; ++i)
+	{
+		if (grgchTextureType[i] == CHAR_TEX_SNOW || grgchTextureType[i] == CHAR_TEX_SNOW_OPFOR)
+			return 1;
+	}
+	return 0;
 }
 
 void PM_SortTextures( void )
@@ -473,9 +483,6 @@ void PM_PlayStepSound( int step, float fvol )
 		}
 		break;
 	case STEP_LADDER:
-		if (pmove->flags & FL_IMMUNE_SLIME) {
-			break;
-		}
 		switch( irand )
 		{
 		// right foot
@@ -491,6 +498,25 @@ void PM_PlayStepSound( int step, float fvol )
 			break;
 		case 3:
 			pmove->PM_PlaySound( CHAN_BODY, "player/pl_ladder4.wav", fvol, ATTN_NORM, 0, PITCH_NORM );
+			break;
+		}
+		break;
+	case STEP_SNOW:
+		switch (irand)
+		{
+		// right foot
+		case 0:
+			pmove->PM_PlaySound(CHAN_BODY, "player/pl_snow1.wav", fvol, ATTN_NORM, 0, PITCH_NORM);
+			break;
+		case 1:
+			pmove->PM_PlaySound(CHAN_BODY, "player/pl_snow3.wav", fvol, ATTN_NORM, 0, PITCH_NORM);
+			break;
+		// left foot
+		case 2:
+			pmove->PM_PlaySound(CHAN_BODY, "player/pl_snow2.wav", fvol, ATTN_NORM, 0, PITCH_NORM);
+			break;
+		case 3:
+			pmove->PM_PlaySound(CHAN_BODY, "player/pl_snow4.wav", fvol, ATTN_NORM, 0, PITCH_NORM);
 			break;
 		}
 		break;
@@ -516,6 +542,9 @@ int PM_MapTextureTypeStepType( char chTextureType )
 			return STEP_TILE;
 		case CHAR_TEX_SLOSH:
 			return STEP_SLOSH;
+		case CHAR_TEX_SNOW:
+		case CHAR_TEX_SNOW_OPFOR:
+			return STEP_SNOW;
 	}
 }
 
@@ -577,7 +606,7 @@ void PM_UpdateStepSound( void )
 	speed = Length( pmove->velocity );
 
 	// determine if we are on a ladder
-	fLadder = ( pmove->movetype == MOVETYPE_FLY );// IsOnLadder();
+	fLadder = ( pmove->movetype == MOVETYPE_FLY ) && (pmove->flags & FL_IMMUNE_SLIME) == 0;// IsOnLadder();
 
 	// UNDONE: need defined numbers for run, walk, crouch, crouch run velocities!!!!	
 	if( ( pmove->flags & FL_DUCKING) || fLadder )
@@ -2486,6 +2515,8 @@ PM_Jump
 void PM_Jump( void )
 {
 	int i;
+	qboolean bunnyjump = false;
+
 	qboolean tfc = false;
 
 	qboolean cansuperjump = false;
@@ -2572,7 +2603,10 @@ void PM_Jump( void )
 	// In the air now.
 	pmove->onground = -1;
 
-	if( g_bhopcap )
+	if( pmove->multiplayer )
+		bunnyjump = atoi( pmove->PM_Info_ValueForKey( pmove->physinfo, "bj" ) ) ? true : false;
+
+	if( !bunnyjump )
 		PM_PreventMegaBunnyJumping();
 
 	if( tfc )
@@ -3327,7 +3361,8 @@ void PM_Move( struct playermove_s *ppmove, int server )
 	}
 
 	// Reset friction after each movement to FrictionModifier Triggers work still.
-	if( pmove->movetype == MOVETYPE_WALK )
+	// Use movevar to avoid lags with different clients and servers.
+	if( !( pmove->multiplayer && atoi( pmove->PM_Info_ValueForKey( pmove->physinfo, "fr" )) == 0 ) && pmove->movetype == MOVETYPE_WALK )
 	{
 		pmove->friction = 1.0f;
 	}

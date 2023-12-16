@@ -31,7 +31,7 @@
 #include "weapons.h"
 #include "gamerules.h"
 
-void UTIL_MuzzleLight( Vector vecSrc, float flRadius, byte r, byte g, byte b, float flTime, float flDecay )
+void UTIL_DynamicLight( const Vector &vecSrc, float flRadius, byte r, byte g, byte b, float flTime, float flDecay )
 {
 	MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, vecSrc );
 		WRITE_BYTE( TE_DLIGHT );
@@ -44,6 +44,16 @@ void UTIL_MuzzleLight( Vector vecSrc, float flRadius, byte r, byte g, byte b, fl
 		WRITE_BYTE( b );		// b
 		WRITE_BYTE( flTime * 10.0f );	// time * 10
 		WRITE_BYTE( flDecay * 0.1f );	// decay * 0.1
+	MESSAGE_END();
+}
+
+void UTIL_MuzzleLight( const Vector& vecSrc )
+{
+	extern int gmsgMuzzleLight;
+	MESSAGE_BEGIN( MSG_PVS, gmsgMuzzleLight, vecSrc );
+		WRITE_COORD( vecSrc.x );
+		WRITE_COORD( vecSrc.y );
+		WRITE_COORD( vecSrc.z );
 	MESSAGE_END();
 }
 
@@ -1145,7 +1155,7 @@ int UTIL_IsMasterTriggered( string_t sMaster, CBaseEntity *pActivator )
 			}
 		}
 
-		ALERT( at_console, "Master was null or not a master!\n" );
+		ALERT( at_console, "Master %s was null or not a master!\n", STRING(sMaster) );
 	}
 
 	// if this isn't a master entity, just say yes.
@@ -1166,16 +1176,18 @@ bool UTIL_TargetnameIsActivator(string_t targetName)
 
 BOOL UTIL_ShouldShowBlood( int color )
 {
+	extern cvar_t* violence_hblood;
+	extern cvar_t* violence_ablood;
 	if( color != DONT_BLEED )
 	{
 		if( color == BLOOD_COLOR_RED )
 		{
-			if( CVAR_GET_FLOAT( "violence_hblood" ) != 0 )
+			if( violence_hblood->value != 0 )
 				return TRUE;
 		}
 		else
 		{
-			if( CVAR_GET_FLOAT( "violence_ablood" ) != 0 )
+			if( violence_ablood->value != 0 )
 				return TRUE;
 		}
 	}
@@ -1662,7 +1674,7 @@ void UTIL_PrecacheOther( const char *szClassname )
 	}
 	
 	CBaseEntity *pEntity = CBaseEntity::Instance( VARS( pent ) );
-	if( pEntity )
+	if( pEntity && pEntity->IsEnabledInMod() )
 		pEntity->Precache();
 	REMOVE_ENTITY( pent );
 }
@@ -1688,7 +1700,8 @@ void UTIL_PrecacheMonster(const char *szClassname, BOOL reverseRelationship, Vec
 			if (vecMax)
 				*vecMax = pMonster->DefaultMaxHullSize();
 		}
-		pEntity->Precache();
+		if (pEntity->IsEnabledInMod())
+			pEntity->Precache();
 	}
 	REMOVE_ENTITY( pent );
 }

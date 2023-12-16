@@ -137,10 +137,13 @@ void CGameRules::RefreshSkillData ( void )
 
 #if FEATURE_BABYGARG
 	// Baby Gargantua
-	gSkillData.babygargantuaHealth = GetSkillCvar( "sk_babygargantua_health" );
-	gSkillData.babygargantuaDmgSlash = GetSkillCvar( "sk_babygargantua_dmg_slash" );
-	gSkillData.babygargantuaDmgFire = GetSkillCvar( "sk_babygargantua_dmg_fire" );
-	gSkillData.babygargantuaDmgStomp = GetSkillCvar( "sk_babygargantua_dmg_stomp" );
+	if (g_modFeatures.IsMonsterEnabled("babygarg"))
+	{
+		gSkillData.babygargantuaHealth = GetSkillCvar( "sk_babygargantua_health" );
+		gSkillData.babygargantuaDmgSlash = GetSkillCvar( "sk_babygargantua_dmg_slash" );
+		gSkillData.babygargantuaDmgFire = GetSkillCvar( "sk_babygargantua_dmg_fire" );
+		gSkillData.babygargantuaDmgStomp = GetSkillCvar( "sk_babygargantua_dmg_stomp" );
+	}
 #endif
 
 	// Barney
@@ -157,10 +160,14 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.bullsquidDmgBite = GetSkillCvar( "sk_bullsquid_dmg_bite" );
 	gSkillData.bullsquidDmgWhip = GetSkillCvar( "sk_bullsquid_dmg_whip" );
 	gSkillData.bullsquidDmgSpit = GetSkillCvar( "sk_bullsquid_dmg_spit" );
+	gSkillData.bullsquidToxicity = GetSkillCvarZeroable( "sk_bullsquid_toxicity" );
+	gSkillData.bullsquidDmgToxicPoison = GetSkillCvar( "sk_bullsquid_dmg_toxic_poison", gSkillData.bullsquidDmgSpit/4.0f );
+	gSkillData.bullsquidDmgToxicImpact = GetSkillCvar( "sk_bullsquid_dmg_toxic_impact", gSkillData.bullsquidDmgSpit * 1.5f );
 
 #if FEATURE_CLEANSUIT_SCIENTIST
 	// Cleansuit Scientist
-	gSkillData.cleansuitScientistHealth = GetSkillCvar( "sk_cleansuit_scientist_health", "sk_scientist_health" );
+	if (g_modFeatures.IsMonsterEnabled("cleansuit_scientist"))
+		gSkillData.cleansuitScientistHealth = GetSkillCvar( "sk_cleansuit_scientist_health", "sk_scientist_health" );
 #endif
 	// Gargantua
 	gSkillData.gargantuaHealth = GetSkillCvar( "sk_gargantua_health" );
@@ -170,27 +177,37 @@ void CGameRules::RefreshSkillData ( void )
 
 	// Hassassin
 	gSkillData.hassassinHealth = GetSkillCvar( "sk_hassassin_health" );
+	gSkillData.hassassinCloaking = GetSkillCvarZeroable( "sk_hassassin_cloaking" );
 
 	// Headcrab
 	gSkillData.headcrabHealth = GetSkillCvar( "sk_headcrab_health" );
 	gSkillData.headcrabDmgBite = GetSkillCvar( "sk_headcrab_dmg_bite" );
 #if FEATURE_OPFOR_GRUNT
 	// Hgrunt
-	gSkillData.fgruntHealth = GetSkillCvar( "sk_hgrunt_ally_health", "sk_hgrunt_health" );
-	gSkillData.fgruntDmgKick = GetSkillCvar( "sk_hgrunt_ally_kick", "sk_hgrunt_kick" );
-	gSkillData.fgruntShotgunPellets = GetSkillCvar( "sk_hgrunt_ally_pellets", "sk_hgrunt_pellets" );
-	gSkillData.fgruntGrenadeSpeed = GetSkillCvar( "sk_hgrunt_ally_gspeed", "sk_hgrunt_gspeed" );
+	if (g_modFeatures.IsMonsterEnabled("human_grunt_ally"))
+	{
+		gSkillData.fgruntHealth = GetSkillCvar( "sk_hgrunt_ally_health", "sk_hgrunt_health" );
+		gSkillData.fgruntDmgKick = GetSkillCvar( "sk_hgrunt_ally_kick", "sk_hgrunt_kick" );
+		gSkillData.fgruntShotgunPellets = GetSkillCvar( "sk_hgrunt_ally_pellets", "sk_hgrunt_pellets" );
+		gSkillData.fgruntGrenadeSpeed = GetSkillCvar( "sk_hgrunt_ally_gspeed", "sk_hgrunt_gspeed" );
+	}
 
 	// Medic
-	gSkillData.medicHealth = GetSkillCvar( "sk_medic_ally_health", "sk_hgrunt_health" );
-	gSkillData.medicDmgKick = GetSkillCvar( "sk_medic_ally_kick", "sk_hgrunt_kick" );
-	gSkillData.medicGrenadeSpeed = GetSkillCvar( "sk_medic_ally_gspeed", "sk_hgrunt_gspeed" );
-	gSkillData.medicHeal = GetSkillCvar( "sk_medic_ally_heal" );
+	if (g_modFeatures.IsMonsterEnabled("human_grunt_medic"))
+	{
+		gSkillData.medicHealth = GetSkillCvar( "sk_medic_ally_health", "sk_hgrunt_health" );
+		gSkillData.medicDmgKick = GetSkillCvar( "sk_medic_ally_kick", "sk_hgrunt_kick" );
+		gSkillData.medicGrenadeSpeed = GetSkillCvar( "sk_medic_ally_gspeed", gSkillData.fgruntGrenadeSpeed );
+		gSkillData.medicHeal = GetSkillCvar( "sk_medic_ally_heal" );
+	}
 
 	// Torch
-	gSkillData.torchHealth = GetSkillCvar( "sk_torch_ally_health", "sk_hgrunt_health" );
-	gSkillData.torchDmgKick = GetSkillCvar( "sk_torch_ally_kick", "sk_hgrunt_kick" );
-	gSkillData.torchGrenadeSpeed = GetSkillCvar( "sk_torch_ally_gspeed", "sk_hgrunt_gspeed" );
+	if (g_modFeatures.IsMonsterEnabled("human_grunt_torch"))
+	{
+		gSkillData.torchHealth = GetSkillCvar( "sk_torch_ally_health", "sk_hgrunt_health" );
+		gSkillData.torchDmgKick = GetSkillCvar( "sk_torch_ally_kick", "sk_hgrunt_kick" );
+		gSkillData.torchGrenadeSpeed = GetSkillCvar( "sk_torch_ally_gspeed", gSkillData.fgruntGrenadeSpeed );
+	}
 #endif
 	// Hgrunt 
 	gSkillData.hgruntHealth = GetSkillCvar( "sk_hgrunt_health" );
@@ -200,7 +217,8 @@ void CGameRules::RefreshSkillData ( void )
 
 #if FEATURE_HWGRUNT
 	// HWgrunt
-	gSkillData.hwgruntHealth = GetSkillCvar( "sk_hwgrunt_health" );
+	if (g_modFeatures.IsMonsterEnabled("hwgrunt"))
+		gSkillData.hwgruntHealth = GetSkillCvar( "sk_hwgrunt_health" );
 #endif
 
 	// Houndeye
@@ -213,7 +231,7 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.slaveDmgClawrake = GetSkillCvar( "sk_islave_dmg_clawrake" );
 	gSkillData.slaveDmgZap = GetSkillCvar( "sk_islave_dmg_zap" );
 	gSkillData.slaveZapRate = GetSkillCvar( "sk_islave_zap_rate" );
-	gSkillData.slaveRevival = GetSkillCvar( "sk_islave_revival", 0, true );
+	gSkillData.slaveRevival = GetSkillCvarZeroable( "sk_islave_revival" );
 
 	// Icthyosaur
 	gSkillData.ichthyosaurHealth = GetSkillCvar( "sk_ichthyosaur_health" );
@@ -231,64 +249,86 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.controllerDmgBall = GetSkillCvar( "sk_controller_dmgball" );
 #if FEATURE_MASSN
 	// Massn
-	gSkillData.massnHealth = GetSkillCvar( "sk_massassin_health", "sk_hgrunt_health" );
-	gSkillData.massnDmgKick = GetSkillCvar( "sk_massassin_kick", "sk_hgrunt_kick" );
-	gSkillData.massnGrenadeSpeed = GetSkillCvar( "sk_massassin_gspeed", "sk_hgrunt_gspeed" );
+	if (g_modFeatures.IsMonsterEnabled("male_assassin"))
+	{
+		gSkillData.massnHealth = GetSkillCvar( "sk_massassin_health", "sk_hgrunt_health" );
+		gSkillData.massnDmgKick = GetSkillCvar( "sk_massassin_kick", "sk_hgrunt_kick" );
+		gSkillData.massnGrenadeSpeed = GetSkillCvar( "sk_massassin_gspeed", "sk_hgrunt_gspeed" );
+	}
 #endif
 	// Nihilanth
 	gSkillData.nihilanthHealth = GetSkillCvar( "sk_nihilanth_health" );
 	gSkillData.nihilanthZap = GetSkillCvar( "sk_nihilanth_zap" );
 #if FEATURE_PITDRONE
 	// Pitdrone
-	gSkillData.pitdroneHealth = GetSkillCvar( "sk_pitdrone_health" );
-	gSkillData.pitdroneDmgBite = GetSkillCvar( "sk_pitdrone_dmg_bite" );
-	gSkillData.pitdroneDmgWhip = GetSkillCvar( "sk_pitdrone_dmg_whip" );
-	gSkillData.pitdroneDmgSpit = GetSkillCvar( "sk_pitdrone_dmg_spit" );
+	if (g_modFeatures.IsMonsterEnabled("pitdrone"))
+	{
+		gSkillData.pitdroneHealth = GetSkillCvar( "sk_pitdrone_health" );
+		gSkillData.pitdroneDmgBite = GetSkillCvar( "sk_pitdrone_dmg_bite" );
+		gSkillData.pitdroneDmgWhip = GetSkillCvar( "sk_pitdrone_dmg_whip" );
+		gSkillData.pitdroneDmgSpit = GetSkillCvar( "sk_pitdrone_dmg_spit" );
+	}
 #endif
 #if FEATURE_PITWORM
 	// Pitworm
-	gSkillData.pwormHealth = GetSkillCvar( "sk_pitworm_health" );
-	gSkillData.pwormDmgSwipe = GetSkillCvar( "sk_pitworm_dmg_swipe" );
-	gSkillData.pwormDmgBeam = GetSkillCvar( "sk_pitworm_dmg_beam" );
+	if (g_modFeatures.IsMonsterEnabled("pitworm"))
+	{
+		gSkillData.pwormHealth = GetSkillCvar( "sk_pitworm_health" );
+		gSkillData.pwormDmgSwipe = GetSkillCvar( "sk_pitworm_dmg_swipe" );
+		gSkillData.pwormDmgBeam = GetSkillCvar( "sk_pitworm_dmg_beam" );
+	}
 #endif
 #if FEATURE_GENEWORM
 	// Geneworm
-	gSkillData.gwormHealth = GetSkillCvar( "sk_geneworm_health" );
-	gSkillData.gwormDmgSpit = GetSkillCvar( "sk_geneworm_dmg_spit" );
-	gSkillData.gwormDmgHit = GetSkillCvar( "sk_geneworm_dmg_hit" );
+	if (g_modFeatures.IsMonsterEnabled("geneworm"))
+	{
+		gSkillData.gwormHealth = GetSkillCvar( "sk_geneworm_health" );
+		gSkillData.gwormDmgSpit = GetSkillCvar( "sk_geneworm_dmg_spit" );
+		gSkillData.gwormDmgHit = GetSkillCvar( "sk_geneworm_dmg_hit" );
+	}
 #endif
 
 	gSkillData.ospreyHealth = GetSkillCvar( "sk_osprey" );
 #if FEATURE_BLACK_OSPREY
-	gSkillData.blackopsOspreyHealth = GetSkillCvar( "sk_blkopsosprey", "sk_osprey" );
+	if (g_modFeatures.IsMonsterEnabled("blkop_osprey"))
+		gSkillData.blackopsOspreyHealth = GetSkillCvar( "sk_blkopsosprey", "sk_osprey" );
 #endif
 
 #if FEATURE_OTIS
 	// Otis
-	gSkillData.otisHealth = GetSkillCvar( "sk_otis_health", "sk_barney_health" );
+	if (g_modFeatures.IsMonsterEnabled("otis"))
+		gSkillData.otisHealth = GetSkillCvar( "sk_otis_health", "sk_barney_health" );
 #endif
 #if FEATURE_KATE
 	// Kate
-	gSkillData.kateHealth = GetSkillCvar( "sk_kate_health", "sk_barney_health" );
+	if (g_modFeatures.IsMonsterEnabled("kate"))
+		gSkillData.kateHealth = GetSkillCvar( "sk_kate_health", "sk_barney_health" );
 #endif
 #if FEATURE_ROBOGRUNT
 	// Robogrunt
-	gSkillData.rgruntExplode = GetSkillCvar( "sk_rgrunt_explode" );
+	if (g_modFeatures.IsMonsterEnabled("robogrunt"))
+		gSkillData.rgruntExplode = GetSkillCvar( "sk_rgrunt_explode" );
 #endif
 	// Scientist
 	gSkillData.scientistHealth = GetSkillCvar( "sk_scientist_health" );
 #if FEATURE_SHOCKTROOPER
 	// Shock Roach
-	gSkillData.sroachHealth = GetSkillCvar( "sk_shockroach_health" );
-	gSkillData.sroachDmgBite = GetSkillCvar( "sk_shockroach_dmg_bite" );
-	gSkillData.sroachLifespan = GetSkillCvar( "sk_shockroach_lifespan" );
+	if (g_modFeatures.IsMonsterEnabled("shockroach"))
+	{
+		gSkillData.sroachHealth = GetSkillCvar( "sk_shockroach_health" );
+		gSkillData.sroachDmgBite = GetSkillCvar( "sk_shockroach_dmg_bite" );
+		gSkillData.sroachLifespan = GetSkillCvar( "sk_shockroach_lifespan" );
+	}
 
 	// ShockTrooper
-	gSkillData.strooperHealth = GetSkillCvar( "sk_shocktrooper_health" );
-	gSkillData.strooperDmgKick = GetSkillCvar( "sk_shocktrooper_kick" );
-	gSkillData.strooperGrenadeSpeed = GetSkillCvar( "sk_shocktrooper_gspeed" );
-	gSkillData.strooperMaxCharge = GetSkillCvar( "sk_shocktrooper_maxcharge" );
-	gSkillData.strooperRchgSpeed = GetSkillCvar( "sk_shocktrooper_rchgspeed" );
+	if (g_modFeatures.IsMonsterEnabled("shocktrooper"))
+	{
+		gSkillData.strooperHealth = GetSkillCvar( "sk_shocktrooper_health" );
+		gSkillData.strooperDmgKick = GetSkillCvar( "sk_shocktrooper_kick" );
+		gSkillData.strooperGrenadeSpeed = GetSkillCvar( "sk_shocktrooper_gspeed" );
+		gSkillData.strooperMaxCharge = GetSkillCvar( "sk_shocktrooper_maxcharge" );
+		gSkillData.strooperRchgSpeed = GetSkillCvar( "sk_shocktrooper_rchgspeed" );
+	}
 #endif
 	// Snark
 	gSkillData.snarkHealth = GetSkillCvar( "sk_snark_health" );
@@ -296,14 +336,20 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.snarkDmgPop = GetSkillCvar( "sk_snark_dmg_pop" );
 #if FEATURE_VOLTIFORE
 	// Voltigore
-	gSkillData.voltigoreHealth = GetSkillCvar( "sk_voltigore_health" );
-	gSkillData.voltigoreDmgPunch = GetSkillCvar( "sk_voltigore_dmg_punch" );
-	gSkillData.voltigoreDmgBeam = GetSkillCvar( "sk_voltigore_dmg_beam" );
-	gSkillData.voltigoreDmgExplode = GetSkillCvar( "sk_voltigore_dmg_explode", "sk_voltigore_dmg_beam" );
+	if (g_modFeatures.IsMonsterEnabled("voltigore"))
+	{
+		gSkillData.voltigoreHealth = GetSkillCvar( "sk_voltigore_health" );
+		gSkillData.voltigoreDmgPunch = GetSkillCvar( "sk_voltigore_dmg_punch" );
+		gSkillData.voltigoreDmgBeam = GetSkillCvar( "sk_voltigore_dmg_beam" );
+		gSkillData.voltigoreDmgExplode = GetSkillCvar( "sk_voltigore_dmg_explode", "sk_voltigore_dmg_beam" );
+	}
 
 	// Baby Voltigore
-	gSkillData.babyVoltigoreHealth = GetSkillCvar( "sk_babyvoltigore_health" );
-	gSkillData.babyVoltigoreDmgPunch = GetSkillCvar( "sk_babyvoltigore_dmg_punch" );
+	if (g_modFeatures.IsMonsterEnabled("babyvoltigore"))
+	{
+		gSkillData.babyVoltigoreHealth = GetSkillCvar( "sk_babyvoltigore_health" );
+		gSkillData.babyVoltigoreDmgPunch = GetSkillCvar( "sk_babyvoltigore_dmg_punch" );
+	}
 #endif
 	// Zombie
 	gSkillData.zombieHealth = GetSkillCvar( "sk_zombie_health" );
@@ -311,22 +357,31 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.zombieDmgBothSlash = GetSkillCvar( "sk_zombie_dmg_both_slash" );
 #if FEATURE_ZOMBIE_BARNEY
 	// Zombie Barney
-	gSkillData.zombieBarneyHealth = GetSkillCvar( "sk_zombie_barney_health", "sk_zombie_health" );
-	gSkillData.zombieBarneyDmgOneSlash = GetSkillCvar( "sk_zombie_barney_dmg_one_slash", "sk_zombie_dmg_one_slash" );
-	gSkillData.zombieBarneyDmgBothSlash = GetSkillCvar( "sk_zombie_barney_dmg_both_slash", "sk_zombie_dmg_both_slash" );
+	if (g_modFeatures.IsMonsterEnabled("zombie_barney"))
+	{
+		gSkillData.zombieBarneyHealth = GetSkillCvar( "sk_zombie_barney_health", "sk_zombie_health" );
+		gSkillData.zombieBarneyDmgOneSlash = GetSkillCvar( "sk_zombie_barney_dmg_one_slash", "sk_zombie_dmg_one_slash" );
+		gSkillData.zombieBarneyDmgBothSlash = GetSkillCvar( "sk_zombie_barney_dmg_both_slash", "sk_zombie_dmg_both_slash" );
+	}
 #endif
 #if FEATURE_ZOMBIE_SOLDIER
 	// Zombie Soldier
-	gSkillData.zombieSoldierHealth = GetSkillCvar( "sk_zombie_soldier_health");
-	gSkillData.zombieSoldierDmgOneSlash = GetSkillCvar( "sk_zombie_soldier_dmg_one_slash");
-	gSkillData.zombieSoldierDmgBothSlash = GetSkillCvar( "sk_zombie_soldier_dmg_both_slash");
+	if (g_modFeatures.IsMonsterEnabled("zombie_soldier"))
+	{
+		gSkillData.zombieSoldierHealth = GetSkillCvar( "sk_zombie_soldier_health");
+		gSkillData.zombieSoldierDmgOneSlash = GetSkillCvar( "sk_zombie_soldier_dmg_one_slash");
+		gSkillData.zombieSoldierDmgBothSlash = GetSkillCvar( "sk_zombie_soldier_dmg_both_slash");
+	}
 #endif
 #if FEATURE_GONOME
 	// Gonome
-	gSkillData.gonomeHealth = GetSkillCvar( "sk_gonome_health" );
-	gSkillData.gonomeDmgOneSlash = GetSkillCvar( "sk_gonome_dmg_one_slash" );
-	gSkillData.gonomeDmgGuts = GetSkillCvar( "sk_gonome_dmg_guts" );
-	gSkillData.gonomeDmgOneBite = GetSkillCvar( "sk_gonome_dmg_one_bite" );
+	if (g_modFeatures.IsMonsterEnabled("gonome"))
+	{
+		gSkillData.gonomeHealth = GetSkillCvar( "sk_gonome_health" );
+		gSkillData.gonomeDmgOneSlash = GetSkillCvar( "sk_gonome_dmg_one_slash" );
+		gSkillData.gonomeDmgGuts = GetSkillCvar( "sk_gonome_dmg_guts" );
+		gSkillData.gonomeDmgOneBite = GetSkillCvar( "sk_gonome_dmg_one_bite" );
+	}
 #endif
 	//Turret
 	gSkillData.turretHealth = GetSkillCvar( "sk_turret_health" );
@@ -382,56 +437,73 @@ void CGameRules::RefreshSkillData ( void )
 
 #if FEATURE_MEDKIT
 	// Medkit 
-	gSkillData.plrDmgMedkit = GetSkillCvar( "sk_plr_medkitshot" );
-	gSkillData.plrMedkitTime = GetSkillCvar( "sk_plr_medkittime", 0, true );
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_MEDKIT))
+	{
+		gSkillData.plrDmgMedkit = GetSkillCvar( "sk_plr_medkitshot" );
+		gSkillData.plrMedkitTime = GetSkillCvarZeroable( "sk_plr_medkittime" );
+	}
 #endif
 
 #if FEATURE_DESERT_EAGLE
 	// Desert Eagle
-	gSkillData.plrDmgEagle = GetSkillCvar( "sk_plr_eagle" );
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_EAGLE))
+		gSkillData.plrDmgEagle = GetSkillCvar( "sk_plr_eagle" );
 #endif
 
 #if FEATURE_PIPEWRENCH
 	// Pipe wrench
-	gSkillData.plrDmgPWrench = GetSkillCvar( "sk_plr_pipewrench" );
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_PIPEWRENCH))
+		gSkillData.plrDmgPWrench = GetSkillCvar( "sk_plr_pipewrench" );
 #endif
 
 #if FEATURE_KNIFE
 	// Knife
-	gSkillData.plrDmgKnife = GetSkillCvar( "sk_plr_knife" );
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_KNIFE))
+		gSkillData.plrDmgKnife = GetSkillCvar( "sk_plr_knife" );
 #endif
 
 #if FEATURE_GRAPPLE
 	// Grapple
-	gSkillData.plrDmgGrapple = GetSkillCvar( "sk_plr_grapple" );
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_GRAPPLE))
+		gSkillData.plrDmgGrapple = GetSkillCvar( "sk_plr_grapple" );
 #endif
 
 #if FEATURE_M249
 	// M249
-	gSkillData.plrDmg556 = GetSkillCvar( "sk_plr_556_bullet" );
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_M249))
+		gSkillData.plrDmg556 = GetSkillCvar( "sk_plr_556_bullet" );
 #endif
 
 #if FEATURE_SNIPERRIFLE
 	// 762 Round
-	gSkillData.plrDmg762 = GetSkillCvar( "sk_plr_762_bullet" );
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_SNIPERRIFLE))
+		gSkillData.plrDmg762 = GetSkillCvar( "sk_plr_762_bullet" );
 #endif
 
 #if FEATURE_SHOCKBEAM
-	gSkillData.plrDmgShockroach = GetSkillCvar( "sk_plr_shockroachs" );
-	gSkillData.plrDmgShockroachM = GetSkillCvar( "sk_plr_shockroachm" );
+	if (g_modFeatures.ShockBeamEnabled())
+	{
+		gSkillData.plrDmgShockroach = GetSkillCvar( "sk_plr_shockroachs" );
+		gSkillData.plrDmgShockroachM = GetSkillCvar( "sk_plr_shockroachm" );
+	}
 #endif
 
 #if FEATURE_SPOREGRENADE
-	gSkillData.plrDmgSpore = GetSkillCvar( "sk_plr_spore" );
+	if (g_modFeatures.SporesEnabled())
+		gSkillData.plrDmgSpore = GetSkillCvar( "sk_plr_spore" );
 #endif
 
 #if FEATURE_DISPLACER
-	gSkillData.plrDmgDisplacer = GetSkillCvar( "sk_plr_displacer_other" );
-	gSkillData.plrDisplacerRadius = GetSkillCvar( "sk_plr_displacer_radius" );
+	if (g_modFeatures.DisplacerBallEnabled())
+	{
+		gSkillData.plrDmgDisplacer = GetSkillCvar( "sk_plr_displacer_other" );
+		gSkillData.plrDisplacerRadius = GetSkillCvar( "sk_plr_displacer_radius" );
+	}
 #endif
 
 #if FEATURE_UZI
-	gSkillData.plrDmgUzi = GetSkillCvar( "sk_plr_uzi" );
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_UZI))
+		gSkillData.plrDmgUzi = GetSkillCvar( "sk_plr_uzi" );
 #endif
 
 	// MONSTER WEAPONS
@@ -493,6 +565,87 @@ CBasePlayer *CGameRules::EffectivePlayer(CBaseEntity *pActivator)
 	return NULL;
 }
 
+bool CGameRules::EquipPlayerFromMapConfig(CBasePlayer *pPlayer, const MapConfig &mapConfig)
+{
+	extern int gEvilImpulse101;
+
+	if (mapConfig.valid)
+	{
+		gEvilImpulse101 = TRUE;
+
+		bool giveSuit = !mapConfig.nosuit;
+		if (giveSuit)
+		{
+			int suitSpawnFlags = 0;
+			switch (mapConfig.suitLogon) {
+			case SuitNoLogon:
+				suitSpawnFlags |= SF_SUIT_NOLOGON;
+				break;
+			case SuitShortLogon:
+				suitSpawnFlags |= SF_SUIT_SHORTLOGON;
+				break;
+			case SuitLongLogon:
+				break;
+			}
+			pPlayer->GiveNamedItem("item_suit", suitSpawnFlags);
+		}
+
+		if (mapConfig.suit_light == MapConfig::SUIT_LIGHT_NOTHING)
+		{
+			pPlayer->RemoveSuitLight();
+		}
+		else if (mapConfig.suit_light == MapConfig::SUIT_LIGHT_FLASHLIGHT)
+		{
+			pPlayer->SetFlashlightOnly();
+		}
+		else if (mapConfig.suit_light == MapConfig::SUIT_LIGHT_NVG)
+		{
+			pPlayer->SetNVGOnly();
+		}
+
+		int i, j;
+		for (i=0; i<mapConfig.pickupEntCount; ++i)
+		{
+			for (j=0; j<mapConfig.pickupEnts[i].count; ++j)
+			{
+				const char* entName = STRING(mapConfig.pickupEnts[i].entName);
+				pPlayer->GiveNamedItem(entName);
+			}
+		}
+		gEvilImpulse101 = FALSE;
+
+		for (i=0; i<mapConfig.ammoCount; ++i)
+		{
+			const AmmoInfo& ammoInfo = CBasePlayerWeapon::GetAmmoInfo(mapConfig.ammo[i].name);
+			if (mapConfig.ammo[i].count > 0 && ammoInfo.pszName)
+			{
+				pPlayer->GiveAmmo(mapConfig.ammo[i].count, ammoInfo.pszName);
+			}
+		}
+
+#if FEATURE_MEDKIT
+		if (IsCoOp() && g_modFeatures.IsWeaponEnabled(WEAPON_MEDKIT) && !mapConfig.nomedkit && !pPlayer->WeaponById(WEAPON_MEDKIT))
+		{
+			pPlayer->GiveNamedItem("weapon_medkit");
+		}
+#endif
+		if (mapConfig.startarmor > 0)
+			pPlayer->pev->armorvalue = Q_min(mapConfig.startarmor, MAX_NORMAL_BATTERY);
+		if (mapConfig.starthealth > 0 && mapConfig.starthealth < pPlayer->pev->max_health)
+			pPlayer->pev->health = mapConfig.starthealth;
+
+		if (mapConfig.longjump)
+		{
+			pPlayer->SetLongjump(true);
+		}
+
+		pPlayer->SwitchToBestWeapon();
+
+		return true;
+	}
+	return false;
+}
+
 //=========================================================
 // instantiate the proper game rules object
 //=========================================================
@@ -533,22 +686,14 @@ CGameRules *InstallGameRules( void )
 
 int TridepthValue()
 {
-#if FEATURE_TRIDEPTH_CVAR
 	extern cvar_t npc_tridepth;
 	return (int)npc_tridepth.value;
-#else
-	return 1;
-#endif
 }
 
 bool TridepthForAll()
 {
-#if FEATURE_TRIDEPTH_ALL_CVAR
 	extern cvar_t npc_tridepth_all;
 	return npc_tridepth_all.value > 0;
-#else
-	return 0;
-#endif
 }
 
 bool AllowUseThroughWalls()
@@ -558,16 +703,6 @@ bool AllowUseThroughWalls()
 	return use_through_walls.value != 0;
 #else
 	return true;
-#endif
-}
-
-bool NeedUseToTake()
-{
-#if FEATURE_USE_TO_TAKE_CVAR
-	extern cvar_t use_to_take;
-	return use_to_take.value != 0;
-#else
-	return false;
 #endif
 }
 
@@ -583,22 +718,14 @@ bool NpcFollowNearest()
 
 float NpcForgetEnemyTime()
 {
-#if FEATURE_NPC_FORGET_ENEMY_CVAR
 	extern cvar_t npc_forget_enemy_time;
 	return npc_forget_enemy_time.value;
-#else
-	return 0.0f;
-#endif
 }
 
 bool NpcActiveAfterCombat()
 {
-#if FEATURE_NPC_ACTIVE_AFTER_COMBAT_CVAR
 	extern cvar_t npc_active_after_combat;
 	return npc_active_after_combat.value != 0;
-#else
-	return false;
-#endif
 }
 
 bool NpcFollowOutOfPvs()

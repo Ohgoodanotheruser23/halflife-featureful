@@ -23,6 +23,7 @@
 #include "items.h"
 #include "gamerules.h"
 #include "wallcharger.h"
+#include "game.h"
 
 extern int gmsgItemPickup;
 
@@ -159,7 +160,7 @@ void CWallCharger::Recharge( void )
 {
 	if (m_triggerOnRecharged)
 	{
-		FireTargets( STRING( m_triggerOnRecharged ), this, this, USE_TOGGLE, 0 );
+		FireTargets( STRING( m_triggerOnRecharged ), this, this );
 	}
 	const char* rechargeSound = RechargeSound();
 	if (rechargeSound)
@@ -293,14 +294,14 @@ void CWallCharger::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	{
 		if (m_triggerOnEmpty && pev->frame == OnStateFrame())
 		{
-			FireTargets( STRING( m_triggerOnEmpty ), this, this, USE_TOGGLE, 0 );
+			FireTargets( STRING( m_triggerOnEmpty ), this, this );
 		}
 		pev->frame = OffStateFrame();
 		Off();
 	}
 
 	// if the player doesn't have the suit, or there is no juice left, make the deny noise
-	if( ( m_iJuice <= 0 ) || ( !( pActivator->pev->weapons & ( 1 << WEAPON_SUIT ) ) ) )
+	if( ( m_iJuice <= 0 ) || !((static_cast<CBasePlayer*>(pActivator))->HasSuit() || AllowNoSuit()) )
 	{
 		if( m_flSoundTime <= gpGlobals->time )
 		{
@@ -325,7 +326,7 @@ void CWallCharger::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 	{
 		if (m_triggerOnFirstUse)
 		{
-			FireTargets( STRING( m_triggerOnFirstUse ), this, this, USE_TOGGLE, 0 );
+			FireTargets( STRING( m_triggerOnFirstUse ), this, this );
 			m_triggerOnFirstUse = 0;
 		}
 		m_iJuice--;
@@ -394,6 +395,9 @@ public:
 	bool GiveCharge(CBaseEntity* pActivator)
 	{
 		return pActivator->TakeHealth( this, 1, HEAL_CHARGE ) > 0;
+	}
+	bool AllowNoSuit() {
+		return g_modFeatures.nosuit_allow_healthcharger;
 	}
 	int ItemCategory() {
 		if (m_iJuice > 0)
@@ -637,7 +641,7 @@ void CWallHealthDecay::SearchForPlayer()
 	CBaseEntity* pEntity = 0;
 	UTIL_MakeVectors( pev->angles );
 	while((pEntity = UTIL_FindEntityInSphere(pEntity, Center(), 64)) != 0) { // this must be in sync with PLAYER_SEARCH_RADIUS from player.cpp
-		if (pEntity->IsPlayer() && pEntity->IsAlive() && FBitSet(pEntity->pev->weapons, 1 << WEAPON_SUIT)) {
+		if (pEntity->IsPlayer() && pEntity->IsAlive() && ((static_cast<CBasePlayer*>(pEntity))->HasSuit() || g_modFeatures.nosuit_allow_healthcharger)) {
 			if (DotProduct(pEntity->pev->origin - pev->origin, gpGlobals->v_forward) < 0) {
 				continue;
 			}
@@ -702,10 +706,10 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	if( !pCaller->IsPlayer() )
 		return;
 
-	CBaseEntity* pPlayer = pCaller;
+	CBasePlayer* pPlayer = static_cast<CBasePlayer*>(pCaller);
 
 	// if the player doesn't have the suit, or there is no juice left, make the deny noise
-	if( ( m_iJuice <= 0 ) || ( !( pPlayer->pev->weapons & ( 1 << WEAPON_SUIT ) ) ) )
+	if( ( m_iJuice <= 0 ) || !(pPlayer->HasSuit() || g_modFeatures.nosuit_allow_healthcharger) )
 	{
 		if( m_flSoundTime <= gpGlobals->time )
 		{
@@ -765,7 +769,7 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	{
 		if (m_triggerOnFirstUse)
 		{
-			FireTargets( STRING( m_triggerOnFirstUse ), pPlayer, this, USE_TOGGLE, 0 );
+			FireTargets( STRING( m_triggerOnFirstUse ), pPlayer, this );
 			m_triggerOnFirstUse = iStringNull;
 		}
 		m_iJuice--;
@@ -774,7 +778,7 @@ void CWallHealthDecay::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 			pev->skin = 1;
 			if (m_triggerOnEmpty)
 			{
-				FireTargets( STRING( m_triggerOnEmpty ), pPlayer, this, USE_TOGGLE, 0 );
+				FireTargets( STRING( m_triggerOnEmpty ), pPlayer, this );
 			}
 		}
 		UpdateJar();

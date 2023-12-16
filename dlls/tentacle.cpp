@@ -25,6 +25,7 @@
 #include	"monsters.h"
 #include	"weapons.h"
 #include	"soundent.h"
+#include	"game.h"
 
 #define ACT_T_IDLE		1010
 #define ACT_T_TAP		1020
@@ -69,7 +70,7 @@ public:
 	void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
 
 	MONSTERSTATE GetIdealState( void ) { return MONSTERSTATE_IDLE; };
-	int CanPlaySequence( BOOL fDisregardState ) { return TRUE; };
+	int CanPlaySequence( int interruptFlags ) { return TRUE; };
 
 	int DefaultClassify( void );
 
@@ -249,6 +250,8 @@ void CTentacle::Spawn()
 	pev->effects = 0;
 	SetMyHealth( 75 );
 	pev->sequence = 0;
+	//Always interpolate tentacles since they don't actually move.
+	m_EFlags |= EFLAG_SLERP;
 
 	SetMyModel( "models/tentacle2.mdl" );
 	UTIL_SetSize( pev, Vector( -32, -32, 0 ), Vector( 32, 32, 64 ) );
@@ -338,43 +341,52 @@ void CTentacle::KeyValue( KeyValueData *pkvd )
 
 int CTentacle::Level( float dz )
 {
-#if FEATURE_OPFOR_TENTACLE_HEIGHT
+	if (g_modFeatures.tentacle_opfor_height)
+	{
 	if( dz < 96 )
 		return 0;
 	if( dz < 150 )
 		return 1;
 	if( dz < 288 )
 		return 2;
-#else
-	if( dz < 216 )
-		return 0;
-	if( dz < 408 )
-		return 1;
-	if( dz < 600 )
-		return 2;
-#endif
+	}
+	else
+	{
+		if( dz < 216 )
+			return 0;
+		if( dz < 408 )
+			return 1;
+		if( dz < 600 )
+			return 2;
+	}
 	return 3;
 }
 
 float CTentacle::MyHeight()
 {
-	switch( MyLevel() )
+	if (g_modFeatures.tentacle_opfor_height)
 	{
-#if FEATURE_OPFOR_TENTACLE_HEIGHT
-	case 1:
-		return 136;
-	case 2:
-		return 190;
-	case 3:
-		return 328;
-#else
-	case 1:
-		return 256;
-	case 2:
-		return 448;
-	case 3:
-		return 640;
-#endif
+		switch( MyLevel() )
+		{
+		case 1:
+			return 136;
+		case 2:
+			return 190;
+		case 3:
+			return 328;
+		}
+	}
+	else
+	{
+		switch( MyLevel() )
+		{
+		case 1:
+			return 256;
+		case 2:
+			return 448;
+		case 3:
+			return 640;
+		}
 	}
 	return 0;
 }

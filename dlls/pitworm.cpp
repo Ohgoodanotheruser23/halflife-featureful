@@ -1,29 +1,21 @@
 /***
 *
-*   SPIRIT OF HALF-LIFE 1.9: OPPOSING-FORCE EDITION
+*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
 *
-*   Spirit of Half-Life and their logos are the property of their respective owners.
-*   Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+*	This product contains software technology licensed from Id
+*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+*	All Rights Reserved.
 *
-*   This product contains software technology licensed from Id
-*   Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+*   This source code contains proprietary and confidential information of
+*   Valve LLC and its suppliers.  Access to this code is restricted to
+*   persons who have executed a written SDK license with Valve.  Any access,
+*   use or distribution of this code by or to any unlicensed person is illegal.
 *
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-*   All Rights Reserved.
-*
-*	Base Source-Code written by Marc-Antoine Lortie (https://github.com/malortie).
-*   Modifications by Hammermaps.de DEV Team (support@hammermaps.de).
-*
-***/
+****/
 
 #include	"extdll.h"
 #include	"util.h"
 #include	"cbase.h"
-#include	"nodes.h"
 #include	"monsters.h"
 #include	"schedule.h"
 #include	"soundent.h"
@@ -31,6 +23,7 @@
 #include	"player.h"
 #include	"decals.h"
 #include	"mod_features.h"
+#include	"game.h"
 
 #if FEATURE_PITWORM
 
@@ -42,6 +35,7 @@ class CPitWorm : public CBaseMonster
 public:
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("pitworm"); }
 	int  DefaultClassify(void);
 	virtual int	ObjectCaps(void) { return CBaseMonster::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 	void SetObjectCollisionBox()
@@ -67,7 +61,7 @@ public:
 
 	void HandleAnimEvent(MonsterEvent_t *pEvent);
 	int TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType);
-	void TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
 	void EXPORT StartupThink(void);
 	void EXPORT DyingThink(void);
@@ -370,6 +364,7 @@ void CPitWorm::Precache()
 	PRECACHE_SOUND_ARRAY(pHitGroundSounds);
 	PRECACHE_SOUND_ARRAY(pAngrySounds);
 	PRECACHE_SOUND_ARRAY(pSwipeSounds);
+	PRECACHE_SOUND_ARRAY(pShootSounds);
 	PRECACHE_SOUND_ARRAY(pIdleSounds);
 	PRECACHE_SOUND_ARRAY(pPainSounds);
 	PRECACHE_SOUND_ARRAY(pAttackSounds);
@@ -522,7 +517,7 @@ void CPitWorm::HandleAnimEvent(MonsterEvent_t *pEvent)
 	}
 }
 
-void CPitWorm::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CPitWorm::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	if ( ptr->iHitgroup == HITGROUP_HEAD )
 	{
@@ -960,7 +955,7 @@ void CPitWorm::EyeLight(const Vector &vecEyePos)
 {
 	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
 		WRITE_BYTE( TE_ELIGHT );
-		WRITE_SHORT( entindex() );		// entity, attachment
+		WRITE_SHORT( entindex() | (1 << 12) );		// entity, attachment
 		WRITE_COORD( vecEyePos.x );		// origin
 		WRITE_COORD( vecEyePos.y );
 		WRITE_COORD( vecEyePos.z );
@@ -979,7 +974,7 @@ void CPitWorm::BeamEffect(TraceResult &tr)
 	if( pEntity != NULL && pEntity->pev->takedamage )
 	{
 		ClearMultiDamage();
-		pEntity->TraceAttack(pev, gSkillData.pwormDmgBeam, m_vecBeam, &tr, DMG_ENERGYBEAM);
+		pEntity->TraceAttack(pev, pev, gSkillData.pwormDmgBeam, m_vecBeam, &tr, DMG_ENERGYBEAM);
 		ApplyMultiDamage(pev, pev);
 	}
 	else if ( tr.flFraction != 1.0f )
@@ -1199,7 +1194,7 @@ void CPitWorm::ShootBeam()
 			m_pSprite = CSprite::SpriteCreate("sprites/tele1.spr", vecEyePos, TRUE);
 			if ( m_pSprite )
 			{
-				m_pSprite->SetTransparency(kRenderGlow, 0, 255, 0, 0, kRenderFxNoDissipation);
+				m_pSprite->SetTransparency(kRenderGlow, 0, 255, 0, 255, kRenderFxNoDissipation);
 				m_pSprite->SetAttachment(edict(), 1);
 				m_pSprite->SetScale(0.75);
 				m_pSprite->pev->framerate = 10;
@@ -1222,7 +1217,7 @@ void CPitWorm::StrafeBeam()
 	m_vecBeam = gpGlobals->v_forward;
 	m_vecBeam.z = -m_vecBeam.z;
 
-	Vector vecEnd = m_vecBeam * m_offsetBeam + m_vecBeam * 1280 + vecEyePos;
+	Vector vecEnd = vecEyePos + gpGlobals->v_right * m_offsetBeam + m_vecBeam * 1280;
 
 	TraceResult tr;
 	UTIL_TraceLine(vecEyePos, vecEnd, dont_ignore_monsters, ENT(pev), &tr);
@@ -1391,6 +1386,7 @@ class CPitwormGib : public CBaseEntity
 public:
 	void Spawn();
 	void Precache();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("pitworm"); }
 	void EXPORT GibFloat();
 };
 
@@ -1446,6 +1442,7 @@ class CPitwormGibShooter : public CBaseDelay
 public:
 	void Spawn();
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("pitworm"); }
 	void KeyValue( KeyValueData *pkvd );
 	void EXPORT ShootThink( void );
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
@@ -1511,7 +1508,7 @@ void CPitwormGibShooter::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE
 
 CPitwormGib *CPitwormGibShooter::CreateGib(void)
 {
-	if (CVAR_GET_FLOAT("violence_hgibs") == 0)
+	if (violence_hgibs->value == 0)
 		return NULL;
 
 	CPitwormGib *pGib = GetClassPtr((CPitwormGib *)NULL);
@@ -1544,6 +1541,7 @@ class CPitWormSteamTrigger : public CBaseEntity
 {
 public:
 	void Spawn();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("pitworm"); }
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 };
 

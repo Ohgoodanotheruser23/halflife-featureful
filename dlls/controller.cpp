@@ -171,15 +171,7 @@ int CController::DefaultClassify( void )
 //=========================================================
 void CController::SetYawSpeed( void )
 {
-	int ys;
-
-	ys = 120;
-#if 0
-	switch ( m_Activity )
-	{
-	}
-#endif
-	pev->yaw_speed = ys;
+	pev->yaw_speed = 120;
 }
 
 int CController::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
@@ -1243,9 +1235,7 @@ void CControllerHeadBall::HuntThink( void )
 		CBaseEntity *pEntity = CBaseEntity::Instance( tr.pHit );
 		if( pEntity != NULL && pEntity->pev->takedamage )
 		{
-			ClearMultiDamage();
-			pEntity->TraceAttack( m_hOwner->pev, gSkillData.controllerDmgZap, pev->velocity, &tr, DMG_SHOCK );
-			ApplyMultiDamage( pev, m_hOwner->pev );
+			pEntity->ApplyTraceAttack(pev, m_hOwner->pev, gSkillData.controllerDmgZap, pev->velocity, &tr, DMG_SHOCK);
 		}
 
 		MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
@@ -1414,9 +1404,7 @@ void CControllerZapBall::ExplodeTouch( CBaseEntity *pOther )
 			pevOwner = pev;
 		}
 
-		ClearMultiDamage();
-		pOther->TraceAttack( pevOwner, gSkillData.controllerDmgBall, pev->velocity.Normalize(), &tr, DMG_ENERGYBEAM ); 
-		ApplyMultiDamage( pevOwner, pevOwner );
+		pOther->ApplyTraceAttack(pev, pevOwner, gSkillData.controllerDmgBall, pev->velocity.Normalize(), &tr, DMG_ENERGYBEAM);
 
 		UTIL_EmitAmbientSound( ENT( pev ), tr.vecEndPos, "weapons/electro4.wav", 0.3f, ATTN_NORM, 0, RANDOM_LONG( 90, 99 ) );
 	}

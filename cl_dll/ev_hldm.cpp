@@ -49,6 +49,7 @@ void V_PunchAxis( int axis, float punch );
 void VectorAngles( const float *forward, float *angles );
 
 extern cvar_t *cl_lw;
+extern cvar_t *r_decals;
 
 #define VECTOR_CONE_1DEGREES Vector( 0.00873f, 0.00873f, 0.00873f )
 #define VECTOR_CONE_2DEGREES Vector( 0.01745f, 0.01745f, 0.01745f )
@@ -63,20 +64,30 @@ extern cvar_t *cl_lw;
 #define VECTOR_CONE_15DEGREES Vector( 0.13053f, 0.13053f, 0.13053f )
 #define VECTOR_CONE_20DEGREES Vector( 0.17365f, 0.17365f, 0.17365f )
 
+static bool DidHitSky(pmtrace_t *ptr, float *vecSrc, float *vecEnd)
+{
+	int entity = gEngfuncs.pEventAPI->EV_IndexFromTrace( ptr );
+	if( entity == 0 )
+	{
+		const char* pTextureName = gEngfuncs.pEventAPI->EV_TraceTexture( ptr->ent, vecSrc, vecEnd );
+		if( pTextureName && strcmp( pTextureName, "sky" ) == 0 )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 // play a strike sound based on the texture that was hit by the attack traceline.  VecSrc/VecEnd are the
 // original traceline endpoints used by the attacker, iBulletType is the type of bullet that hit the texture.
 // returns volume of strike instrument (crowbar) to play
-char EV_HLDM_PlayTextureSound( int idx, pmtrace_t *ptr, float *vecSrc, float *vecEnd, int iBulletType )
+char EV_HLDM_GetTextureSound( int idx, pmtrace_t *ptr, float *vecSrc, float *vecEnd, int iBulletType, bool& isSky )
 {
 	// hit the world, try to play sound based on texture material type
 	char chTextureType = CHAR_TEX_CONCRETE;
-	float fvol;
-	float fvolbar;
-	const char *rgsz[4];
-	int cnt;
-	float fattn = ATTN_NORM;
+
 	int entity;
-	char *pTextureName;
+	const char *pTextureName;
 	char texname[64];
 	char szbuffer[64];
 
@@ -85,6 +96,7 @@ char EV_HLDM_PlayTextureSound( int idx, pmtrace_t *ptr, float *vecSrc, float *ve
 	// FIXME check if playtexture sounds movevar is set
 	//
 	chTextureType = 0;
+	isSky = false;
 
 	// Player
 	if( entity >= 1 && entity <= gEngfuncs.GetMaxClients() )
@@ -92,29 +104,52 @@ char EV_HLDM_PlayTextureSound( int idx, pmtrace_t *ptr, float *vecSrc, float *ve
 		// hit body
 		chTextureType = CHAR_TEX_FLESH;
 	}
-	else if( entity == 0 )
+	else
 	{
-		// get texture from entity or world (world is ent(0))
-		pTextureName = (char *)gEngfuncs.pEventAPI->EV_TraceTexture( ptr->ent, vecSrc, vecEnd );
+		physent_t *pe = NULL;
+		if (entity)
+			pe = gEngfuncs.pEventAPI->EV_GetPhysent( ptr->ent );
 
-		if ( pTextureName )
+		if (entity == 0 || (pe && ( pe->solid == SOLID_BSP || pe->movetype == MOVETYPE_PUSHSTEP )))
 		{
-			strcpy( texname, pTextureName );
-			pTextureName = texname;
+			// get texture from entity or world (world is ent(0))
+			pTextureName = gEngfuncs.pEventAPI->EV_TraceTexture( ptr->ent, vecSrc, vecEnd );
 
-			GetStrippedTextureName(szbuffer, pTextureName);
+			if ( pTextureName )
+			{
+				strcpy( texname, pTextureName );
+				pTextureName = texname;
 
-			// get texture type
-			chTextureType = PM_FindTextureType( szbuffer );
+				if( strcmp( pTextureName, "sky" ) == 0 )
+				{
+					isSky = true;
+				}
+
+				GetStrippedTextureName(szbuffer, pTextureName);
+
+				// get texture type
+				chTextureType = PM_FindTextureType( szbuffer );
+			}
 		}
 	}
 
-	if (!GetTextureMaterialProperties(chTextureType, &fvol, &fvolbar, rgsz, &cnt, &fattn, iBulletType))
-		return 0.0;
+	return chTextureType;
+}
 
+float EV_HLDM_PlayTextureSound( pmtrace_t *ptr, char chTextureType, int iBulletType )
+{
+	float fvol;
+	float fvolbar;
+	const char *rgsz[4];
+	int cnt;
+	float fattn = ATTN_NORM;
+
+	if (!GetTextureMaterialProperties(chTextureType, &fvol, &fvolbar, rgsz, &cnt, &fattn, iBulletType))
+		return 0;
 	// play material hit sound
 	gEngfuncs.pEventAPI->EV_PlaySound( 0, ptr->endpos, CHAN_STATIC, rgsz[gEngfuncs.pfnRandomLong( 0, cnt - 1 )], fvol, fattn, 0, 96 + gEngfuncs.pfnRandomLong( 0, 0xf ) );
-	return chTextureType;
+
+	return fvol;
 }
 
 void EV_SmokeColorFromTextureType(char cTextureType, int& r_smoke, int& g_smoke, int& b_smoke)
@@ -146,7 +181,7 @@ char *EV_HLDM_DamageDecal( physent_t *pe )
 	}
 	else if( pe->rendermode != kRenderNormal )
 	{
-		sprintf( decalname, "{bproof1" );
+		strcpy( decalname, "{bproof1" );
 	}
 	else
 	{
@@ -191,7 +226,7 @@ void EV_HLDM_GunshotDecalTrace( pmtrace_t *pTrace, char *decalName )
 	// Only decal brush models such as the world etc.
 	if(  decalName && decalName[0] && pe && ( pe->solid == SOLID_BSP || pe->movetype == MOVETYPE_PUSHSTEP ) )
 	{
-		if( CVAR_GET_FLOAT( "r_decals" ) )
+		if( r_decals->value )
 		{
 			gEngfuncs.pEfxAPI->R_DecalShoot(
 				gEngfuncs.pEfxAPI->Draw_DecalIndex( gEngfuncs.pEfxAPI->Draw_DecalIndexFromName( decalName ) ),
@@ -266,53 +301,30 @@ void EV_HugWalls(TEMPENTITY *te, pmtrace_s *ptr)
 	Vector norm = te->entity.baseline.origin.Normalize();
 	float len = te->entity.baseline.origin.Length();
 
-	Vector v(
-		ptr->plane.normal.y * norm.x - norm.y * ptr->plane.normal.x,
-		ptr->plane.normal.x * norm.z - norm.x * ptr->plane.normal.z,
-		ptr->plane.normal.z * norm.y - norm.z * ptr->plane.normal.y
-	);
-	Vector v2(
-		ptr->plane.normal.y * v.z - v.y * ptr->plane.normal.x,
-		ptr->plane.normal.x * v.x - v.z * ptr->plane.normal.z,
-		ptr->plane.normal.z * v.y - v.x * ptr->plane.normal.y
-	);
+	/*const Vector innerNormal = ptr->plane.normal;
+	Vector v = CrossProduct(norm, innerNormal);
+	Vector projection = CrossProduct(innerNormal, v);*/
+	Vector projection = CrossProduct( CrossProduct(norm, ptr->plane.normal), ptr->plane.normal);
 
-	if( len <= 2000.0f )
+	/*if( len <= 2000.0f )
 		len *= 1.5;
-	else len = 3000.0f;
+	else len = 3000.0f;*/
 
-	te->entity.baseline.origin.x = v2.z * len * 1.5;
-	te->entity.baseline.origin.y = v2.y * len * 1.5;
-	te->entity.baseline.origin.z = v2.x * len * 1.5;
+	te->entity.baseline.origin = projection * len;
 }
 
 void EV_CreateShotSmoke(int type, Vector origin, Vector dir, int speed, float scale, int r, int g, int b , bool wind, Vector velocity = Vector(0,0,0), int framerate = 35 )
 {
 	TEMPENTITY *te = NULL;
 	void ( *callback )( struct tempent_s *ent, float frametime, float currenttime ) = NULL;
-	char path[64];
+	int wallPuffSpriteIndex = 0;
 
 	switch( type )
 	{
 	case SMOKE_WALLPUFF:
-#if FEATURE_WALLPUFF_CS
-		strcpy( path, "sprites/wall_puff1.spr" );
-		path[17] += Com_RandomLong(0, 3); // randomize a bit
-#else
-		strcpy(path, "sprites/stmbal1.spr");
-#endif
-		break;
-	case SMOKE_RIFLE:
-		strcpy( path, "sprites/rifle_smoke1.spr" );
-		path[19] += Com_RandomLong(0, 2); // randomize a bit
-		break;
-	case SMOKE_PISTOL:
-		strcpy( path, "sprites/pistol_smoke1.spr" );
-		path[20] += Com_RandomLong(0, 1);  // randomize a bit
-		break;
-	case SMOKE_BLACK:
-		strcpy( path, "sprites/black_smoke1.spr" );
-		path[19] += Com_RandomLong(0, 3); // randomize a bit
+		if (gHUD.wallPuffCount <= 0)
+			return;
+		wallPuffSpriteIndex = gHUD.wallPuffs[Com_RandomLong(0, gHUD.wallPuffCount-1)];
 		break;
 	default:
 		gEngfuncs.Con_DPrintf("Unknown smoketype %d\n", type);
@@ -325,7 +337,7 @@ void EV_CreateShotSmoke(int type, Vector origin, Vector dir, int speed, float sc
 		callback = EV_SmokeRise;
 
 
-	te = gEngfuncs.pEfxAPI->R_DefaultSprite( origin, gEngfuncs.pEventAPI->EV_FindModelIndex( path ), framerate );
+	te = gEngfuncs.pEfxAPI->R_DefaultSprite( origin, wallPuffSpriteIndex, framerate );
 
 	if( te )
 	{
@@ -336,23 +348,26 @@ void EV_CreateShotSmoke(int type, Vector origin, Vector dir, int speed, float sc
 		te->entity.curstate.rendercolor.r = r;
 		te->entity.curstate.rendercolor.g = g;
 		te->entity.curstate.rendercolor.b = b;
-		te->entity.curstate.renderamt = gEngfuncs.pfnRandomLong( 100, 180 );
+		te->entity.curstate.renderamt = gEngfuncs.pfnRandomLong( 120, 180 );
 		te->entity.curstate.scale = scale;
 		te->entity.baseline.origin = speed * dir;
 
 		if( velocity != Vector(0,0,0) )
 		{
-			velocity.x *= 0.5;
-			velocity.y *= 0.5;
-			velocity.z *= 0.9;
+			velocity.x *= 0.9;
+			velocity.y *= 0.9;
+			velocity.z *= 0.5;
 			te->entity.baseline.origin = te->entity.baseline.origin + velocity;
 		}
 	}
 }
 
-void EV_HLDM_DecalGunshot( pmtrace_t *pTrace, int iBulletType, char cTextureType )
+void EV_HLDM_DecalGunshot( pmtrace_t *pTrace, int iBulletType, char cTextureType, bool isSky )
 {
 	physent_t *pe;
+
+	if ( isSky )
+		return;
 
 	pe = gEngfuncs.pEventAPI->EV_GetPhysent( pTrace->ent );
 
@@ -360,7 +375,7 @@ void EV_HLDM_DecalGunshot( pmtrace_t *pTrace, int iBulletType, char cTextureType
 	{
 		EV_HLDM_GunshotDecalTrace( pTrace, EV_HLDM_DamageDecal( pe ) );
 
-		if( cl_weapon_sparks && cl_weapon_sparks->value )
+		if( cTextureType != CHAR_TEX_WOOD && gHUD.WeaponSparksEnabled() )
 		{
 			Vector dir = pTrace->plane.normal;
 			dir.x = dir.x * dir.x * gEngfuncs.pfnRandomFloat( 4.0f, 12.0f );
@@ -369,11 +384,11 @@ void EV_HLDM_DecalGunshot( pmtrace_t *pTrace, int iBulletType, char cTextureType
 			gEngfuncs.pEfxAPI->R_StreakSplash( pTrace->endpos, dir, 4, Com_RandomLong( 5, 10 ), dir.z, -75.0f, 75.0f );
 		}
 
-		if (cTextureType && cl_weapon_wallpuff && cl_weapon_wallpuff->value)
+		if (gHUD.WeaponWallpuffEnabled())
 		{
 			int r_smoke, g_smoke, b_smoke;
 			EV_SmokeColorFromTextureType(cTextureType, r_smoke, g_smoke, b_smoke);
-			EV_CreateShotSmoke( SMOKE_WALLPUFF, pTrace->endpos, pTrace->plane.normal, 25, 0.5f, r_smoke, g_smoke, b_smoke, true );
+			EV_CreateShotSmoke( SMOKE_WALLPUFF, pTrace->endpos + pTrace->plane.normal * 5, pTrace->plane.normal, 25, 0.5f, r_smoke, g_smoke, b_smoke, true );
 		}
 	}
 }
@@ -440,6 +455,12 @@ void EV_HLDM_FireBullets( int idx, float *forward, float *right, float *up, int 
 	pmtrace_t tr;
 	int iShot;
 	int tracer;
+	bool isSky;
+
+	if( EV_IsLocal( idx ) )
+	{
+		EV_MuzzleLight(Vector(forward));
+	}
 
 	for( iShot = 1; iShot <= cShots; iShot++ )
 	{
@@ -486,33 +507,39 @@ void EV_HLDM_FireBullets( int idx, float *forward, float *right, float *up, int 
 		// do damage, paint decals
 		if( tr.fraction != 1.0f )
 		{
-			int cTextureType = 0;
+			bool shouldPlayTextureSound = true;
+			bool shouldPlayGunshotEffect= true;
 
 			switch( iBulletType )
 			{
 			default:
 			case BULLET_PLAYER_9MM:
-				cTextureType = EV_HLDM_PlayTextureSound( idx, &tr, vecSrc, vecEnd, iBulletType );
-				EV_HLDM_DecalGunshot( &tr, iBulletType, cTextureType );
 				break;
 			case BULLET_PLAYER_MP5:
 			case BULLET_PLAYER_556:
 			case BULLET_PLAYER_UZI:
-				if( !tracer )
-				{
-					cTextureType = EV_HLDM_PlayTextureSound( idx, &tr, vecSrc, vecEnd, iBulletType );
-					EV_HLDM_DecalGunshot( &tr, iBulletType, cTextureType );
-				}
+				shouldPlayTextureSound = shouldPlayGunshotEffect = !tracer;
 				break;
 			case BULLET_PLAYER_BUCKSHOT:
-				EV_HLDM_DecalGunshot( &tr, iBulletType, cTextureType );
+				shouldPlayTextureSound = iShot == 1;
 				break;
 			case BULLET_PLAYER_357:
 			case BULLET_PLAYER_EAGLE:
 			case BULLET_PLAYER_762:
-				cTextureType = EV_HLDM_PlayTextureSound( idx, &tr, vecSrc, vecEnd, iBulletType );
-				EV_HLDM_DecalGunshot( &tr, iBulletType, cTextureType );
 				break;
+			}
+
+			if ( shouldPlayTextureSound || shouldPlayGunshotEffect )
+			{
+				const char cTextureType = EV_HLDM_GetTextureSound( idx, &tr, vecSrc, vecEnd, iBulletType, isSky );
+				if ( shouldPlayTextureSound )
+				{
+					EV_HLDM_PlayTextureSound(&tr, cTextureType, iBulletType);
+				}
+				if ( shouldPlayGunshotEffect )
+				{
+					EV_HLDM_DecalGunshot( &tr, iBulletType, cTextureType, isSky );
+				}
 			}
 		}
 
@@ -959,6 +986,12 @@ void EV_FireGauss( event_args_t *args )
 		if( tr.allsolid )
 			break;
 
+		const float beamBrightness = (m_fPrimaryFire ? 128.0f : flDamage) / 255.0f;
+		const float beamR = (m_fPrimaryFire ? 255 : 255) / 255.0f;
+		const float beamG = (m_fPrimaryFire ? 128 : 255) / 255.0f;
+		const float beamB = (m_fPrimaryFire ? 0 : 255) / 255.0f;
+		const float beamWidth = m_fPrimaryFire ? 1.0f : 2.5f;
+
 		if( fFirstBeam )
 		{
 			if( EV_IsLocal( idx ) )
@@ -973,15 +1006,15 @@ void EV_FireGauss( event_args_t *args )
 				tr.endpos,
 				m_iBeam,
 				0.1f,
-				m_fPrimaryFire ? 1.0f : 2.5f,
+				beamWidth,
 				0.0f,
-				(m_fPrimaryFire ? 128.0f : flDamage) / 255.0f,
+				beamBrightness,
 				0,
 				0,
 				0,
-				(m_fPrimaryFire ? 255 : 255) / 255.0f,
-				(m_fPrimaryFire ? 128 : 255) / 255.0f,
-				(m_fPrimaryFire ? 0 : 255) / 255.0f
+				beamR,
+				beamG,
+				beamB
 			);
 		}
 		else
@@ -990,15 +1023,15 @@ void EV_FireGauss( event_args_t *args )
 				tr.endpos,
 				m_iBeam,
 				0.1f,
-				m_fPrimaryFire ? 1.0f : 2.5f,
+				beamWidth,
 				0.0f,
-				(m_fPrimaryFire ? 128.0f : flDamage) / 255.0f,
+				beamBrightness,
 				0,
 				0,
 				0,
-				(m_fPrimaryFire ? 255 : 255) / 255.0f,
-				(m_fPrimaryFire ? 128 : 255) / 255.0f,
-				(m_fPrimaryFire ? 0 : 255) / 255.0f
+				beamR,
+				beamG,
+				beamB
 			);
 		}
 
@@ -1013,6 +1046,8 @@ void EV_FireGauss( event_args_t *args )
 			//pentIgnore = NULL;
 
 			n = -DotProduct( tr.plane.normal, forward );
+
+			bool isSky = DidHitSky(&tr, vecSrc, vecDest);
 
 			if( n < 0.5f ) // 60 degrees
 			{
@@ -1029,13 +1064,16 @@ void EV_FireGauss( event_args_t *args )
 				VectorMA( tr.endpos, 8.0, forward, vecSrc );
 				VectorMA( vecSrc, 8192.0, forward, vecDest );
 
-				gEngfuncs.pEfxAPI->R_TempSprite( tr.endpos, vec3_origin, 0.2, m_iGlow, kRenderGlow, kRenderFxNoDissipation, flDamage * n / 255.0f, flDamage * n * 0.5f * 0.1f, FTENT_FADEOUT );
+				if (!isSky)
+				{
+					gEngfuncs.pEfxAPI->R_TempSprite( tr.endpos, vec3_origin, 0.2, m_iGlow, kRenderGlow, kRenderFxNoDissipation, flDamage * n / 255.0f, flDamage * n * 0.5f * 0.1f, FTENT_FADEOUT );
 
-				vec3_t fwd;
-				VectorAdd( tr.endpos, tr.plane.normal, fwd );
+					vec3_t fwd;
+					VectorAdd( tr.endpos, tr.plane.normal, fwd );
 
-				gEngfuncs.pEfxAPI->R_Sprite_Trail( TE_SPRITETRAIL, tr.endpos, fwd, m_iBalls, 3, 0.1, gEngfuncs.pfnRandomFloat( 10.0f, 20.0f ) / 100.0f, 100,
-									255, 100 );
+					gEngfuncs.pEfxAPI->R_Sprite_Trail( TE_SPRITETRAIL, tr.endpos, fwd, m_iBalls, 3, 0.1, gEngfuncs.pfnRandomFloat( 10.0f, 20.0f ) / 100.0f, 100,
+										255, 100 );
+				}
 
 				// lose energy
 				if( n == 0.0f )
@@ -1048,9 +1086,12 @@ void EV_FireGauss( event_args_t *args )
 			else
 			{
 				// tunnel
-				EV_HLDM_DecalGunshot( &tr, BULLET_MONSTER_12MM );
+				if (!isSky)
+				{
+					EV_HLDM_DecalGunshot( &tr, BULLET_MONSTER_12MM );
 
-				gEngfuncs.pEfxAPI->R_TempSprite( tr.endpos, vec3_origin, 1.0, m_iGlow, kRenderGlow, kRenderFxNoDissipation, flDamage / 255.0f, 6.0f, FTENT_FADEOUT );
+					gEngfuncs.pEfxAPI->R_TempSprite( tr.endpos, vec3_origin, 1.0, m_iGlow, kRenderGlow, kRenderFxNoDissipation, flDamage / 255.0f, 6.0f, FTENT_FADEOUT );
+				}
 
 				// limit it to one hole punch
 				if( fHasPunched )
@@ -1103,16 +1144,20 @@ void EV_FireGauss( event_args_t *args )
 	//////////////////////////////////// WHAT TO DO HERE
 							// CSoundEnt::InsertSound( bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3.0 );
 
-							EV_HLDM_DecalGunshot( &beam_tr, BULLET_MONSTER_12MM );
-
-							gEngfuncs.pEfxAPI->R_TempSprite( beam_tr.endpos, vec3_origin, 0.1, m_iGlow, kRenderGlow, kRenderFxNoDissipation, flDamage / 255.0f, 6.0f, FTENT_FADEOUT );
-
-							// balls
+							isSky = DidHitSky(&beam_tr, beam_tr.endpos, tr.endpos);
+							if (!isSky)
 							{
-								vec3_t fwd;
-								VectorSubtract( beam_tr.endpos, forward, fwd );
-								gEngfuncs.pEfxAPI->R_Sprite_Trail( TE_SPRITETRAIL, beam_tr.endpos, fwd, m_iBalls, (int)( flDamage * 0.3f ), 0.1, gEngfuncs.pfnRandomFloat( 10.0f, 20.0f ) / 100.0f, 200,
-									255, 40 );
+								EV_HLDM_DecalGunshot( &beam_tr, BULLET_MONSTER_12MM );
+
+								gEngfuncs.pEfxAPI->R_TempSprite( beam_tr.endpos, vec3_origin, 0.1, m_iGlow, kRenderGlow, kRenderFxNoDissipation, flDamage / 255.0f, 6.0f, FTENT_FADEOUT );
+
+								// balls
+								{
+									vec3_t fwd;
+									VectorSubtract( beam_tr.endpos, forward, fwd );
+									gEngfuncs.pEfxAPI->R_Sprite_Trail( TE_SPRITETRAIL, beam_tr.endpos, fwd, m_iBalls, (int)( flDamage * 0.3f ), 0.1, gEngfuncs.pfnRandomFloat( 10.0f, 20.0f ) / 100.0f, 200,
+										255, 40 );
+								}
 							}
 
 							VectorAdd( beam_tr.endpos, forward, vecSrc );
@@ -1131,12 +1176,15 @@ void EV_FireGauss( event_args_t *args )
 					{
 						// slug doesn't punch through ever with primary
 						// fire, so leave a little glowy bit and make some balls
-						gEngfuncs.pEfxAPI->R_TempSprite( tr.endpos, vec3_origin, 0.2, m_iGlow, kRenderGlow, kRenderFxNoDissipation, 200.0f / 255.0f, 0.3, FTENT_FADEOUT );
+						if (!isSky)
 						{
-							vec3_t fwd;
-							VectorAdd( tr.endpos, tr.plane.normal, fwd );
-							gEngfuncs.pEfxAPI->R_Sprite_Trail( TE_SPRITETRAIL, tr.endpos, fwd, m_iBalls, 8, 0.6, gEngfuncs.pfnRandomFloat( 10.0f, 20.0f ) / 100.0f, 100,
-								255, 200 );
+							gEngfuncs.pEfxAPI->R_TempSprite( tr.endpos, vec3_origin, 0.2, m_iGlow, kRenderGlow, kRenderFxNoDissipation, 200.0f / 255.0f, 0.3, FTENT_FADEOUT );
+							{
+								vec3_t fwd;
+								VectorAdd( tr.endpos, tr.plane.normal, fwd );
+								gEngfuncs.pEfxAPI->R_Sprite_Trail( TE_SPRITETRAIL, tr.endpos, fwd, m_iBalls, 8, 0.6, gEngfuncs.pfnRandomFloat( 10.0f, 20.0f ) / 100.0f, 100,
+									255, 200 );
+							}
 						}
 					}
 
@@ -1741,7 +1789,11 @@ void EV_FireEagle( event_args_t *args )
 	vec3_t origin;
 	vec3_t angles;
 	vec3_t velocity;
+	int empty;
 
+	vec3_t ShellVelocity;
+	vec3_t ShellOrigin;
+	int shell;
 	vec3_t vecSrc, vecAiming;
 	vec3_t up, right, forward;
 	float flSpread = 0.01;
@@ -1751,16 +1803,23 @@ void EV_FireEagle( event_args_t *args )
 	VectorCopy( args->angles, angles );
 	VectorCopy( args->velocity, velocity );
 
+	empty = args->bparam1;
 	AngleVectors( angles, forward, right, up );
+
+	shell = gEngfuncs.pEventAPI->EV_FindModelIndex( "models/shell.mdl" );
 
 	if( EV_IsLocal( idx ) )
 	{
 		// Add muzzle flash to current weapon model
 		EV_MuzzleFlash();
-		gEngfuncs.pEventAPI->EV_WeaponAnimation( EAGLE_SHOOT, 0 );
+		gEngfuncs.pEventAPI->EV_WeaponAnimation( empty ? EAGLE_SHOOT_EMPTY : EAGLE_SHOOT, 0 );
 
 		V_PunchAxis( 0, -4.0 );
 	}
+
+	EV_GetDefaultShellInfo( args, origin, velocity, ShellVelocity, ShellOrigin, forward, right, up, -9, 14, 9 );
+
+	EV_EjectBrass( ShellOrigin, ShellVelocity, angles[YAW], shell, TE_BOUNCE_SHELL );
 
 	// Play fire sound.
 	gEngfuncs.pEventAPI->EV_PlaySound( idx, origin, CHAN_WEAPON, "weapons/desert_eagle_fire.wav", gEngfuncs.pfnRandomFloat(0.8, 0.9), ATTN_NORM, 0, PITCH_NORM );
@@ -1918,7 +1977,8 @@ void EV_FireM249( event_args_t *args )
 
 	AngleVectors( angles, forward, right, up );
 
-	shell = gEngfuncs.pEventAPI->EV_FindModelIndex( "models/saw_shell.mdl" );// brass shell
+	const bool bAlternatingEject = args->bparam1 != 0;
+	shell = bAlternatingEject ? gEngfuncs.pEventAPI->EV_FindModelIndex("models/saw_link.mdl") : gEngfuncs.pEventAPI->EV_FindModelIndex( "models/saw_shell.mdl" );// brass shell
 
 	if( EV_IsLocal( idx ) )
 	{
@@ -1933,18 +1993,7 @@ void EV_FireM249( event_args_t *args )
 
 	EV_EjectBrass( ShellOrigin, ShellVelocity, angles[YAW], shell, TE_BOUNCE_SHELL );
 
-	switch( gEngfuncs.pfnRandomLong( 0, 2 ) )
-	{
-	case 0:
-		gEngfuncs.pEventAPI->EV_PlaySound( idx, origin, CHAN_WEAPON, "weapons/saw_fire1.wav", 1, ATTN_NORM, 0, PITCH_NORM);
-		break;
-	case 1:
-		gEngfuncs.pEventAPI->EV_PlaySound( idx, origin, CHAN_WEAPON, "weapons/saw_fire2.wav", 1, ATTN_NORM, 0, PITCH_NORM);
-		break;
-	case 2:
-		gEngfuncs.pEventAPI->EV_PlaySound( idx, origin, CHAN_WEAPON, "weapons/saw_fire3.wav", 1, ATTN_NORM, 0, PITCH_NORM);
-		break;
-	}
+	gEngfuncs.pEventAPI->EV_PlaySound( idx, origin, CHAN_WEAPON, "weapons/saw_fire1.wav", 1, ATTN_NORM, 0, PITCH_NORM);
 
 	EV_GetGunPosition( args, vecSrc, origin );
 	VectorCopy( forward, vecAiming );
@@ -2100,7 +2149,6 @@ void EV_SporeFire( event_args_t *args )
 
 	Vector	vecSpitOffset;
 	Vector	vecSpitDir;
-	int	iSpitModelIndex;
 
 	vecSpitDir.x = forward.x;
 	vecSpitDir.y = forward.y;
@@ -2112,10 +2160,10 @@ void EV_SporeFire( event_args_t *args )
 	vecSpitOffset = vecSpitOffset + right * 8;
 	vecSpitOffset = vecSpitOffset + up * 4;
 
-	iSpitModelIndex = gEngfuncs.pEventAPI->EV_FindModelIndex( "sprites/tinyspit.spr" );
-
+	int iSpitModelIndex = args->iparam2;
 	// spew the spittle temporary ents.
-	gEngfuncs.pEfxAPI->R_Sprite_Spray( (float*)&vecSpitOffset, (float*)&vecSpitDir, iSpitModelIndex, 8, 210, 25 );
+	if (iSpitModelIndex)
+		gEngfuncs.pEfxAPI->R_Sprite_Spray( (float*)&vecSpitOffset, (float*)&vecSpitDir, iSpitModelIndex, 8, 210, 25 );
 }
 //======================
 //	   SPORELAUNCHER END

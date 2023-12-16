@@ -47,7 +47,6 @@ static CBasePlayer player;
 static globalvars_t Globals; 
 
 static CBasePlayerWeapon *g_pWpns[MAX_WEAPONS];
-int g_iWaterLevel;
 float g_flApplyVel = 0.0;
 int g_irunninggausspred = 0;
 
@@ -156,13 +155,12 @@ void HUD_PrepEntity( CBaseEntity *pEntity, CBasePlayer *pWeaponOwner )
 
 	if( pWeaponOwner )
 	{
-		ItemInfo info;
+		CBasePlayerWeapon* pWeapon = (CBasePlayerWeapon *)pEntity;
+		pWeapon->m_pPlayer = pWeaponOwner;
 
-		( (CBasePlayerWeapon *)pEntity )->m_pPlayer = pWeaponOwner;
-
-		( (CBasePlayerWeapon *)pEntity )->GetItemInfo( &info );
-
-		g_pWpns[info.iId] = (CBasePlayerWeapon *)pEntity;
+		if (pWeapon->m_iId == WEAPON_NONE)
+			gEngfuncs.Con_Printf("Got 0 as weapon id!\n");
+		g_pWpns[pWeapon->m_iId] = (CBasePlayerWeapon *)pEntity;
 	}
 }
 
@@ -176,67 +174,6 @@ If weapons code "kills" an entity, just set its effects to EF_NODRAW
 void CBaseEntity::Killed( entvars_t * pevInclictor, entvars_t *pevAttacker, int iGib )
 {
 	pev->effects |= EF_NODRAW;
-}
-
-/*
-=====================
-CBasePlayerWeapon::DefaultReload
-=====================
-*/
-BOOL CBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay, int body )
-{
-	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 )
-		return FALSE;
-
-	int j = Q_min( iClipSize - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
-
-	if( j == 0 )
-		return FALSE;
-
-	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + fDelay;
-
-	//!!UNDONE -- reload sound goes here !!!
-	SendWeaponAnim( iAnim, body );
-
-	m_fInReload = TRUE;
-
-	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.0f;
-	return TRUE;
-}
-
-/*
-=====================
-CBasePlayerWeapon::CanDeploy
-=====================
-*/
-BOOL CBasePlayerWeapon::CanDeploy( void ) 
-{
-	BOOL bHasAmmo = 0;
-
-	if( !pszAmmo1() )
-	{
-		// this weapon doesn't use ammo, can always deploy.
-		return TRUE;
-	}
-
-	if( pszAmmo1() )
-	{
-		bHasAmmo |= ( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] != 0 );
-	}
-	if( pszAmmo2() )
-	{
-		bHasAmmo |= ( m_pPlayer->m_rgAmmo[m_iSecondaryAmmoType] != 0 );
-	}
-	if( m_iClip > 0 )
-	{
-		bHasAmmo |= 1;
-	}
-	if( !bHasAmmo )
-	{
-		return FALSE;
-	}
-
-	return TRUE;
 }
 
 /*
@@ -277,16 +214,6 @@ BOOL CBasePlayerWeapon::PlayEmptySound( void )
 	return 0;
 }
 
-/*
-=====================
-CBasePlayerWeapon::ResetEmptySound
-
-=====================
-*/
-void CBasePlayerWeapon::ResetEmptySound( void )
-{
-	m_iPlayEmptySound = 1;
-}
 
 /*
 =====================
@@ -349,81 +276,6 @@ Vector CBaseEntity::FireBulletsPlayer ( ULONG cShots, Vector vecSrc, Vector vecD
 	}
 
 	return Vector( x * vecSpread.x, y * vecSpread.y, 0.0f );
-}
-
-/*
-=====================
-CBasePlayerWeapon::ItemPostFrame
-
-Handles weapon firing, reloading, etc.
-=====================
-*/
-void CBasePlayerWeapon::ItemPostFrame( void )
-{
-	if( ( m_fInReload ) && ( m_pPlayer->m_flNextAttack <= 0.0f ) )
-	{
-#if 1
-		// complete the reload. 
-		ItemInfo itemInfo;
-		memset( &itemInfo, 0, sizeof( itemInfo ) );
-		GetItemInfo( &itemInfo );
-
-		int j = Q_min( itemInfo.iMaxClip - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
-
-		// Add them to the clip
-		m_iClip += j;
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= j;
-#else
-		m_iClip += 10;
-#endif
-		m_fInReload = FALSE;
-	}
-
-	if( ( m_pPlayer->pev->button & IN_ATTACK2 ) && ( m_flNextSecondaryAttack <= 0.0f ) )
-	{
-		if( pszAmmo2() && !m_pPlayer->m_rgAmmo[SecondaryAmmoIndex()] )
-		{
-			m_fFireOnEmpty = TRUE;
-		}
-
-		SecondaryAttack();
-		m_pPlayer->pev->button &= ~IN_ATTACK2;
-	}
-	else if( ( m_pPlayer->pev->button & IN_ATTACK ) && ( m_flNextPrimaryAttack <= 0.0f ) )
-	{
-		if( ( m_iClip == 0 && pszAmmo1() ) || ( iMaxClip() == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
-		{
-			m_fFireOnEmpty = TRUE;
-		}
-
-		PrimaryAttack();
-	}
-	else if( m_pPlayer->pev->button & IN_RELOAD && iMaxClip() != WEAPON_NOCLIP && !m_fInReload )
-	{
-		// reload when reload is pressed, or if no buttons are down and weapon is empty.
-		Reload();
-	}
-	else if( !( m_pPlayer->pev->button & ( IN_ATTACK | IN_ATTACK2 ) ) )
-	{
-		// no fire buttons down
-		m_fFireOnEmpty = FALSE;
-
-		// weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
-		if( m_iClip == 0 && !( iFlags() & ITEM_FLAG_NOAUTORELOAD ) && m_flNextPrimaryAttack <= 0.0f )
-		{
-			Reload();
-			return;
-		}
-
-		WeaponIdle( );
-		return;
-	}
-
-	// catch all
-	if( ShouldWeaponIdle() )
-	{
-		WeaponIdle();
-	}
 }
 
 /*
@@ -747,10 +599,8 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	weapon_data_t nulldata = {0}, *pfrom, *pto;
 	static int lasthealth;
 
-	HUD_InitClientWeapons();
-
 	// Get current clock
-	gpGlobals->time = time;
+	gpGlobals->time = gEngfuncs.GetClientTime();
 
 	// Fill in data based on selected weapon
 	// FIXME, make this a method in each weapon?  where you pass in an entity_state_t *?
@@ -937,7 +787,7 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	player.pev->flags = from->client.flags;
 
 	player.pev->deadflag = from->client.deadflag;
-	g_iWaterLevel = player.pev->waterlevel = from->client.waterlevel;
+	player.pev->waterlevel = from->client.waterlevel;
 	player.pev->maxspeed = from->client.maxspeed;
 	player.pev->fov = from->client.fov;
 	player.pev->weaponanim = from->client.weaponanim;
@@ -957,12 +807,6 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		( (CRpg *)player.m_pActiveItem )->m_fSpotActive = (int)from->client.vuser2[1];
 		( (CRpg *)player.m_pActiveItem )->m_cActiveRockets = (int)from->client.vuser2[2];
 	}
-#if FEATURE_PICKABLE_SATCHELS
-	if( player.m_pActiveItem->m_iId == WEAPON_SATCHEL )
-	{
-		player.m_pActiveItem->m_chargeReady = (int)from->client.vuser2[1];
-	}
-#endif
 #if FEATURE_DESERT_EAGLE
 	if( player.m_pActiveItem->m_iId == WEAPON_EAGLE )
 	{
@@ -1206,6 +1050,9 @@ be ignored
 void _DLLEXPORT HUD_PostRunCmd( struct local_state_s *from, struct local_state_s *to, struct usercmd_s *cmd, int runfuncs, double time, unsigned int random_seed )
 {
 	g_runfuncs = runfuncs;
+
+	//Event code depends on this stuff, so always initialize it.
+	HUD_InitClientWeapons();
 
 #if CLIENT_WEAPONS
 	if( cl_lw && cl_lw->value )

@@ -60,12 +60,22 @@ int CHudFlashlight::VidInit( void )
 	int HUD_flash_full = gHUD.GetSpriteIndex( "flash_full" );
 	int HUD_flash_beam = gHUD.GetSpriteIndex( "flash_beam" );
 
+	const char* nvgEmptySprite = *gHUD.clientFeatures.nvg_empty_sprite ? gHUD.clientFeatures.nvg_empty_sprite : "flash_empty";
+	const char* nvgFullSprite = *gHUD.clientFeatures.nvg_full_sprite ? gHUD.clientFeatures.nvg_full_sprite : "flash_full";
+
+	int HUD_night_empty = gHUD.GetSpriteIndex( nvgEmptySprite );
+	int HUD_night_full = gHUD.GetSpriteIndex( nvgFullSprite );
+
 	m_hSprite1 = gHUD.GetSprite( HUD_flash_empty );
 	m_hSprite2 = gHUD.GetSprite( HUD_flash_full );
+	m_hSprite3 = gHUD.GetSprite( HUD_night_empty );
+	m_hSprite4 = gHUD.GetSprite( HUD_night_full );
 	m_hBeam = gHUD.GetSprite( HUD_flash_beam );
 	m_prc1 = &gHUD.GetSpriteRect( HUD_flash_empty );
 	m_prc2 = &gHUD.GetSpriteRect( HUD_flash_full );
 	m_prcBeam = &gHUD.GetSpriteRect(HUD_flash_beam);
+	m_prc3 = &gHUD.GetSpriteRect( HUD_night_empty );
+	m_prc4 = &gHUD.GetSpriteRect( HUD_night_full );
 	m_iWidth = m_prc2->right - m_prc2->left;
 
 	return 1;
@@ -112,15 +122,13 @@ int CHudFlashlight::Draw( float flTime )
 	if( gEngfuncs.IsSpectateOnly() )
 		return 1;
 
-	bool hasFlashlight = false;
-#if FEATURE_FLASHLIGHT_ITEM
-	hasFlashlight = hasFlashlight || ( gHUD.m_iWeaponBits & ( 1 << ( WEAPON_FLASHLIGHT ) ) );
-#endif
-#if FEATURE_SUIT_FLASHLIGHT
-	hasFlashlight = hasFlashlight || ( gHUD.m_iWeaponBits & ( 1 << ( WEAPON_SUIT ) ) );
-#endif
-	if (!hasFlashlight)
+	bool hasFlashlight = gHUD.HasFlashlight();
+	bool hasNightVision = gHUD.HasNVG();
+	if (!hasFlashlight && !hasNightVision)
 		return 1;
+
+	const bool nvgIsOn = gHUD.m_Nightvision.IsOn();
+	const bool shouldDrawNvg = nvgIsOn || (!hasFlashlight && hasNightVision);
 
 	if( m_fOn )
 		a = 225;
@@ -128,20 +136,30 @@ int CHudFlashlight::Draw( float flTime )
 		a = gHUD.MinHUDAlpha();
 
 	if( m_flBat < 0.20f )
-		UnpackRGB( r,g,b, RGB_REDISH );
+		UnpackRGB( r,g,b, gHUD.HUDColorCritical() );
 	else
 		UnpackRGB( r,g,b, gHUD.HUDColor() );
 
 	ScaleColors( r, g, b, a );
 
-	y = ( m_prc1->bottom - m_prc2->top ) / 2;
+	int emptySprite = shouldDrawNvg ? m_hSprite3 : m_hSprite1;
+	int fullSprite = shouldDrawNvg ? m_hSprite4 : m_hSprite2;
+
+	if (!emptySprite || !fullSprite)
+		return 1;
+
+	wrect_t* emptyFlash = shouldDrawNvg ? m_prc3 : m_prc1;
+	wrect_t* fullFlash = shouldDrawNvg ? m_prc4 : m_prc2;
+
+	y = ( emptyFlash->bottom - fullFlash->top ) / 2;
 	x = ScreenWidth - m_iWidth - m_iWidth / 2 ;
 
 	// Draw the flashlight casing
-	SPR_Set( m_hSprite1, r, g, b );
-	SPR_DrawAdditive( 0,  x, y, m_prc1 );
+	SPR_Set( emptySprite, r, g, b );
+	SPR_DrawAdditive( 0,  x, y, emptyFlash );
 
-	if( m_fOn )
+	// Don't draw a beam for nvg
+	if( m_fOn && m_hBeam && !nvgIsOn )
 	{
 		// draw the flashlight beam
 		x = ScreenWidth - m_iWidth / 2;
@@ -155,10 +173,10 @@ int CHudFlashlight::Draw( float flTime )
 	int iOffset = m_iWidth * ( 1.0f - m_flBat );
 	if( iOffset < m_iWidth )
 	{
-		rc = *m_prc2;
+		rc = *fullFlash;
 		rc.left += iOffset;
 
-		SPR_Set( m_hSprite2, r, g, b );
+		SPR_Set( fullSprite, r, g, b );
 		SPR_DrawAdditive( 0, x + iOffset, y, &rc );
 	}
 

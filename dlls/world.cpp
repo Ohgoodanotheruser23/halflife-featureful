@@ -33,8 +33,9 @@
 #include "weapons.h"
 #include "gamerules.h"
 #include "teamplay_gamerules.h"
+#include "game.h"
+#include "parsetext.h"
 
-extern CGraph WorldGraph;
 extern CSoundEnt *pSoundEnt;
 
 extern CBaseEntity				*g_pLastSpawn;
@@ -90,7 +91,6 @@ DLL_DECALLIST gDecals[] = {
 	{ "{smscorch3", 0 },		// DECAL_SMALLSCORCH3,	// Small scorch mark
 	{ "{mommablob", 0 },		// DECAL_MOMMABIRTH		// BM Birth spray
 	{ "{mommablob", 0 },		// DECAL_MOMMASPLAT		// BM Mortar spray?? need decal
-#if FEATURE_OPFOR_DECALS
 	{ "{spr_splt1", 0 },
 	{ "{spr_splt2", 0 },
 	{ "{spr_splt3", 0 },
@@ -100,7 +100,6 @@ DLL_DECALLIST gDecals[] = {
 	{ "{ofsmscorch1", 0 },
 	{ "{ofsmscorch2", 0 },
 	{ "{ofsmscorch3", 0 }
-#endif
 };
 
 /*
@@ -278,13 +277,13 @@ void CGlobalState::Reset( void )
 	m_listCount = 0;
 }
 
-globalentity_t *CGlobalState::Find( string_t globalname )
+globalentity_t *CGlobalState::Find( const char *globalname )
 {
-	if( !globalname )
+	if( !globalname || *globalname == '\0' )
 		return NULL;
 
 	globalentity_t *pTest;
-	const char *pEntityName = STRING( globalname );
+	const char *pEntityName = globalname;
 
 	pTest = m_pList;
 	while( pTest )
@@ -298,6 +297,13 @@ globalentity_t *CGlobalState::Find( string_t globalname )
 	return pTest;
 }
 
+globalentity_t *CGlobalState::Find( string_t globalname )
+{
+	if( !globalname )
+		return NULL;
+	return Find(STRING(globalname));
+}
+
 // This is available all the time now on impulse 104, remove later
 //#if _DEBUG
 void CGlobalState::DumpGlobals( void )
@@ -309,13 +315,13 @@ void CGlobalState::DumpGlobals( void )
 	pTest = m_pList;
 	while( pTest )
 	{
-		ALERT( at_console, "%s: %s (%s)\n", pTest->name, pTest->levelName, estates[pTest->state] );
+		ALERT( at_console, "%s: %s (state: %s, value: %d)\n", pTest->name, pTest->levelName, estates[pTest->state], pTest->value );
 		pTest = pTest->pNext;
 	}
 }
 //#endif
 
-void CGlobalState::EntityAdd( string_t globalname, string_t mapName, GLOBALESTATE state )
+void CGlobalState::EntityAdd(const char* globalname, string_t mapName, GLOBALESTATE state, int value)
 {
 	ASSERT( !Find( globalname ) );
 
@@ -323,25 +329,68 @@ void CGlobalState::EntityAdd( string_t globalname, string_t mapName, GLOBALESTAT
 	ASSERT( pNewEntity != NULL );
 	pNewEntity->pNext = m_pList;
 	m_pList = pNewEntity;
-	strcpy( pNewEntity->name, STRING( globalname ) );
-	strcpy( pNewEntity->levelName, STRING( mapName ) );
+	strncpyEnsureTermination( pNewEntity->name, globalname, sizeof(pNewEntity->name) );
+	strncpyEnsureTermination( pNewEntity->levelName, STRING( mapName ), sizeof(pNewEntity->levelName) );
 	pNewEntity->state = state;
+	pNewEntity->value = value;
 	m_listCount++;
+}
+
+void CGlobalState::EntityAdd(string_t globalname, string_t mapName, GLOBALESTATE state, int value)
+{
+	return EntityAdd(STRING(globalname), mapName, state, value);
+}
+
+void CGlobalState::EntitySetState( const char* globalname, GLOBALESTATE state )
+{
+	globalentity_t *pEnt = Find( globalname );
+	if( pEnt )
+		pEnt->state = state;
 }
 
 void CGlobalState::EntitySetState( string_t globalname, GLOBALESTATE state )
 {
 	globalentity_t *pEnt = Find( globalname );
-
 	if( pEnt )
 		pEnt->state = state;
 }
 
-const globalentity_t *CGlobalState :: EntityFromTable( string_t globalname )
+void CGlobalState::IncrementValue(string_t globalname)
 {
 	globalentity_t *pEnt = Find( globalname );
+	if( pEnt )
+		pEnt->value += 1;
+}
 
-	return pEnt;
+void CGlobalState::DecrementValue(string_t globalname)
+{
+	globalentity_t *pEnt = Find( globalname );
+	if( pEnt )
+		pEnt->value -= 1;
+}
+
+void CGlobalState::SetValue(const char* globalname, int value)
+{
+	globalentity_t *pEnt = Find( globalname );
+	if( pEnt )
+		pEnt->value = value;
+}
+
+void CGlobalState::SetValue(string_t globalname, int value)
+{
+	globalentity_t *pEnt = Find( globalname );
+	if( pEnt )
+		pEnt->value = value;
+}
+
+const globalentity_t *CGlobalState::EntityFromTable( const char* globalname )
+{
+	return Find( globalname );
+}
+
+const globalentity_t *CGlobalState::EntityFromTable( string_t globalname )
+{
+	return Find( globalname );
 }
 
 GLOBALESTATE CGlobalState::EntityGetState( string_t globalname )
@@ -351,6 +400,14 @@ GLOBALESTATE CGlobalState::EntityGetState( string_t globalname )
 		return pEnt->state;
 
 	return GLOBAL_OFF;
+}
+
+int CGlobalState::GetValue(string_t globalname)
+{
+	globalentity_t *pEnt = Find( globalname );
+	if( pEnt )
+		return pEnt->value;
+	return 0;
 }
 
 // Global Savedata for Delay
@@ -365,6 +422,7 @@ TYPEDESCRIPTION	gGlobalEntitySaveData[] =
 	DEFINE_ARRAY( globalentity_t, name, FIELD_CHARACTER, 64 ),
 	DEFINE_ARRAY( globalentity_t, levelName, FIELD_CHARACTER, 32 ),
 	DEFINE_FIELD( globalentity_t, state, FIELD_INTEGER ),
+	DEFINE_FIELD( globalentity_t, value, FIELD_INTEGER ),
 };
 
 int CGlobalState::Save( CSave &save )
@@ -403,7 +461,7 @@ int CGlobalState::Restore( CRestore &restore )
 	{
 		if( !restore.ReadFields( "GENT", &tmpEntity, gGlobalEntitySaveData, ARRAYSIZE( gGlobalEntitySaveData ) ) )
 			return 0;
-		EntityAdd( MAKE_STRING( tmpEntity.name ), MAKE_STRING( tmpEntity.levelName ), tmpEntity.state );
+		EntityAdd( MAKE_STRING( tmpEntity.name ), MAKE_STRING( tmpEntity.levelName ), tmpEntity.state, tmpEntity.value );
 	}
 	return 1;
 }
@@ -462,6 +520,8 @@ void CWorld::Spawn( void )
 	g_fGameOver = FALSE;
 	Precache();
 }
+
+int CWorld::wallPuffsIndices[] = {0,0,0,0};
 
 void CWorld::Precache( void )
 {
@@ -537,14 +597,17 @@ void CWorld::Precache( void )
 	PRECACHE_SOUND( "weapons/ric4.wav" );
 	PRECACHE_SOUND( "weapons/ric5.wav" );
 
-#if FEATURE_WALLPUFF_CS
-	PRECACHE_MODEL( "sprites/wall_puff1.spr" );
-	PRECACHE_MODEL( "sprites/wall_puff2.spr" );
-	PRECACHE_MODEL( "sprites/wall_puff3.spr" );
-	PRECACHE_MODEL( "sprites/wall_puff4.spr" );
-#else
-	PRECACHE_MODEL( "sprites/stmbal1.spr" );
-#endif
+	const char* wallPuffs[ARRAYSIZE(wallPuffsIndices)] = {
+		g_modFeatures.wall_puff1,
+		g_modFeatures.wall_puff2,
+		g_modFeatures.wall_puff3,
+		g_modFeatures.wall_puff4,
+	};
+	for (int wi = 0; wi < ARRAYSIZE(wallPuffsIndices); ++wi)
+	{
+		if (*wallPuffs[wi])
+			wallPuffsIndices[wi] = PRECACHE_MODEL(wallPuffs[wi]);
+	}
 
 	//
 	// Setup light animation tables. 'a' is total darkness, 'z' is maxbright.
@@ -596,7 +659,9 @@ void CWorld::Precache( void )
 	// 63 testing
 	LIGHT_STYLE( 63, "a" );
 
-	for( int i = 0; i < (int)ARRAYSIZE( gDecals ); i++ )
+	const int decalCount = g_modFeatures.opfor_decals ? (int)ARRAYSIZE( gDecals ) : DECAL_BASE_COUNT;
+
+	for( int i = 0; i < decalCount; i++ )
 		gDecals[i].index = DECAL_INDEX( gDecals[i].name );
 
 	// init the WorldGraph.
@@ -844,6 +909,8 @@ extern "C" EXPORT void SV_SaveGameComment( char *text, int maxlength )
 	unsigned long i;
 	const char *mapname = STRING( gpGlobals->mapname );
 
+	bool justMapName = false;
+
 	for( i = 0; i < ARRAYSIZE( gTitleComments ); i++ )
 	{
 		// compare if strings are equal at beginning
@@ -868,6 +935,26 @@ extern "C" EXPORT void SV_SaveGameComment( char *text, int maxlength )
 		{
 			// or use mapname
 			pName = STRING( gpGlobals->mapname );
+			justMapName = true;
+		}
+	}
+
+	char buf[65];
+	if (!justMapName)
+	{
+		CBasePlayer* pPlayer = g_pGameRules->EffectivePlayer(NULL);
+		if (pPlayer)
+		{
+			const char* keyVal = g_engfuncs.pfnInfoKeyValue( g_engfuncs.pfnGetInfoKeyBuffer( pPlayer->edict() ), "cl_save_mapname" );
+			if (keyVal && *keyVal)
+			{
+				const int saveMapName = atoi(keyVal);
+				if (saveMapName)
+				{
+					_snprintf(buf, sizeof(buf), "%s [%s]", pName, STRING(gpGlobals->mapname));
+					pName = buf;
+				}
+			}
 		}
 	}
 

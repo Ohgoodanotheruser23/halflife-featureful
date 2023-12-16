@@ -21,6 +21,7 @@
 #include "nodes.h"
 #include "effects.h"
 #include "mod_features.h"
+#include "game.h"
 
 extern DLL_GLOBAL int		g_iSkillLevel;
 
@@ -38,6 +39,7 @@ public:
 	void Precache( void );
 	void KeyValue(KeyValueData* pkvd);
 	int DefaultClassify( void ) { return CLASS_HUMAN_MILITARY; }
+	bool IsMachine() { return true; }
 	const char* DefaultDisplayName() { return "Apache"; }
 	const char* ReverseRelationshipModel() { return "models/apachef.mdl"; }
 	int BloodColor( void ) { return DONT_BLEED; }
@@ -63,7 +65,7 @@ public:
 	BOOL FireGun( void );
 
 	int  TakeDamage( entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType );
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
+	void TraceAttack( entvars_t *pevInflictor,  entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 
 	int m_iRockets;
 	float m_flForce;
@@ -149,6 +151,7 @@ void CApache::SpawnImpl(const char *modelName)
 	pev->flags |= FL_MONSTER;
 	pev->takedamage = DAMAGE_AIM;
 	SetMyHealth( gSkillData.apacheHealth );
+	pev->max_health = pev->health;
 
 	SetMyFieldOfView(-0.707f); // 270 degrees
 
@@ -160,14 +163,15 @@ void CApache::SpawnImpl(const char *modelName)
 
 	if( pev->spawnflags & SF_WAITFORTRIGGER )
 	{
+		SetThink( &CApache::NullThink );
 		SetUse( &CApache::StartupUse );
 	}
 	else
 	{
 		SetThink( &CApache::HuntThink );
 		SetTouch( &CApache::FlyTouch );
-		pev->nextthink = gpGlobals->time + 1.0f;
 	}
+	pev->nextthink = gpGlobals->time + 1.0f;
 
 	m_iRockets = 10;
 }
@@ -214,7 +218,9 @@ void CApache::KeyValue(KeyValueData *pkvd)
 void CApache::NullThink( void )
 {
 	StudioFrameAdvance();
+	FCheckAITrigger();
 	pev->nextthink = gpGlobals->time + 0.5f;
+	GlowShellUpdate();
 }
 
 void CApache::StartupUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -238,6 +244,7 @@ void CApache::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib 
 	pev->nextthink = gpGlobals->time + 0.1f;
 	pev->health = 0;
 	pev->takedamage = DAMAGE_NO;
+	pev->deadflag = DEAD_DYING;
 
 	if( pev->spawnflags & SF_NOWRECKAGE )
 	{
@@ -253,12 +260,15 @@ void CApache::DyingThink( void )
 {
 	StudioFrameAdvance();
 	pev->nextthink = gpGlobals->time + 0.1f;
+	GlowShellUpdate();
 
 	pev->avelocity = pev->avelocity * 1.02f;
 
 	// still falling?
 	if( m_flNextRocket > gpGlobals->time )
 	{
+		FCheckAITrigger();
+
 		// random explosions
 		MESSAGE_BEGIN( MSG_PVS, SVC_TEMPENTITY, pev->origin );
 			WRITE_BYTE( TE_EXPLOSION );		// This just makes a dynamic light now
@@ -470,6 +480,7 @@ void CApache::HuntThink( void )
 {
 	StudioFrameAdvance();
 	pev->nextthink = gpGlobals->time + 0.1f;
+	GlowShellUpdate();
 
 	ShowDamage();
 
@@ -488,7 +499,19 @@ void CApache::HuntThink( void )
 	{
 		Look( 4092 );
 		m_hEnemy = BestVisibleEnemy();
+
+		//If i have an enemy i'm in combat, otherwise i'm patrolling.
+		if (m_hEnemy != 0)
+		{
+			m_MonsterState = MONSTERSTATE_COMBAT;
+		}
+		else
+		{
+			m_MonsterState = MONSTERSTATE_ALERT;
+		}
 	}
+
+	Listen();
 
 	// generic speed up
 	if( m_flGoalSpeed < 800.0f )
@@ -611,6 +634,8 @@ void CApache::HuntThink( void )
 			}
 		}
 	}
+
+	FCheckAITrigger();
 }
 
 void CApache::Flight( void )
@@ -932,10 +957,34 @@ int CApache::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 	*/
 
 	// ALERT( at_console, "%.0f\n", flDamage );
-	return CBaseEntity::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
+	int result = CBaseEntity::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
+
+	//Are we damaged at all?
+	if (pev->health < pev->max_health)
+	{
+		//Took some damage.
+		SetConditions(bits_COND_LIGHT_DAMAGE);
+
+		if (pev->health < (pev->max_health / 2))
+		{
+			//Seriously damaged now.
+			SetConditions(bits_COND_HEAVY_DAMAGE);
+		}
+		else
+		{
+			//Maybe somebody healed us somehow (trigger_hurt with negative damage?), clear this.
+			ClearConditions(bits_COND_HEAVY_DAMAGE);
+		}
+	}
+	else
+	{
+		//Maybe somebody healed us somehow (trigger_hurt with negative damage?), clear this.
+		ClearConditions(bits_COND_LIGHT_DAMAGE);
+	}
+	return result;
 }
 
-void CApache::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
+void CApache::TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType )
 {
 	// ALERT( at_console, "%d %.0f\n", ptr->iHitgroup, flDamage );
 
@@ -947,7 +996,7 @@ void CApache::TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir
 	if( flDamage > 50 || ptr->iHitgroup == 1 || ptr->iHitgroup == 2 )
 	{
 		// ALERT( at_console, "%.0f\n", flDamage );
-		AddMultiDamage( pevAttacker, this, flDamage, bitsDamageType );
+		AddMultiDamage( pevAttacker, pevAttacker, this, flDamage, bitsDamageType );
 		m_iDoSmokePuff = 3.0f + ( flDamage / 5.0f );
 	}
 	else
@@ -1069,13 +1118,12 @@ class CBlkopApache : public CApache
 public:
 	void Spawn();
 	void Precache();
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("blkop_apache"); }
 	int	DefaultClassify ( void )
 	{
-#if FEATURE_BLACKOPS_CLASS
-		return CLASS_HUMAN_BLACKOPS;
-#else
+		if (g_modFeatures.blackops_classify)
+			return CLASS_HUMAN_BLACKOPS;
 		return CApache::DefaultClassify();
-#endif
 	}
 };
 

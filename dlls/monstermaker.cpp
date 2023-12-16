@@ -37,9 +37,9 @@
 #define SF_MONSTERMAKER_WAIT_FOR_SCRIPT 128 // TODO: implement
 #define SF_MONSTERMAKER_PREDISASTER 256
 #define SF_MONSTERMAKER_DONT_DROP_GUN 1024 // Spawn monster won't drop gun upon death
-#define SF_MONSTERMAKER_NO_GROUND_CHECK 2048 // don't check if something on ground prevents a monster to fall on spawn
 #define SF_MONSTERMAKER_ALIGN_TO_PLAYER 4096 // Align to closest player on spawn
 #define SF_MONSTERMAKER_WAIT_UNTIL_PROVOKED 8192
+#define SF_MONSTERMAKER_NO_GROUND_CHECK		( 1 << 14 ) // don't check if something on ground prevents a monster to fall on spawn
 #define SF_MONSTERMAKER_SPECIAL_FLAG		( 1 << 15 )
 #define SF_MONSTERMAKER_NONSOLID_CORPSE		( 1 << 16 )
 #define SF_MONSTERMAKER_IGNORE_PLAYER_PUSHING ( 1 << 19 )
@@ -70,6 +70,7 @@ class CMonsterMaker : public CBaseMonster
 {
 public:
 	void Spawn( void );
+	bool CheckMonsterClassname();
 	void Precache( void );
 	void KeyValue( KeyValueData* pkvd);
 	void EXPORT ToggleUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
@@ -115,11 +116,13 @@ public:
 	Vector m_defaultMinHullSize;
 	Vector m_defaultMaxHullSize;
 
+	short m_followFailPolicy;
 	string_t m_iszUse;
 	string_t m_iszUnUse;
 	string_t m_iszDecline;
 
 	float m_spawnDelay;
+	int m_delayedCount;
 };
 
 LINK_ENTITY_TO_CLASS( monstermaker, CMonsterMaker )
@@ -147,10 +150,12 @@ TYPEDESCRIPTION	CMonsterMaker::m_SaveData[] =
 	DEFINE_FIELD( CMonsterMaker, m_iMaxYawDeviation, FIELD_SHORT ),
 	DEFINE_FIELD( CMonsterMaker, m_defaultMinHullSize, FIELD_VECTOR ),
 	DEFINE_FIELD( CMonsterMaker, m_defaultMaxHullSize, FIELD_VECTOR ),
+	DEFINE_FIELD( CMonsterMaker, m_followFailPolicy, FIELD_SHORT ),
 	DEFINE_FIELD( CMonsterMaker, m_iszUse, FIELD_STRING ),
 	DEFINE_FIELD( CMonsterMaker, m_iszUnUse, FIELD_STRING ),
 	DEFINE_FIELD( CMonsterMaker, m_iszDecline, FIELD_STRING ),
 	DEFINE_FIELD( CMonsterMaker, m_spawnDelay, FIELD_FLOAT ),
+	DEFINE_FIELD( CMonsterMaker, m_delayedCount, FIELD_INTEGER ),
 };
 
 IMPLEMENT_SAVERESTORE( CMonsterMaker, CBaseMonster )
@@ -235,6 +240,11 @@ void CMonsterMaker::KeyValue( KeyValueData *pkvd )
 	else if( FStrEq( pkvd->szKeyName, "yawdeviation" ) )
 	{
 		m_iMaxYawDeviation = (short)atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else if( FStrEq( pkvd->szKeyName, "followfailpolicy" ) )
+	{
+		m_followFailPolicy = (short)atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
 	else if( FStrEq( pkvd->szKeyName, "UseSentence" ) )
@@ -325,6 +335,16 @@ void CMonsterMaker::Spawn()
 	m_flGround = 0;
 }
 
+bool CMonsterMaker::CheckMonsterClassname()
+{
+	if (FStringNull(m_iszMonsterClassname))
+	{
+		ALERT(at_error, "%s at (%g, %g, %g) has an empty monster classname!\n", STRING(pev->classname), pev->origin.x, pev->origin.y, pev->origin.z);
+		return false;
+	}
+	return true;
+}
+
 void CMonsterMaker::Precache( void )
 {
 	CBaseMonster::Precache();
@@ -334,7 +354,8 @@ void CMonsterMaker::Precache( void )
 	if (!FStringNull(m_gibModel))
 		PRECACHE_MODEL(STRING(m_gibModel));
 
-	UTIL_PrecacheMonster( STRING(m_iszMonsterClassname), m_reverseRelationship, &m_defaultMinHullSize, &m_defaultMaxHullSize );
+	if (CheckMonsterClassname())
+		UTIL_PrecacheMonster( STRING(m_iszMonsterClassname), m_reverseRelationship, &m_defaultMinHullSize, &m_defaultMaxHullSize );
 
 	UTIL_PrecacheOther("monstermaker_hull");
 }
@@ -367,6 +388,7 @@ CMonsterMakerHull* CMonsterMakerHull::SelfCreate(CMonsterMaker *pMonsterMaker, c
 	SET_MODEL( pHull->edict(), "sprites/iunknown.spr" );
 	pHull->pev->angles = angles;
 	pHull->pev->solid = SOLID_BBOX;
+	pHull->pev->flags = FL_MONSTER;
 	pHull->pev->classname = MAKE_STRING("monstermaker_hull");
 	pHull->pev->movetype = MOVETYPE_NONE;
 	pHull->pev->owner = pMonsterMaker->edict();
@@ -382,11 +404,15 @@ void CMonsterMakerHull::Think()
 	pev->solid = SOLID_NOT;
 	pev->effects |= EF_NODRAW;
 
-	CBaseEntity* pOwner = CBaseEntity::Instance(pev->owner);
-	if (pOwner)
+	if (!FNullEnt(pev->owner))
 	{
-		CMonsterMaker* pMonsterMaker = static_cast<CMonsterMaker*>(pOwner);
-		pMonsterMaker->SpawnMonster(pev->origin, pev->angles);
+		CBaseEntity* pOwner = CBaseEntity::Instance(pev->owner);
+		if (pOwner)
+		{
+			CMonsterMaker* pMonsterMaker = static_cast<CMonsterMaker*>(pOwner);
+			pMonsterMaker->SpawnMonster(pev->origin, pev->angles);
+			pMonsterMaker->m_delayedCount--;
+		}
 	}
 
 	UTIL_Remove(this);
@@ -462,7 +488,7 @@ int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &te
 			if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_AUTOSIZEBBOX))
 				maxs.z = pCandidate->pev->origin.z;
 
-			if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
+			if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK ))
 			{
 				mins.z = MakerGroundLevel(pCandidate->pev->origin, pev);
 			}
@@ -513,7 +539,7 @@ int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &te
 			}
 		}
 
-		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
+		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK ))
 		{
 			if( !m_flGround
 					|| !FStringNull(m_iszPlacePosition) ) // The position could change, so we need to calculate the new ground level.
@@ -528,7 +554,7 @@ int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &te
 
 		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_AUTOSIZEBBOX))
 			maxs.z = placePosition.z;
-		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK))
+		if (!FBitSet(pev->spawnflags, SF_MONSTERMAKER_NO_GROUND_CHECK ))
 			mins.z = m_flGround;
 
 		CBaseEntity *pBlocker = MakerBlocker(mins, maxs);
@@ -575,6 +601,9 @@ int CMonsterMaker::CalculateSpot(const Vector &testMinHullSize, const Vector &te
 
 CBaseEntity* CMonsterMaker::SpawnMonster(const Vector &placePosition, const Vector &placeAngles)
 {
+	if (!CheckMonsterClassname())
+		return 0;
+
 	edict_t *pent = CREATE_NAMED_ENTITY( m_iszMonsterClassname );
 	if( FNullEnt( pent ) )
 	{
@@ -654,30 +683,39 @@ CBaseEntity* CMonsterMaker::SpawnMonster(const Vector &placePosition, const Vect
 			deadMonster->m_iPose = m_iPose;
 		}
 
+		CFollowingMonster* pFollowingMonster = createdMonster->MyFollowingMonsterPointer();
+		if (pFollowingMonster)
+		{
+			pFollowingMonster->m_followFailPolicy = m_followFailPolicy;
+		}
+
 		CTalkMonster* pTalkMonster = createdMonster->MyTalkMonsterPointer();
 		if (pTalkMonster)
 		{
 			if (!FStringNull(m_iszUse))
 			{
 				pTalkMonster->m_iszUse = m_iszUse;
-				pTalkMonster->m_szGrp[TLK_USE] = CTalkMonster::GetRedefinedSentence(m_iszUse);
 			}
 
 			if (!FStringNull(m_iszUnUse))
 			{
 				pTalkMonster->m_iszUnUse = m_iszUnUse;
-				pTalkMonster->m_szGrp[TLK_UNUSE] = CTalkMonster::GetRedefinedSentence(m_iszUnUse);
 			}
 
 			if (!FStringNull(m_iszDecline))
 			{
 				pTalkMonster->m_iszDecline = m_iszDecline;
-				pTalkMonster->m_szGrp[TLK_DECLINE] = CTalkMonster::GetRedefinedSentence(m_iszDecline);
 			}
 		}
 	}
 
-	DispatchSpawn( ENT( pevCreate ) );
+	if (DispatchSpawn( ENT( pevCreate ) ) == -1)
+	{
+		ALERT( at_console, "Game rejected to spawn '%s' (probably not enabled)\n", STRING(m_iszMonsterClassname) );
+		REMOVE_ENTITY(ENT(pevCreate));
+		return 0;
+	}
+
 	pevCreate->owner = edict();
 	// Disable until proper investigation
 #if 0
@@ -728,7 +766,7 @@ CBaseEntity* CMonsterMaker::SpawnMonster(const Vector &placePosition, const Vect
 			break;
 		}
 		// delay already overloaded for this entity, so can't call SUB_UseTargets()
-		FireTargets( STRING( pev->target ), pActivator, this, USE_TOGGLE, 0 );
+		FireTargets( STRING( pev->target ), pActivator, this );
 	}
 
 	return CBaseEntity::Instance(pevCreate);
@@ -757,7 +795,7 @@ void CMonsterMaker::StartWarpballEffect(const Vector &vecPosition, edict_t* warp
 //=========================================================
 int CMonsterMaker::MakeMonster( void )
 {
-	if( m_iMaxLiveChildren > 0 && m_cLiveChildren >= m_iMaxLiveChildren )
+	if( m_iMaxLiveChildren > 0 && m_cLiveChildren + m_delayedCount >= m_iMaxLiveChildren )
 	{
 		// not allowed to make a new one yet. Too many live ones out right now.
 		return MONSTERMAKER_LIMIT;
@@ -825,6 +863,7 @@ int CMonsterMaker::MakeMonster( void )
 		CMonsterMakerHull* pHull = CMonsterMakerHull::SelfCreate(this, placePosition, placeAngles, minHullSize, maxHullSize, m_spawnDelay);
 		if (!pHull)
 			return MONSTERMAKER_NULLENTITY;
+		m_delayedCount++;
 
 		if (!FStringNull(warpballName))
 		{
@@ -917,7 +956,7 @@ void CMonsterMaker::DeathNotice( entvars_t *pevChild )
 	}
 	else
 	{
-		ALERT(at_aiconsole, "Impossible situation: %s got DeathNotice when live children count is 0!\n", STRING(pev->classname));
+		ALERT(at_aiconsole, "Impossible situation: %s got DeathNotice from %s when live children count is 0!\n", STRING(pev->classname), STRING(pevChild->classname));
 	}
 
 	if( !m_fFadeChildren )
@@ -925,7 +964,7 @@ void CMonsterMaker::DeathNotice( entvars_t *pevChild )
 		pevChild->owner = NULL;
 	}
 
-	if (m_cNumMonsters == 0)
+	if (m_cNumMonsters == 0 && m_cLiveChildren == 0)
 	{
 		SetThink(&CMonsterMaker::SUB_Remove);
 		pev->nextthink = gpGlobals->time;

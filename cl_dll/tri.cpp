@@ -20,7 +20,7 @@
 #include "cl_entity.h"
 #include "triangleapi.h"
 
-extern int g_iWaterLevel;
+int g_iWaterLevel;
 
 extern "C"
 {
@@ -55,9 +55,7 @@ void Draw_Triangles( void )
 
 	if( gHUD.m_hsprCursor == 0 )
 	{
-		char sz[256];
-		sprintf( sz, "sprites/cursor.spr" );
-		gHUD.m_hsprCursor = SPR_Load( sz );
+		gHUD.m_hsprCursor = SPR_Load( "sprites/cursor.spr" );
 	}
 
 	if( !gEngfuncs.pTriAPI->SpriteTexture( (struct model_s *)gEngfuncs.GetSpritePointer( gHUD.m_hsprCursor ), 0 ) )
@@ -93,46 +91,62 @@ void Draw_Triangles( void )
 }
 #endif
 
-static void RenderFogImpl(short r, short g, short b, float startDist, float endDist, bool skyboxFog)
+static void RenderFogImpl(short r, short g, short b, float startDist, float endDist, bool skyboxFog, float density, short type)
 {
-	const bool isXash = IsXashFWGS();
-	bool useTriApi = isXash;
-#ifdef CLDLL_FOG
-	useTriApi = useTriApi || (GL_glFogi != NULL);
-#endif
-
-	if (useTriApi)
+	// Some default values for different fog modes, in case they're not provided
+	if (endDist == 0 && density > 0)
 	{
-		float fogColor[] = {(float)r, (float)g, (float)b};
-		gEngfuncs.pTriAPI->Fog ( fogColor, startDist, endDist, 1 );
+		endDist = 1500;
 	}
-
-#ifdef CLDLL_FOG
-	if (!isXash && GL_glFogi != NULL)
+	else if (endDist > 0 && density == 0)
 	{
-		// Hack for GoldSource, default fog mode does not work for some reason
-		GL_glFogi(GL_FOG_MODE, GL_LINEAR);
+		density = 0.001f;
 	}
-#endif
 
 	if (gEngfuncs.pTriAPI->FogParams != NULL)
 	{
-		gEngfuncs.pTriAPI->FogParams(0.0f,skyboxFog);
+		gEngfuncs.pTriAPI->FogParams(density, skyboxFog);
 	}
+
+	float fogColor[] = {(float)r, (float)g, (float)b};
+	gEngfuncs.pTriAPI->Fog ( fogColor, startDist, endDist, 1 );
+
+#ifdef CLDLL_FOG
+	int glFogType = 0;
+
+	switch (type) {
+	case 1:
+		glFogType = GL_EXP;
+		break;
+	case 2:
+		glFogType = GL_EXP2;
+		break;
+	case 3:
+		glFogType = GL_LINEAR;
+		break;
+	default:
+		break;
+	}
+
+	if (glFogType != 0 && GL_glFogi != NULL && gHUD.m_iHardwareMode == 1)
+	{
+		GL_glFogi(GL_FOG_MODE, glFogType);
+	}
+#endif
 }
 
 void RenderFog ( void )
 {
 	const FogProperties& fog = gHUD.fog;
-	bool bFog = g_iWaterLevel < 2 && fog.startDist > 0 && fog.endDist > 0;
+	bool bFog = g_iWaterLevel < 3 && (fog.endDist > 0 || fog.density > 0);
 	if (bFog)
 	{
-		RenderFogImpl(fog.r,fog.g,fog.b, fog.startDist, fog.endDist, fog.affectSkybox);
+		RenderFogImpl(fog.r,fog.g,fog.b, fog.startDist, fog.endDist, fog.affectSkybox, fog.density, fog.type);
 	}
 	else
 	{
-		float fogColor[] = {(float)fog.r, (float)fog.g, (float)fog.b};
-		gEngfuncs.pTriAPI->Fog ( fogColor, fog.startDist, fog.endDist, 0 );
+		float fogColor[] = {127.0f, 127.0f, 127.0f};
+		gEngfuncs.pTriAPI->Fog ( fogColor, 0.0f, 0.0f, 0 );
 	}
 }
 
@@ -145,7 +159,6 @@ Non-transparent triangles-- add them here
 */
 void DLLEXPORT HUD_DrawNormalTriangles( void )
 {
-	RenderFog();
 	gHUD.m_Spectator.DrawOverview();
 #if TEST_IT
 //	Draw_Triangles();

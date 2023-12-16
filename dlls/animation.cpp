@@ -13,49 +13,6 @@
 *
 ****/
 
-/* all this mess was here to use quake mathlib instead of hlsdk vectors
-* it may break debug info or even build because global symbols types differ
-*  it's better to define VectorCopy macro for Vector class */
-#if 0
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-typedef int BOOL;
-#define TRUE	1	
-#define FALSE	0
-
-// hack into header files that we can ship
-typedef int qboolean;
-typedef unsigned char byte;
-#include "mathlib.h"
-#include "const.h"
-#include "progdefs.h"
-#include "edict.h"
-#include "eiface.h"
-
-#include "studio.h"
-
-#if !defined(ACTIVITY_H)
-#include "activity.h"
-#endif
-
-#include "activitymap.h"
-
-#if !defined(ANIMATION_H)
-#include "animation.h"
-#endif
-
-#if !defined(SCRIPTEVENT_H)
-#include "scriptevent.h"
-#endif
-
-#if !defined(ENGINECALLBACK_H)
-#include "enginecallback.h"
-#endif
-
-//extern globalvars_t				*gpGlobals;
-#else
 #include "extdll.h"
 #include "util.h"
 #include "activity.h"
@@ -64,7 +21,6 @@ typedef unsigned char byte;
 #include "scriptevent.h"
 #include "studio.h"
 #define VectorCopy(a,b) {(b)[0]=(a)[0];(b)[1]=(a)[1];(b)[2]=(a)[2];}
-#endif
 
 #pragma warning( disable : 4244 )
 
@@ -238,7 +194,7 @@ void GetSequenceInfo( void *pmodel, entvars_t *pev, float *pflFrameRate, float *
 
 	mstudioseqdesc_t *pseqdesc;
 
-	if( pev->sequence >= pstudiohdr->numseq )
+	if( pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq )
 	{
 		*pflFrameRate = 0.0f;
 		*pflGroundSpeed = 0.0f;
@@ -265,7 +221,7 @@ int GetSequenceFlags( void *pmodel, entvars_t *pev )
 	studiohdr_t *pstudiohdr;
 
 	pstudiohdr = (studiohdr_t *)pmodel;
-	if( !pstudiohdr || pev->sequence >= pstudiohdr->numseq )
+	if( !pstudiohdr || pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq )
 		return 0;
 
 	mstudioseqdesc_t *pseqdesc;
@@ -279,7 +235,7 @@ int GetAnimationEvent( void *pmodel, entvars_t *pev, MonsterEvent_t *pMonsterEve
 	studiohdr_t *pstudiohdr;
 
 	pstudiohdr = (studiohdr_t *)pmodel;
-	if( !pstudiohdr || pev->sequence >= pstudiohdr->numseq || !pMonsterEvent )
+	if( !pstudiohdr || pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq || !pMonsterEvent )
 		return 0;
 
 	mstudioseqdesc_t *pseqdesc;
@@ -382,7 +338,7 @@ float SetBlending( void *pmodel, entvars_t *pev, int iBlender, float flValue )
 	studiohdr_t *pstudiohdr;
 
 	pstudiohdr = (studiohdr_t *)pmodel;
-	if( !pstudiohdr )
+	if( !pstudiohdr || pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq )
 		return flValue;
 
 	mstudioseqdesc_t *pseqdesc;
@@ -527,4 +483,33 @@ int GetBodygroup( void *pmodel, entvars_t *pev, int iGroup )
 	int iCurrent = ( pev->body / pbodypart->base ) % pbodypart->nummodels;
 
 	return iCurrent;
+}
+
+int GetBodyCount( void *pmodel )
+{
+	studiohdr_t *pstudiohdr = (studiohdr_t *)pmodel;
+	if( !pstudiohdr )
+		return 0;
+
+	int bodiesNum = 1;
+	mstudiobodyparts_t *pbodypart = (mstudiobodyparts_t *)( (byte *)pstudiohdr + pstudiohdr->bodypartindex );
+
+	for (int j=0; j<pstudiohdr->numbodyparts; ++j)
+	{
+		bodiesNum = bodiesNum * pbodypart[j].nummodels;
+	}
+	return bodiesNum;
+}
+
+int GetBodygroupNumModels(void *pmodel , int iGroup)
+{
+	studiohdr_t *pstudiohdr = (studiohdr_t *)pmodel;
+	if( !pstudiohdr )
+		return 0;
+
+	if( iGroup > pstudiohdr->numbodyparts )
+		return 0;
+
+	mstudiobodyparts_t *pbodypart = (mstudiobodyparts_t *)( (byte *)pstudiohdr + pstudiohdr->bodypartindex ) + iGroup;
+	return pbodypart->nummodels;
 }

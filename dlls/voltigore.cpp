@@ -30,8 +30,7 @@
 #include	"squadmonster.h"
 #include	"weapons.h"
 #include	"mod_features.h"
-
-#define FEATURE_VOLGITOGRE_LESSER_SIZE 0
+#include	"game.h"
 
 #if FEATURE_VOLTIFORE
 #define		VOLTIGORE_SPRINT_DIST	256 // how close the voltigore has to get before starting to sprint and refusing to swerve
@@ -159,7 +158,7 @@ void CVoltigoreEnergyBall::BallTouch(CBaseEntity *pOther)
 		entvars_t* attacker = VARS( pev->owner );
 		if (!attacker)
 			attacker = pev;
-		pOther->TraceAttack(attacker, gSkillData.voltigoreDmgBeam, pev->velocity, &tr, DMG_SHOCK|DMG_ALWAYSGIB);
+		pOther->TraceAttack(pev, attacker, gSkillData.voltigoreDmgBeam, pev->velocity, &tr, DMG_SHOCK|DMG_ALWAYSGIB);
 		ApplyMultiDamage(pev, attacker);
 	}
 	pev->velocity = Vector(0,0,0);
@@ -319,6 +318,7 @@ class CVoltigore : public CSquadMonster
 public:
 	virtual void Spawn(void);
 	virtual void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("voltigore"); }
 	void SetYawSpeed(void);
 	virtual int  DefaultClassify(void);
 	const char* DefaultDisplayName() { return "Voltigore"; }
@@ -353,18 +353,16 @@ public:
 	virtual int DefaultSizeForGrapple() { return GRAPPLE_LARGE; }
 	bool IsDisplaceable() { return true; }
 	Vector DefaultMinHullSize() {
-#if FEATURE_VOLGITOGRE_LESSER_SIZE
-		return Vector( -40.0f, -40.0f, 0.0f );
-#else
-		return Vector( -80.0f, -80.0f, 0.0f );
-#endif
+		if (g_modFeatures.voltigore_lesser_size)
+			return Vector( -40.0f, -40.0f, 0.0f );
+		else
+			return Vector( -80.0f, -80.0f, 0.0f );
 	}
 	Vector DefaultMaxHullSize() {
-#if FEATURE_VOLGITOGRE_LESSER_SIZE
-		return Vector( 40.0f, 40.0f, 85.0f );
-#else
-		return Vector( 80.0f, 80.0f, 90.0f );
-#endif
+		if (g_modFeatures.voltigore_lesser_size)
+			return Vector( 40.0f, 40.0f, 85.0f );
+		else
+			return Vector( 80.0f, 80.0f, 90.0f );
 	}
 
 	float m_flNextBeamAttackCheck; // next time the voltigore can use the spit attack.
@@ -504,7 +502,7 @@ BOOL CVoltigore::CheckRangeAttack1(float flDot, float flDist)
 
 		if( tr.flFraction == 1.0f || tr.pHit == m_hEnemy->edict() )
 		{
-			m_flNextBeamAttackCheck = gpGlobals->time + RANDOM_FLOAT( 5.0f, 10.0f );
+			m_flNextBeamAttackCheck = gpGlobals->time + 0.2;
 			return TRUE;
 		}
 		else
@@ -590,16 +588,14 @@ void CVoltigore::SetYawSpeed(void)
 {
 	int ys;
 
-	ys = 0;
-
 	switch (m_Activity)
 	{
-	case	ACT_WALK:			ys = 90;	break;
-	case	ACT_RUN:			ys = 90;	break;
-	case	ACT_IDLE:			ys = 90;	break;
-	case	ACT_RANGE_ATTACK1:	ys = 90;	break;
+	case	ACT_TURN_LEFT:
+	case	ACT_TURN_RIGHT:
+		ys = 80;
+		break;
 	default:
-		ys = 90;
+		ys = 70;
 		break;
 	}
 
@@ -648,6 +644,8 @@ void CVoltigore::HandleAnimEvent(MonsterEvent_t *pEvent)
 		//AttackSound();
 
 		CVoltigoreEnergyBall::Shoot(pev, vecBoltOrigin, vecShootDir * 1000);
+
+		m_flNextBeamAttackCheck = gpGlobals->time + RANDOM_FLOAT( 5.0f, 10.0f );
 
 		// turn the beam glow off.
 		DestroyBeams();
@@ -954,7 +952,6 @@ Schedule_t* CVoltigore::GetScheduleOfType(int Type)
 //=========================================================
 void CVoltigore::StartTask(Task_t *pTask)
 {
-	m_iTaskStatus = TASKSTATUS_RUNNING;
 	GlowOff();
 	DestroyBeams();
 	m_fShouldUpdateBeam = FALSE;
@@ -972,27 +969,6 @@ void CVoltigore::StartTask(Task_t *pTask)
 			EMIT_SOUND_DYN(ENT(pev), CHAN_BODY, "debris/beamstart1.wav", 1, ATTN_NORM, 0, PITCH_HIGH);
 
 			CSquadMonster::StartTask(pTask);
-		}
-		break;
-	case TASK_GET_PATH_TO_ENEMY:
-		{
-			CBaseEntity *pEnemy = m_hEnemy;
-
-			if( pEnemy == NULL )
-			{
-				TaskFail("no enemy");
-				return;
-			}
-
-			if( BuildRoute( pEnemy->pev->origin, bits_MF_TO_ENEMY, pEnemy ) )
-			{
-				TaskComplete();
-			}
-			else
-			{
-				TaskFail("can't build path to enemy");
-			}
-			break;
 		}
 		break;
 	default:
@@ -1199,6 +1175,7 @@ class CBabyVoltigore : public CVoltigore
 public:
 	void	Spawn(void);
 	void	Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("babyvoltigore"); }
 	const char* DefaultDisplayName() { return "Baby Voltigore"; }
 	void	HandleAnimEvent(MonsterEvent_t* pEvent);
 	BOOL	CheckMeleeAttack1(float flDot, float flDist);
@@ -1206,6 +1183,12 @@ public:
 	void	StartTask(Task_t *pTask);
 	void	Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib);
 	void	GibMonster();
+	const char* DefaultGibModel() {
+		return CSquadMonster::DefaultGibModel();
+	}
+	int DefaultGibCount() {
+		return CSquadMonster::DefaultGibCount();
+	}
 	Schedule_t* GetSchedule();
 	Schedule_t* GetScheduleOfType(int Type);
 
@@ -1260,7 +1243,7 @@ void CBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case VOLTIGORE_AE_PUNCH_SINGLE:
 	{
-		CBaseEntity *pHurt = CheckTraceHullAttack(70, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB | DMG_ALWAYSGIB);
+		CBaseEntity *pHurt = CheckTraceHullAttack(64, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB, pev->size.z);
 		if (pHurt)
 		{
 			if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
@@ -1286,7 +1269,7 @@ void CBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case VOLTIGORE_AE_PUNCH_BOTH:
 	{
-		CBaseEntity *pHurt = CheckTraceHullAttack(70, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB | DMG_ALWAYSGIB);
+		CBaseEntity *pHurt = CheckTraceHullAttack(64, gSkillData.babyVoltigoreDmgPunch, DMG_CLUB, pev->size.z);
 		if (pHurt)
 		{
 			if (FBitSet(pHurt->pev->flags, FL_MONSTER|FL_CLIENT))
@@ -1332,8 +1315,6 @@ BOOL CBabyVoltigore::CheckMeleeAttack1(float flDot, float flDist)
 //=========================================================
 void CBabyVoltigore::StartTask(Task_t *pTask)
 {
-	m_iTaskStatus = TASKSTATUS_RUNNING;
-
 	switch (pTask->iTask)
 	{
 	case TASK_MELEE_ATTACK1:
@@ -1404,6 +1385,7 @@ Schedule_t *CBabyVoltigore::GetSchedule(void)
 Schedule_t *CBabyVoltigore::GetScheduleOfType(int Type)
 {
 	switch (Type) {
+	// TODO:
 	// For some cryptic reason baby voltigore tries to start the range attack even though its model does not have sequence with range attack activity. 
 	// This hack is for preventing baby voltigore to do this.
 	case SCHED_RANGE_ATTACK1:

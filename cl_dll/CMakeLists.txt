@@ -55,6 +55,7 @@ if (USE_VGUI)
 endif()
 
 set (CLDLL_SOURCES
+	../dlls/weapons_shared.cpp
 	../dlls/crossbow.cpp
 	../dlls/crowbar.cpp
 	../dlls/egon.cpp
@@ -90,6 +91,7 @@ set (CLDLL_SOURCES
 	ammohistory.cpp
 	battery.cpp
 	cdll_int.cpp
+	cl_msg_fx.cpp
 	com_weapons.cpp
 	death.cpp
 	demo.cpp
@@ -113,12 +115,12 @@ set (CLDLL_SOURCES
 	menu.cpp
 	message.cpp
 	nightvision.cpp
-	overview.cpp
 	parsemsg.cpp
 	../pm_shared/pm_debug.c
 	../pm_shared/pm_math.c
 	../pm_shared/pm_shared.c
 	../game_shared/tex_materials.c
+	../game_shared/parsetext.cpp
 	saytext.cpp
 	status_icons.cpp
 	statusbar.cpp

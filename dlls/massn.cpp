@@ -7,6 +7,7 @@
 #include	"hgrunt.h"
 #include	"mod_features.h"
 #include	"gamerules.h"
+#include	"game.h"
 
 #if FEATURE_MASSN
 
@@ -47,9 +48,6 @@ enum
 #define		MASSN_AE_CAUGHT_ENEMY	( 10 ) // grunt established sight with an enemy (player only) that had previously eluded the squad.
 #define		MASSN_AE_DROP_GUN		( 11 ) // grunt (probably dead) is dropping his mp5.
 
-//=========================================================
-// Purpose:
-//=========================================================
 class CMassn : public CHGrunt
 {
 public:
@@ -64,24 +62,23 @@ public:
 	void PlayUnUseSentence();
 	int	DefaultClassify ( void )
 	{
-#if FEATURE_BLACKOPS_CLASS
-		return CLASS_HUMAN_BLACKOPS;
-#else
+		if (g_modFeatures.blackops_classify)
+			return CLASS_HUMAN_BLACKOPS;
 		return CHGrunt::DefaultClassify();
-#endif
 	}
 
 	BOOL FOkToSpeak(void);
 
 	void Spawn( void );
 	void Precache( void );
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("male_assassin"); }
 	void MonsterInit();
 
 	void DeathSound(void);
 	void PainSound(void);
 	void IdleSound(void);
 
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 
 	void SetHead(int head);
 
@@ -104,24 +101,15 @@ void CMassn::PlayUnUseSentence()
 	JustSpoke();
 }
 
-//=========================================================
-// Purpose:
-//=========================================================
 BOOL CMassn::FOkToSpeak(void)
 {
 	return FALSE;
 }
 
-//=========================================================
-// Purpose:
-//=========================================================
 void CMassn::IdleSound(void)
 {
 }
 
-//=========================================================
-// Shoot
-//=========================================================
 void CMassn::Sniperrifle(void)
 {
 	Vector vecShootOrigin = GetGunPosition();
@@ -209,7 +197,8 @@ void CMassn::HandleAnimEvent(MonsterEvent_t *pEvent)
 	{
 	case MASSN_AE_DROP_GUN:
 	{
-		DropMyItems(FALSE);
+		if(GetBodygroup(MASSN_GUN_GROUP) != MASSN_GUN_NONE)
+			DropMyItems(FALSE);
 	}
 	break;
 
@@ -275,7 +264,7 @@ BOOL CMassn::CheckRangeAttack2( float flDot, float flDist )
 	{
 		return FALSE;
 	}
-	return CheckRangeAttack2Impl(gSkillData.massnGrenadeSpeed, flDot, flDist);
+	return CheckRangeAttack2Impl(gSkillData.massnGrenadeSpeed, flDot, flDist, FBitSet(pev->weapons, MASSN_GRENADELAUNCHER));
 }
 
 //=========================================================
@@ -348,9 +337,9 @@ void CMassn::DeathSound(void)
 //=========================================================
 // TraceAttack - reimplemented in male assassin because they never have helmets
 //=========================================================
-void CMassn::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
+void CMassn::TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
-	CFollowingMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CFollowingMonster::TraceAttack(pevInflictor, pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 void CMassn::SetHead(int head)
@@ -366,6 +355,7 @@ void CMassn::SetHead(int head)
 class CAssassinRepel : public CHGruntRepel
 {
 public:
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("male_assassin"); }
 	void KeyValue(KeyValueData* pkvd);
 	const char* TrooperName() {
 		return "monster_male_assassin";
@@ -409,13 +399,12 @@ class CDeadMassn : public CDeadMonster
 {
 public:
 	void Spawn( void );
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("male_assassin"); }
 	int	DefaultClassify ( void )
 	{
-#if FEATURE_BLACKOPS_CLASS
-		return CLASS_HUMAN_BLACKOPS;
-#else
+		if (g_modFeatures.blackops_classify)
+			return CLASS_HUMAN_BLACKOPS;
 		return CLASS_HUMAN_MILITARY;
-#endif
 	}
 
 	void KeyValue( KeyValueData *pkvd );

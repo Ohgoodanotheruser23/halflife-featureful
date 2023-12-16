@@ -20,6 +20,7 @@
 #define GAMERULES_H
 
 #include "cbase.h"
+#include "mapconfig.h"
 //#include "weapons.h"
 //#include "items.h"
 class CBasePlayerWeapon;
@@ -174,6 +175,8 @@ public:
 
 	virtual void BeforeChangeLevel(const char* nextMap) {}
 	virtual CBasePlayer* EffectivePlayer( CBaseEntity* pActivator );
+
+	bool EquipPlayerFromMapConfig(CBasePlayer* pPlayer, const MapConfig& mapConfig);
 };
 
 extern CGameRules *InstallGameRules( void );
@@ -404,7 +407,9 @@ protected:
 	float m_flNextSurvivalStartTime;
 	SurvivalState m_survivalState;
 	void SendMOTDToClient( edict_t *client );
-	
+
+	MapConfig mapConfig;
+
 	float m_panicTime;
 	static int m_numberOfTries;
 	int m_hasTriggerSurvival;
@@ -416,7 +421,6 @@ extern DLL_GLOBAL CGameRules *g_pGameRules;
 int TridepthValue();
 bool TridepthForAll();
 bool AllowUseThroughWalls();
-bool NeedUseToTake();
 bool NpcFollowNearest();
 float NpcForgetEnemyTime();
 bool NpcActiveAfterCombat();

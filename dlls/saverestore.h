@@ -138,6 +138,7 @@ struct globalentity_s
 	char			name[64];
 	char			levelName[32];
 	GLOBALESTATE	state;
+	int				value;
 	globalentity_t	*pNext;
 };
 
@@ -147,11 +148,19 @@ public:
 					CGlobalState();
 	void			Reset( void );
 	void			ClearStates( void );
-	void			EntityAdd( string_t globalname, string_t mapName, GLOBALESTATE state );
+	void			EntityAdd( const char* globalname, string_t mapName, GLOBALESTATE state, int value = 0 );
+	void			EntityAdd( string_t globalname, string_t mapName, GLOBALESTATE state, int value = 0 );
+	void			EntitySetState( const char* globalname, GLOBALESTATE state );
 	void			EntitySetState( string_t globalname, GLOBALESTATE state );
+	void			IncrementValue( string_t globalname );
+	void			DecrementValue( string_t globalname );
+	void			SetValue( const char* globalname, int value );
+	void			SetValue( string_t globalname, int value );
 	void			EntityUpdate( string_t globalname, string_t mapname );
+	const globalentity_t	*EntityFromTable( const char* globalname );
 	const globalentity_t	*EntityFromTable( string_t globalname );
 	GLOBALESTATE	EntityGetState( string_t globalname );
+	int				GetValue( string_t globalname );
 	int				EntityInTable( string_t globalname ) { return (Find( globalname ) != NULL) ? 1 : 0; }
 	int				Save( CSave &save );
 	int				Restore( CRestore &restore );
@@ -162,6 +171,7 @@ public:
 //#endif
 
 private:
+	globalentity_t	*Find( const char* globalname );
 	globalentity_t	*Find( string_t globalname );
 	globalentity_t	*m_pList;
 	int				m_listCount;

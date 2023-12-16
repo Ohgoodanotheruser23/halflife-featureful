@@ -31,8 +31,6 @@
 
 #define FEATURE_HASSSASSIN_DROP_AMMO 0
 
-extern DLL_GLOBAL int  g_iSkillLevel;
-
 //=========================================================
 // monster-specific schedule types
 //=========================================================
@@ -205,11 +203,9 @@ int CHAssassin::DefaultISoundMask( void )
 //=========================================================
 int CHAssassin::DefaultClassify( void )
 {
-#if FEATURE_BLACKOPS_CLASS
-	return CLASS_HUMAN_BLACKOPS;
-#else
+	if (g_modFeatures.blackops_classify)
+		return CLASS_HUMAN_BLACKOPS;
 	return CLASS_HUMAN_MILITARY;
-#endif
 }
 
 //=========================================================
@@ -787,7 +783,7 @@ void CHAssassin::RunAI( void )
 
 	// always visible if moving
 	// always visible is not on hard
-	if( g_iSkillLevel != SKILL_HARD || m_hEnemy == 0 || pev->deadflag != DEAD_NO || m_Activity == ACT_RUN || m_Activity == ACT_WALK || !( pev->flags & FL_ONGROUND ) )
+	if( !gSkillData.hassassinCloaking || m_hEnemy == 0 || pev->deadflag != DEAD_NO || m_Activity == ACT_RUN || m_Activity == ACT_WALK || !( pev->flags & FL_ONGROUND ) )
 		m_iTargetRanderamt = 255;
 	else
 		m_iTargetRanderamt = 20;
@@ -1094,4 +1090,34 @@ Schedule_t *CHAssassin::GetScheduleOfType( int Type )
 	}
 
 	return CFollowingMonster::GetScheduleOfType( Type );
+}
+
+class CDeadHAssassin : public CDeadMonster
+{
+public:
+	void Spawn( void );
+	int	DefaultClassify ( void )
+	{
+		if (g_modFeatures.blackops_classify)
+			return CLASS_HUMAN_BLACKOPS;
+		return CLASS_HUMAN_MILITARY;
+	}
+	const char* getPos(int pos) const;
+	static const char *m_szPoses[3];
+};
+
+const char *CDeadHAssassin::m_szPoses[] = { "death_during_run", "die_backwards", "die_simple" };
+
+const char* CDeadHAssassin::getPos(int pos) const
+{
+	return m_szPoses[pos % ARRAYSIZE(m_szPoses)];
+}
+
+LINK_ENTITY_TO_CLASS( monster_human_assassin_dead, CDeadHAssassin )
+
+void CDeadHAssassin::Spawn()
+{
+	SpawnHelper("models/hassassin.mdl");
+	MonsterInitDead();
+	pev->frame = 255;
 }

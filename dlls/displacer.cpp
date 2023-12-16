@@ -23,6 +23,7 @@
 #include "shake.h"
 
 #ifndef CLIENT_DLL
+#include "game.h"
 #include "displacerball.h"
 #endif
 
@@ -53,7 +54,7 @@ int CDisplacer::GetItemInfo(ItemInfo *p)
 	p->iSlot = 3;
 	p->iPosition = 6;
 #endif
-	p->iId = m_iId = WEAPON_DISPLACER;
+	p->iId = WEAPON_DISPLACER;
 	p->iWeight = DISPLACER_WEIGHT;
 	p->pszAmmoEntity = "ammo_gaussclip";
 	p->iDropAmmo = AMMO_URANIUMBOX_GIVE;
@@ -108,6 +109,15 @@ void CDisplacer::Precache(void)
 	UTIL_PrecacheOther("displacer_ball");
 
 	m_usDisplacer = PRECACHE_EVENT(1, "events/displacer.sc");
+}
+
+bool CDisplacer::IsEnabledInMod()
+{
+#ifndef CLIENT_DLL
+	return g_modFeatures.IsWeaponEnabled(WEAPON_DISPLACER);
+#else
+	return true;
+#endif
 }
 
 BOOL CDisplacer::Deploy()

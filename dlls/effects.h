@@ -27,11 +27,14 @@
 #define SF_BEAM_DECALS			0x0040
 #define SF_BEAM_SHADEIN			0x0080
 #define SF_BEAM_SHADEOUT		0x0100
+#define SF_BEAM_SOLID			0x0200
+#define SF_BEAM_SINE			0x0400
 #define SF_BEAM_TEMPORARY		0x8000
 
 #define SF_SPRITE_STARTON		0x0001
 #define SF_SPRITE_ONCE			0x0002
 #define SF_SPRITE_ONCE_AND_REMOVE	0x0004
+#define SF_SPRITE_DONT_MESS_YAW	0x0008
 #define SF_SPRITE_TEMPORARY		0x8000
 
 class CSprite : public CPointEntity
@@ -118,7 +121,7 @@ public:
 	virtual int Save( CSave &save );
 	virtual int Restore( CRestore &restore );
 	static TYPEDESCRIPTION m_SaveData[];
-	static CSprite *SpriteCreate( const char *pSpriteName, const Vector &origin, BOOL animate );
+	static CSprite *SpriteCreate(const char *pSpriteName, const Vector &origin, BOOL animate, int spawnflags = 0);
 
 private:
 	float m_lastTime;

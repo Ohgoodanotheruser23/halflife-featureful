@@ -26,13 +26,17 @@
 
 #define FOG_LIMIT 30000
 
-#if FEATURE_OPFOR_SPECIFIC
-#define RGB_YELLOWISH 0x0000A000
-#else
 #define RGB_YELLOWISH 0x00FFA000 //255,160,0
-#endif
-#define RGB_REDISH 0x00FF1010 //255,160,0
+#define RGB_REDISH 0x00FF1010 //255,16,16
 #define RGB_GREENISH 0x0000A000 //0,160,0
+
+#if FEATURE_OPFOR_SPECIFIC
+#define RGB_HUD_DEFAULT RGB_GREENISH
+#else
+#define RGB_HUD_DEFAULT RGB_YELLOWISH
+#endif
+
+#define RGB_HUD_NOSUIT 0x00CCCCCC
 
 #include "wrect.h"
 #include "cl_dll.h"
@@ -65,8 +69,7 @@ typedef struct
 
 typedef struct cvar_s cvar_t;
 
-extern cvar_t* cl_weapon_sparks;
-extern cvar_t* cl_weapon_wallpuff;
+extern cvar_t* cl_muzzlelight_monsters;
 
 #define HUD_ACTIVE	1
 #define HUD_INTERMISSION 2
@@ -422,10 +425,14 @@ public:
 private:
 	HSPRITE m_hSprite1;
 	HSPRITE m_hSprite2;
+	HSPRITE m_hSprite3;
+	HSPRITE m_hSprite4;
 	HSPRITE m_hBeam;
 	wrect_t *m_prc1;
 	wrect_t *m_prc2;
 	wrect_t *m_prcBeam;
+	wrect_t *m_prc3;
+	wrect_t *m_prc4;
 	float m_flBat;	
 	int m_iBat;	
 	int m_fOn;
@@ -447,18 +454,13 @@ public:
 	void UpdateDynLight(dlight_t* dynLight, float radius, const Vector &origin);
 	void RemoveCSdlight();
 	void RemoveOFdlight();
-	void SetFilterMode();
-	void ResetFilterMode();
 	void UserCmd_NVGAdjustDown();
 	void UserCmd_NVGAdjustUp();
 #if FEATURE_CS_NIGHTVISION
 	float CSNvgRadius();
 #endif
-#if FEATURE_OPFOR_NIGHTVISION_DLIGHT
+#if FEATURE_OPFOR_NIGHTVISION
 	float OpforNvgRadius();
-#endif
-#if FEATURE_FILTER_NIGHTVISION
-	float FilterBrightness();
 #endif
 	bool IsOn();
 private:
@@ -466,14 +468,13 @@ private:
 #if FEATURE_CS_NIGHTVISION
 	dlight_t* m_pLightCS;
 #endif
-#if FEATURE_OPFOR_NIGHTVISION_DLIGHT
+#if FEATURE_OPFOR_NIGHTVISION
 	dlight_t* m_pLightOF;
 #endif
 #if FEATURE_OPFOR_NIGHTVISION
 	HSPRITE m_hSprite;
 	int m_iFrame, m_nFrameCount;
 #endif
-	bool m_filterModeSet;
 };
 //
 //-----------------------------------------------------
@@ -543,10 +544,9 @@ private:
 
 	int m_HUD_title_life;
 	int m_HUD_title_half;
-#if FEATURE_OPFOR_TITLE
+
 	int m_HUD_title_opposing;
 	int m_HUD_title_force;
-#endif
 };
 
 //
@@ -628,6 +628,95 @@ struct FogProperties
 	float finalEndDist;
 	float fadeDuration;
 	bool affectSkybox;
+
+	float density;
+	short type;
+};
+
+#define CLIENT_FEATURE_VALUE_LENGTH 127
+
+struct ConfigurableBooleanValue
+{
+	ConfigurableBooleanValue();
+	bool enabled_by_default;
+	bool configurable;
+};
+
+struct ConfigurableBoundedValue
+{
+	ConfigurableBoundedValue();
+	ConfigurableBoundedValue(int defValue, int minimumValue, int maximumValue, bool config = true);
+	int defaultValue;
+	int minValue;
+	int maxValue;
+	bool configurable;
+};
+
+struct ConfigurableIntegerValue
+{
+	ConfigurableIntegerValue();
+	int defaultValue;
+	bool configurable;
+};
+
+struct ConfigurableFloatValue
+{
+	ConfigurableFloatValue();
+	float defaultValue;
+	bool configurable;
+};
+
+struct FlashlightFeatures
+{
+	FlashlightFeatures();
+
+	ConfigurableBooleanValue custom;
+	int color;
+	int distance;
+	ConfigurableBoundedValue fade_distance;
+	ConfigurableBoundedValue radius;
+};
+
+struct NVGFeatures
+{
+	ConfigurableBoundedValue radius;
+	int light_color;
+	int layer_color;
+	int layer_alpha;
+};
+
+struct ClientFeatures
+{
+	ClientFeatures();
+
+	int hud_color;
+	ConfigurableBoundedValue hud_min_alpha;
+	int hud_color_critical;
+
+	bool hud_draw_nosuit;
+	int hud_color_nosuit;
+
+	int hud_color_nvg;
+	int hud_min_alpha_nvg;
+	bool opfor_title;
+
+	FlashlightFeatures flashlight;
+
+	ConfigurableBooleanValue view_bob;
+	ConfigurableFloatValue rollangle;
+	ConfigurableBooleanValue weapon_wallpuff;
+	ConfigurableBooleanValue weapon_sparks;
+	ConfigurableBooleanValue muzzlelight;
+
+	ConfigurableBooleanValue movemode;
+
+	ConfigurableIntegerValue nvgstyle;
+
+	NVGFeatures nvg_cs;
+	NVGFeatures nvg_opfor;
+
+	char nvg_empty_sprite[MAX_SPRITE_NAME_LENGTH];
+	char nvg_full_sprite[MAX_SPRITE_NAME_LENGTH];
 };
 
 //
@@ -643,7 +732,10 @@ private:
 	int							m_iSpriteCount;
 	int							m_iSpriteCountAllRes;
 	float						m_flMouseSensitivity;
-	int							m_iConcussionEffect; 
+	int							m_iConcussionEffect;
+
+	int m_cachedMinAlpha; // cache per frame
+	int m_cachedHudColor;
 
 public:
 	HSPRITE						m_hsprCursor;
@@ -659,6 +751,13 @@ public:
 	int		m_iRes;
 	cvar_t  *m_pCvarStealMouse;
 	cvar_t	*m_pCvarDraw;
+	cvar_t	*m_pCvarDrawMoveMode;
+	cvar_t	*m_pCvarCrosshair;
+
+	cvar_t	*m_pCvarMinAlpha;
+	cvar_t	*m_pCvarHudRed;
+	cvar_t	*m_pCvarHudGreen;
+	cvar_t	*m_pCvarHudBlue;
 
 	int m_iFontHeight;
 	int DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, int b );
@@ -666,14 +765,64 @@ public:
 	int DrawHudStringReverse( int xpos, int ypos, int iMinX, const char *szString, int r, int g, int b );
 	int DrawHudNumberString( int xpos, int ypos, int iMinX, int iNumber, int r, int g, int b );
 	int GetNumWidth( int iNumber, int iFlags );
-	int DrawHudStringLen( const char *szIt );
 	void DrawDarkRectangle( int x, int y, int wide, int tall );
 
-	int HUDColor();
-	int m_iHUDColor;
+	struct ConsoleText
+	{
+		static int DrawString( int xpos, int ypos, int iMaxX, const char *szString, int r, int g, int b, int length = -1 );
+		static int DrawNumberString( int xpos, int ypos, int iMinX, int iNumber, int r, int g, int b );
+		static int DrawStringReverse( int xpos, int ypos, int iMinX, const char *szString, int r, int g, int b, int length = -1 );
+		static int LineWidth( const char *szString, int length = -1 );
+		static int WidestCharacterWidth();
+		static int LineHeight();
+	};
 
-	int MinHUDAlpha();
+	struct AdditiveText
+	{
+		static int DrawString( int xpos, int ypos, int iMaxX, const char *szString, int r, int g, int b, int length = -1 );
+		static int DrawNumberString( int xpos, int ypos, int iMinX, int iNumber, int r, int g, int b );
+		static int DrawStringReverse( int xpos, int ypos, int iMinX, const char *szString, int r, int g, int b, int length = -1 );
+		static int LineWidth( const char *szString, int length = -1 );
+		static int WidestCharacterWidth();
+		static int LineHeight();
+	};
+
+	typedef ConsoleText UtfText;
+
+	void HUDColorCmd();
+	int HUDColor();
+	int HUDColorCritical();
+	int MinHUDAlpha() const;
+	ClientFeatures clientFeatures;
+
+	bool HasSuit() const
+	{
+		return (m_iItemBits & PLAYER_ITEM_SUIT) != 0;
+	}
+	bool HasFlashlight() const
+	{
+		return (m_iItemBits & PLAYER_ITEM_FLASHLIGHT) != 0;
+	}
+	bool HasNVG() const
+	{
+		return (m_iItemBits & PLAYER_ITEM_NIGHTVISION) != 0;
+	}
+	bool ViewBobEnabled();
+	int CalcMinHUDAlpha();
+	bool WeaponWallpuffEnabled();
+	bool WeaponSparksEnabled();
+	bool MuzzleLightEnabled();
+	bool CustomFlashlightEnabled();
+	float FlashlightRadius();
+	float FlashlightDistance();
+	float FlashlightFadeDistance();
+	color24 FlashlightColor();
+	int NVGStyle();
+	bool MoveModeEnabled();
 private:
+	void ParseClientFeatures();
+	static bool ClientFeatureEnabled(cvar_t *cVariable, bool defaultValue);
+
 	// the memory for these arrays are allocated in the first call to CHud::VidInit(), when the hud.txt and associated sprites are loaded.
 	// freed in ~CHud()
 	HSPRITE *m_rghSprites;	/*[HUD_SPRITE_COUNT]*/			// the sprites loaded from hud.txt
@@ -690,6 +839,13 @@ public:
 	wrect_t& GetSpriteRect( int index )
 	{
 		return m_rgrcRects[index];
+	}
+
+	wrect_t* GetSpriteRectPointer( int index )
+	{
+		if (index < 0 || index >= m_iSpriteCount)
+			return NULL;
+		return &m_rgrcRects[index];
 	}
 	
 	int GetSpriteIndex( const char *SpriteName );	// gets a sprite index, for use in the m_rghSprites[] array
@@ -739,13 +895,16 @@ public:
 	int _cdecl MsgFunc_SetFOV( const char *pszName,  int iSize, void *pbuf );
 	int  _cdecl MsgFunc_Concuss( const char *pszName, int iSize, void *pbuf );
 
-	int _cdecl MsgFunc_HUDColor( const char *pszName, int iSize, void *pbuf );
+	int _cdecl MsgFunc_Items(const char* pszName, int iSize, void* pbuf);
 	int _cdecl MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf );
+	int _cdecl MsgFunc_KeyedDLight( const char *pszName, int iSize, void *pbuf );
+	int _cdecl MsgFunc_WallPuffs( const char *pszName, int iSize, void *pbuf );
 
 	// Screen information
 	SCREENINFO	m_scrinfo;
 
 	int	m_iWeaponBits;
+	int m_iItemBits;
 	int	m_fPlayerDead;
 	int m_iIntermission;
 
@@ -762,6 +921,11 @@ public:
 
 	bool m_iHardwareMode;
 	FogProperties fog;
+
+	int wallPuffs[4];
+	int wallPuffCount;
+
+	bool m_bFlashlight;
 };
 
 extern CHud gHUD;

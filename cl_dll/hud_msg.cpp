@@ -46,6 +46,8 @@ int CHud::MsgFunc_ResetHUD( const char *pszName, int iSize, void *pbuf )
 	}
 	m_Nightvision.Reset();
 
+	m_iItemBits = 0;
+
 	// reset sensitivity
 	m_flMouseSensitivity = 0;
 
@@ -109,7 +111,61 @@ int CHud::MsgFunc_SetFog( const char *pszName, int iSize, void *pbuf )
 	{
 		fog.endDist = READ_SHORT();
 	}
-	fog.affectSkybox = true;
+
+	fog.density = READ_LONG() / 10000.0f;
+	fog.type = READ_BYTE();
+	fog.affectSkybox = READ_BYTE();
+
+	return 1;
+}
+
+//LRC
+int CHud::MsgFunc_KeyedDLight( const char *pszName, int iSize, void *pbuf )
+{
+	BEGIN_READ( pbuf, iSize );
+
+	int iKey = READ_BYTE();
+	dlight_t *dl = gEngfuncs.pEfxAPI->CL_AllocDlight( iKey );
+
+	int bActive = READ_BYTE();
+	if (!bActive)
+	{
+		// die instantly
+		dl->die = gEngfuncs.GetClientTime();
+	}
+	else
+	{
+		// never die
+		dl->die = gEngfuncs.GetClientTime() + (float)1E6;
+
+		dl->origin[0] = READ_COORD();
+		dl->origin[1] = READ_COORD();
+		dl->origin[2] = READ_COORD();
+		dl->radius = READ_SHORT();
+		dl->color.r = READ_BYTE();
+		dl->color.g = READ_BYTE();
+		dl->color.b = READ_BYTE();
+	}
+	return 1;
+}
+
+int CHud::MsgFunc_WallPuffs(const char *pszName, int iSize, void *pbuf)
+{
+	BEGIN_READ( pbuf, iSize );
+
+	wallPuffs[0] = READ_SHORT();
+	wallPuffs[1] = READ_SHORT();
+	wallPuffs[2] = READ_SHORT();
+	wallPuffs[3] = READ_SHORT();
+
+	wallPuffCount = 0;
+	for (int i=0; i<sizeof(wallPuffs)/sizeof(wallPuffs[0]); ++i)
+	{
+		if (wallPuffs[i])
+			wallPuffCount++;
+		else
+			break;
+	}
 	return 1;
 }
 

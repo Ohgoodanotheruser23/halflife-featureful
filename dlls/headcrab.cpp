@@ -25,7 +25,7 @@
 #include	"mod_features.h"
 #if FEATURE_SHOCKRIFLE
 #include "player.h"
-#include "weapons.h"
+#include "weapon_ids.h"
 #endif
 
 //=========================================================
@@ -408,8 +408,6 @@ void CHeadCrab::PrescheduleThink( void )
 
 void CHeadCrab::StartTask( Task_t *pTask )
 {
-	m_iTaskStatus = TASKSTATUS_RUNNING;
-
 	switch( pTask->iTask )
 	{
 	case TASK_RANGE_ATTACK1:
@@ -444,14 +442,6 @@ BOOL CHeadCrab::CheckRangeAttack1( float flDot, float flDist )
 BOOL CHeadCrab::CheckRangeAttack2( float flDot, float flDist )
 {
 	return FALSE;
-	// BUGBUG: Why is this code here?  There is no ACT_RANGE_ATTACK2 animation.  I've disabled it for now.
-#if 0
-	if( FBitSet( pev->flags, FL_ONGROUND ) && flDist > 64 && flDist <= 256 && flDot >= 0.5f )
-	{
-		return TRUE;
-	}
-	return FALSE;
-#endif
 }
 
 int CHeadCrab::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
@@ -617,6 +607,13 @@ class CShockRoach : public CHeadCrab
 public:
 	void Spawn(void);
 	void Precache(void);
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("shockroach"); }
+	int DefaultClassify() {
+		if (g_modFeatures.shockroach_racex_classify)
+			return CLASS_RACEX_SHOCK;
+		else
+			return CHeadCrab::DefaultClassify();
+	}
 	const char* DefaultDisplayName() { return "Shock Roach"; }
 	virtual float GetDamageAmount( void ) { return gSkillData.sroachDmgBite; }
 	void EXPORT LeapTouch(CBaseEntity *pOther);
@@ -784,7 +781,7 @@ bool CShockRoach::TryGiveAsWeapon(CBaseEntity *pOther)
 {
 #if FEATURE_SHOCKRIFLE
 	// Give the shockrifle weapon to the player, if not already in possession.
-	if (pOther->IsPlayer() && pOther->IsAlive() && !(pOther->pev->weapons & (1 << WEAPON_SHOCKRIFLE))) {
+	if (g_modFeatures.IsWeaponEnabled(WEAPON_SHOCKRIFLE) && pOther->IsPlayer() && pOther->IsAlive() && !(pOther->pev->weapons & (1 << WEAPON_SHOCKRIFLE))) {
 		CBasePlayer* pPlayer = (CBasePlayer*)(pOther);
 		pPlayer->GiveNamedItem("weapon_shockrifle");
 		UTIL_Remove(this);
@@ -859,8 +856,6 @@ void CShockRoach::DeathSound(void)
 
 void CShockRoach::StartTask(Task_t *pTask)
 {
-	m_iTaskStatus = TASKSTATUS_RUNNING;
-
 	switch (pTask->iTask)
 	{
 	case TASK_RANGE_ATTACK1:

@@ -75,7 +75,7 @@ IMPLEMENT_SAVERESTORE( CGenericMonster, CBaseMonster )
 //=========================================================
 int CGenericMonster::DefaultClassify( void )
 {
-	return (pev->spawnflags & SF_GENERICMONSTER_NOTSOLID) ? CLASS_NONE : CLASS_PLAYER_ALLY;
+	return CLASS_PLAYER_ALLY;
 }
 
 //=========================================================
@@ -274,7 +274,7 @@ void CDeadGenericMonster::Spawn()
 		SET_MODEL( ENT( pev ), STRING( pev->model ) );
 	}
 
-	pev->effects		= 0;
+	pev->effects &= EF_INVLIGHT;
 	pev->yaw_speed		= 8;
 	pev->sequence		= 0;
 	SetMyBloodColor( BLOOD_COLOR_RED );
@@ -340,7 +340,7 @@ public:
 	void Spawn( void );
 	void Precache( void );
 	int DefaultClassify() {return CLASS_NONE;}
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType );
 };
 
 LINK_ENTITY_TO_CLASS(monster_op4loader, CLoader)
@@ -375,7 +375,7 @@ void CLoader::Precache()
 	PrecacheMyModel("models/loader.mdl");
 }
 
-void CLoader::TraceAttack(entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
+void CLoader::TraceAttack(entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType)
 {
 	UTIL_Ricochet( ptr->vecEndPos, RANDOM_FLOAT(1.0,2.0) );
 }

@@ -48,6 +48,7 @@ typedef enum
 	HGRUNT_SENT_IDLE,
 	HGRUNT_SENT_CLEAR,
 	HGRUNT_SENT_ANSWER,
+	HGRUNT_SENT_HOSTILE,
 	HGRUNT_SENT_COUNT,
 } HGRUNT_SENTENCE_TYPES;
 
@@ -79,6 +80,9 @@ public:
 	void PrescheduleThink( void );
 	void GibMonster( void );
 	virtual void SpeakSentence( void );
+	bool PlayGruntSentence(int sentence, int flags = 0);
+	bool PlaySentenceGroup(const char* group, int flags = 0);
+	void PlaySentenceSound(const char* sound);
 	void PlayUseSentence();
 	void PlayUnUseSentence();
 
@@ -89,7 +93,7 @@ public:
 	void PerformKick(float damage, float zpunch = 0);
 	Schedule_t *GetSchedule( void );
 	Schedule_t *GetScheduleOfType( int Type );
-	void TraceAttack( entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
+	void TraceAttack( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, Vector vecDir, TraceResult *ptr, int bitsDamageType);
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 
 	int IRelationship( CBaseEntity *pTarget );
@@ -138,7 +142,7 @@ protected:
 	void SpawnHelper(const char* modelName, int health, int bloodColor = BLOOD_COLOR_RED);
 	void PrecacheHelper(const char* modelName);
 	void PlayFirstBurstSounds();
-	BOOL CheckRangeAttack2Impl( float grenadeSpeed, float flDot, float flDist );
+	BOOL CheckRangeAttack2Impl(float grenadeSpeed, float flDot, float flDist, bool contact);
 	virtual int GetRangeAttack1Sequence();
 	virtual int GetRangeAttack2Sequence();
 	virtual Schedule_t* ScheduleOnRangeAttack1();
@@ -148,9 +152,12 @@ protected:
 	virtual float SentenceAttn();
 	virtual const char* SentenceByNumber(int sentence);
 	virtual int* GruntQuestionVar();
+
+	virtual void SpeakCaughtEnemy();
+	virtual bool AlertSentenceIsForPlayerOnly();
 };
 
-class CHGruntRepel : public CBaseMonster
+class CHGruntRepel : public CFollowingMonster
 {
 public:
 	void Spawn( void );

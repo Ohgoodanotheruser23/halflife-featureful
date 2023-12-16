@@ -94,7 +94,7 @@ void ApplyMultiDamage( entvars_t *pevInflictor, entvars_t *pevAttacker )
 
 // GLOBALS USED:
 //		gMultiDamage
-void AddMultiDamage( entvars_t *pevInflictor, CBaseEntity *pEntity, float flDamage, int bitsDamageType )
+void AddMultiDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, CBaseEntity *pEntity, float flDamage, int bitsDamageType )
 {
 	if( !pEntity )
 		return;
@@ -103,7 +103,7 @@ void AddMultiDamage( entvars_t *pevInflictor, CBaseEntity *pEntity, float flDama
 
 	if( pEntity != gMultiDamage.pEntity )
 	{
-		ApplyMultiDamage( pevInflictor,pevInflictor ); // UNDONE: wrong attacker!
+		ApplyMultiDamage( pevInflictor, pevAttacker );
 		gMultiDamage.pEntity = pEntity;
 		gMultiDamage.amount = 0;
 	}
@@ -238,7 +238,7 @@ void AddAmmoNameToAmmoRegistry( const char *szAmmoname, int maxAmmo, bool isExha
 }
 
 // Precaches the weapon and queues the weapon info for sending to clients
-void UTIL_PrecacheOtherWeapon( const char *szClassname )
+bool UTIL_PrecacheOtherWeapon( const char *szClassname )
 {
 	edict_t	*pent;
 
@@ -246,40 +246,49 @@ void UTIL_PrecacheOtherWeapon( const char *szClassname )
 	if( FNullEnt( pent ) )
 	{
 		ALERT( at_console, "NULL Ent in UTIL_PrecacheOtherWeapon\n" );
-		return;
+		return false;
 	}
 	
 	CBaseEntity *pEntity = CBaseEntity::Instance( VARS( pent ) );
 
+	bool result = true;
 	if( pEntity )
 	{
 		ItemInfo II = {0};
-		pEntity->Precache();
 		CBasePlayerWeapon* pWeapon = pEntity->MyWeaponPointer();
-		if( pWeapon != NULL )
+		if( pWeapon != 0 )
 		{
-			if (pWeapon->GetItemInfo( &II ))
+			if (pWeapon->IsEnabledInMod())
 			{
-				CBasePlayerWeapon::ItemInfoArray[II.iId] = II;
+				pEntity->Precache();
 
-				if( II.pszAmmo1 && *II.pszAmmo1 )
+				if (pWeapon->GetItemInfo( &II ))
 				{
-					AddAmmoNameToAmmoRegistry( II.pszAmmo1, II.iMaxAmmo1, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
-				}
+					CBasePlayerWeapon::ItemInfoArray[II.iId] = II;
 
-				if( II.pszAmmo2 && *II.pszAmmo2 )
-				{
-					AddAmmoNameToAmmoRegistry( II.pszAmmo2, II.iMaxAmmo2, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+					if( II.pszAmmo1 && *II.pszAmmo1 )
+					{
+						AddAmmoNameToAmmoRegistry( II.pszAmmo1, II.iMaxAmmo1, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+					}
+
+					if( II.pszAmmo2 && *II.pszAmmo2 )
+					{
+						AddAmmoNameToAmmoRegistry( II.pszAmmo2, II.iMaxAmmo2, (II.iFlags & ITEM_FLAG_EXHAUSTIBLE) );
+					}
 				}
 			}
 			else
-			{
-				ALERT(at_console, "UTIL_PrecacheOtherWeapon: %s is not a weapon\n", szClassname);
-			}
+				result = false;
+		}
+		else
+		{
+			ALERT(at_console, "UTIL_PrecacheOtherWeapon: %s is not a weapon\n", szClassname);
+			result = false;
 		}
 	}
 
 	REMOVE_ENTITY( pent );
+	return result;
 }
 
 // called by worldspawn
@@ -303,9 +312,9 @@ void W_Precache( void )
 	UTIL_PrecacheOther( "item_antidote" );
 	UTIL_PrecacheOther( "item_security" );
 	UTIL_PrecacheOther( "item_longjump" );
-#if FEATURE_FLASHLIGHT_ITEM && !FEATURE_SUIT_FLASHLIGHT
+
 	UTIL_PrecacheOther( "item_flashlight" );
-#endif
+	UTIL_PrecacheOther( "item_nvgs" );
 
 	// shotgun
 	UTIL_PrecacheOtherWeapon( "weapon_shotgun" );
@@ -376,19 +385,19 @@ void W_Precache( void )
 	UTIL_PrecacheOtherWeapon( "weapon_knife" );
 #endif
 #if FEATURE_GRAPPLE
-	UTIL_PrecacheOtherWeapon( "weapon_grapple" );
-	UTIL_PrecacheOther( "grapple_tip" );
+	if (UTIL_PrecacheOtherWeapon( "weapon_grapple" ))
+		UTIL_PrecacheOther( "grapple_tip" );
 #endif
 #if FEATURE_PENGUIN
 	UTIL_PrecacheOtherWeapon( "weapon_penguin" );
 #endif
 #if FEATURE_M249
-	UTIL_PrecacheOtherWeapon( "weapon_m249" );
-	UTIL_PrecacheOther( "ammo_556" );
+	if (UTIL_PrecacheOtherWeapon( "weapon_m249" ))
+		UTIL_PrecacheOther( "ammo_556" );
 #endif
 #if FEATURE_SNIPERRIFLE
-	UTIL_PrecacheOtherWeapon( "weapon_sniperrifle" );
-	UTIL_PrecacheOther( "ammo_762" );
+	if (UTIL_PrecacheOtherWeapon( "weapon_sniperrifle" ))
+		UTIL_PrecacheOther( "ammo_762" );
 #endif
 #if FEATURE_DISPLACER
 	UTIL_PrecacheOtherWeapon( "weapon_displacer" );
@@ -467,7 +476,10 @@ void CBasePlayerWeapon::SetObjectCollisionBox( void )
 //=========================================================
 void CBasePlayerWeapon::FallInit( void )
 {
-	pev->movetype = MOVETYPE_TOSS;
+	if (pev->movetype < 0)
+		pev->movetype = MOVETYPE_NONE;
+	else if (pev->movetype == 0)
+		pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_BBOX;
 
 	UTIL_SetOrigin( pev, pev->origin );
@@ -490,7 +502,7 @@ void CBasePlayerWeapon::FallThink( void )
 {
 	pev->nextthink = gpGlobals->time + 0.1f;
 
-	if( pev->flags & FL_ONGROUND )
+	if( (pev->flags & FL_ONGROUND) || pev->movetype != MOVETYPE_TOSS )
 	{
 		// clatter if we have an owner (i.e., dropped by someone)
 		// don't clatter if the gun is waiting to respawn (if it's waiting, it is invisible!)
@@ -595,16 +607,28 @@ CBaseEntity* CBasePlayerWeapon::Respawn( void )
 	return pNewWeapon;
 }
 
+static bool IsPickableByTouch(CBaseEntity* pEntity)
+{
+	return !FBitSet(pEntity->pev->spawnflags, SF_ITEM_USE_ONLY) &&
+			(FBitSet(pEntity->pev->spawnflags, SF_ITEM_TOUCH_ONLY) || ItemsPickableByTouch());
+}
+
+static bool IsPickableByUse(CBaseEntity* pEntity)
+{
+	return !FBitSet(pEntity->pev->spawnflags, SF_ITEM_TOUCH_ONLY) &&
+			(FBitSet(pEntity->pev->spawnflags, SF_ITEM_USE_ONLY) || ItemsPickableByUse());
+}
+
 void CBasePlayerWeapon::DefaultTouch( CBaseEntity *pOther )
 {
-	if (!NeedUseToTake()) {
+	if (IsPickableByTouch(this)) {
 		TouchOrUse(pOther);
 	}
 }
 
 int CBasePlayerWeapon::ObjectCaps()
 {
-	if (NeedUseToTake() && !(pev->effects & EF_NODRAW)) {
+	if (IsPickableByUse(this) && !(pev->effects & EF_NODRAW)) {
 		return CBaseAnimating::ObjectCaps() | FCAP_IMPULSE_USE;
 	} else {
 		return CBaseAnimating::ObjectCaps();
@@ -613,8 +637,8 @@ int CBasePlayerWeapon::ObjectCaps()
 
 void CBasePlayerWeapon::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	if (NeedUseToTake() && !(pev->effects & EF_NODRAW) ) {
-		TouchOrUse(pActivator);
+	if (IsPickableByUse(this) && !(pev->effects & EF_NODRAW) ) {
+		TouchOrUse(pCaller);
 	}
 }
 
@@ -641,101 +665,7 @@ void CBasePlayerWeapon::TouchOrUse(CBaseEntity *pOther )
 		EMIT_SOUND( ENT( pPlayer->pev ), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 	}
 
-	SUB_UseTargets( pOther, USE_TOGGLE, 0 ); // UNDONE: when should this happen?
-}
-
-BOOL CanAttack( float attack_time, float curtime, BOOL isPredicted )
-{
-#if CLIENT_WEAPONS
-	if( !isPredicted )
-#else
-	if( 1 )
-#endif
-	{
-		return ( attack_time <= curtime ) ? TRUE : FALSE;
-	}
-	else
-	{
-		return ( (static_cast<int>(::floor(attack_time * 1000.0f)) * 1000.0f) <= 0.0f) ? TRUE : FALSE;
-	}
-}
-
-void CBasePlayerWeapon::ItemPostFrame( void )
-{
-	if( ( m_fInReload ) && ( m_pPlayer->m_flNextAttack <= UTIL_WeaponTimeBase() ) )
-	{
-		// complete the reload. 
-		int j = Q_min( iMaxClip() - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);	
-
-		// Add them to the clip
-		m_iClip += j;
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= j;
-
-		m_fInReload = FALSE;
-	}
-
-	if( !(m_pPlayer->pev->button & IN_ATTACK ) )
-	{
-		m_flLastFireTime = 0.0f;
-	}
-
-	if( ( m_pPlayer->pev->button & IN_ATTACK2 ) && CanAttack( m_flNextSecondaryAttack, gpGlobals->time, UseDecrement() ) )
-	{
-		if( pszAmmo2() && !m_pPlayer->m_rgAmmo[SecondaryAmmoIndex()] )
-		{
-			m_fFireOnEmpty = TRUE;
-		}
-
-		SecondaryAttack();
-		m_pPlayer->pev->button &= ~IN_ATTACK2;
-	}
-	else if( ( m_pPlayer->pev->button & IN_ATTACK ) && CanAttack( m_flNextPrimaryAttack, gpGlobals->time, UseDecrement() ) )
-	{
-		if( ( m_iClip == 0 && pszAmmo1() ) || ( iMaxClip() == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
-		{
-			m_fFireOnEmpty = TRUE;
-		}
-
-		PrimaryAttack();
-	}
-	else if( m_pPlayer->pev->button & IN_RELOAD && iMaxClip() != WEAPON_NOCLIP && !m_fInReload ) 
-	{
-		// reload when reload is pressed, or if no buttons are down and weapon is empty.
-		Reload();
-	}
-	else if( !( m_pPlayer->pev->button & ( IN_ATTACK | IN_ATTACK2 ) ) )
-	{
-		// no fire buttons down
-		m_fFireOnEmpty = FALSE;
-
-		if( !IsUseable() && m_flNextPrimaryAttack < ( UseDecrement() ? 0.0f : gpGlobals->time ) ) 
-		{
-			// weapon isn't useable, switch.
-			if( !( iFlags() & ITEM_FLAG_NOAUTOSWITCHEMPTY ) && g_pGameRules->GetNextBestWeapon( m_pPlayer, this ) )
-			{
-				m_flNextPrimaryAttack = ( UseDecrement() ? 0.0f : gpGlobals->time ) + 0.3f;
-				return;
-			}
-		}
-		else
-		{
-			// weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
-			if( m_iClip == 0 && !(iFlags() & ITEM_FLAG_NOAUTORELOAD ) && m_flNextPrimaryAttack < ( UseDecrement() ? 0.0f : gpGlobals->time ) )
-			{
-				Reload();
-				return;
-			}
-		}
-
-		WeaponIdle();
-		return;
-	}
-
-	// catch all
-	if( ShouldWeaponIdle() )
-	{
-		WeaponIdle();
-	}
+	SUB_UseTargets( pOther );
 }
 
 void CBasePlayerWeapon::DestroyItem( void )
@@ -822,6 +752,8 @@ int CBasePlayerWeapon::AddToPlayer( CBasePlayer *pPlayer )
 		m_iPrimaryAmmoType = pPlayer->GetAmmoIndex( pszAmmo1() );
 		m_iSecondaryAmmoType = pPlayer->GetAmmoIndex( pszAmmo2() );
 	}
+	// Remove weapon's global name to avoid problems with carrying the weapon to other maps
+	pev->globalname = iStringNull;
 
 	return AddWeapon();
 }
@@ -998,38 +930,6 @@ BOOL CBasePlayerWeapon::IsUseable( void )
 	return FALSE;
 }
 
-BOOL CBasePlayerWeapon::CanDeploy( void )
-{
-	if (g_pGameRules->IsCoOp() && barnacle_paralyze.value && (m_pPlayer->m_afPhysicsFlags & PFLAG_ONBARNACLE))
-		return FALSE;
-	BOOL bHasAmmo = 0;
-
-	if( !pszAmmo1() )
-	{
-		// this weapon doesn't use ammo, can always deploy.
-		return TRUE;
-	}
-
-	if( pszAmmo1() )
-	{
-		bHasAmmo |= ( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] != 0 );
-	}
-	if( pszAmmo2() )
-	{
-		bHasAmmo |= ( m_pPlayer->m_rgAmmo[m_iSecondaryAmmoType] != 0 );
-	}
-	if( m_iClip > 0 )
-	{
-		bHasAmmo |= 1;
-	}
-	if( !bHasAmmo )
-	{
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
 BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWeaponModel, int iAnim, const char *szAnimExt, int body )
 {
 	if( !CanDeploy() )
@@ -1047,27 +947,6 @@ BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWe
 	return TRUE;
 }
 
-BOOL CBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay, int body )
-{
-	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 )
-		return FALSE;
-
-	int j = Q_min( iClipSize - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
-
-	if( j == 0 )
-		return FALSE;
-
-	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + fDelay;
-
-	//!!UNDONE -- reload sound goes here !!!
-	SendWeaponAnim( iAnim );
-
-	m_fInReload = TRUE;
-
-	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.0f;
-	return TRUE;
-}
-
 BOOL CBasePlayerWeapon::PlayEmptySound( void )
 {
 	if( m_iPlayEmptySound )
@@ -1077,11 +956,6 @@ BOOL CBasePlayerWeapon::PlayEmptySound( void )
 		return 0;
 	}
 	return 0;
-}
-
-void CBasePlayerWeapon::ResetEmptySound( void )
-{
-	m_iPlayEmptySound = 1;
 }
 
 //=========================================================
@@ -1205,6 +1079,7 @@ float CBasePlayerWeapon::GetNextAttackDelay( float delay )
 	//OutputDebugString( szMsg );
 	return flNextAttack;
 }
+
 //*********************************************************
 // weaponbox code:
 //*********************************************************
@@ -1219,7 +1094,7 @@ TYPEDESCRIPTION	CWeaponBox::m_SaveData[] =
 	DEFINE_FIELD( CWeaponBox, m_cAmmoTypes, FIELD_INTEGER ),
 };
 
-IMPLEMENT_SAVERESTORE( CWeaponBox, CBaseEntity )
+IMPLEMENT_SAVERESTORE( CWeaponBox, CBaseDelay )
 
 //=========================================================
 //
@@ -1233,16 +1108,20 @@ void CWeaponBox::Precache( void )
 //=========================================================
 void CWeaponBox::KeyValue( KeyValueData *pkvd )
 {
-	if( m_cAmmoTypes < MAX_AMMO_SLOTS )
+	CBaseDelay::KeyValue(pkvd);
+	if (!pkvd->fHandled)
 	{
-		PackAmmo( ALLOC_STRING( pkvd->szKeyName ), atoi( pkvd->szValue ) );
-		m_cAmmoTypes++;// count this new ammo type.
+		if( m_cAmmoTypes < MAX_AMMO_SLOTS )
+		{
+			PackAmmo( ALLOC_STRING( pkvd->szKeyName ), atoi( pkvd->szValue ) );
+			m_cAmmoTypes++;// count this new ammo type.
 
-		pkvd->fHandled = TRUE;
-	}
-	else
-	{
-		ALERT( at_console, "WeaponBox too full! only %d ammotypes allowed\n", MAX_AMMO_SLOTS );
+			pkvd->fHandled = TRUE;
+		}
+		else
+		{
+			ALERT( at_console, "WeaponBox too full! only %d ammotypes allowed\n", MAX_AMMO_SLOTS );
+		}
 	}
 }
 
@@ -1253,7 +1132,10 @@ void CWeaponBox::Spawn( void )
 {
 	Precache();
 
-	pev->movetype = MOVETYPE_TOSS;
+	if (pev->movetype < 0)
+		pev->movetype = MOVETYPE_NONE;
+	else if (pev->movetype == 0)
+		pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 
 	//UTIL_SetSize( pev, g_vecZero, g_vecZero );
@@ -1296,14 +1178,14 @@ void CWeaponBox::Kill( void )
 
 void CWeaponBox::Touch( CBaseEntity *pOther )
 {
-	if (!NeedUseToTake()) {
+	if (IsPickableByTouch(this)) {
 		TouchOrUse(pOther);
 	}
 }
 
 int CWeaponBox::ObjectCaps()
 {
-	if (NeedUseToTake() && !(pev->effects & EF_NODRAW)) {
+	if (IsPickableByUse(this) && !(pev->effects & EF_NODRAW)) {
 		return CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE;
 	} else {
 		return CBaseEntity::ObjectCaps();
@@ -1312,14 +1194,14 @@ int CWeaponBox::ObjectCaps()
 
 void CWeaponBox::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	if (NeedUseToTake() && !(pev->effects & EF_NODRAW) ) {
-		TouchOrUse(pActivator);
+	if (IsPickableByUse(this) && !(pev->effects & EF_NODRAW) ) {
+		TouchOrUse(pCaller);
 	}
 }
 
 void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 {
-	if( !( pev->flags & FL_ONGROUND ) )
+	if( pev->movetype == MOVETYPE_TOSS && !( pev->flags & FL_ONGROUND ) )
 	{
 		return;
 	}
@@ -1382,10 +1264,7 @@ void CWeaponBox::TouchOrUse( CBaseEntity *pOther )
 	if (shouldRemove) {
 		EMIT_SOUND( pOther->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM );
 		SetTouch( NULL );
-		if (!FStringNull(pev->target))
-		{
-			FireTargets(STRING(pev->target), pOther, this, USE_TOGGLE, 0.0f);
-		}
+		SUB_UseTargets( pOther );
 		UTIL_Remove(this);
 	}
 }

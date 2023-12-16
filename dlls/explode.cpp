@@ -85,6 +85,7 @@ void CShower::Touch( CBaseEntity *pOther )
 class CEnvExplosion : public CBaseEntity
 {
 public:
+	void Precache();
 	void Spawn();
 	void EXPORT Smoke( void );
 	void KeyValue( KeyValueData *pkvd );
@@ -97,6 +98,10 @@ public:
 	int m_iMagnitude;// how large is the fireball? how much damage?
 	int m_spriteScale; // what's the exact fireball sprite scale? 
 	int m_iRadius;
+	string_t m_smokeSprite;
+
+	int m_iFireball;
+	int m_iSmoke;
 };
 
 TYPEDESCRIPTION	CEnvExplosion::m_SaveData[] =
@@ -121,12 +126,27 @@ void CEnvExplosion::KeyValue( KeyValueData *pkvd )
 		m_iRadius = atoi( pkvd->szValue );
 		pkvd->fHandled = TRUE;
 	}
+	else if( FStrEq(pkvd->szKeyName, "smokesprite") )
+	{
+		m_smokeSprite = ALLOC_STRING( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
 	else
 		CBaseEntity::KeyValue( pkvd );
 }
 
+void CEnvExplosion::Precache()
+{
+	if (!FStringNull(pev->model))
+		m_iFireball = PRECACHE_MODEL(STRING(pev->model));
+	if (!FStringNull(m_smokeSprite))
+		m_iSmoke = PRECACHE_MODEL(STRING(m_smokeSprite));
+}
+
 void CEnvExplosion::Spawn( void )
-{ 
+{
+	Precache();
+
 	pev->solid = SOLID_NOT;
 	pev->effects = EF_NODRAW;
 
@@ -138,21 +158,30 @@ void CEnvExplosion::Spawn( void )
 	}
 	*/
 
-	float flSpriteScale;
-	flSpriteScale = ( m_iMagnitude - 50 ) * 0.6f;
-
-	/*
-	if( flSpriteScale > 50.0f )
+	if (pev->scale == 0.0f)
 	{
-		flSpriteScale = 50.0f;
-	}
-	*/
-	if( flSpriteScale < 10.0f )
-	{
-		flSpriteScale = 10.0f;
-	}
+		float flSpriteScale;
+		flSpriteScale = ( m_iMagnitude - 50 ) * 0.6f;
 
-	m_spriteScale = (int)flSpriteScale;
+		/*
+		if( flSpriteScale > 50.0f )
+		{
+			flSpriteScale = 50.0f;
+		}
+		*/
+		if( flSpriteScale < 10.0f )
+		{
+			flSpriteScale = 10.0f;
+		}
+
+		m_spriteScale = (int)flSpriteScale;
+	}
+	else
+	{
+		m_spriteScale = (int)(pev->scale * 10.0f);
+		if (m_spriteScale > 255)
+			m_spriteScale = 255;
+	}
 }
 
 void CEnvExplosion::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -205,15 +234,17 @@ void CEnvExplosion::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 		explosionFlags |= TE_EXPLFLAG_NOSOUND;
 	}
 
+	const int fireballIndex = m_iFireball ? m_iFireball : g_sModelIndexFireball;
+
 	// draw fireball
 	if( !( pev->spawnflags & SF_ENVEXPLOSION_NOFIREBALL ) )
 	{
 		MESSAGE_BEGIN( MSG_PAS, SVC_TEMPENTITY, pev->origin );
-			WRITE_BYTE( TE_EXPLOSION);
+			WRITE_BYTE( TE_EXPLOSION );
 			WRITE_COORD( pev->origin.x );
 			WRITE_COORD( pev->origin.y );
 			WRITE_COORD( pev->origin.z );
-			WRITE_SHORT( g_sModelIndexFireball );
+			WRITE_SHORT( fireballIndex );
 			WRITE_BYTE( (BYTE)m_spriteScale ); // scale * 10
 			WRITE_BYTE( 15 ); // framerate
 			WRITE_BYTE( explosionFlags );
@@ -226,7 +257,7 @@ void CEnvExplosion::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE
 			WRITE_COORD( pev->origin.x );
 			WRITE_COORD( pev->origin.y );
 			WRITE_COORD( pev->origin.z );
-			WRITE_SHORT( g_sModelIndexFireball );
+			WRITE_SHORT( fireballIndex );
 			WRITE_BYTE( 0 ); // no sprite
 			WRITE_BYTE( 15 ); // framerate
 			WRITE_BYTE( explosionFlags );
@@ -268,7 +299,7 @@ void CEnvExplosion::Smoke( void )
 			WRITE_COORD( pev->origin.x );
 			WRITE_COORD( pev->origin.y );
 			WRITE_COORD( pev->origin.z );
-			WRITE_SHORT( g_sModelIndexSmoke );
+			WRITE_SHORT( m_iSmoke ? m_iSmoke : g_sModelIndexSmoke );
 			WRITE_BYTE( (BYTE)m_spriteScale ); // scale * 10
 			WRITE_BYTE( 12 ); // framerate
 		MESSAGE_END();

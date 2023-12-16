@@ -99,7 +99,7 @@ int CEgon::GetItemInfo( ItemInfo *p )
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 3;
 	p->iPosition = 2;
-	p->iId = m_iId = WEAPON_EGON;
+	p->iId = WEAPON_EGON;
 	p->iFlags = 0;
 	p->iWeight = EGON_WEIGHT;
 	p->pszAmmoEntity = "ammo_gaussclip";
@@ -262,7 +262,7 @@ void CEgon::Fire( const Vector &vecOrigSrc, const Vector &vecDir )
 			ClearMultiDamage();
 			if( pEntity->pev->takedamage )
 			{
-				pEntity->TraceAttack( m_pPlayer->pev, gSkillData.plrDmgEgonNarrow, vecDir, &tr, DMG_ENERGYBEAM );
+				pEntity->TraceAttack( m_pPlayer->pev, m_pPlayer->pev, gSkillData.plrDmgEgonNarrow, vecDir, &tr, DMG_ENERGYBEAM );
 			}
 			ApplyMultiDamage( m_pPlayer->pev, m_pPlayer->pev );
 
@@ -298,7 +298,7 @@ void CEgon::Fire( const Vector &vecOrigSrc, const Vector &vecDir )
 			ClearMultiDamage();
 			if( pEntity->pev->takedamage )
 			{
-				pEntity->TraceAttack( m_pPlayer->pev, gSkillData.plrDmgEgonWide, vecDir, &tr, DMG_ENERGYBEAM | DMG_ALWAYSGIB );
+				pEntity->TraceAttack( m_pPlayer->pev, m_pPlayer->pev, gSkillData.plrDmgEgonWide, vecDir, &tr, DMG_ENERGYBEAM | DMG_ALWAYSGIB );
 			}
 			ApplyMultiDamage( m_pPlayer->pev, m_pPlayer->pev );
 

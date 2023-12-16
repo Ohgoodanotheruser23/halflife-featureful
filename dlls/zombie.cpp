@@ -24,6 +24,7 @@
 #include	"monsters.h"
 #include	"schedule.h"
 #include	"mod_features.h"
+#include	"game.h"
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -133,27 +134,21 @@ int CZombie::DefaultClassify( void )
 //=========================================================
 void CZombie::SetYawSpeed( void )
 {
-	int ys;
-
-	ys = 120;
-#if 0
-	switch ( m_Activity )
-	{
-	}
-#endif
-	pev->yaw_speed = ys;
+	pev->yaw_speed = 120;
 }
 
 int CZombie::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
 {
-	// Take 30% damage from bullets
 	if( bitsDamageType == DMG_BULLET )
 	{
 		Vector vecDir = pev->origin - ( pevInflictor->absmin + pevInflictor->absmax ) * 0.5f;
 		vecDir = vecDir.Normalize();
 		float flForce = DamageForce( flDamage );
 		pev->velocity = pev->velocity + vecDir * flForce;
+#if 0
+		// Take 30% damage from bullets
 		flDamage *= 0.3f;
+#endif
 	}
 
 	// HACK HACK -- until we fix this.
@@ -346,6 +341,7 @@ class CZombieBarney : public CZombie
 {
 	void Spawn( void );
 	void Precache( void );
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("zombie_barney"); }
 	const char* DefaultDisplayName() { return "Zombie Barney"; }
 	float OneSlashDamage() { return gSkillData.zombieBarneyDmgOneSlash; }
 	float BothSlashDamage() { return gSkillData.zombieBarneyDmgBothSlash; }
@@ -369,6 +365,7 @@ class CDeadZombieBarney : public CDeadZombie
 {
 public:
 	void Spawn( void );
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("zombie_barney"); }
 };
 
 LINK_ENTITY_TO_CLASS( monster_zombie_barney_dead, CDeadZombieBarney )
@@ -386,6 +383,7 @@ class CZombieSoldier : public CZombie
 {
 	void Spawn( void );
 	void Precache( void );
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("zombie_soldier"); }
 	const char* DefaultDisplayName() { return "Zombie Soldier"; }
 	float OneSlashDamage() { return gSkillData.zombieSoldierDmgOneSlash; }
 	float BothSlashDamage() { return gSkillData.zombieSoldierDmgBothSlash; }
@@ -409,6 +407,7 @@ class CDeadZombieSoldier : public CDeadMonster
 {
 public:
 	void Spawn( void );
+	bool IsEnabledInMod() { return g_modFeatures.IsMonsterEnabled("zombie_soldier"); }
 	int	DefaultClassify ( void ) { return	CLASS_ALIEN_MONSTER; }
 
 	const char* getPos(int pos) const;
