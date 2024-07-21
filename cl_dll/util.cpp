@@ -133,3 +133,37 @@ HSPRITE LoadSprite( const char *pszName )
 
 	return SPR_Load( sz );
 }
+
+static float UTIL_AngleMod( float a )
+{
+	a = fmod( a, 360.0f );
+	if( a < 0 )
+		a += 360;
+	return a;
+}
+
+float UTIL_ApproachAngle( float target, float value, float speed )
+{
+	target = UTIL_AngleMod( target );
+	value = UTIL_AngleMod( value );
+
+	float delta = target - value;
+
+	// Speed is assumed to be positive
+	if( speed < 0 )
+		speed = -speed;
+
+	if( delta < -180 )
+		delta += 360;
+	else if( delta > 180 )
+		delta -= 360;
+
+	if( delta > speed )
+		value += speed;
+	else if( delta < -speed )
+		value -= speed;
+	else
+		value = target;
+
+	return value;
+}

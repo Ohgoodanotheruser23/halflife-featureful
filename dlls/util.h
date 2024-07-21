@@ -17,6 +17,7 @@
 #define UTIL_H
 
 #include "extdll.h"
+#include "hull_types.h"
 //
 // Misc utility code
 //
@@ -298,14 +299,6 @@ typedef enum
 
 extern void			UTIL_TraceLine			(const Vector &vecStart, const Vector &vecEnd, IGNORE_MONSTERS igmon, edict_t *pentIgnore, TraceResult *ptr);
 extern void			UTIL_TraceLine			(const Vector &vecStart, const Vector &vecEnd, IGNORE_MONSTERS igmon, IGNORE_GLASS ignoreGlass, edict_t *pentIgnore, TraceResult *ptr);
-
-enum
-{
-	point_hull = 0,
-	human_hull = 1,
-	large_hull = 2,
-	head_hull = 3
-};
 
 extern void			UTIL_TraceHull			(const Vector &vecStart, const Vector &vecEnd, IGNORE_MONSTERS igmon, int hullNumber, edict_t *pentIgnore, TraceResult *ptr);
 extern TraceResult	UTIL_GetGlobalTrace		(void);
