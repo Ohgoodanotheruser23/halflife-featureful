@@ -18,6 +18,11 @@
 #include "hull_types.h"
 #include "fx_flags.h"
 
+// TODO: redo
+#if !defined(M_PI)
+#define M_PI		3.14159265358979323846
+#endif
+
 extern engine_studio_api_t IEngineStudio;
 
 extern Vector g_vPlayerVelocity;
