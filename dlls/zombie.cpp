@@ -53,6 +53,7 @@ public:
 	void AlertSound( void );
 	void IdleSound( void );
 	void AttackSound( void );
+	void DeathSound( void );
 
 	static const char *pAttackSounds[];
 	static const char *pIdleSounds[];
@@ -60,6 +61,7 @@ public:
 	static const char *pPainSounds[];
 	static const char *pAttackHitSounds[];
 	static const char *pAttackMissSounds[];
+	static const char *pDeathSounds[];
 
 	// No range attacks
 	BOOL CheckRangeAttack1( float flDot, float flDist ) { return FALSE; }
@@ -119,6 +121,12 @@ const char *CZombie::pPainSounds[] =
 	"zombie/zo_pain1.wav",
 	"zombie/zo_pain2.wav",
 	"zombie/zo_pain3.wav",
+};
+
+const char* CZombie::pDeathSounds[] =
+{
+		"zombie/zo_die1.wav",
+		"zombie/zo_die2.wav",
 };
 
 //=========================================================
@@ -189,6 +197,15 @@ void CZombie::AttackSound( void )
 	// Play a random attack sound
 	EmitSoundDyn( CHAN_VOICE, RANDOM_SOUND_ARRAY( pAttackSounds ), 1.0, ATTN_NORM, 0, pitch );
 }
+
+void CZombie::DeathSound( void )
+{
+	int pitch = 95 + RANDOM_LONG( 0, 9 );
+
+	// Play a random attack sound
+	EmitSoundDyn( CHAN_VOICE, RANDOM_SOUND_ARRAY( pDeathSounds ), 1.0, ATTN_NORM, 0, pitch );
+}
+
 
 //=========================================================
 // HandleAnimEvent - catches the monster-specific messages
@@ -282,6 +299,7 @@ void CZombie::PrecacheSounds()
 	PRECACHE_SOUND_ARRAY( pIdleSounds );
 	PRECACHE_SOUND_ARRAY( pAlertSounds );
 	PRECACHE_SOUND_ARRAY( pPainSounds );
+	PRECACHE_SOUND_ARRAY( pDeathSounds );
 }
 
 //=========================================================
@@ -440,3 +458,75 @@ void CDeadZombieSoldier::Spawn( )
 	MonsterInitDead();
 }
 #endif
+
+/*
+class CTwitcher : public CZombie
+{
+	void Spawn( void );
+	void Precache( void );
+	const char* DefaultDisplayName() { return "Twitcher"; }
+	float OneSlashDamage() { return gSkillData.twitcherDmgOneSlash; }
+	float BothSlashDamage() { return gSkillData.twitcherDmgBothSlash; }
+};
+
+LINK_ENTITY_TO_CLASS( monster_twitcher, CTwitcher )
+
+void CTwitcher::Spawn()
+{
+	Precache( );
+	ZombieSpawnHelper("models/AoMDC/Monsters/Twitcher/twitcher.mdl", gSkillData.twitcherHealth);
+}
+
+void CTwitcher::Precache()
+{
+	PrecacheMyModel("models/AoMDC/Monsters/Twitcher/twitcher.mdl");
+	PrecacheSounds();
+}
+
+const char *CTwitcher::pAttackHitSounds[] =
+{
+	"aomdc/monsters/twitcher1/claw_strike1.wav",
+	"aomdc/monsters/twitcher1/claw_strike2.wav",
+	"aomdc/monsters/twitcher1/claw_strike3.wav",
+};
+
+const char *CTwitcher::pAttackMissSounds[] =
+{
+	"aomdc/monsters/twitcher1/claw_miss1.wav",
+	"aomdc/monsters/twitcher1/claw_miss2.wav",
+};
+
+const char *CTwitcher::pAttackSounds[] =
+{
+	"aomdc/monsters/twitcher1/zo_attack1.wav",
+	"aomdc/monsters/twitcher1/zo_attack2.wav",
+};
+
+const char *CTwitcher::pIdleSounds[] =
+{
+	"aomdc/monsters/twitcher1/zo_idle1.wav",
+	"aomdc/monsters/twitcher1/zo_idle2.wav",
+	"aomdc/monsters/twitcher1/zo_idle3.wav",
+	"aomdc/monsters/twitcher1/zo_idle4.wav",
+};
+
+const char *CTwitcher::pAlertSounds[] =
+{
+	"aomdc/monsters/twitcher1/zo_alert10.wav",
+	"aomdc/monsters/twitcher1/zo_alert20.wav",
+	"aomdc/monsters/twitcher1/zo_alert30.wav",
+};
+
+const char *CTwitcher::pPainSounds[] =
+{
+	"zombie/zo_pain1.wav",
+	"zombie/zo_pain2.wav",
+	"zombie/zo_pain3.wav",
+};
+
+const char* CTwitcher::pDeathSounds[] =
+{
+		"zombie/zo_die1.wav",
+		"zombie/zo_die2.wav",
+};
+*/
