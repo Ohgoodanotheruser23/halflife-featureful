@@ -427,7 +427,14 @@ void CBaseMonster::GibMonster( void )
 {
 	BOOL		gibbed = FALSE;
 
-	EMIT_SOUND( ENT( pev ), CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM );
+	if (RANDOM_LONG(0, 1) == 0)
+	{
+		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat_classic.wav", 1, ATTN_NORM);
+	}
+	else
+	{
+		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
+	}
 
 	const char* gibModel = GibModel();
 	if (gibModel)
