@@ -445,7 +445,7 @@ Task_t tlFear[] =
 	{ TASK_STOP_MOVING, 0.0f },
 	{ TASK_FACE_ENEMY, 0.0f },
 	{ TASK_SAY_FEAR, 0.0f },
-	//{ TASK_PLAY_SEQUENCE, (float)ACT_FEAR_DISPLAY },
+	{ TASK_PLAY_SEQUENCE, (float)ACT_FEAR_DISPLAY },
 };
 
 Schedule_t slFear[] =
@@ -499,11 +499,12 @@ void CScientist::DeclineFollowing(CBaseEntity *pCaller )
 
 void CScientist::Scream( void )
 {
-	if( FOkToSpeak(SPEAK_DISREGARD_ENEMY|SPEAK_DISREGARD_OTHER_SPEAKING) )
-	{
+	// This speech check always fails during combat, so removing
+	/*if (FOkToSpeak(SPEAK_DISREGARD_ENEMY | SPEAK_DISREGARD_OTHER_SPEAKING))
+	{*/
 		m_hTalkTarget = m_hEnemy;
 		PlaySentence( SentenceGroup(TLK_SCREAM), RANDOM_FLOAT( 3.0f, 6.0f ), VOL_NORM, ATTN_NORM );
-	}
+	//}
 }
 
 Activity CScientist::GetStoppedActivity( void )
