@@ -469,7 +469,10 @@ class CTwitcher : public CZombie
 	float BothSlashDamage() { return gSkillData.twitcherDmgBothSlash; }
 };
 
+#define TWITCHER_NUM_HEADS				2 // how many grunt heads are there? 
+
 LINK_ENTITY_TO_CLASS( monster_twitcher, CTwitcher )
+
 
 void CTwitcher::Spawn()
 {
@@ -528,5 +531,4 @@ const char* CTwitcher::pDeathSounds[] =
 {
 		"zombie/zo_die1.wav",
 		"zombie/zo_die2.wav",
-};
-*/
+};*/

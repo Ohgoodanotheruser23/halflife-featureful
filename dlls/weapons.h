@@ -476,6 +476,9 @@ void LoadVModel ( const char *szViewModel, CBasePlayer *m_pPlayer );
 class CGlock : public CBasePlayerWeapon
 {
 public:
+	BOOL scheduleGlockDeletion;
+	BOOL includesGlockSilencer;
+
 	void Spawn( void );
 	void Precache( void );
 	int GetItemInfo( ItemInfo *p );
@@ -503,6 +506,8 @@ public:
 
 private:
 	int m_iShell;
+
+	BOOL toggledSilencerYet;
 
 	unsigned short m_usFireGlock1;
 	unsigned short m_usFireGlock2;
