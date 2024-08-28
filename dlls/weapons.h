@@ -123,9 +123,9 @@ public:
 #define WEAPON_NOCLIP			-1
 
 //#define CROWBAR_MAX_CLIP		WEAPON_NOCLIP
-#define GLOCK_MAX_CLIP			17
+#define GLOCK_MAX_CLIP			18
 #define PYTHON_MAX_CLIP			6
-#define MP5_MAX_CLIP			50
+#define MP5_MAX_CLIP			999
 #define SHOTGUN_MAX_CLIP		8
 #define CROSSBOW_MAX_CLIP		5
 #define RPG_MAX_CLIP			1
@@ -147,9 +147,9 @@ public:
 #define GLOCK_DEFAULT_GIVE			17
 #define PYTHON_DEFAULT_GIVE			6
 #if FEATURE_OPFOR_SPECIFIC
-#define MP5_DEFAULT_GIVE			50
+#define MP5_DEFAULT_GIVE			500
 #else
-#define MP5_DEFAULT_GIVE			25
+#define MP5_DEFAULT_GIVE			500
 #endif
 #define MP5_DEFAULT_GIVE_MP			MP5_MAX_CLIP
 #define MP5_M203_DEFAULT_GIVE		0
@@ -487,6 +487,8 @@ public:
 	BOOL Deploy( void );
 	void Reload( void );
 	void WeaponIdle( void );
+
+	BOOL TriggerReleased;
 
 	virtual BOOL UseDecrement( void )
 	{
@@ -1575,5 +1577,6 @@ private:
 };
 
 #endif
+
 
 #endif // WEAPONS_H

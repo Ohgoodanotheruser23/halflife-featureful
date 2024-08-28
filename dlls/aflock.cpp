@@ -85,7 +85,7 @@ public:
 	void SpreadFlock( void );
 	void SpreadFlock2( void );
 	void Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib );
-	void Poop ( void );
+	void Poop ( void );  // Excuse me what?
 	BOOL FPathBlocked( void );
 	//void KeyValue( KeyValueData *pkvd );
 
@@ -212,7 +212,7 @@ void CFlockingFlyerFlock::PrecacheFlockSounds(string_t soundList)
 	::PRECACHE_SOUND( "boid/boid_alert2.wav", soundList );
 
 	::PRECACHE_SOUND( "boid/boid_idle1.wav", soundList );
-	::PRECACHE_SOUND( "boid/boid_idle2.wav", soundList );
+	::PRECACHE_SOUND("boid/boid_idle2.wav", soundList);
 }
 
 //=========================================================

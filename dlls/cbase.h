@@ -132,6 +132,7 @@ enum
 	CLASS_HUMAN_BLACKOPS,
 	CLASS_SNARK,
 	CLASS_GARGANTUA,
+	CLASS_GAYGLENN, // I'm gay
 	CLASS_NUMBER_OF_CLASSES,
 	CLASS_VEHICLE = 98,
 	CLASS_BARNACLE = 99 // special because no one pays attention to it, and it eats a wide cross-section of creatures.

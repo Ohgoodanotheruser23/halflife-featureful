@@ -118,6 +118,7 @@ const char *CZombie::pPainSounds[] =
 {
 	"zombie/zo_pain1.wav",
 	"zombie/zo_pain2.wav",
+	"zombie/zo_pain3.wav",
 };
 
 //=========================================================

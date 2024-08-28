@@ -79,18 +79,25 @@ int CGlock::AddToPlayer( CBasePlayer *pPlayer )
 
 BOOL CGlock::Deploy()
 {
+	TriggerReleased = FALSE;
+
 	// pev->body = 1;
 	return DefaultDeploy( "models/v_9mmhandgun.mdl", "models/p_9mmhandgun.mdl", GLOCK_DRAW, "onehanded" );
 }
 
 void CGlock::SecondaryAttack( void )
 {
-	GlockFire( 0.1f, 0.2f, FALSE );
+	GlockFire( 0.01f, 0, FALSE );
 }
 
 void CGlock::PrimaryAttack( void )
 {
-	GlockFire( 0.01f, 0.3f, TRUE );
+	if ( !TriggerReleased )
+		return;
+
+	GlockFire( 0.01f, 0.1f, TRUE );
+
+	TriggerReleased = FALSE;
 }
 
 void CGlock::GlockFire( float flSpread, float flCycleTime, BOOL fUseAutoAim )
@@ -178,6 +185,8 @@ void CGlock::Reload( void )
 
 void CGlock::WeaponIdle( void )
 {
+	TriggerReleased = TRUE;
+	
 	ResetEmptySound();
 
 	m_pPlayer->GetAutoaimVector( AUTOAIM_10DEGREES );

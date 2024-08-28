@@ -400,6 +400,16 @@ void CBarney::PrecacheImpl(const char* modelName)
 	PRECACHE_SOUND("barney/ba_die1.wav");
 	PRECACHE_SOUND("barney/ba_die2.wav");
 	PRECACHE_SOUND("barney/ba_die3.wav");
+
+	// Events
+	PRECACHE_SOUND("sounds/s4.wav");
+	PRECACHE_SOUND("weapons/BLASTERDRAW.wav");
+	PRECACHE_SOUND("weapons/BLASTERHOLSTER.wav");
+	PRECACHE_SOUND("barney/suityes.wav");
+	PRECACHE_SOUND("barney/c2a5_ba_sniped.wav");
+	PRECACHE_SOUND("barney/ba_regret.wav");
+	PRECACHE_SOUND("barney/suitno.wav");
+	PRECACHE_SOUND("fgrunt/ass.wav");
 }
 
 void CBarney::Precache()
@@ -462,7 +472,7 @@ void CBarney::KeyValue(KeyValueData *pkvd)
 //=========================================================
 void CBarney::PlayPainSound( void )
 {
-	switch( RANDOM_LONG( 0, 2 ) )
+	switch( RANDOM_LONG( 0, 3 ) )
 	{
 	case 0:
 		EmitSoundDyn( CHAN_VOICE, "barney/ba_pain1.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
@@ -472,6 +482,9 @@ void CBarney::PlayPainSound( void )
 		break;
 	case 2:
 		EmitSoundDyn( CHAN_VOICE, "barney/ba_pain3.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch() );
+		break;
+	case 3:
+		EmitSoundDyn(CHAN_VOICE, "barney/ba_attack1.wav", 1.0f, ATTN_NORM, 0, GetVoicePitch());
 		break;
 	}
 }

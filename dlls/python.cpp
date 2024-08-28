@@ -78,18 +78,18 @@ void CPython::Precache( void )
 BOOL CPython::Deploy()
 {
 #if CLIENT_DLL
-	if( bIsMultiplayer() )
+	//if( bIsMultiplayer() )
 #else
-	if( g_pGameRules->IsMultiplayer() )
+	//if( g_pGameRules->IsMultiplayer() )
 #endif
-	{
+	//{
 		// enable laser sight geometry.
-		pev->body = 1;
-	}
-	else
-	{
+		//pev->body = 1;
+	//}
+	//else
+	//{
 		pev->body = 0;
-	}
+	//}
 
 	return DefaultDeploy( "models/v_357.mdl", "models/p_357.mdl", PYTHON_DRAW, "python", pev->body );
 }
@@ -110,14 +110,14 @@ void CPython::Holster()
 
 void CPython::SecondaryAttack( void )
 {
-#if CLIENT_DLL
+/*#if CLIENT_DLL
 	if( !bIsMultiplayer() )
 #else
 	if( !g_pGameRules->IsMultiplayer() )
 #endif
 	{
 		return;
-	}
+	}*/
 
 	if( m_pPlayer->pev->fov != 0 )
 	{

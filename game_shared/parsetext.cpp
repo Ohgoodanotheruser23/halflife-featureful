@@ -75,7 +75,8 @@ bool ConsumePossiblyQuotedString(const char* text, int& i, const int length, int
 		if (ConsumeLineUntil(text, i, length, '"')) {
 			strEnd = i;
 			++i;
-		} else {
+		}
+		else {
 			return false;
 		}
 	}

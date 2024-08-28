@@ -1431,7 +1431,7 @@ void UTIL_StringToVector( float *pVector, const char *pString, int* componentsRe
 	strcpy( tempString, pString );
 	pstr = pfront = tempString;
 
-	int componentsParsed;
+	int componentsParsed = 0;
 
 	for( j = 0; j < 3; j++ )			// lifted from pr_edict.c
 	{

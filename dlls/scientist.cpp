@@ -28,7 +28,7 @@
 #include	"mod_features.h"
 #include	"game.h"
 
-#define FEATURE_SCIENTIST_PLFEAR 0
+#define FEATURE_SCIENTIST_PLFEAR 1
 
 #define SF_SCI_SITTING_DONT_DROP SF_MONSTER_SPECIAL_FLAG // Don't drop to the floor. We can re-use the same value as sitting scientists can't follow
 
@@ -154,6 +154,8 @@ public:
 protected:
 	void SciSpawnHelper(const char* modelName, float health);
 	void PrecachePainSounds();
+	void PrecacheDeathSounds();
+	void PrecacheIdleEventSounds();
 
 	float m_healTime;
 	float m_fearTime;
@@ -162,6 +164,8 @@ protected:
 	int m_totalHeadCount;
 
 	static const char* pPainSounds[];
+	static const char* pDeathSounds[];
+	static const char* pIdleEventSounds[];
 };
 
 LINK_ENTITY_TO_CLASS( monster_scientist, CScientist )
@@ -180,6 +184,37 @@ const char* CScientist::pPainSounds[] = {
 	"scientist/sci_pain3.wav",
 	"scientist/sci_pain4.wav",
 	"scientist/sci_pain5.wav",
+	"scientist/sci_pain6.wav",
+	"scientist/sci_pain7.wav",
+	"scientist/sci_pain8.wav",
+	"scientist/sci_pain9.wav",
+	"scientist/sci_pain10.wav",
+};
+
+const char* CScientist::pDeathSounds[] = {
+	"scientist/sci_die1.wav",
+	"scientist/sci_die2.wav",
+	"scientist/sci_die3.wav",
+	"scientist/sci_die4.wav",
+	"scientist/sci_pain1.wav",
+	"scientist/sci_pain2.wav",
+	"scientist/sci_pain3.wav",
+	"scientist/sci_pain4.wav",
+	"scientist/sci_pain5.wav",
+	"scientist/sci_pain6.wav",
+	"scientist/sci_pain7.wav",
+	"scientist/sci_pain8.wav",
+	"scientist/sci_pain9.wav",
+	"scientist/sci_pain10.wav",
+};
+
+const char* CScientist::pIdleEventSounds[] = {
+	"ambience/loader_step1.wav",
+	"scientist/jak-breatheloud2.wav",
+	"scientist/weartie2.wav",
+	"scientist/hit2.wav",
+	"misc/execution.wav",
+	"scientist/sci_busy.wav",
 };
 
 //=========================================================
@@ -803,6 +838,9 @@ void CScientist::Precache( void )
 {
 	PrecacheMyModel( "models/scientist.mdl" );
 	PrecachePainSounds();
+	PrecacheDeathSounds();
+	PrecacheIdleEventSounds();
+
 	PRECACHE_SOUND( "items/medshot4.wav" );
 
 	// every new scientist must call this, otherwise
@@ -828,6 +866,16 @@ void CScientist::CalcTotalHeadCount()
 void CScientist::PrecachePainSounds()
 {
 	PRECACHE_SOUND_ARRAY(pPainSounds);
+}
+
+void CScientist::PrecacheDeathSounds()
+{
+	PRECACHE_SOUND_ARRAY(pDeathSounds);
+}
+
+void CScientist::PrecacheIdleEventSounds()
+{
+	PRECACHE_SOUND_ARRAY(pIdleEventSounds);
 }
 
 const char* CScientist::DefaultSentenceGroup(int group)
@@ -894,7 +942,8 @@ void CScientist::PlayPainSound()
 //=========================================================
 void CScientist::DeathSound( void )
 {
-	PlayPainSound();
+	//PlayPainSound();
+	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pDeathSounds), 1.0f, ATTN_NORM, 0, GetVoicePitch());
 }
 
 void CScientist::SetActivity( Activity newActivity )
@@ -1563,6 +1612,7 @@ void CCleansuitScientist::Precache()
 {
 	PrecacheMyModel("models/cleansuit_scientist.mdl");
 	PrecachePainSounds();
+	PrecacheDeathSounds();
 	TalkInit();
 	CTalkMonster::Precache();
 	RegisterTalkMonster();

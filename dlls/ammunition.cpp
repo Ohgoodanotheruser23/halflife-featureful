@@ -384,3 +384,5 @@ class CM249AmmoClip : public CBasePlayerAmmo
 
 LINK_ENTITY_TO_CLASS(ammo_556, CM249AmmoClip)
 #endif
+
+

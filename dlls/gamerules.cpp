@@ -383,6 +383,12 @@ void CGameRules::RefreshSkillData ( void )
 		gSkillData.gonomeDmgOneBite = GetSkillCvar( "sk_gonome_dmg_one_bite" );
 	}
 #endif
+
+	// Glenn
+	gSkillData.glennHealth = GetSkillCvar("sk_glenn_health");
+	gSkillData.glennDmgOneSlash = GetSkillCvar("sk_glenn_dmg_one_slash");
+	gSkillData.glennDmgBothSlash = GetSkillCvar("sk_glenn_dmg_both_slash");
+
 	//Turret
 	gSkillData.turretHealth = GetSkillCvar( "sk_turret_health" );
 

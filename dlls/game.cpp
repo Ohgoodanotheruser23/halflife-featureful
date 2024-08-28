@@ -994,6 +994,11 @@ DECLARE_SKILL_VALUE(sk_gonome_dmg_guts, "0")
 DECLARE_SKILL_VALUE(sk_gonome_dmg_one_bite, "0")
 #endif
 
+// Glenn
+DECLARE_SKILL_VALUE(sk_glenn_health, "0")
+DECLARE_SKILL_VALUE(sk_glenn_dmg_one_slash, "0")
+DECLARE_SKILL_VALUE(sk_glenn_dmg_both_slash, "0")
+
 //Turret
 DECLARE_SKILL_VALUE(sk_turret_health, "0")
 
@@ -1758,6 +1763,11 @@ void GameDLLInit( void )
 		REGISTER_SKILL_CVARS(sk_gonome_dmg_one_bite);
 	}
 #endif
+
+	// Glenn
+	REGISTER_SKILL_CVARS(sk_glenn_health);
+		REGISTER_SKILL_CVARS(sk_glenn_dmg_one_slash);
+		REGISTER_SKILL_CVARS(sk_glenn_dmg_both_slash);
 
 	//Turret
 	REGISTER_SKILL_CVARS(sk_turret_health);

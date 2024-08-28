@@ -13,6 +13,12 @@
 *
 ****/
 
+/***
+*		Weapon_Shotgun
+*	Screw me screw me screw me screw me screw me screw me screw me screw me 
+*		I GOT A BONER
+***/
+
 #include "extdll.h"
 #include "util.h"
 #include "cbase.h"

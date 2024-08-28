@@ -33,5 +33,6 @@
 #define WEAPON_KNIFE			25
 #define	WEAPON_PENGUIN			26
 #define WEAPON_UZI				27
+//#define WEAPON_GOLDENGUN		28
 
 #endif

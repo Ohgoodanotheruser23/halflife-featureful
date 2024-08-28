@@ -130,7 +130,7 @@ foreach(LINE IN LISTS MOD_OPTIONS_STRINGS)
 endforeach()
 
 if(HLDEMO_BUILD AND OEM_BUILD)
-	message(FATAL_ERROR "Don't mix Demo and OEM builds!")
+	message(FATAL_ERROR "Don't mix Demo and OEM builds, dumbass!")
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT 64BIT)

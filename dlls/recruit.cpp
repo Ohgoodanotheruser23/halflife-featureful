@@ -152,7 +152,8 @@ const char* CRecruit::DefaultSentenceGroup(int group)
 	case TLK_PLHURT1: return "!RC_CUREA";
 	case TLK_PLHURT2: return "!RC_CUREB";
 	case TLK_PLHURT3: return "!RC_CUREC";
-	case TLK_PHELLO: return "RC_PHELLO";
+	//case TLK_PHELLO: return "RC_PHELLO";
+	case TLK_PHELLO: return "BA_PHELLO";
 	case TLK_PIDLE: return "RC_PIDLE";
 	case TLK_PQUESTION: return "RC_PQUEST";
 	case TLK_SMELL: return "RC_SMELL";

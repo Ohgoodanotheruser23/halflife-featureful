@@ -110,14 +110,14 @@ void CMP5::PrimaryAttack()
 	if( m_pPlayer->pev->waterlevel == 3 )
 	{
 		PlayEmptySound();
-		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.15f;
+		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.001f;
 		return;
 	}
 
 	if( m_iClip <= 0 )
 	{
 		PlayEmptySound();
-		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.15f;
+		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.001f;
 		return;
 	}
 
@@ -161,10 +161,10 @@ void CMP5::PrimaryAttack()
 		// HEV suit - indicate out of ammo condition
 		m_pPlayer->SetSuitUpdate( "!HEV_AMO0", FALSE, 0 );
 
-	m_flNextPrimaryAttack = GetNextAttackDelay( 0.1f );
+	m_flNextPrimaryAttack = GetNextAttackDelay( 0.001f );
 
 	if( m_flNextPrimaryAttack < UTIL_WeaponTimeBase() )
-		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.1f;
+		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.001f;
 
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10, 15 );
 }
@@ -211,8 +211,8 @@ void CMP5::SecondaryAttack( void )
 #endif
 	PLAYBACK_EVENT( flags, m_pPlayer->edict(), m_usMP52 );
 
-	m_flNextPrimaryAttack = GetNextAttackDelay( 1.0f );
-	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 1.0f;
+	m_flNextPrimaryAttack = GetNextAttackDelay( 0.001f );
+	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.1f;
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 5.0f;// idle pretty soon after shooting.
 
 	if( !m_pPlayer->m_rgAmmo[m_iSecondaryAmmoType] )
