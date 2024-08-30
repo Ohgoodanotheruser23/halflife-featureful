@@ -23,7 +23,7 @@
 // 0: no effect.
 // 1: original names from as-is script are no longer linked (like monster_human_grunt)
 
-#define EXTRA_NAMES 2
+#define EXTRA_NAMES 0
 // 0: no extra names.
 // 1: Just one alternate name (a version without "monster_";  "human_grunt").
 // 2: Same as 1, but also grants possible extra names, such as "hgrunt".
@@ -47,9 +47,9 @@
 
 // This controls whether cheat CVars (ones with the PROTECTION_FLAG CVar) can be modified directly in
 // multiplayer.
-#define CHEATS_ALLOWED_IN_MULTI_PLAYER 1
+#define CHEATS_ALLOWED_IN_MULTI_PLAYER 0
 
-#if CHEATS_ALLOWED_IN_MULTI_PLAYER == 1
+#if CHEATS_ALLOWED_IN_MULTI_PLAYER == 0
 // If not, "PROTECTION_FLAG" is empty, contributing nothing to the CVar flags.
 #define PROTECTION_FLAG
 #else
@@ -58,7 +58,7 @@
 #endif
 
 // If on, alien weapons (hornetgun, snark, chumtoad) go into their own slot #6.
-#define SPLIT_ALIEN_WEAPONS_INTO_NEW_SLOT 1
+#define SPLIT_ALIEN_WEAPONS_INTO_NEW_SLOT 0
 
 
 // Test to fool around with scripted's, makes some things better (fixes a3a2, moving too fast at the opening = frozen agrunt),
@@ -75,9 +75,9 @@
 
 //***Descriptions seen in the server browser for a game running this mod***
 // For CGameRules (gamerules.h).  Was "Half-Life"
-#define GAME_NORMAL_DESCRIPTION "Half-Life: AZ"
+#define GAME_NORMAL_DESCRIPTION "FACK"
 // For CHalfLifeTeamplay (gamerules_teamplay.h).  Was "HL Teamplay"
-#define GAME_TEAMPLAY_DESCRIPTION "HL:AZ Teamplay"
+#define GAME_TEAMPLAY_DESCRIPTION "Team Fortress 2"
 
 #define BUILD_INFO_TITLE "FUCKED-Up"
 // shortened?
