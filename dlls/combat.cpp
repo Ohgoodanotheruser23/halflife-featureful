@@ -427,9 +427,25 @@ void CBaseMonster::GibMonster( void )
 {
 	BOOL		gibbed = FALSE;
 
-	if (RANDOM_LONG(0, 1) == 0)
+	if (RANDOM_LONG(0, 5) == 0)
 	{
 		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat_classic.wav", 1, ATTN_NORM);
+	}
+	else if (RANDOM_LONG(0, 5) == 1)
+	{
+		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat2.wav", 1, ATTN_NORM);
+	}
+	else if (RANDOM_LONG(0, 5) == 2)
+	{
+		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat3.wav", 1, ATTN_NORM);
+	}
+	else if (RANDOM_LONG(0, 5) == 3)
+	{
+		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat4.wav", 1, ATTN_NORM);
+	}
+	else if (RANDOM_LONG(0, 5) == 4)
+	{
+		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat_alt.wav", 1, ATTN_NORM);
 	}
 	else
 	{

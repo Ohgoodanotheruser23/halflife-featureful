@@ -445,7 +445,7 @@ Task_t tlFear[] =
 	{ TASK_STOP_MOVING, 0.0f },
 	{ TASK_FACE_ENEMY, 0.0f },
 	{ TASK_SAY_FEAR, 0.0f },
-	{ TASK_PLAY_SEQUENCE, (float)ACT_FEAR_DISPLAY },
+	//{ TASK_PLAY_SEQUENCE, (float)ACT_FEAR_DISPLAY },
 };
 
 Schedule_t slFear[] =
