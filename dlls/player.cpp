@@ -3426,7 +3426,30 @@ void CBasePlayer::PostThink()
 			{
 				//splat
 				// note: play on item channel because we play footstep landing on body channel
-				EMIT_SOUND( ENT( pev ), CHAN_ITEM, "common/bodysplat.wav", 1, ATTN_NORM );
+				if (RANDOM_LONG(0, 5) == 0)
+				{
+					EMIT_SOUND(ENT(pev), CHAN_ITEM, "common/bodysplat_classic.wav", 1, ATTN_NORM);
+				}
+				else if (RANDOM_LONG(0, 5) == 1)
+				{
+					EMIT_SOUND(ENT(pev), CHAN_ITEM, "common/bodysplat2.wav", 1, ATTN_NORM);
+				}
+				else if (RANDOM_LONG(0, 5) == 2)
+				{
+					EMIT_SOUND(ENT(pev), CHAN_ITEM, "common/bodysplat3.wav", 1, ATTN_NORM);
+				}
+				else if (RANDOM_LONG(0, 5) == 3)
+				{
+					EMIT_SOUND(ENT(pev), CHAN_ITEM, "common/bodysplat4.wav", 1, ATTN_NORM);
+				}
+				else if (RANDOM_LONG(0, 5) == 4)
+				{
+					EMIT_SOUND(ENT(pev), CHAN_ITEM, "common/bodysplat_alt.wav", 1, ATTN_NORM);
+				}
+				else
+				{
+					EMIT_SOUND(ENT(pev), CHAN_ITEM, "common/bodysplat.wav", 1, ATTN_NORM);
+				}
 			}
 
 			if( flFallDamage > 0 )
