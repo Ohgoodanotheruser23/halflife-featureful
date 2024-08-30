@@ -14,9 +14,6 @@ cmake_install.cmake
 *.orig
 *.cbp
 *.dsw
-*.vsxproj
-*.vsproj
-*.sln
 .waf-*
 waf-*
 .waf3-*
