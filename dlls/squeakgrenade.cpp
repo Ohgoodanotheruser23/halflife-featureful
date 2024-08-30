@@ -151,11 +151,6 @@ void CSqueakGrenade::PrecacheImpl( const char* modelName )
 	PRECACHE_MODEL( modelName );
 	PRECACHE_SOUND( "squeek/sqk_blast1.wav" );
 	PRECACHE_SOUND( "common/bodysplat.wav" );
-	PRECACHE_SOUND("common/bodysplat2.wav");
-	PRECACHE_SOUND("common/bodysplat3.wav");
-	PRECACHE_SOUND("common/bodysplat4.wav");
-	PRECACHE_SOUND("common/bodysplat_alt.wav");
-	PRECACHE_SOUND("common/bodysplat_classic.wav");
 	PRECACHE_SOUND( "squeek/sqk_die1.wav" );
 	PRECACHE_SOUND( "squeek/sqk_hunt1.wav" );
 	PRECACHE_SOUND( "squeek/sqk_hunt2.wav" );
@@ -196,30 +191,7 @@ void CSqueakGrenade::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, in
 
 void CSqueakGrenade::GibMonster( void )
 {
-	if (RANDOM_LONG(0, 5) == 0)
-	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "common/bodysplat_classic.wav", 0.75f, ATTN_NORM, 0, 200);
-	}
-	else if (RANDOM_LONG(0, 5) == 1)
-	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "common/bodysplat2.wav", 0.75f, ATTN_NORM, 0, 200);
-	}
-	else if (RANDOM_LONG(0, 5) == 2)
-	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "common/bodysplat3.wav", 0.75f, ATTN_NORM, 0, 200);
-	}
-	else if (RANDOM_LONG(0, 5) == 3)
-	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "common/bodysplat4.wav", 0.75f, ATTN_NORM, 0, 200);
-	}
-	else if (RANDOM_LONG(0, 5) == 4)
-	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "common/bodysplat_alt.wav", 0.75f, ATTN_NORM, 0, 200);
-	}
-	else
-	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "common/bodysplat.wav", 0.75f, ATTN_NORM, 0, 200);
-	}
+	EMIT_SOUND_DYN( ENT( pev ), CHAN_VOICE, "common/bodysplat.wav", 0.75f, ATTN_NORM, 0, 200 );
 }
 
 float CSqueakGrenade::AdditionalExplosionDamage()
