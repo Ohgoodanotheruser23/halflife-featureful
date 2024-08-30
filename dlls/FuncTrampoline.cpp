@@ -10,7 +10,7 @@
 #include "cbase.h"
 #include "explode.h"
 
-// TODO: Add keyvalues for explosions
+// TODO: Add keyvalues for sounds
 
 class CFuncTrampoline : public CBaseEntity
 {
