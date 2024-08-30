@@ -479,7 +479,17 @@ typedef struct locksounds			// sounds that doors and buttons make when locked/un
 	BYTE	bEOFUnlocked;			// true if hit end of list of unlocked sentences
 } locksound_t;
 
+typedef struct bouncesounds		// sounds that trampolines make when bounced
+{
+	string_t	sBounceSound;	// BOING
+
+	float	flwaitSound;		// time delay between playing consecutive 'bounce' sounds
+
+} bouncesound_t;
+
 void PlayLockSounds( entvars_t *pev, locksound_t *pls, int flocked, int fbutton );
+
+void PlayBounceSounds(entvars_t* pev, bouncesound_t* pls);
 
 //
 // MultiSouce
