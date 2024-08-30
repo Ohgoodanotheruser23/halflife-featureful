@@ -51,16 +51,10 @@ void CFuncTrampoline::Spawn()
 
 void PlayBounceSounds(entvars_t* pev, bouncesound_t* pls)
 {
-	float fvol = 0.7;
 	float flsoundwait = 3;
 
-	int fplaysound = (pls->sBounceSound && gpGlobals->time > pls->flwaitSound);
-
-	if (fplaysound)
-	{
-		EMIT_SOUND(ENT(pev), CHAN_ITEM, STRING(pls->sBounceSound), fvol, ATTN_NORM);
-		pls->flwaitSound = gpGlobals->time + flsoundwait;
-	}
+	EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(pls->sBounceSound), 1, ATTN_NORM);
+	pls->flwaitSound = gpGlobals->time + flsoundwait;
 }
 
 void CFuncTrampoline::Precache()
