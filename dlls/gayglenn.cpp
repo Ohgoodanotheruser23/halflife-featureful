@@ -56,11 +56,16 @@ LINK_ENTITY_TO_CLASS(monster_gay, CGay);  // Compatability hack, perhaps?
 const char* CGay::pAttackHitSounds[] =
 {
 	"glenn/strike1.wav",
+	"weapons/cbar_hitbod1.wav",
+	"weapons/cbar_hitbod2.wav",
+	"bonus_shit/fart2.wav",
+	"scientist/sci_pain3.wav",
 };
 
 const char* CGay::pAttackMissSounds[] =
 {
 	"glenn/miss1.wav",
+	"hassault/hw_shoot1.wav",
 };
 
 const char* CGay::pAttackSounds[] =

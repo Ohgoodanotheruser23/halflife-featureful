@@ -428,6 +428,13 @@ public:
 
 	void ApplyDamageToHealth(float flDamage);
 	float m_healthMinThreshold;
+
+	virtual void playAmmoPickupSound();
+	virtual void playAmmoPickupSound(entvars_t* sentPev);
+	virtual void playGunPickupSound();
+	virtual void playGunPickupSound(entvars_t* sentPev);
+	virtual void precacheAmmoPickupSound();
+	virtual void precacheGunPickupSound();
 };
 
 // Ugly technique to override base member functions

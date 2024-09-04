@@ -67,6 +67,9 @@ void CPipeWrench::Precache(void)
 	PRECACHE_SOUND("weapons/pwrench_big_hitbod2.wav");
 	PRECACHE_SOUND("weapons/pwrench_big_miss.wav");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usPWrench = PRECACHE_EVENT(1, "events/pipewrench.sc");
 }
 

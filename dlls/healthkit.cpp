@@ -65,6 +65,7 @@ void CHealthKit::Precache( void )
 {
 	PrecacheMyModel( "models/w_medkit.mdl" );
 	PRECACHE_SOUND( "items/smallmedkit1.wav" );
+	PRECACHE_SOUND( "items/smallmedkit2.wav" );
 }
 
 BOOL CHealthKit::MyTouch( CBasePlayer *pPlayer )
@@ -81,8 +82,15 @@ BOOL CHealthKit::MyTouch( CBasePlayer *pPlayer )
 			MESSAGE_BEGIN( MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev );
 				WRITE_STRING( STRING( pev->classname ) );
 			MESSAGE_END();
-
-			EMIT_SOUND( ENT( pPlayer->pev ), CHAN_ITEM, "items/smallmedkit1.wav", 1, ATTN_NORM );
+			
+			if (RANDOM_LONG(0, 1) == 0)
+			{
+				EMIT_SOUND(ENT(pPlayer->pev), CHAN_ITEM, "items/smallmedkit1.wav", 1, ATTN_NORM);
+			}
+			else
+			{
+				EMIT_SOUND(ENT(pPlayer->pev), CHAN_ITEM, "items/smallmedkit2.wav", 1, ATTN_NORM);
+			}
 		}
 
 		return TRUE;

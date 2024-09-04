@@ -143,6 +143,7 @@ const char *CHeadCrab::pIdleSounds[] =
 const char *CHeadCrab::pAlertSounds[] =
 {
 	"headcrab/hc_alert1.wav",
+	"headcrab/hc_alert2.wav",
 };
 
 const char *CHeadCrab::pPainSounds[] =
@@ -163,6 +164,8 @@ const char *CHeadCrab::pDeathSounds[] =
 {
 	"headcrab/hc_die1.wav",
 	"headcrab/hc_die2.wav",
+	"headcrab/hc_run1.wav",
+	"headcrab/hc_run2.wav",
 };
 
 const char *CHeadCrab::pBiteSounds[] =

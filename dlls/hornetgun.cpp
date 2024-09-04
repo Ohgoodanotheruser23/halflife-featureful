@@ -57,6 +57,9 @@ void CHgun::Precache( void )
 	PRECACHE_MODEL( MyWModel() );
 	PrecachePModel( "models/p_hgun.mdl" );
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usHornetFire = PRECACHE_EVENT( 1, "events/firehornet.sc" );
 
 	UTIL_PrecacheOther( "hornet" );

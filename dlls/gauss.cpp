@@ -77,6 +77,9 @@ void CGauss::Precache( void )
 	m_iBalls = PRECACHE_MODEL( "sprites/hotglow.spr" );
 	m_iBeam = PRECACHE_MODEL( "sprites/smoke.spr" );
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usGaussFire = PRECACHE_EVENT( 1, "events/gauss.sc" );
 	m_usGaussSpin = PRECACHE_EVENT( 1, "events/gaussspin.sc" );
 }

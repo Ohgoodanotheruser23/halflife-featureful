@@ -56,6 +56,14 @@ BOOL CBaseEntity::IsInWorld( void ) { return TRUE; }
 int CBaseEntity::DamageDecal( int bitsDamageType ) { return -1; }
 void CBaseEntity::UpdateOnRemove( void ) { }
 int CBaseEntity::PRECACHE_SOUND(const char *soundName) { return 0; }
+void CBaseEntity::playAmmoPickupSound() {};
+void CBaseEntity::playAmmoPickupSound(entvars_t* sentPev) {};
+void CBaseEntity::playGunPickupSound() {};
+void CBaseEntity::playGunPickupSound(entvars_t* sentPev) {};
+
+void CBaseEntity::precacheAmmoPickupSound() {};
+void CBaseEntity::precacheGunPickupSound() {};
+
 
 // CBaseDelay Stubs
 void CBaseDelay::KeyValue( struct KeyValueData_s * ) { }

@@ -40,6 +40,7 @@ public:
 	int DefaultISoundMask( void );
 	void HandleAnimEvent( MonsterEvent_t *pEvent );
 	void SetActivity( Activity NewActivity );
+	virtual void AlertSound(void);
 	BOOL CheckMeleeAttack1( float flDot, float flDist ) {
 		return FALSE;
 	}
@@ -128,6 +129,9 @@ void CHWGrunt::Precache()
 	PRECACHE_SOUND( "hgrunt/gr_pain4.wav" );
 	PRECACHE_SOUND( "hgrunt/gr_pain5.wav" );
 
+	PRECACHE_SOUND( "hassault/hw_alert.wav" );
+
+	PRECACHE_SOUND( "hassault/hw_shoot1.wav" );
 	PRECACHE_SOUND( "hassault/hw_shoot2.wav" );
 	PRECACHE_SOUND( "hassault/hw_shoot3.wav" );
 	PRECACHE_SOUND( "hassault/hw_spindown.wav" );
@@ -361,6 +365,11 @@ void CHWGrunt::PainSound( void )
 	}
 }
 
+void CHWGrunt::AlertSound(void)
+{
+	EmitSound(CHAN_VOICE, "hassault/hw_alert.wav", 1, ATTN_NORM);
+}
+
 void CHWGrunt::Shoot()
 {
 	if( m_hEnemy == 0 )
@@ -368,10 +377,11 @@ void CHWGrunt::Shoot()
 		return;
 	}
 
-	switch ( RANDOM_LONG(0,1) )
+	switch ( RANDOM_LONG(0,2) )
 	{
 		case 0: EmitSound( CHAN_WEAPON, "hassault/hw_shoot2.wav", 1, ATTN_NORM ); break;
 		case 1: EmitSound( CHAN_WEAPON, "hassault/hw_shoot3.wav", 1, ATTN_NORM ); break;
+		case 2: EmitSound( CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM ); break;
 	}
 
 	Vector vecShootOrigin = GetGunPosition();

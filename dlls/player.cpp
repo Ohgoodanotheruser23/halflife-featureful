@@ -484,7 +484,7 @@ int CBasePlayer::TakeHealth( CBaseEntity* pHealer, float flHealth, int bitsDamag
 					MESSAGE_END();
 
 					if (healed == 0) {
-						EMIT_SOUND( ENT( pev ), CHAN_ITEM, AMMO_PICKUP_SOUND, 1, ATTN_NORM );
+						playAmmoPickupSound();
 					}
 				}
 

@@ -66,6 +66,9 @@ void CM249::Precache(void)
 
 	PRECACHE_SOUND("weapons/357_cock1.wav");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usM249 = PRECACHE_EVENT(1, "events/m249.sc");
 }
 

@@ -53,6 +53,9 @@ void CSniperrifle::Precache( void )
 	PRECACHE_SOUND ("weapons/sniper_reload3.wav");
 	PRECACHE_SOUND ("weapons/sniper_zoom.wav");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usSniper = PRECACHE_EVENT( 1, "events/sniper.sc" );
 }
 

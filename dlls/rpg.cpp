@@ -197,6 +197,7 @@ void CRpgRocket::Precache( void )
 	PRECACHE_MODEL( "models/rpgrocket.mdl" );
 	m_iTrail = PRECACHE_MODEL( "sprites/smoke.spr" );
 	PRECACHE_SOUND( "weapons/rocket1.wav" );
+	PRECACHE_SOUND( "weapons/wheredahoodat.wav" );
 }
 
 void CRpgRocket::IgniteThink( void )
@@ -207,7 +208,14 @@ void CRpgRocket::IgniteThink( void )
 	pev->effects |= EF_LIGHT;
 
 	// make rocket sound
-	EMIT_SOUND( ENT( pev ), CHAN_VOICE, "weapons/rocket1.wav", 1, 0.5f );
+	if (RANDOM_LONG(0, 1) == 0)
+	{
+		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/rocket1.wav", 1, 0.5f);
+	}
+	else
+	{
+		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/wheredahoodat.wav", 1, 0.5f);
+	}
 
 	// rocket trail
 	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
@@ -394,7 +402,10 @@ void CRpg::Precache( void )
 	UTIL_PrecacheOther( "rpg_rocket" );
 
 	PRECACHE_SOUND( "weapons/rocketfire1.wav" );
-	PRECACHE_SOUND( "weapons/glauncher.wav" ); // alternative fire sound
+	PRECACHE_SOUND( "weapons/glauncher.wav" );	// alternative fire sound
+
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
 
 	m_usRpg = PRECACHE_EVENT( 1, "events/rpg.sc" );
 }

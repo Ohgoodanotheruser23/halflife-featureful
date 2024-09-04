@@ -59,6 +59,9 @@ void CEagle::Precache( void )
 	PRECACHE_SOUND ("weapons/desert_eagle_sight.wav");
 	PRECACHE_SOUND ("weapons/desert_eagle_sight2.wav");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usEagle = PRECACHE_EVENT( 1, "events/eagle.sc" );
 }
 

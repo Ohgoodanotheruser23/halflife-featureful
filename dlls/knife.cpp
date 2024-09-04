@@ -58,6 +58,9 @@ void CKnife::Precache(void)
 	PRECACHE_SOUND("weapons/knife2.wav");
 	PRECACHE_SOUND("weapons/knife3.wav");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usKnife = PRECACHE_EVENT(1, "events/knife.sc");
 }
 

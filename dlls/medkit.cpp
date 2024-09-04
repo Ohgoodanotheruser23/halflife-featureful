@@ -104,6 +104,9 @@ void CMedkit::Precache(void)
 	PRECACHE_SOUND("items/medshot5.wav");
 	PRECACHE_SOUND("items/medshotno1.wav");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usMedkitFire = PRECACHE_EVENT(1, "events/medkit.sc");
 }
 

@@ -49,6 +49,9 @@ void CCrowbar::Precache( void )
 	PRECACHE_SOUND( "weapons/cbar_hitbod3.wav" );
 	PRECACHE_SOUND( "weapons/cbar_miss1.wav" );
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usCrowbar = PRECACHE_EVENT( 1, "events/crowbar.sc" );
 }
 

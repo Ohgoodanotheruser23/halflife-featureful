@@ -156,6 +156,9 @@ void CSqueakGrenade::PrecacheImpl( const char* modelName )
 	PRECACHE_SOUND( "squeek/sqk_hunt2.wav" );
 	PRECACHE_SOUND( "squeek/sqk_hunt3.wav" );
 	PRECACHE_SOUND( "squeek/sqk_deploy1.wav" );
+
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
 }
 
 void CSqueakGrenade::Killed( entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib )
@@ -440,6 +443,9 @@ void CPenguinGrenade::Spawn()
 void CPenguinGrenade::Precache()
 {
 	PrecacheImpl("models/w_penguin.mdl");
+
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
 }
 
 void CPenguinGrenade::Killed(entvars_t *pevInflictor, entvars_t *pevAttacker, int iGib)

@@ -67,6 +67,9 @@ void CUzi::Precache( void )
 
 	PRECACHE_SOUND( "weapons/357_cock1.wav" );
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usUzi = PRECACHE_EVENT( 1, "events/uzi.sc" );
 }
 

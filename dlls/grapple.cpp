@@ -259,6 +259,9 @@ void CBarnacleGrapple::Precache( void )
 	PRECACHE_SOUND( "barnacle/bcl_chew2.wav" );
 	PRECACHE_SOUND( "barnacle/bcl_chew3.wav" );
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	PRECACHE_MODEL( "sprites/tongue.spr" );
 
 	UTIL_PrecacheOther( "grapple_tip" );

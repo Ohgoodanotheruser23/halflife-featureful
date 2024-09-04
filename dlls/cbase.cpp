@@ -761,6 +761,85 @@ int CBaseEntity::Restore( CRestore &restore )
 	return status;
 }
 
+void CBaseEntity::playAmmoPickupSound()
+{
+	playAmmoPickupSound(NULL);
+
+}
+
+void CBaseEntity::playAmmoPickupSound(entvars_t* sentPev)
+{
+	entvars_t* pevToUse = NULL;
+	if (sentPev != NULL) {
+		pevToUse = sentPev;
+	}
+	else {
+		pevToUse = pev;
+	}
+	switch (RANDOM_LONG(0, 3))
+	{
+	case 0:
+		EMIT_SOUND(ENT(pevToUse), CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
+		break;
+	case 1:
+		EMIT_SOUND(ENT(pevToUse), CHAN_ITEM, "weapons/357_cock1.wav", 1, ATTN_NORM);
+		break;
+	case 2:
+		EMIT_SOUND(ENT(pevToUse), CHAN_ITEM, "weapons/reload1.wav", 1, ATTN_NORM);
+		break;
+	case 3:
+		EMIT_SOUND(ENT(pevToUse), CHAN_ITEM, "item/cv2_get.wav", 1, ATTN_NORM);
+		break;
+	}
+		
+}
+
+void CBaseEntity::playGunPickupSound()
+{
+	playGunPickupSound(NULL);
+}
+
+void CBaseEntity::playGunPickupSound(entvars_t* sentPev)
+{
+	entvars_t* pevToUse = NULL;
+	if (sentPev != NULL) {
+		pevToUse = sentPev;
+	}
+	else {
+		pevToUse = pev;
+	}
+	switch (RANDOM_LONG(0, 3)) {
+	case 0:
+		EMIT_SOUND(ENT(pevToUse), CHAN_ITEM, "items/gunpickup1.wav", 1, ATTN_NORM);
+		break;
+	case 1:
+		EMIT_SOUND(ENT(pevToUse), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
+		break;
+	case 2:
+		EMIT_SOUND(ENT(pevToUse), CHAN_ITEM, "items/gunpickup3.wav", 1, ATTN_NORM);
+		break;
+	case 3:
+		EMIT_SOUND(ENT(pevToUse), CHAN_ITEM, "items/gunpickup4.wav", 1, ATTN_NORM);
+		break;
+	}
+}
+
+void CBaseEntity::precacheAmmoPickupSound()
+{
+	PRECACHE_SOUND("items/9mmclip1.wav");
+	PRECACHE_SOUND("weapons/357_cock1.wav");
+	PRECACHE_SOUND("weapons/reload1.wav");
+	PRECACHE_SOUND("item/cv2_get.wav");
+}
+
+void CBaseEntity::precacheGunPickupSound()
+{
+	PRECACHE_SOUND("items/gunpickup1.wav");
+	PRECACHE_SOUND("items/gunpickup2.wav");
+	PRECACHE_SOUND("items/gunpickup3.wav");
+	PRECACHE_SOUND("items/gunpickup4.wav");
+}
+
 // Initialize absmin & absmax to the appropriate box
 void SetObjectCollisionBox( entvars_t *pev )
 {

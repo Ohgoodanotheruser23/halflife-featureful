@@ -346,6 +346,9 @@ void CSatchel::Precache( void )
 	PrecachePModel( "models/p_satchel.mdl" );
 	PrecachePModel( "models/p_satchel_radio.mdl" );
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	UTIL_PrecacheOther( "monster_satchel" );
 }
 

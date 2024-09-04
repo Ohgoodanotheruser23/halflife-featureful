@@ -106,6 +106,9 @@ void CDisplacer::Precache(void)
 
 	UTIL_PrecacheOther("displacer_ball");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usDisplacer = PRECACHE_EVENT(1, "events/displacer.sc");
 }
 

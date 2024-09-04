@@ -65,6 +65,9 @@ void CShockrifle::Precache(void)
 	PRECACHE_MODEL("sprites/lgtning.spr");
 	PRECACHE_MODEL("sprites/flare3.spr");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	m_usShockFire = PRECACHE_EVENT(1, "events/shock.sc");
 
 	UTIL_PrecacheOther("shock_beam");

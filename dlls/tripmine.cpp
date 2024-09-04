@@ -145,6 +145,8 @@ void CTripmineGrenade::Precache( void )
 	PRECACHE_SOUND( "weapons/mine_deploy.wav" );
 	PRECACHE_SOUND( "weapons/mine_activate.wav" );
 	PRECACHE_SOUND( "weapons/mine_charge.wav" );
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
 }
 
 void CTripmineGrenade::UpdateOnRemove()

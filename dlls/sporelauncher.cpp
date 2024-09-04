@@ -59,6 +59,9 @@ void CSporelauncher::Precache(void)
 
 	PRECACHE_SOUND("items/9mmclip1.wav");
 
+	precacheGunPickupSound();
+	precacheAmmoPickupSound();
+
 	PRECACHE_MODEL("sprites/bigspit.spr");
 	m_iSquidSpitSprite = PRECACHE_MODEL("sprites/tinyspit.spr");
 	UTIL_PrecacheOther("spore");
