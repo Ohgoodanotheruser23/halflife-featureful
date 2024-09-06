@@ -135,6 +135,13 @@ void ClientDisconnect( edict_t *pEntity )
 	g_PlayerFullyInitialized[clientIndex] = false;
 
 	g_pGameRules->ClientDisconnected( pEntity );
+
+	auto pPlayer = reinterpret_cast<CBasePlayer*>(GET_PRIVATE(pEntity));
+
+	if (pPlayer)
+	{
+		pPlayer->m_bIsConnected = false;
+	}
 }
 
 // called by ClientKill and DeadThink
@@ -926,6 +933,8 @@ void ParmsChangeLevel( void )
 		pSaveData->connectionCount = BuildChangeList( pSaveData->levelList, MAX_LEVEL_CONNECTIONS );
 }
 
+static float g_LastBotUpdateTime = 0;
+
 //
 // GLOBALS ASSUMED SET:  g_ulFrameCount
 //
@@ -941,6 +950,45 @@ void StartFrame( void )
 
 	gpGlobals->teamplay = teamplay.value;
 	g_ulFrameCount++;
+
+	// Handle level changes and other problematic time changes.
+	float frametime = gpGlobals->time - g_LastBotUpdateTime;
+
+	if (frametime > 0.25f || frametime < 0)
+	{
+		frametime = 0;
+	}
+
+	const byte msec = byte(frametime * 1000);
+
+	g_LastBotUpdateTime = gpGlobals->time;
+
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	{
+		auto player = static_cast<CBasePlayer*>(UTIL_PlayerByIndex(i));
+
+		if (!player)
+		{
+			continue;
+		}
+
+		if (!player->m_bIsConnected)
+		{
+			continue;
+		}
+
+		if ((player->pev->flags & FL_FAKECLIENT) == 0)
+		{
+			continue;
+		}
+
+		//If bot is newly created finish setup here.
+
+		//Run bot think here.
+
+		//Now update the bot.
+		g_engfuncs.pfnRunPlayerMove(player->edict(), player->pev->angles, 0, 0, 0, player->pev->button, player->pev->impulse, msec);
+	}
 }
 
 int PM_IsThereSnowTexture();

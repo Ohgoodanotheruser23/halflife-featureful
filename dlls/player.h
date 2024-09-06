@@ -524,6 +524,12 @@ public:
 
 	EHANDLE m_camera;
 	int m_cameraFlags;
+
+	/**
+*    @brief True if the player is currently connected to the server.
+*    Should only be false in multiplayer games, for players that have disconnected.
+*/
+	bool m_bIsConnected = true;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025
