@@ -3696,7 +3696,7 @@ void CBasePlayer::Spawn( void )
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_WALK;
 	pev->health = pev->max_health = g_modFeatures.MaxPlayerHealth();
-	pev->flags &= FL_PROXY;	// keep proxy flag sey by engine
+	pev->flags &= FL_PROXY | FL_FAKECLIENT;	// keep proxy and fakeclient flags sey by engine
 	pev->flags |= FL_CLIENT;
 	pev->air_finished = gpGlobals->time + 12;
 	pev->dmg = 2;				// initial water damage
