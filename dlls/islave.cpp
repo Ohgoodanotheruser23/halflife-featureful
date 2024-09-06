@@ -581,6 +581,7 @@ const char *CISlave::pDeathSounds[] =
 {
 	"aslave/slv_die1.wav",
 	"aslave/slv_die2.wav",
+	"aslave/slv_die3.wav",
 };
 
 const char *CISlave::pGlowArmSounds[] =
