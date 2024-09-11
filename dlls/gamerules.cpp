@@ -389,6 +389,9 @@ void CGameRules::RefreshSkillData ( void )
 	gSkillData.glennDmgOneSlash = GetSkillCvar("sk_glenn_dmg_one_slash");
 	gSkillData.glennDmgBothSlash = GetSkillCvar("sk_glenn_dmg_both_slash");
 
+	// Creeper
+	gSkillData.creeperHealth = GetSkillCvar("sk_creeper_health");
+
 	//Turret
 	gSkillData.turretHealth = GetSkillCvar( "sk_turret_health" );
 

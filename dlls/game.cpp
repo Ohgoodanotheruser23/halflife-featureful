@@ -999,6 +999,9 @@ DECLARE_SKILL_VALUE(sk_glenn_health, "0")
 DECLARE_SKILL_VALUE(sk_glenn_dmg_one_slash, "0")
 DECLARE_SKILL_VALUE(sk_glenn_dmg_both_slash, "0")
 
+// Creeper
+DECLARE_SKILL_VALUE(sk_creeper_health, "0")
+
 //Turret
 DECLARE_SKILL_VALUE(sk_turret_health, "0")
 
@@ -1768,6 +1771,9 @@ void GameDLLInit( void )
 	REGISTER_SKILL_CVARS(sk_glenn_health);
 		REGISTER_SKILL_CVARS(sk_glenn_dmg_one_slash);
 		REGISTER_SKILL_CVARS(sk_glenn_dmg_both_slash);
+
+	// Creeper
+	REGISTER_SKILL_CVARS(sk_creeper_health);
 
 	//Turret
 	REGISTER_SKILL_CVARS(sk_turret_health);
