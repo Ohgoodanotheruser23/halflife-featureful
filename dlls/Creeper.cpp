@@ -29,9 +29,9 @@ public:
 	int IgnoreConditions(void);
 
 	float m_flNextFlinch;
-	void AlertSound(void);
-	void DeathSound(void);
-	void PainSound(void);
+	virtual void AlertSound(void);
+	virtual void DeathSound(void);
+	virtual void PainSound(void);
 	static const char* pAlertSounds[];
 	static const char* pDeathSounds[];
 	static const char* pPainSounds[];

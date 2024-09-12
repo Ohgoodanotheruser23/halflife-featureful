@@ -392,6 +392,11 @@ void CGameRules::RefreshSkillData ( void )
 	// Creeper
 	gSkillData.creeperHealth = GetSkillCvar("sk_creeper_health");
 
+	// Sinistar
+	gSkillData.sinistarHealth = GetSkillCvar("sk_sinistar_health");
+	gSkillData.sinistarDmgOneSlash = GetSkillCvar("sk_sinistar_dmg_one_slash");
+	gSkillData.sinistarDmgBothSlash = GetSkillCvar("sk_sinistar_dmg_both_slash");
+
 	//Turret
 	gSkillData.turretHealth = GetSkillCvar( "sk_turret_health" );
 

@@ -217,6 +217,10 @@ struct skilldata_t
 
 	float creeperHealth;
 
+	float sinistarHealth;
+	float sinistarDmgOneSlash;
+	float sinistarDmgBothSlash;
+
 	float turretHealth;
 	float miniturretHealth;
 	float sentryHealth;

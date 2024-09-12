@@ -1,38 +1,52 @@
 /***
-* Gay Glenn.cpp
-* Gay Glenn is actually not gay.
+*
+*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+*
+*	This product contains software technology licensed from Id
+*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+*	All Rights Reserved.
+*
+*   This source code contains proprietary and confidential information of
+*   Valve LLC and its suppliers.  Access to this code is restricted to
+*   persons who have executed a written SDK license with Valve.  Any access,
+*   use or distribution of this code by or to any unlicensed person is illegal.
+*
 ****/
+//=========================================================
+// Sinistar
+//=========================================================
 
 // UNDONE: Don't flinch every time you get hit
 
-#include "extdll.h"
-#include "util.h"
-#include "cbase.h"
-#include "monsters.h"
-#include "schedule.h"
-#include "gamerules.h"
+#include	"extdll.h"
+#include	"util.h"
+#include	"cbase.h"
+#include	"monsters.h"
+#include	"schedule.h"
+#include	"gamerules.h"
 
 //=========================================================
 // Monster's Anim Events Go Here
 //=========================================================
-#define GLENN_AE_ATTACK_RIGHT 0x01
-#define GLENN_AE_ATTACK_LEFT 0x02
-#define GLENN_AE_ATTACK_BOTH 0x03
+#define	SINISTAR_AE_ATTACK_RIGHT		0x01
+#define	SINISTAR_AE_ATTACK_LEFT		0x02
+#define	SINISTAR_AE_ATTACK_BOTH		0x03
 
-#define GLENN_FLINCH_DELAY 2 // at most one flinch every n secs
+#define SINISTAR_FLINCH_DELAY			2		// at most one flinch every n secs
 
-class CGay : public CBaseMonster
+class CSinistar : public CBaseMonster
 {
 public:
 	void Spawn(void);
 	void Precache(void);
 	void SetYawSpeed(void);
-	int Classify(void);
+	int  Classify(void);
 	void HandleAnimEvent(MonsterEvent_t* pEvent);
 	int IgnoreConditions(void);
 
 	float m_flNextFlinch;
 
+	void PainSound(void);
 	void AlertSound(void);
 	void IdleSound(void);
 	void AttackSound(void);
@@ -50,63 +64,62 @@ public:
 	int TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType);
 };
 
-LINK_ENTITY_TO_CLASS(monster_gayglenn, CGay);
-LINK_ENTITY_TO_CLASS(monster_gay, CGay);  // Compatability hack, perhaps?
+LINK_ENTITY_TO_CLASS(monster_sinistar, CSinistar);
 
-const char* CGay::pAttackHitSounds[] =
+const char* CSinistar::pAttackHitSounds[] =
 {
-	"glenn/strike1.wav",
-	"weapons/cbar_hitbod1.wav",
-	"weapons/cbar_hitbod2.wav",
-	"bonus_shit/fart2.wav",
-	"scientist/sci_pain3.wav",
+	"zombie/claw_strike1.wav",
+	"zombie/claw_strike2.wav",
+	"zombie/claw_strike3.wav",
 };
 
-const char* CGay::pAttackMissSounds[] =
+const char* CSinistar::pAttackMissSounds[] =
 {
-	"glenn/miss1.wav",
-	"hassault/hw_shoot1.wav",
+	"zombie/claw_miss1.wav",
+	"zombie/claw_miss2.wav",
 };
 
-const char* CGay::pAttackSounds[] =
+const char* CSinistar::pAttackSounds[] =
 {
-	"glenn/gg_attack1.wav",
-	"glenn/gg_attack2.wav",
+	"sinistar/ss_attack1.wav",
+	"sinistar/ss_attack2.wav",
 };
 
-const char* CGay::pIdleSounds[] =
+const char* CSinistar::pIdleSounds[] =
 {
-	"glenn/gg_idle1.wav",
-	"glenn/gg_idle2.wav",
-	"glenn/gg_idle3.wav",
-	"glenn/gg_idle4.wav",
+	"sinistar/ss_idle1.wav",
 };
 
-const char* CGay::pAlertSounds[] =
+const char* CSinistar::pAlertSounds[] =
 {
-	"glenn/gg_alert10.wav",
-	"glenn/gg_alert20.wav",
-	"glenn/gg_alert30.wav",
+	"sinistar/ss_alert10.wav",
+	"sinistar/ss_alert20.wav",
+	"sinistar/ss_alert30.wav",
+};
+
+const char* CSinistar::pPainSounds[] =
+{
+	"sinistar/ss_pain1.wav",
 };
 
 //=========================================================
-// Classify - indicates this monster's place in the
+// Classify - indicates this monster's place in the 
 // relationship table.
 //=========================================================
-int CGay::Classify(void)
+int	CSinistar::Classify(void)
 {
-	return CLASS_GAYGLENN;
+	return	CLASS_ALIEN_MONSTER;
 }
 
 //=========================================================
 // SetYawSpeed - allows each sequence to have a different
 // turn rate associated with it.
 //=========================================================
-void CGay::SetYawSpeed(void)
+void CSinistar::SetYawSpeed(void)
 {
 	int ys;
 
-	ys = 360;
+	ys = 120;
 
 #if 0
 	switch (m_Activity)
@@ -117,30 +130,48 @@ void CGay::SetYawSpeed(void)
 	pev->yaw_speed = ys;
 }
 
-int CGay::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+int CSinistar::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
 {
+	// Take 30% damage from bullets
+	if (bitsDamageType == DMG_BULLET)
+	{
+		Vector vecDir = pev->origin - (pevInflictor->absmin + pevInflictor->absmax) * 0.5;
+		vecDir = vecDir.Normalize();
+		float flForce = DamageForce(flDamage);
+		pev->velocity = pev->velocity + vecDir * flForce;
+		flDamage *= 0.3;
+	}
+
 	// HACK HACK -- until we fix this.
 	if (IsAlive())
 		PainSound();
 	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
 }
 
-void CGay::AlertSound(void)
+void CSinistar::PainSound(void)
+{
+	int pitch = 95 + RANDOM_LONG(0, 9);
+
+	if (RANDOM_LONG(0, 5) < 2)
+		EmitSoundDyn( CHAN_VOICE, RANDOM_SOUND_ARRAY(pPainSounds), 1.0, ATTN_NORM, 0, pitch);
+}
+
+void CSinistar::AlertSound(void)
 {
 	int pitch = 95 + RANDOM_LONG(0, 9);
 
 	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAlertSounds), 1.0, ATTN_NORM, 0, pitch);
 }
 
-void CGay::IdleSound(void)
+void CSinistar::IdleSound(void)
 {
 	int pitch = 95 + RANDOM_LONG(0, 9);
 
 	// Play a random idle sound
-	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pIdleSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pIdleSounds), 1.0, ATTN_NORM, 0, pitch);
 }
 
-void CGay::AttackSound(void)
+void CSinistar::AttackSound(void)
 {
 	// Play a random attack sound
 	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
@@ -151,15 +182,15 @@ void CGay::AttackSound(void)
 // HandleAnimEvent - catches the monster-specific messages
 // that occur when tagged animation frames are played.
 //=========================================================
-void CGay::HandleAnimEvent(MonsterEvent_t* pEvent)
+void CSinistar::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
 	{
-	case GLENN_AE_ATTACK_RIGHT:
+	case SINISTAR_AE_ATTACK_RIGHT:
 	{
 		// do stuff for this event.
-		//		ALERT( at_console, "Slash right!\n" );
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.glennDmgOneSlash, DMG_SLASH);
+//		ALERT( at_console, "Slash right!\n" );
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.sinistarDmgOneSlash, DMG_SLASH);
 		if (pHurt)
 		{
 			if (pHurt->pev->flags & (FL_MONSTER | FL_CLIENT))
@@ -172,18 +203,18 @@ void CGay::HandleAnimEvent(MonsterEvent_t* pEvent)
 			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 		}
 		else // Play a random attack miss sound
-			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn( CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 
 		if (RANDOM_LONG(0, 1))
 			AttackSound();
 	}
 	break;
 
-	case GLENN_AE_ATTACK_LEFT:
+	case SINISTAR_AE_ATTACK_LEFT:
 	{
 		// do stuff for this event.
-		//		ALERT( at_console, "Slash left!\n" );
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.glennDmgOneSlash, DMG_SLASH);
+//		ALERT( at_console, "Slash left!\n" );
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.sinistarDmgOneSlash, DMG_SLASH);
 		if (pHurt)
 		{
 			if (pHurt->pev->flags & (FL_MONSTER | FL_CLIENT))
@@ -202,10 +233,10 @@ void CGay::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 	break;
 
-	case GLENN_AE_ATTACK_BOTH:
+	case SINISTAR_AE_ATTACK_BOTH:
 	{
 		// do stuff for this event.
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.glennDmgBothSlash, DMG_SLASH);
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.sinistarDmgBothSlash, DMG_SLASH);
 		if (pHurt)
 		{
 			if (pHurt->pev->flags & (FL_MONSTER | FL_CLIENT))
@@ -232,20 +263,23 @@ void CGay::HandleAnimEvent(MonsterEvent_t* pEvent)
 //=========================================================
 // Spawn
 //=========================================================
-void CGay::Spawn()
+void CSinistar::Spawn()
 {
 	Precache();
-	SET_MODEL(ENT(pev), "models/chris.mdl");
+
+	SET_MODEL(ENT(pev), "models/sinistar.mdl");
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
-	m_bloodColor = BLOOD_COLOR_RED;
-	pev->health = gSkillData.glennHealth;
-	pev->view_ofs = VEC_VIEW; // position of the eyes relative to monster's origin.
-	m_flFieldOfView = 0.5;	  // indicates the width of this monster's forward view cone ( as a dotproduct result )
+	pev->renderfx = kRenderFxGlowShell;
+	pev->rendercolor.x = 255;
+	m_bloodColor = BLOOD_COLOR_GREEN;
+	pev->health = gSkillData.sinistarHealth;
+	pev->view_ofs = VEC_VIEW;// position of the eyes relative to monster's origin.
+	m_flFieldOfView = 0.5;// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
-	m_afCapability = bits_CAP_DOORS_GROUP | bits_CAP_AUTO_DOORS | bits_CAP_SQUAD;
+	m_afCapability = bits_CAP_DOORS_GROUP;
 
 	MonsterInit();
 }
@@ -253,17 +287,29 @@ void CGay::Spawn()
 //=========================================================
 // Precache - precaches all resources this monster needs
 //=========================================================
-void CGay::Precache()
+void CSinistar::Precache()
 {
 	int i;
 
-	PRECACHE_MODEL("models/chris.mdl");
+	PRECACHE_MODEL("models/sinistar.mdl");
 
-	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
-	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
-	PRECACHE_SOUND_ARRAY(pAttackSounds);
-	PRECACHE_SOUND_ARRAY(pIdleSounds);
-	PRECACHE_SOUND_ARRAY(pAlertSounds);
+	for (i = 0; i < ARRAYSIZE(pAttackHitSounds); i++)
+		PRECACHE_SOUND((char*)pAttackHitSounds[i]);
+
+	for (i = 0; i < ARRAYSIZE(pAttackMissSounds); i++)
+		PRECACHE_SOUND((char*)pAttackMissSounds[i]);
+
+	for (i = 0; i < ARRAYSIZE(pAttackSounds); i++)
+		PRECACHE_SOUND((char*)pAttackSounds[i]);
+
+	for (i = 0; i < ARRAYSIZE(pIdleSounds); i++)
+		PRECACHE_SOUND((char*)pIdleSounds[i]);
+
+	for (i = 0; i < ARRAYSIZE(pAlertSounds); i++)
+		PRECACHE_SOUND((char*)pAlertSounds[i]);
+
+	for (i = 0; i < ARRAYSIZE(pPainSounds); i++)
+		PRECACHE_SOUND((char*)pPainSounds[i]);
 }
 
 //=========================================================
@@ -272,7 +318,7 @@ void CGay::Precache()
 
 
 
-int CGay::IgnoreConditions(void)
+int CSinistar::IgnoreConditions(void)
 {
 	int iIgnore = CBaseMonster::IgnoreConditions();
 
@@ -282,7 +328,7 @@ int CGay::IgnoreConditions(void)
 		if (pev->health < 20)
 			iIgnore |= (bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE);
 		else
-#endif
+#endif			
 			if (m_flNextFlinch >= gpGlobals->time)
 				iIgnore |= (bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE);
 	}
@@ -290,8 +336,9 @@ int CGay::IgnoreConditions(void)
 	if ((m_Activity == ACT_SMALL_FLINCH) || (m_Activity == ACT_BIG_FLINCH))
 	{
 		if (m_flNextFlinch < gpGlobals->time)
-			m_flNextFlinch = gpGlobals->time + GLENN_FLINCH_DELAY;
+			m_flNextFlinch = gpGlobals->time + SINISTAR_FLINCH_DELAY;
 	}
 
 	return iIgnore;
+
 }
